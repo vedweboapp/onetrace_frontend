@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 /** Day timeline configuration (local hours, 0 = 12 AM, end is exclusive — 24 = next midnight). */
 export const SCHEDULE_DAY_START_HOUR = 0;
 export const SCHEDULE_DAY_END_HOUR = 24;
@@ -40,10 +42,47 @@ export function scheduleTimelineSpan(
   if (totalMinutes <= 0) return { leftPct: 0, widthPct: 100 };
 
   const startMin = Math.max(0, minutesFromDayStart(startAt, startHour));
-  const endMin = Math.min(totalMinutes, Math.max(startMin + 15, minutesFromDayStart(endAt, startHour)));
+  const endMin = Math.min(totalMinutes, Math.max(startMin, minutesFromDayStart(endAt, startHour)));
   const leftPct = (startMin / totalMinutes) * 100;
   const widthPct = ((endMin - startMin) / totalMinutes) * 100;
-  return { leftPct, widthPct: Math.max(widthPct, 3) };
+  return { leftPct, widthPct: Math.max(0, widthPct) };
+}
+
+export function clipMinutesRange(
+  startMinutes: number,
+  endMinutes: number,
+  bounds?: { startMinutes: number; endMinutes: number } | null,
+): { startMinutes: number; endMinutes: number } {
+  const start = Math.min(startMinutes, endMinutes);
+  const end = Math.max(startMinutes, endMinutes);
+  if (!bounds) return { startMinutes: start, endMinutes: end };
+  return {
+    startMinutes: Math.max(start, bounds.startMinutes),
+    endMinutes: Math.min(end, bounds.endMinutes),
+  };
+}
+
+/** Absolute band on the day timeline — never wider than the remaining track. */
+export function dayTimelineBandStyle(leftPct: number, widthPct: number): CSSProperties {
+  return {
+    left: `${leftPct}%`,
+    width: `${widthPct}%`,
+    maxWidth: `${Math.max(0, 100 - leftPct)}%`,
+  };
+}
+
+/** Schedule/time-off chips on the day timeline — percentage width only (no rem floor). */
+export function dayTimelineChipStyle(
+  leftPct: number,
+  widthPct: number,
+  insetPx = 6,
+  gutterPx = 12,
+): CSSProperties {
+  return {
+    left: `calc(${leftPct}% + ${insetPx}px)`,
+    width: `calc(${widthPct}% - ${gutterPx}px)`,
+    maxWidth: `calc(100% - ${leftPct}% - ${insetPx}px)`,
+  };
 }
 
 export function formatDurationHours(startAt: string, endAt: string): string {

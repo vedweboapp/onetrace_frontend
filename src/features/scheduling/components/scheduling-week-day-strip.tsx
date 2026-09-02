@@ -114,8 +114,8 @@ export function SchedulingWeekDayStrip({
   return (
     <div
       className={cn(
-        "flex h-full flex-col gap-0.5 overflow-hidden rounded-md",
-        hasBlocks ? "min-h-[7.5rem]" : "min-h-[4.5rem]",
+        "flex h-full flex-col gap-1 overflow-hidden rounded-md",
+        hasBlocks ? "min-h-[8rem]" : "min-h-[5rem]",
       )}
     >
       {segments.map((segment) => {

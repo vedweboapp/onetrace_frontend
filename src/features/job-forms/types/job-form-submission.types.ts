@@ -39,6 +39,25 @@ export type SubmitJobFormSummary = {
   total_fields?: number;
 };
 
+export type WorkerFormSubmissionSummary = {
+  id: number;
+  project_form_name: string;
+  status: string;
+  submitted_at?: string | null;
+};
+
+export type WorkerFormSubmissionsGroup = {
+  id: number;
+  worker_name: string;
+  total_forms: number;
+  submissions: WorkerFormSubmissionSummary[];
+};
+
+export type WorkerFormSubmissionTableRow = WorkerFormSubmissionSummary & {
+  worker_name: string;
+  worker_id: number;
+};
+
 export type SubmitJobFormPayload = {
   job_form_id: number;
   status?: string;

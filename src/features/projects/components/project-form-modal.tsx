@@ -506,22 +506,24 @@ export function ProjectFormModal({
           </FieldGroup>
         </FormFieldRow>
 
-        <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-          <textarea
-            id="project-description"
-            rows={4}
-            aria-invalid={errors.description ? true : undefined}
-            aria-describedby={errors.description ? "project-desc-err" : undefined}
-            className={cn(
-              surfaceInputClassName,
-              "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
-              errors.description && "border-red-500 dark:border-red-500",
-            )}
-            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
-            {...register("description", rhfRegisterOptions("description"))}
-          />
-          <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-        </FieldGroup>
+        <FormFieldRow cols="2" from="md">
+          <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+            <textarea
+              id="project-description"
+              rows={4}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={errors.description ? "project-desc-err" : undefined}
+              className={cn(
+                surfaceInputClassName,
+                "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                errors.description && "border-red-500 dark:border-red-500",
+              )}
+              maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+              {...register("description", rhfRegisterOptions("description"))}
+            />
+            <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
+          </FieldGroup>
+        </FormFieldRow>
 
         <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>

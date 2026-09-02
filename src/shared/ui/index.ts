@@ -26,10 +26,12 @@ export type { DetailPanelProps } from "./detail-panel";
 export { DetailActionMenuDropdown } from "./detail-action-menu-dropdown";
 export type { DetailActionMenuDropdownProps, DetailActionMenuItem } from "./detail-action-menu-dropdown";
 export {
+  FieldErrorSlot,
   FieldErrorText,
   FieldGroup,
   FieldLabel,
   RequiredMark,
+  fieldErrorSlotClassName,
   fieldErrorTextClassName,
   fieldLabelClassName,
   fieldRequiredMarkClassName,
@@ -60,6 +62,7 @@ export type {
   AddressLocationFieldsProps,
 } from "./address-form-fields";
 export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
+export { FormSubsection } from "./form-subsection";
 export { SurfacePhoneField, DEFAULT_PHONE_COUNTRY } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
 export { SurfaceTextField } from "./surface-text-field";

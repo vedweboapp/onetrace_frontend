@@ -141,6 +141,9 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  /** Product group selected when adding the line (service quotes). */
+  group_id?: number | null;
+  group_name?: string | null;
   source_pins?: QuotationQuoteSectionSourcePin[];
 };
 

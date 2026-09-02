@@ -16,21 +16,17 @@ const CHIP_GAP_PX = 4;
 export function VendorTypeChip({
   row,
   className,
-  truncate,
 }: {
   row: VendorTypeChipRow;
   className?: string;
-  /** Cap chip width so long labels end with … */
-  truncate?: boolean;
 }) {
   const label = formatVendorTypeLabel(row);
   return (
     <span
       title={label}
       className={cn(
-        "inline-flex max-w-full shrink-0 items-center rounded-md border border-black/5",
+        "inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-black/5",
         "px-1.5 py-px text-[10px] font-medium leading-4 tracking-wide",
-        truncate && "max-w-[7.5rem] truncate",
         className,
       )}
       style={{ backgroundColor: vendorTypeBgHex(row), color: vendorTypeTextHex(row) }}
@@ -45,7 +41,7 @@ function computeVisibleChipCount(
   chipWidths: number[],
   overflowWidths: Map<number, number>,
 ): number {
-  if (chipWidths.length === 0 || availableWidth <= 0) return 0;
+  if (chipWidths.length === 0 || availableWidth <= 0) return chipWidths.length > 0 ? 1 : 0;
 
   let used = 0;
   let count = 0;
@@ -55,10 +51,12 @@ function computeVisibleChipCount(
     const overflowReserve =
       remainingCount > 0 ? (overflowWidths.get(remainingCount) ?? 20) + CHIP_GAP_PX : 0;
     const gap = count > 0 ? CHIP_GAP_PX : 0;
-    const nextTotal = used + gap + chipWidths[i] + overflowReserve;
+    const chipWidth = chipWidths[i] ?? 0;
+    const nextTotal = used + gap + chipWidth + overflowReserve;
 
+    // Always show at least one full chip label; add more only when they fit.
     if (count === 0 || nextTotal <= availableWidth) {
-      used += gap + chipWidths[i];
+      used += gap + chipWidth;
       count++;
       continue;
     }
@@ -133,7 +131,7 @@ export function VendorTypeChipGroup({
         <span className="inline-flex items-center gap-1">
           {rows.map((row) => (
             <span key={row.id} data-vendor-type-chip className="inline-flex">
-              <VendorTypeChip row={row} truncate />
+              <VendorTypeChip row={row} />
             </span>
           ))}
         </span>
@@ -152,11 +150,11 @@ export function VendorTypeChipGroup({
       </span>
       <span
         ref={containerRef}
-        className={cn("inline-flex min-w-0 max-w-full items-center gap-1 overflow-hidden", className)}
+        className={cn("flex w-full min-w-0 items-center gap-1", className)}
         title={fullLabel}
       >
         {visible.map((row) => (
-          <VendorTypeChip key={row.id} row={row} truncate />
+          <VendorTypeChip key={row.id} row={row} />
         ))}
         {remaining > 0 ? (
           <span className="shrink-0 text-[10px] font-medium text-slate-500 dark:text-slate-400">

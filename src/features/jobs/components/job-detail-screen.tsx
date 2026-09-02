@@ -10,6 +10,7 @@ import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
 import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
+import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
@@ -39,7 +40,7 @@ type Props = {
   jobId: number;
 };
 
-type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns";
+type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns" | "forms";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
   return (
@@ -47,8 +48,15 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
     value === "scheduling" ||
     value === "materials" ||
     value === "dispatch" ||
-    value === "returns"
+    value === "returns" ||
+    value === "forms"
   );
+}
+
+function isServiceJobDetail(detail: Job | null, jobCategoryParam: string | null): boolean {
+  if (isServiceJobCategory(jobCategoryParam)) return true;
+  if (detail) return isServiceJobCategory(detail.job_category);
+  return false;
 }
 
 export function JobDetailScreen({ jobId }: Props) {
@@ -60,18 +68,25 @@ export function JobDetailScreen({ jobId }: Props) {
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
   const tabFromUrl = searchParams.get("tab");
-  const activeTab: JobDetailTabId = isJobDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
+  const showFormsTab = isServiceJobDetail(detailForNav, searchParams.get("job_category"));
+  const activeTab: JobDetailTabId =
+    isJobDetailTabId(tabFromUrl) && (tabFromUrl !== "forms" || showFormsTab)
+      ? tabFromUrl
+      : "overview";
 
-  const detailTabs = React.useMemo<AppTabItem[]>(
-    () => [
+  const detailTabs = React.useMemo<AppTabItem[]>(() => {
+    const tabs: AppTabItem[] = [
       { id: "overview", label: t("detail.tabs.overview") },
       { id: "scheduling", label: t("detail.tabs.scheduling") },
       { id: "materials", label: t("detail.tabs.materials") },
       { id: "dispatch", label: t("detail.tabs.dispatch") },
       { id: "returns", label: t("detail.tabs.returns") },
-    ],
-    [t],
-  );
+    ];
+    if (showFormsTab) {
+      tabs.push({ id: "forms", label: t("detail.tabs.forms") });
+    }
+    return tabs;
+  }, [showFormsTab, t]);
 
   function handleTabChange(tab: string) {
     if (!isJobDetailTabId(tab)) return;
@@ -208,7 +223,8 @@ function JobDetailTabPanel({
             activeTab === "scheduling" ||
               activeTab === "materials" ||
               activeTab === "dispatch" ||
-              activeTab === "returns"
+              activeTab === "returns" ||
+              activeTab === "forms"
               ? "flex min-h-0 flex-1 flex-col"
               : entityDetailTabPanelClassName,
           )}
@@ -242,6 +258,8 @@ function JobDetailTabPanel({
             <JobDispatchTab detail={detail} />
           ) : detail && activeTab === "returns" ? (
             <JobReturnsTab detail={detail} />
+          ) : detail && activeTab === "forms" ? (
+            <JobFormsTab detail={detail} />
           ) : null}
         </div>
   );

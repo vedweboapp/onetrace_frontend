@@ -12,7 +12,8 @@ import type { Title } from "@/features/titles/types/title.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, FieldErrorSlot, FieldErrorText, FieldGroup } from "@/shared/ui";
+import { FormFieldRow } from "@/shared/ui/form-field-grid";
 
 type Props = {
   control: Control<SiteFormValues>;
@@ -212,7 +213,7 @@ export function SiteContactPersonsFields({
                     <Trash2 className="size-4" aria-hidden />
                   </AppButton>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <FormFieldRow cols="2" from="sm" className="gap-y-0">
                   <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
                     <Controller
                       control={control}
@@ -232,7 +233,7 @@ export function SiteContactPersonsFields({
                         />
                       )}
                     />
-                    <FieldErrorText>{titleErr}</FieldErrorText>
+                    <FieldErrorSlot>{titleErr}</FieldErrorSlot>
                   </FieldGroup>
 
                   <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
@@ -271,9 +272,9 @@ export function SiteContactPersonsFields({
                         />
                       )}
                     />
-                    <FieldErrorText>{contactErr}</FieldErrorText>
+                    <FieldErrorSlot>{contactErr}</FieldErrorSlot>
                   </FieldGroup>
-                </div>
+                </FormFieldRow>
               </div>
             );
           })}

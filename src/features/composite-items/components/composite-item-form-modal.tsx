@@ -27,6 +27,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  FormSubsection,
   MoneyInput,
   NumericInput,
   surfaceInputClassName,
@@ -557,7 +558,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           </FieldGroup>
         </FormFieldRow>
 
-        <FieldGroup label={t("components")}>
+        <FormSubsection title={t("components")}>
           {itemsError ? (
             <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p>
           ) : null}
@@ -633,7 +634,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
             ))}
           </div>
           {componentsInvalid ? <FieldErrorText>{t("atLeastOneComponentError")}</FieldErrorText> : null}
-        </FieldGroup>
+        </FormSubsection>
       </form>
     </AppModal>
   );

@@ -84,12 +84,15 @@ export function minutesBandPct(
   endMinutes: number,
   startHour = SCHEDULE_DAY_START_HOUR,
   endHour = SCHEDULE_DAY_END_HOUR,
+  options?: { minSpanMinutes?: number },
 ): { leftPct: number; widthPct: number } {
   const timelineStart = startHour * 60;
   const timelineEnd = endHour * 60;
   const total = Math.max(1, timelineEnd - timelineStart);
   const start = Math.max(timelineStart, Math.min(timelineEnd, Math.min(startMinutes, endMinutes)));
-  const end = Math.max(start + 15, Math.min(timelineEnd, Math.max(startMinutes, endMinutes)));
+  const rawEnd = Math.min(timelineEnd, Math.max(startMinutes, endMinutes));
+  const minSpan = options?.minSpanMinutes ?? 15;
+  const end = minSpan > 0 ? Math.max(start + minSpan, rawEnd) : Math.max(start, rawEnd);
   return {
     leftPct: ((start - timelineStart) / total) * 100,
     widthPct: ((end - start) / total) * 100,

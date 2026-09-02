@@ -6,6 +6,7 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import { draftGrandTotal, draftPinTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
+import { quotationDraftLineGroupPayload } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 /** Synthetic plot `name` in `quote_sections` when the section has `section_pins` (no drawing plot). */
@@ -22,6 +23,7 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
       quantity: pin.quantity,
       selling_price: pin.selling_price,
       pins_total,
+      ...quotationDraftLineGroupPayload(pin),
       source_pins: Array.isArray(pin.source_pins) ? pin.source_pins : [],
     };
   });

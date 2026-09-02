@@ -20,7 +20,7 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FormFieldRow, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FormFieldRow, FormSubsection, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
@@ -468,6 +468,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                 />
               </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
@@ -500,37 +502,30 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               </FieldGroup>
             </FormFieldRow>
 
-            <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
-              <MultiCheckSelect
-                id="item-vendors"
-                options={vendorOptions}
-                values={vendorIds}
-                onChange={setVendorIds}
-                disabled={submitting}
-                placeholder={tModal("vendorsPlaceholder")}
-                listLabel={tModal("vendors")}
-                searchable
-                fallbackLabels={vendorFallbackLabels}
-                onAdd={vendorQuickCreate.onAdd}
-                addAriaLabel={vendorQuickCreate.addAriaLabel}
-                addLabel={vendorQuickCreate.addLabel}
-              />
-              {vendorsError ? (
-                <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-              ) : null}
-            </FieldGroup>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
+                <MultiCheckSelect
+                  id="item-vendors"
+                  options={vendorOptions}
+                  values={vendorIds}
+                  onChange={setVendorIds}
+                  disabled={submitting}
+                  placeholder={tModal("vendorsPlaceholder")}
+                  listLabel={tModal("vendors")}
+                  searchable
+                  fallbackLabels={vendorFallbackLabels}
+                  onAdd={vendorQuickCreate.onAdd}
+                  addAriaLabel={vendorQuickCreate.addAriaLabel}
+                  addLabel={vendorQuickCreate.addLabel}
+                />
+                {vendorsError ? (
+                  <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+                ) : null}
+              </FieldGroup>
+            </FormFieldRow>
 
-            <div
-              className={cn(
-                "grid w-full gap-x-[var(--form-label-gap,0.75rem)] gap-y-3 pt-1",
-                "md:grid-cols-[var(--form-label-col,9.5rem)_minmax(0,1fr)]",
-              )}
-            >
-              <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
-                {tModal("fulfilmentDetails")}
-              </h3>
-              <div className="form-fields-host min-w-0">
-                <div className="form-field-row grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <FormSubsection title={tModal("fulfilmentDetails")}>
+              <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
                 <FieldGroup label={tModal("dimensions")} htmlFor="item-dimensions">
                   <DimensionsLwhInput
                     id="item-dimensions"
@@ -572,9 +567,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                     selectAriaLabel={tModal("weightUnit")}
                   />
                 </FieldGroup>
-              </div>
-              </div>
-            </div>
+              </FormFieldRow>
+            </FormSubsection>
           </form>
         )}
       </SurfaceShell>

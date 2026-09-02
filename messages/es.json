@@ -3810,7 +3810,8 @@
           "scheduling": "Programación",
           "materials": "Materiales",
           "dispatch": "Envío",
-          "returns": "Devoluciones"
+          "returns": "Devoluciones",
+          "forms": "Formularios"
         },
         "schedulingTitle": "Programación",
         "schedulingEmpty": "Este trabajo aún no está programado.",
@@ -3827,7 +3828,16 @@
         "dispatchesLoadError": "Error al cargar los envíos.",
         "returnsTitle": "Devoluciones",
         "returnsEmpty": "No se han realizado solicitudes de devolución para este trabajo.",
-        "returnsLoadError": "Error al cargar las devoluciones."
+        "returnsLoadError": "Error al cargar las devoluciones.",
+        "formsTitle": "Formularios",
+        "formsEmpty": "Aún no hay envíos de formularios de trabajadores para este trabajo.",
+        "formsLoadError": "No se pudieron cargar los envíos de formularios. Inténtalo de nuevo.",
+        "formsTable": {
+          "id": "ID",
+          "workerName": "Trabajador",
+          "projectFormName": "Formulario del proyecto",
+          "submittedAt": "Enviado el"
+        }
       },
       "updateStatus": {
         "action": "Actualizar estado",

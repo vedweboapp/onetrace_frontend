@@ -24,6 +24,7 @@ import {
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  FormSubsection,
   InputWithEndSelect,
   MoneyInput,
   MultiCheckSelect,
@@ -380,6 +381,9 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               disabled={submitting}
             />
           </FieldGroup>
+        </FormFieldRow>
+
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("costPrice")} htmlFor={costId} required>
             <MoneyInput
               id={costId}
@@ -406,34 +410,27 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
           </FieldGroup>
         </FormFieldRow>
 
-        <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
-          <MultiCheckSelect
-            id="modal-item-vendors"
-            options={vendorOptions}
-            values={vendorIds}
-            onChange={setVendorIds}
-            disabled={submitting}
-            placeholder={t("vendorsPlaceholder")}
-            listLabel={t("vendors")}
-            searchable
-            fallbackLabels={vendorFallbackLabels}
-          />
-          {vendorsError ? (
-            <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-          ) : null}
-        </FieldGroup>
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
+            <MultiCheckSelect
+              id="modal-item-vendors"
+              options={vendorOptions}
+              values={vendorIds}
+              onChange={setVendorIds}
+              disabled={submitting}
+              placeholder={t("vendorsPlaceholder")}
+              listLabel={t("vendors")}
+              searchable
+              fallbackLabels={vendorFallbackLabels}
+            />
+            {vendorsError ? (
+              <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+            ) : null}
+          </FieldGroup>
+        </FormFieldRow>
 
-        <div
-          className={cn(
-            "grid w-full gap-x-[var(--form-label-gap,0.75rem)] gap-y-3 pt-1",
-            "md:grid-cols-[var(--form-label-col,9.5rem)_minmax(0,1fr)]",
-          )}
-        >
-          <h3 className="field-label text-sm font-semibold text-slate-900 dark:text-slate-100 md:pt-[calc((var(--form-control-height,2.75rem)-1.35em)/2)]">
-            {t("fulfilmentDetails")}
-          </h3>
-          <div className="form-fields-host min-w-0">
-            <div className="form-field-row grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+        <FormSubsection title={t("fulfilmentDetails")}>
+          <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
             <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
               <DimensionsLwhInput
                 id="modal-item-dimensions"
@@ -475,9 +472,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
                 selectAriaLabel={t("weightUnit")}
               />
             </FieldGroup>
-          </div>
-          </div>
-        </div>
+          </FormFieldRow>
+        </FormSubsection>
       </form>
     </AppModal>
   );
