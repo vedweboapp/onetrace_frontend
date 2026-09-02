@@ -18,6 +18,7 @@ import {
 import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
+  parseQuoteCategoryFromBackParam,
   parseQuoteCategoryParam,
 } from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
@@ -448,7 +449,10 @@ function DashboardMainSidebar({
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const quoteCategory = React.useMemo(() => {
     if (!quotationsActive) return undefined;
-    return parseQuoteCategoryParam(searchParams.get("quote_category"));
+    return (
+      parseQuoteCategoryParam(searchParams.get("quote_category")) ??
+      parseQuoteCategoryFromBackParam(searchParams.get("back"))
+    );
   }, [quotationsActive, searchParams]);
   const quotationServiceActive =
     quotationsActive &&

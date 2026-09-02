@@ -230,7 +230,7 @@ export function DrawingUploadModal({
                 </div>
               );
             })}
-            {hasNameErrors ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
+            {/* {hasNameErrors ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null} */}
           </div>
         ) : null}
       </form>

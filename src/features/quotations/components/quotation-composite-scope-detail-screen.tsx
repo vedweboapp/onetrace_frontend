@@ -7,6 +7,12 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
 import { DetailEntityLink, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { fetchCompositeItem } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
@@ -58,13 +64,20 @@ function childUnitPrice(child: Item | undefined): number {
 type Props = {
   compositeItemId: number;
   defaultBackHref: string;
+  quotationId?: number;
 };
 
-export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBackHref }: Props) {
+export function QuotationCompositeScopeDetailScreen({
+  compositeItemId,
+  defaultBackHref,
+  quotationId,
+}: Props) {
   const t = useTranslations("Dashboard.quotations.compositeScope");
   const tItems = useTranslations("Dashboard.items");
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const repeatCount = parseCompositeScopeRepeat(searchParams.get("repeat"));
@@ -80,6 +93,29 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
       ),
     [searchParams, defaultBackHref],
   );
+
+  /** Keep header/sidebar quote category in sync (project vs service). */
+  React.useEffect(() => {
+    if (!quotationId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const detail = await fetchQuotation(quotationId);
+        if (cancelled) return;
+        const resolved = resolveQuotationQuoteCategory(detail);
+        const current = parseQuoteCategoryParam(searchParams.get("quote_category"));
+        if (current === resolved) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("quote_category", resolved);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      } catch {
+        // Non-blocking — URL may already carry quote_category from navigation.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [quotationId, pathname, router, searchParams]);
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);

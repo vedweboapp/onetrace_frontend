@@ -430,7 +430,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
         </FormFieldRow>
 
         <FormSubsection title={t("fulfilmentDetails")}>
-          <FormFieldRow cols="2" from="md" className="gap-4" labelTop>
+          <FormFieldRow cols="2" from="md" className="gap-4">
             <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
               <DimensionsLwhInput
                 id="modal-item-dimensions"

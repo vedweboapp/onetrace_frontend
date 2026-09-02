@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
@@ -16,6 +17,7 @@ import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { buildQuotationScopeReturnHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import { buildQuotationCompositeScopeHref } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
+import { parseQuoteCategoryParam } from "@/features/quotations/constants/quotation-category";
 import { quotationDraftLineDisplayName } from "@/features/quotations/utils/quotation-draft-composite-aggregate.util";
 import { saveQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
@@ -344,7 +346,8 @@ export function QuotationDraftComposer({
   const compositeFormId = React.useId();
   const router = useRouter();
   const pathname = usePathname();
- 
+  const searchParams = useSearchParams();
+  const quoteCategory = parseQuoteCategoryParam(searchParams.get("quote_category"));
   const [newSectionName, setNewSectionName] = React.useState("");
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
@@ -1012,6 +1015,7 @@ export function QuotationDraftComposer({
         sectionLabel: args.sectionLabel,
         plotLabel: args.plotLabel,
         backHref,
+        quoteCategory,
       });
       if (detailsKey) {
         const sep = href.includes("?") ? "&" : "?";
@@ -1020,7 +1024,7 @@ export function QuotationDraftComposer({
       onBeforeLeavePage?.();
       router.push(href);
     },
-    [router, pathname, onBeforeLeavePage],
+    [router, pathname, quoteCategory, onBeforeLeavePage],
   );
 
   if (!canShow) {
