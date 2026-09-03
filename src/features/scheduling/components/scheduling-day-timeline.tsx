@@ -52,9 +52,11 @@ const SINGLE_ROW_HEIGHT_PX = 100;
 const WORKER_COL_PX = 240;
 /** Small horizontal gap between the sticky worker column and the timeline grid. */
 const WORKER_TIMELINE_GAP_PX = 8;
-/** Horizontal inset for schedule/time-off blocks on the day timeline. */
-const TIMELINE_CHIP_INSET_PX = 6;
-const TIMELINE_CHIP_GUTTER_PX = 12;
+/** Vertical gap between worker rows (availability strips stay separated). */
+const WORKER_ROW_GAP_PX = 6;
+/** No horizontal inset/gutter — adjacent schedules on one row should touch. */
+const TIMELINE_CHIP_INSET_PX = 0;
+const TIMELINE_CHIP_GUTTER_PX = 0;
 
 function HourStamp({ hour, locale, className }: { hour: number; locale: string; className?: string }) {
   const { time, period } = formatHourParts(hour, locale);
@@ -378,7 +380,7 @@ export function SchedulingDayTimeline({
           </div>
         </div>
 
-        {technicians.map((tech) => {
+        {technicians.map((tech, techIndex) => {
           const cellSchedules = rowsFromWorkerMap(schedulesByWorker, tech);
           const cellTimeOffs = rowsFromWorkerMap(timeOffByWorker, tech);
           const window = getDayAvailabilityWindow(tech.availableDays, day);
@@ -424,8 +426,12 @@ export function SchedulingDayTimeline({
                 if (node) workerRowRefs.current.set(tech.id, node);
                 else workerRowRefs.current.delete(tech.id);
               }}
-              className="group/row flex border-b border-slate-100 dark:border-slate-800/80"
-              style={{ minHeight: rowHeight, gap: WORKER_TIMELINE_GAP_PX }}
+              className="group/row flex"
+              style={{
+                minHeight: rowHeight,
+                gap: WORKER_TIMELINE_GAP_PX,
+                marginBottom: techIndex < technicians.length - 1 ? WORKER_ROW_GAP_PX : 0,
+              }}
             >
               {hideWorkerColumn ? null : (
                 <div

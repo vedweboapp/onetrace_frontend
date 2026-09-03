@@ -15,8 +15,11 @@ import type {
   QrCodeGenerateResult,
   QrCodeStatus,
 } from "@/features/qr-codes/types/qr-code.types";
+import {
+  getQrAssignedPinHref,
+  qrAssignedLabel,
+} from "@/features/qr-codes/utils/qr-code-assignment.util";
 import { DetailEntityLink, EntityDataTable, entityCol } from "@/shared/components/entity";
-import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -52,23 +55,6 @@ import {
 
 function isQrAssigned(row: QrCodeRecord): boolean {
   return row.status === "assigned" || row.is_assigned;
-}
-
-function getQrAssignedJobId(row: QrCodeRecord): number | null {
-  if (typeof row.assigned_to_id === "number" && row.assigned_to_id > 0) return row.assigned_to_id;
-  const detail = row.assigned_to_detail;
-  if (detail && typeof detail.id === "number" && detail.id > 0) return detail.id;
-  return null;
-}
-
-function qrAssignedJobLabel(row: QrCodeRecord): string {
-  const detail = row.assigned_to_detail;
-  if (detail) {
-    const title = detail.title?.trim() || detail.name?.trim() || detail.job_serial_number?.trim();
-    if (title) return title;
-  }
-  const id = getQrAssignedJobId(row);
-  return id != null ? `#${id}` : "—";
 }
 
 const QR_STATUS_VALUES: QrCodeStatus[] = ["assigned", "not_assigned"];
@@ -272,12 +258,9 @@ export function QrCodesPanel() {
       c.link(
         "assigned",
         t("table.assignedJob"),
-        (r) => qrAssignedJobLabel(r),
-        (r) => {
-          const id = getQrAssignedJobId(r);
-          return id != null ? `${routes.dashboard.jobs}/${id}` : null;
-        },
-        { title: (r) => qrAssignedJobLabel(r) },
+        (r) => qrAssignedLabel(r),
+        (r) => getQrAssignedPinHref(r),
+        { title: (r) => qrAssignedLabel(r) },
       ),
       c.truncate("scan_count", t("table.scanCount"), (r) => String(r.scan_count)),
       c.truncate("last_scanned", t("table.lastScanned"), (r) => {
@@ -403,8 +386,8 @@ export function QrCodesPanel() {
             <ListPageCardGrid>
               {items.map((row) => {
                 const assigned = isQrAssigned(row);
-                const assignedJobId = getQrAssignedJobId(row);
-                const assignedLabel = qrAssignedJobLabel(row);
+                const assignedHref = getQrAssignedPinHref(row);
+                const assignedLabel = qrAssignedLabel(row);
                 return (
                   <ListPageCard
                     key={row.id}
@@ -427,9 +410,9 @@ export function QrCodesPanel() {
                             ·
                           </span>
                         ) : null}
-                        {assignedJobId != null ? (
+                        {assignedHref ? (
                           <DetailEntityLink
-                            href={`${routes.dashboard.jobs}/${assignedJobId}`}
+                            href={assignedHref}
                             className="min-w-0 truncate font-medium"
                             onClick={(e) => e.stopPropagation()}
                           >

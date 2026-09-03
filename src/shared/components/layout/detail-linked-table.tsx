@@ -95,16 +95,22 @@ export function DetailLinkedTableRow({
   index,
   showRowNumber,
   children,
+  clickable,
+  className,
+  onClick,
 }: {
   index: number;
   /** Defaults to the parent `DetailLinkedTable` `showRowNumbers` value. */
   showRowNumber?: boolean;
   children: ReactNode;
+  clickable?: boolean;
+  className?: string;
+  onClick?: () => void;
 }) {
   const parentShowRowNumbers = React.useContext(DetailLinkedTableRowNumbersContext);
   const show = showRowNumber ?? parentShowRowNumbers;
   return (
-    <DataTableRow>
+    <DataTableRow clickable={clickable} className={className} onClick={onClick}>
       {show ? (
         <DataTableTd narrow className="text-center tabular-nums text-slate-500 dark:text-slate-400">
           {index + 1}

@@ -2278,7 +2278,8 @@
         "sectionDetails": "Detalles",
         "assignedJob": "Trabajo asignado",
         "notAssigned": "Sin asignar",
-        "viewJob": "Ver trabajo asignado",
+        "viewJob": "Ver pin asignado",
+        "assignedPinHint": "Trabajo #{jobId} · Pin #{pinId}",
         "recordId": "ID de registro"
       },
       "fields": {

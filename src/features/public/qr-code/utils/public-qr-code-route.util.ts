@@ -44,7 +44,7 @@ export function isPublicQrOrgId(value: string): boolean {
 export function isPublicQrUuid(value: string): boolean {
   return PUBLIC_QR_UUID_RE.test(value.trim());
 }
-
+//see zoho pages how clean data showing in add edit detail page ....but in our 
 export function isPublicQrCodeRoute(orgId: string, qrUuid: string): boolean {
   return isPublicQrOrgId(orgId) && isPublicQrUuid(qrUuid);
 }

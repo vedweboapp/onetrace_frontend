@@ -2287,9 +2287,10 @@
         "backAria": "Back to QR codes list",
         "sectionQr": "QR Code",
         "sectionDetails": "Details",
-        "assignedJob": "Assigned job",
+        "assignedJob": "Assigned Job",
         "notAssigned": "Not assigned",
-        "viewJob": "View assigned job",
+        "viewJob": "View assigned pin",
+        "assignedPinHint": "Job #{jobId} · Pin #{pinId}",
         "recordId": "Record ID"
       },
       "fields": {

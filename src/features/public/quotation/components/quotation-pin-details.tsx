@@ -13,7 +13,7 @@ import {
   fetchPublicQuotationRejectionReasons,
   submitPublicQuotationResponse,
 } from "@/features/public/quotation/api/public-pin.api";
-import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchProjectLevelRowsForQuotation, fetchQuotation } from "@/features/quotations/api/quotation.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import type { DrawingPlot, DrawingPin } from "@/features/projects/types/drawing.types";
@@ -27,6 +27,8 @@ import type {
 import {
   generateQuotationPinSnapshots,
   extractPinSnapshotTasks,
+  enrichQuoteSectionsForPinSnapshots,
+  resolveQuotationProjectId,
 } from "@/features/quotations/utils/quotation-pin-snapshot.util";
 import { DocumentBody } from "@/features/quotations/components/quotation-pdf-preview-modal";
 import {
@@ -37,8 +39,7 @@ import {
   FileText,
   AlertTriangle,
 } from "lucide-react";
-import { formatOrgMoneyValue } from "@/shared/money/format-money.util";
-import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui";
 
 /* ── Dynamic imports ─────────────────────────────────── */
@@ -169,8 +170,8 @@ function getStatusMeta(status: string | null | undefined): { label: string; bg: 
   }
 }
 
-function fmtMoney(value: number | string | null | undefined): string {
-  return formatOrgMoneyValue(value ?? 0, getOrgCurrencySettings());
+function fmtMoney(value: number | string | null | undefined, formatMoneyValue: (v: unknown) => string): string {
+  return formatMoneyValue(value ?? 0);
 }
 
 function getTotals(detail: QuotationDetail): { subtotal: number; vat: number; total: number } | null {
@@ -831,6 +832,7 @@ function QuotationInfoPanel({
   sectionLabel?: string;
   plotLabel?: string;
 }) {
+  const { formatMoneyValue } = useOrgCurrency();
   const statusMeta = getStatusMeta(detail.status);
   const totals = getTotals(detail);
 
@@ -911,15 +913,15 @@ function QuotationInfoPanel({
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600">
               <span>Sub-Total ex VAT</span>
-              <span className="font-medium tabular-nums">{fmtMoney(totals.subtotal)}</span>
+              <span className="font-medium tabular-nums">{fmtMoney(totals.subtotal, formatMoneyValue)}</span>
             </div>
             <div className="flex justify-between text-slate-600">
               <span>VAT (20%)</span>
-              <span className="font-medium tabular-nums">{fmtMoney(totals.vat)}</span>
+              <span className="font-medium tabular-nums">{fmtMoney(totals.vat, formatMoneyValue)}</span>
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-2 mt-2 font-bold text-slate-900">
               <span>Total inc VAT</span>
-              <span className="tabular-nums">{fmtMoney(totals.total)}</span>
+              <span className="tabular-nums">{fmtMoney(totals.total, formatMoneyValue)}</span>
             </div>
           </div>
         </div>
@@ -950,19 +952,19 @@ function QuotationInfoPanel({
 
 function PdfColumn({
   detail,
+  sections,
   pinSnapshots,
   snapStatus,
   snapProgress,
   onPinClick,
 }: {
   detail: QuotationDetail;
+  sections: QuotationQuoteSection[];
   pinSnapshots: Map<string, string>;
   snapStatus: SnapshotStatus;
   snapProgress: { completed: number; total: number };
   onPinClick?: (pinId: number) => void;
 }) {
-  const sections = detail.quote_sections ?? [];
-
   return (
     <div className="flex-1 min-w-0">
       {/* Progress bar while generating snapshots */}
@@ -1117,6 +1119,8 @@ export function QuotationPinDetails() {
             quantity: pin.quantity ?? 1,
             variation: pin.variation ?? false,
             description: pin.description ?? "",
+            x_coordinate: pin.x_coordinate ?? null,
+            y_coordinate: pin.y_coordinate ?? null,
           };
           const unitPrice = (pin.item_detail as any)?.selling_price ? Number((pin.item_detail as any).selling_price) : 0;
           return {
@@ -1156,6 +1160,8 @@ export function QuotationPinDetails() {
             name: row.name,
             quantity: row.quantity,
             selling_price: row.selling_price,
+            x_coordinate: row.x_coordinate ?? null,
+            y_coordinate: row.y_coordinate ?? null,
           },
         ],
       }));
@@ -1218,15 +1224,48 @@ export function QuotationPinDetails() {
     return null;
   }, [quotationDetail, pinPayload, numericId]);
 
+  /* ── Enrich quote sections with drawing/pin coords for PDF snapshots ── */
+  const [enrichedSections, setEnrichedSections] = useState<QuotationQuoteSection[] | null>(null);
+
+  useEffect(() => {
+    if (!effectiveQuotationDetail) {
+      setEnrichedSections(null);
+      return;
+    }
+    const base = effectiveQuotationDetail.quote_sections ?? [];
+    const projectId = resolveQuotationProjectId(effectiveQuotationDetail.project);
+    let cancelled = false;
+
+    if (!projectId) {
+      setEnrichedSections(base);
+      return;
+    }
+
+    void fetchProjectLevelRowsForQuotation(projectId)
+      .then((levels) => {
+        if (cancelled) return;
+        setEnrichedSections(enrichQuoteSectionsForPinSnapshots(base, levels));
+      })
+      .catch(() => {
+        if (!cancelled) setEnrichedSections(base);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveQuotationDetail]);
+
+  const pdfSections = enrichedSections ?? effectiveQuotationDetail?.quote_sections ?? [];
+
   /* ── Snapshot generation ── */
   const [snapStatus, setSnapStatus] = useState<SnapshotStatus>("idle");
   const [snapProgress, setSnapProgress] = useState({ completed: 0, total: 0 });
   const [pinSnapshots, setPinSnapshots] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!effectiveQuotationDetail) return;
+    if (!effectiveQuotationDetail || enrichedSections == null) return;
 
-    const tasks = extractPinSnapshotTasks(effectiveQuotationDetail.quote_sections ?? []);
+    const tasks = extractPinSnapshotTasks(pdfSections);
     if (tasks.length === 0) {
       setPinSnapshots(new Map());
       setSnapStatus("success");
@@ -1239,7 +1278,7 @@ export function QuotationPinDetails() {
     setSnapProgress({ completed: 0, total: tasks.length });
 
     generateQuotationPinSnapshots(
-      effectiveQuotationDetail.quote_sections ?? [],
+      pdfSections,
       (key, dataUrl) => {
         if (cancelled) return;
         setPinSnapshots((prev) => {
@@ -1255,7 +1294,7 @@ export function QuotationPinDetails() {
       .catch(() => { if (!cancelled) setSnapStatus("error"); });
 
     return () => { cancelled = true; };
-  }, [effectiveQuotationDetail]);
+  }, [effectiveQuotationDetail, enrichedSections, pdfSections]);
 
   /* ── Derived pin values ── */
   const sectionLabel = useMemo(() => {
@@ -1416,6 +1455,7 @@ export function QuotationPinDetails() {
           {/* Left: Quotation PDF — full natural height, PAGE scrolls */}
           <PdfColumn
             detail={effectiveQuotationDetail}
+            sections={pdfSections}
             pinSnapshots={pinSnapshots}
             snapStatus={snapStatus}
             snapProgress={snapProgress}
