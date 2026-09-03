@@ -48,11 +48,16 @@ function normalizeSubmissionRow(
 function normalizeWorkerFormSubmissionListItem(row: Partial<WorkerFormSubmissionListItem>): WorkerFormSubmissionListItem | null {
   const id = Number(row.id);
   if (!Number.isFinite(id) || id <= 0) return null;
+  const projectFormId = Number(row.project_form_id);
+  const jobFormId = Number(row.job_form_id);
   return {
     id,
     worker_id: Number(row.worker_id) || 0,
     worker_name: typeof row.worker_name === "string" ? row.worker_name : "",
     project_form_name: typeof row.project_form_name === "string" ? row.project_form_name : "",
+    project_form_id:
+      Number.isFinite(projectFormId) && projectFormId > 0 ? projectFormId : null,
+    job_form_id: Number.isFinite(jobFormId) && jobFormId > 0 ? jobFormId : null,
     status: typeof row.status === "string" ? row.status : "",
     submitted_at: row.submitted_at ?? null,
   };

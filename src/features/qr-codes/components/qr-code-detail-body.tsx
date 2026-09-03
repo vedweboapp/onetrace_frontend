@@ -71,7 +71,7 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
                 {detail.batch_detail?.batch_number?.trim() || "—"}
               </span>
             </DetailMetricCard>
-            <DetailMetricCard label={t("detail.assignedJob")}>
+            <DetailMetricCard label={t("detail.assignedId")}>
               {pinHref ? (
                 <DetailEntityLink href={pinHref}>
                   {assignedLabel}
