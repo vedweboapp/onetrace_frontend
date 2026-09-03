@@ -18,11 +18,12 @@ export type JobFormSubmissionFile = {
 
 export type JobFormSubmission = {
   id: number;
-  job_id: number;
-  job_form_id: number;
-  form_id: number;
+  job_id?: number;
+  job_form_id?: number;
+  form_id?: number;
   project_form_id?: number;
   form_name?: string | null;
+  worker_name?: string | null;
   status: string;
   remarks?: string | null;
   values: JobFormSubmissionValue[];
@@ -45,6 +46,8 @@ export type WorkerFormSubmissionListItem = {
   worker_id: number;
   worker_name: string;
   project_form_name: string;
+  project_form_id?: number | null;
+  job_form_id?: number | null;
   status: string;
   submitted_at?: string | null;
 };
