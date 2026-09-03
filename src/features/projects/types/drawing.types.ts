@@ -1,3 +1,5 @@
+import type { QualityAssuranceRecord } from "@/features/jobs/types/quality-assurance.types";
+import type { ItemInstallationTypeRef } from "@/features/items/types/item.types";
 import type { ProjectPagination } from "./project.types";
 
 export type DrawingUserRef = {
@@ -29,6 +31,16 @@ export type Drawing = {
   deleted_by: unknown;
   pin_count?: number;
   pins_count?: number;
+
+  /** Included on list responses when the API returns plot/pin geometry. */
+  plots?: DrawingPlot[];
+};
+
+export type DrawingPinProjectFormRef = {
+  id: number;
+  name?: string | null;
+  submission_id?: number | null;
+  submission_status?: string | null;
 };
 
 export type DrawingPin = {
@@ -42,12 +54,22 @@ export type DrawingPin = {
   quantity?: number;
   variation?: boolean;
   location?: number | string;
+  is_converted_job?: boolean;
+  formId?: number | null;
+  project_form?: number | DrawingPinProjectFormRef | null;
+  job_pin_id?: number | string;
+  /** Optional description shown in the pin details panel. */
+  description?: string | null;
+
+  /** Optional attachments (may be returned as URLs by the backend or as data URLs from the editor draft). */
+  attachments?: DrawingPinAttachment[] | null;
 
   item_detail?: {
     id: number;
     name: string;
     sku: string;
     is_composite: boolean;
+    installation_type?: number | ItemInstallationTypeRef | null;
   } | null;
   group_detail?: any;
   status_detail?: {
@@ -56,6 +78,23 @@ export type DrawingPin = {
     bg_colour: string;
     text_colour: string;
   } | null;
+  quality_assurance?: QualityAssuranceRecord | null;
+};
+
+export type DrawingPinAttachment = {
+  id?: number;
+  file_name?: string | null;
+  name?: string | null;
+  url?: string | null;
+  file_url?: string | null;
+  content_type?: string | null;
+  /**
+   * Editor draft format: base64/data-url content so it can be sent back with the pin payload.
+   * Backend may ignore or transform it.
+   */
+  file_data?: string | null;
+  data_url?: string | null;
+  [key: string]: unknown;
 };
 
 export type DrawingPlot = {
@@ -87,6 +126,10 @@ export type DrawingPlotUpsert = {
     item?: number | null;
     quantity?: number;
     location?: number | string;
+    project_form?: number | null;
+
+    description?: string | null;
+    attachments?: DrawingPinAttachment[] | null;
   }>;
 };
 

@@ -2,7 +2,10 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type { Job, JobListResponse } from "@/features/jobs/types/job.types";
 import { QUOTATION_PATHS } from "./quotation.paths";
+import { QUOTE_CATEGORY } from "../constants/quotation-category";
 import type {
   ProjectLevelForQuotation,
   QuotationCreatePayload,
@@ -10,8 +13,29 @@ import type {
   QuotationListItem,
   QuotationListResponse,
   QuotationLevelRef,
+  QuotationUpdatePayload,
   WorkspaceUserRow,
 } from "../types/quotation.types";
+
+function normalizeQuotationWriteBody(body: QuotationUpdatePayload): QuotationUpdatePayload {
+  if (!("additional_customer_contact" in body)) return body;
+
+  const raw = body.additional_customer_contact as unknown;
+  let additional_customer_contact: number[] = [];
+  if (Array.isArray(raw)) {
+    const seen = new Set<number>();
+    for (const item of raw) {
+      const id = typeof item === "number" ? item : Number.parseInt(String(item), 10);
+      if (Number.isFinite(id) && id > 0 && !seen.has(id)) {
+        seen.add(id);
+        additional_customer_contact.push(id);
+      }
+    }
+  } else if (typeof raw === "number" && raw > 0) {
+    additional_customer_contact = [raw];
+  }
+  return { ...body, additional_customer_contact };
+}
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -27,6 +51,8 @@ export type QuotationListFilters = {
   site?: number;
   project?: number;
   status?: string;
+  /** `servicequote` | `projectquote` — omit for all categories. */
+  quote_category?: string;
 };
 
 export async function fetchQuotationsPage(
@@ -45,10 +71,15 @@ export async function fetchQuotationsPage(
   if (typeof filters?.site === "number" && filters.site > 0) params.site = filters.site;
   if (typeof filters?.project === "number" && filters.project > 0) params.project = filters.project;
   if (filters?.status?.trim()) params.status = filters.status.trim();
+  if (filters?.quote_category?.trim()) params.quote_category = filters.quote_category.trim();
 
   const { data } = await api.get<QuotationListResponse>(QUOTATION_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllQuotationIds(filters?: QuotationListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchQuotationsPage(page, pageSize, filters));
 }
 
 export async function fetchQuotation(id: number): Promise<QuotationDetail> {
@@ -58,7 +89,8 @@ export async function fetchQuotation(id: number): Promise<QuotationDetail> {
 }
 
 export async function createQuotation(body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, body);
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, payload);
   assertApiSuccess(data);
   return data.data;
 }
@@ -68,13 +100,15 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
   const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, {
     project: projectId,
     select_all_levels: true,
+    quote_category: QUOTE_CATEGORY.project,
   });
   assertApiSuccess(data);
   return data.data;
 }
 
-export async function updateQuotation(id: number, body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), body);
+export async function updateQuotation(id: number, body: QuotationUpdatePayload): Promise<QuotationDetail> {
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
 }
@@ -232,4 +266,24 @@ export async function exportQuotation(
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export async function sendQuotation(id: number): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id));
+  assertApiSuccess(data);
+}
+
+function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
+  if ("pagination" in data && Array.isArray(data.data) && data.data[0]) {
+    assertEnvelopeSuccess(data);
+    return data.data[0];
+  }
+  assertApiSuccess(data as ApiEnvelope<Job>);
+  return (data as ApiEnvelope<Job>).data;
+}
+
+/** POST `quotations/:id/create-job/` — creates a service job from an approved quotation. */
+export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
+  return parseJobCreateResponse(data);
 }

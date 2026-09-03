@@ -1,4 +1,10 @@
-import type { ProjectLevelForQuotation, QuotationPlotPin } from "@/features/quotations/types/quotation.types";
+import type {
+  ProjectLevelForQuotation,
+  QuotationPlotPin,
+  QuotationQuoteSectionSourcePin,
+} from "@/features/quotations/types/quotation.types";
+import { formatOrgMoney, parseOrgMoneyInput } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 export type AggregatedCompositeLine = {
   key: string;
@@ -11,23 +17,74 @@ export type AggregatedCompositeLine = {
   lineTotal: number;
   /** First pin’s composite item id in this aggregate (for quote draft lines). */
   compositeItemId: number | null;
+  sourcePins: QuotationQuoteSectionSourcePin[];
 };
 
-export function parseMoneyValue(raw: unknown): number {
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string" && raw.trim()) {
-    const n = Number.parseFloat(raw);
-    return Number.isFinite(n) ? n : 0;
+function projectFormDetails(
+  raw: QuotationPlotPin["project_form"],
+): { project_form_id: number | null; project_form_name: string | null; submission_id: number | null; submission_status: string | null } {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+    return {
+      project_form_id: raw,
+      project_form_name: null,
+      submission_id: null,
+      submission_status: null,
+    };
   }
-  return 0;
+  const row = raw && typeof raw === "object" ? raw : null;
+  return {
+    project_form_id: typeof row?.id === "number" && row.id > 0 ? row.id : null,
+    project_form_name: typeof row?.name === "string" && row.name.trim() ? row.name.trim() : null,
+    submission_id: typeof row?.submission_id === "number" && row.submission_id > 0 ? row.submission_id : null,
+    submission_status:
+      typeof row?.submission_status === "string" && row.submission_status.trim()
+        ? row.submission_status.trim()
+        : null,
+  };
 }
 
-export function formatMoneyDisplay(amount: number, locale: string): string {
-  if (!Number.isFinite(amount)) return "—";
-  return new Intl.NumberFormat(locale === "es" ? "es" : "en", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+function toFiniteCoord(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function sourcePinFromPlotPin(pin: QuotationPlotPin): QuotationQuoteSectionSourcePin {
+  const itemIdRaw = pin.item_detail?.id;
+  const composite_item_id =
+    typeof itemIdRaw === "number" && Number.isFinite(itemIdRaw) && itemIdRaw > 0 ? itemIdRaw : null;
+  const projectForm = projectFormDetails(pin.project_form);
+  return {
+    pin_id: typeof pin.id === "number" && Number.isFinite(pin.id) && pin.id > 0 ? pin.id : null,
+    x_coordinate: toFiniteCoord(pin.x_coordinate),
+    y_coordinate: toFiniteCoord(pin.y_coordinate),
+    status: typeof pin.status === "number" && Number.isFinite(pin.status) ? pin.status : null,
+    status_id: typeof pin.status_id === "number" && Number.isFinite(pin.status_id) ? pin.status_id : null,
+    status_name:
+      typeof pin.status_detail?.status_name === "string" && pin.status_detail.status_name.trim()
+        ? pin.status_detail.status_name.trim()
+        : typeof pin.status_name === "string" && pin.status_name.trim()
+          ? pin.status_name.trim()
+          : null,
+    quantity: pin.quantity ?? null,
+    composite_item_id,
+    name: pinDisplayName(pin),
+    description: typeof pin.description === "string" && pin.description.trim() ? pin.description.trim() : null,
+    location: pin.location ?? null,
+    ...projectForm,
+  };
+}
+
+export function parseMoneyValue(raw: unknown): number {
+  const n = parseOrgMoneyInput(raw, getOrgCurrencySettings());
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function formatMoneyDisplay(amount: number, _locale?: string): string {
+  return formatOrgMoney(amount, getOrgCurrencySettings());
 }
 
 function pinDisplayName(pin: QuotationPlotPin): string {
@@ -46,7 +103,7 @@ function pinDisplayName(pin: QuotationPlotPin): string {
 
 function pinUnitPrice(pin: QuotationPlotPin): number {
   const detail = pin.item_detail;
-  const fromDetail = parseMoneyValue(detail?.selling_price ?? detail?.cost_price);
+  const fromDetail = parseMoneyValue(detail?.selling_price);
   if (fromDetail > 0) return fromDetail;
   return parseMoneyValue(pin.selling_price ?? pin.price ?? pin.amount);
 }
@@ -77,6 +134,7 @@ export function aggregateCompositeLinesForPlot(plot: { pins?: QuotationPlotPin[]
       prev.lineTotal += line;
       prev.unitPrice = prev.totalQty > 0 ? prev.lineTotal / prev.totalQty : prev.unitPrice;
       if (prev.compositeItemId == null && compositeItemId != null) prev.compositeItemId = compositeItemId;
+      prev.sourcePins.push(sourcePinFromPlotPin(pin));
     } else {
       map.set(key, {
         key,
@@ -86,6 +144,7 @@ export function aggregateCompositeLinesForPlot(plot: { pins?: QuotationPlotPin[]
         unitPrice: unit,
         lineTotal: line,
         compositeItemId,
+        sourcePins: [sourcePinFromPlotPin(pin)],
       });
     }
   }

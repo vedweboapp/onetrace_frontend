@@ -1,11 +1,13 @@
 import type {
   QuotationContactNested,
+  QuotationDetail,
   QuotationListItem,
   QuotationProjectRef,
   QuotationSiteNested,
   QuotationTagNested,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import type { Site } from "@/features/sites/types/site.types";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -39,6 +41,58 @@ export function getQuotationSiteId(site: QuotationListItem["site"] | undefined |
   if (typeof site === "number" && Number.isFinite(site) && site > 0) return site;
   if (isRecord(site) && typeof site.id === "number" && site.id > 0) return site.id;
   return null;
+}
+
+export function getQuotationSiteIds(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+): number[] {
+  if (!detail) return [];
+  if (Array.isArray(detail.sites) && detail.sites.length > 0) {
+    const out: number[] = [];
+    const seen = new Set<number>();
+    for (const row of detail.sites) {
+      if (typeof row?.id === "number" && row.id > 0 && !seen.has(row.id)) {
+        seen.add(row.id);
+        out.push(row.id);
+      }
+    }
+    if (out.length > 0) return out;
+  }
+  const single = getQuotationSiteId(detail.site);
+  return single != null ? [single] : [];
+}
+
+export type QuotationSiteListRow = { id: number; label: string };
+
+export function quotationSiteListRows(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+  siteNames?: Record<number, string>,
+): QuotationSiteListRow[] {
+  if (!detail) return [];
+  if (Array.isArray(detail.sites) && detail.sites.length > 0) {
+    return detail.sites.map((row) => ({
+      id: row.id,
+      label: row.site_name?.trim() || siteNames?.[row.id] || `#${row.id}`,
+    }));
+  }
+  const nested = getQuotationNestedSite(detail.site);
+  const id = getQuotationSiteId(detail.site);
+  if (id == null) return [];
+  return [
+    {
+      id,
+      label: nested?.site_name?.trim() || siteNames?.[id] || `#${id}`,
+    },
+  ];
+}
+
+export function quotationSitesLabel(
+  detail: Pick<QuotationDetail, "sites" | "site"> | undefined | null,
+  siteNames?: Record<number, string>,
+): string {
+  const rows = quotationSiteListRows(detail, siteNames);
+  if (rows.length === 0) return "—";
+  return rows.map((row) => row.label).join(", ");
 }
 
 export function quotationSiteLabel(site: QuotationListItem["site"] | undefined | null, lookupName?: string | null): string {
@@ -102,11 +156,49 @@ export function getQuotationContactId(
   return null;
 }
 
+export type QuotationContactEntry =
+  | { kind: "contact"; contact: QuotationContactNested }
+  | { kind: "id"; id: number };
+
+/** Resolves `additional_customer_contact` from the API (single value or list) into display entries. */
+export function getQuotationAdditionalContactEntries(
+  contacts: QuotationListItem["additional_customer_contact"] | undefined | null,
+): QuotationContactEntry[] {
+  if (contacts == null) return [];
+  if (Array.isArray(contacts)) {
+    const out: QuotationContactEntry[] = [];
+    for (const item of contacts) {
+      if (typeof item === "number" && item > 0) {
+        out.push({ kind: "id", id: item });
+        continue;
+      }
+      if (isRecord(item) && typeof item.id === "number" && item.id > 0) {
+        out.push({ kind: "contact", contact: item as QuotationContactNested });
+      }
+    }
+    return out;
+  }
+  const id = getQuotationContactId(contacts);
+  if (id != null) return [{ kind: "id", id }];
+  if (isRecord(contacts)) {
+    return [{ kind: "contact", contact: contacts as QuotationContactNested }];
+  }
+  return [];
+}
+
+export function getQuotationAdditionalContactIds(
+  contacts: QuotationListItem["additional_customer_contact"] | undefined | null,
+): number[] {
+  return getQuotationAdditionalContactEntries(contacts).map((entry) =>
+    entry.kind === "id" ? entry.id : entry.contact.id,
+  );
+}
+
 export function quotationContactLabel(contact: number | QuotationContactNested | null | undefined): string {
   if (contact == null) return "—";
   if (typeof contact === "number") return `#${contact}`;
   if (!isRecord(contact)) return "—";
-  const name = typeof contact.name === "string" ? contact.name.trim() : "";
+  const name = formatContactName(contact);
   const email = typeof contact.email === "string" ? contact.email.trim() : "";
   const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
   const id = typeof contact.id === "number" && contact.id > 0 ? contact.id : null;

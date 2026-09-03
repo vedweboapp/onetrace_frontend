@@ -6,35 +6,53 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { deleteProject, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { ProjectTypeChip } from "@/features/project-types/components/project-type-chip";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
+import { deleteProject, fetchAllProjectIds, fetchProjectsPage, patchProject } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { projectTypesById, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
   ConfirmDialog,
-  DashboardEmptyState,
   DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
+import {
+  MassActionBar,
+  buildProjectMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
 
 function projectRowClientLabel(row: Project, labels: Record<number, string>): string {
+  if (row.client && typeof row.client === "object" && row.client.name?.trim()) {
+    return row.client.name.trim();
+  }
   const cid = getProjectClientId(row);
   if (!cid) return "—";
   return labels[cid] ?? `#${cid}`;
@@ -69,13 +87,11 @@ export function ProjectsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const [items, setItems] = React.useState<Project[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -90,7 +106,21 @@ export function ProjectsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(false);
+
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions);
+  const [fetchProjectTypeOptions, setFetchProjectTypeOptions] = React.useState(false);
+  const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
+
+  const loadProjectTypeOptions = React.useCallback(async () => {
+    const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+    return items;
+  }, []);
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingProject, setDeletingProject] = React.useState<Project | null>(null);
@@ -109,21 +139,20 @@ export function ProjectsPanel() {
   );
 
   React.useEffect(() => {
+    if (!fetchProjectTypeOptions) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
+        const items = await loadProjectTypeOptions();
+        if (!cancelled) setProjectTypeById(projectTypesById(items));
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) setProjectTypeById({});
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchProjectTypeOptions, loadProjectTypeOptions]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -133,15 +162,14 @@ export function ProjectsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchProjectsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -151,7 +179,7 @@ export function ProjectsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -162,12 +190,66 @@ export function ProjectsPanel() {
     return m;
   }, [clientOptions]);
 
+  const projectTypeOptions = React.useMemo(
+    () =>
+      Object.values(projectTypeById).map((pt) => ({
+        value: String(pt.id),
+        label: pt.project_type?.trim() || `#${pt.id}`,
+      })),
+    [projectTypeById],
+  );
+
+  const listFilters = React.useMemo(
+    () => ({ search: search || undefined }),
+    [search],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildProjectMassUpdateFields(
+        { clientOptions, projectTypeOptions },
+        {
+          name: t("table.name"),
+          client: t("table.client"),
+          projectType: t("table.projectType"),
+          description: t("table.description"),
+          startDate: t("table.start"),
+          endDate: t("table.end"),
+          isActive: t("table.status"),
+          activeLabel: t("status.active"),
+          inactiveLabel: t("status.inactive"),
+        },
+      ),
+    [t, clientOptions, projectTypeOptions],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllProjectIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "projects",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) {
+      setFetchClientOptions(true);
+      setFetchProjectTypeOptions(true);
+    }
+  }, [mass.selectedCount]);
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Project) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function handleToggleActive(row: Project, next: boolean) {
@@ -176,8 +258,8 @@ export function ProjectsPanel() {
       await patchProject(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -192,8 +274,8 @@ export function ProjectsPanel() {
       setDeleteOpen(false);
       setDeletingProject(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -213,64 +295,101 @@ export function ProjectsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Project>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
-      c.text("client", t("table.client"), (r) => projectRowClientLabel(r, clientLabelById)),
+      c.link(
+        "client",
+        t("table.client"),
+        (r) => projectRowClientLabel(r, clientLabelById),
+        (r) => {
+          const id = getProjectClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
+      c.custom("projectType", t("table.projectType"), (r) => {
+        const chip = resolveProjectTypeChipData(r, projectTypeById);
+        return chip ? <ProjectTypeChip row={chip} /> : "—";
+      }),
       c.text("start", t("table.start"), (r) => formatDay(r.start_date)),
       c.text("end", t("table.end"), (r) => formatDay(r.end_date)),
-      c.custom(
-        "description",
-        t("table.description"),
-        (r) => (r.description?.trim() ? r.description : "—"),
-        { headerClassName: "min-w-[12rem]", cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md" },
-      ),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive"), {
-        responsive: "lg",
-      }),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("detail.edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingProject(row);
-                setDeleteOpen(true);
-              },
-            },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+      // c.truncate(
+      //   "description",
+      //   t("table.description"),
+      //   (r) => (r.description?.trim() ? r.description : "—"),
+      //   {
+      //     title: (r) => r.description?.trim() || undefined,
+      //     maxWidth: "lg",
+      //     headerClassName: "min-w-[8rem]",
+      //     cellClassName: "max-w-[14rem] lg:max-w-xs xl:max-w-md",
+      //   },
+      // ),
+      c.custom("status", t("table.status"), (r) => {
+        const ps = r.project_status;
+        if (ps && typeof ps === "object" && ps.name?.trim()) {
+          return (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+              style={{
+                backgroundColor: ps.bg_color || "#e2e8f0",
+                color: ps.text_color || "#475569",
+              }}
+            >
+              {ps.name.trim()}
+            </span>
+          );
+        }
+        return <span className="text-slate-400 dark:text-slate-500">—</span>;
+      }, { responsive: "lg" }),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("detail.edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingProject(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //       row.is_active
+      //         ? {
+      //             id: "deactivate",
+      //             label: t("deactivate"),
+      //             icon: PowerOff,
+      //             onSelect: () => void handleToggleActive(row, false),
+      //             disabled: togglingId === row.id,
+      //           }
+      //         : {
+      //             id: "activate",
+      //             label: t("activate"),
+      //             icon: Power,
+      //             onSelect: () => void handleToggleActive(row, true),
+      //             disabled: togglingId === row.id,
+      //           },
+      //     ]}
+      //   />
+      // )),
     ];
-  }, [t, tList, clientLabelById, togglingId]);
+  }, [t, tList, clientLabelById, projectTypeById, togglingId, massSel.tableColumn]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -287,25 +406,24 @@ export function ProjectsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -322,54 +440,75 @@ export function ProjectsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="projects"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "projects",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() =>
+              setUrl({ search: null, is_active: null, page: null }, { replace: true })
+            }
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const typeChip = resolveProjectTypeChipData(row, projectTypeById);
+                const clientId = getProjectClientId(row);
+                const clientLabel = projectRowClientLabel(row, clientLabelById);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
-                  title={row.name}
-                  subtitle={projectRowClientLabel(row, clientLabelById)}
-                  meta={`${formatDay(row.start_date)} – ${formatDay(row.end_date)}`}
-                  description={row.description?.trim() || undefined}
-                  footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <ActiveStatusBadge
-                        active={row.is_active}
-                        label={row.is_active ? t("status.active") : t("status.inactive")}
-                      />
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                  leading={massSel.cardLeading(row)}
+                  title={<span className={entityNameLinkClassName}>{row.name}</span>}
+                  subtitle={
+                    clientId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.clients}/${clientId}`}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {clientLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      clientLabel
+                    )
+                  }
+                  meta={
+                    <ListPageCardMetaLine>
+                      <span className="truncate tabular-nums">
+                        {formatDay(row.start_date)} – {formatDay(row.end_date)}
                       </span>
-                    </div>
+                    </ListPageCardMetaLine>
+                  }
+                  badge={
+                    (() => {
+                      const ps = row.project_status;
+                      if (ps && typeof ps === "object" && ps.name?.trim()) {
+                        return (
+                          <span
+                            className="inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            style={{
+                              backgroundColor: ps.bg_color || "#e2e8f0",
+                              color: ps.text_color || "#475569",
+                            }}
+                          >
+                            {ps.name.trim()}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()
+                  }
+                  footer={
+                    typeChip ? (
+                      <ListPageCardFooter start={<ProjectTypeChip row={typeChip} />} />
+                    ) : undefined
                   }
                   onCardClick={() => openProjectDetail(row.id)}
                   menu={
@@ -411,7 +550,8 @@ export function ProjectsPanel() {
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (
@@ -423,7 +563,7 @@ export function ProjectsPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

@@ -12,6 +12,7 @@ dist
 # Environment (secrets — never commit)
 .env
 .env.*
+.env.local
 !.env.example
 
 # Logs & debug
@@ -36,8 +37,14 @@ Thumbs.db
 # Testing
 coverage
 
+# Local / client documentation (do not push)
+docs/
+
 # TypeScript
 *.tsbuildinfo
 
 # Lockfile — you asked to exclude; many teams commit this for reproducible installs.
 package-lock.json
+
+certificates
+apps-fileview.texmex_20260708.11_p0

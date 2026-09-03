@@ -6,47 +6,47 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
-import type { Contact } from "@/features/contacts/types/contact.types";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { fetchAllContactIds, fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
+import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
+import { contactParentName, getContactClientId, getContactType, getContactVendorId } from "@/features/contacts/utils/contact-nested-fields.util";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
+import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
   AddButton,
-  AppButton,
   CheckmarkSelect,
-  DashboardEmptyState,
   DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
+  listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
+import {
+  MassActionBar,
+  buildContactMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
-function contactClientId(row: Contact): number | null {
-  if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
-  if (row.client && typeof row.client === "object" && Number.isFinite(row.client.id) && row.client.id > 0) {
-    return row.client.id;
-  }
-  return null;
-}
-
-function contactClientName(row: Contact, clientNameById: Record<number, string>): string {
-  if (row.client && typeof row.client === "object" && row.client.name?.trim()) return row.client.name.trim();
-  const id = contactClientId(row);
-  if (id && clientNameById[id]) return clientNameById[id];
-  return id ? `#${id}` : "—";
+function parseContactTypeParam(raw: string | null): ContactType {
+  return raw === "vendor" ? "vendor" : "client";
 }
 
 export function ContactsPanel() {
@@ -65,18 +65,22 @@ export function ContactsPanel() {
     return `${pathname}${qs ? `?${qs}` : ""}`;
   }, [pathname, searchParams]);
 
-  const openContactDetail = React.useCallback(
-    (id: number) => {
-      router.push(buildDetailHrefWithListReturn(`${pathname}/${id}`, listHref, id));
-    },
-    [listHref, pathname, router],
-  );
-
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
+  const contactTypeParam = searchParams.get("contact_type");
+  const activeContactType = parseContactTypeParam(contactTypeParam);
   const clientParam = searchParams.get("client");
   const clientFilter = clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
+  const vendorParam = searchParams.get("vendor");
+  const vendorFilter = vendorParam && /^\d+$/.test(vendorParam) ? Number.parseInt(vendorParam, 10) : undefined;
+
+  const openContactDetail = React.useCallback(
+    (id: number) => {
+      const detailPath = mergeUrlQueryParam(`${pathname}/${id}`, "contact_type", activeContactType);
+      router.push(buildDetailHrefWithListReturn(detailPath, listHref, id));
+    },
+    [activeContactType, listHref, pathname, router],
+  );
 
   const [items, setItems] = React.useState<Contact[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -91,20 +95,98 @@ export function ContactsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
+  const [fetchVendorOptions, setFetchVendorOptions] = React.useState(() => Boolean(vendorParam));
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const loadVendorOptions = React.useCallback(async () => {
+    const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+    return vendors.map((v) => ({ value: String(v.id), label: v.name }));
+  }, []);
+
+  const needsClientOptions = activeContactType === "client" && fetchClientOptions;
+  const needsVendorOptions = activeContactType === "vendor" && fetchVendorOptions;
+
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, needsClientOptions);
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, needsVendorOptions);
+
   const openCreate = React.useCallback(() => {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
-  }, [listHref, pathname, router]);
+    const params = new URLSearchParams();
+    params.set("back", listHref);
+    params.set("contact_type", activeContactType);
+    router.push(`${pathname}/new?${params.toString()}`);
+  }, [activeContactType, listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+      const editPath = mergeUrlQueryParam(`${pathname}/${id}/edit`, "contact_type", activeContactType);
+      router.push(buildPathWithStoredBack(editPath, listHref));
     },
-    [listHref, pathname, router],
+    [activeContactType, listHref, pathname, router],
   );
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      contact_type: activeContactType,
+      client: activeContactType === "client" ? clientFilter : undefined,
+      vendor: activeContactType === "vendor" ? vendorFilter : undefined,
+    }),
+    [search, activeContactType, clientFilter, vendorFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildContactMassUpdateFields(clientOptions, {
+        firstName: t("fields.firstName"),
+        lastName: t("fields.lastName"),
+        email: t("fields.email"),
+        phone: t("fields.phone"),
+        client: t("fields.client"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [clientOptions, t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllContactIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "contacts",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, activeContactType, clientFilter, vendorFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0 && activeContactType === "client") {
+      setFetchClientOptions(true);
+    }
+  }, [mass.selectedCount, activeContactType]);
+
+  React.useEffect(() => {
+    if (clientParam) setFetchClientOptions(true);
+  }, [clientParam]);
+
+  React.useEffect(() => {
+    if (vendorParam) setFetchVendorOptions(true);
+  }, [vendorParam]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -117,38 +199,17 @@ export function ContactsPanel() {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, {
-          search: search || undefined,
-          is_active: isActiveFilter,
-          client: clientFilter,
-        });
+        const { items: nextItems, pagination: p } = await fetchContactsPage(page, pageSize, listFilters);
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -158,7 +219,7 @@ export function ContactsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, clientFilter, refreshNonce, t]);
+  }, [page, pageSize, listFilters, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -169,8 +230,33 @@ export function ContactsPanel() {
     return m;
   }, [clientOptions]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const vendorLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const o of vendorOptions) {
+      const id = Number.parseInt(o.value, 10);
+      if (Number.isFinite(id)) m[id] = o.label;
+    }
+    return m;
+  }, [vendorOptions]);
+
+  const parentLabels = React.useMemo(
+    () => ({ clientNameById: clientLabelById, vendorNameById: vendorLabelById }),
+    [clientLabelById, vendorLabelById],
+  );
+
+  const parentColumnLabel = activeContactType === "vendor" ? t("table.vendor") : t("table.client");
+
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    clientParam: activeContactType === "client" ? clientParam : null,
+    vendorParam: activeContactType === "vendor" ? vendorParam : null,
+  });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   async function handleToggleActive(row: Contact, next: boolean) {
@@ -179,8 +265,8 @@ export function ContactsPanel() {
       await updateContact(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -189,43 +275,79 @@ export function ContactsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Contact>();
     return [
-      c.primary("name", t("table.name"), (r) => r.name),
-      c.text("client", t("table.client"), (r) => contactClientName(r, clientLabelById)),
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
+      c.primary("name", t("table.name"), (r) => formatContactName(r)),
+      c.link(
+        "parent",
+        parentColumnLabel,
+        (r) => contactParentName(r, parentLabels),
+        (r) => {
+          if (getContactType(r) === "vendor") {
+            const id = getContactVendorId(r);
+            return id != null ? `${routes.dashboard.vendors}/${id}` : null;
+          }
+          const id = getContactClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
       c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row.id) },
+      //       row.is_active
+      //         ? {
+      //             id: "deactivate",
+      //             label: t("deactivate"),
+      //             icon: PowerOff,
+      //             onSelect: () => void handleToggleActive(row, false),
+      //             disabled: togglingId === row.id,
+      //           }
+      //         : {
+      //             id: "activate",
+      //             label: t("activate"),
+      //             icon: Power,
+      //             onSelect: () => void handleToggleActive(row, true),
+      //             disabled: togglingId === row.id,
+      //           },
+      //     ]}
+      //   />
+      // )),
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, openEdit]);
+  }, [t, tList, dateFmt, parentColumnLabel, parentLabels, togglingId, openEdit, mass, items.length]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -242,40 +364,61 @@ export function ContactsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <CheckmarkSelect
-                listLabel={t("filterClient")}
-                buttonAriaLabel={t("filterClient")}
-                options={clientOptions}
-                value={clientParam ?? ""}
-                emptyLabel={t("filterAllClients")}
-                portaled
-                searchable
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
-              />
+              {activeContactType === "vendor" ? (
+                <CheckmarkSelect
+                  listLabel={t("filterVendor")}
+                  buttonAriaLabel={t("filterVendor")}
+                  options={vendorOptions}
+                  value={vendorParam ?? ""}
+                  emptyLabel={t("filterAllVendors")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchVendorOptions(true);
+                  }}
+                  onChange={(v) => setUrl({ vendor: v || null, page: null }, { replace: true })}
+                />
+              ) : (
+                <CheckmarkSelect
+                  listLabel={t("filterClient")}
+                  buttonAriaLabel={t("filterClient")}
+                  options={clientOptions}
+                  value={clientParam ?? ""}
+                  emptyLabel={t("filterAllClients")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchClientOptions(true);
+                  }}
+                  onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
+                />
+              )}
             </div>
           }
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -290,42 +433,64 @@ export function ContactsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="clients"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "clients",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() =>
+              setUrl(
+                { search: null, is_active: null, client: null, vendor: null, page: null },
+                { replace: true },
+              )
+            }
+          />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const parentHref =
+                  getContactType(row) === "vendor"
+                    ? (() => {
+                        const id = getContactVendorId(row);
+                        return id != null ? `${routes.dashboard.vendors}/${id}` : null;
+                      })()
+                    : (() => {
+                        const id = getContactClientId(row);
+                        return id != null ? `${routes.dashboard.clients}/${id}` : null;
+                      })();
+                const parentLabel = contactParentName(row, parentLabels);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
-                  title={row.name}
-                  subtitle={contactClientName(row, clientLabelById)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
+                  title={<span className={entityNameLinkClassName}>{formatContactName(row)}</span>}
+                  subtitle={
+                    parentHref ? (
+                      <DetailEntityLink
+                        href={parentHref}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {parentLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      parentLabel
+                    )
+                  }
                   meta={row.email}
                   footer={
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -376,7 +541,8 @@ export function ContactsPanel() {
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (
@@ -388,7 +554,7 @@ export function ContactsPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

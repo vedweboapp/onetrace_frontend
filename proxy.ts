@@ -1,11 +1,33 @@
 import createMiddleware from "next-intl/middleware";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
+import { isPublicQrCodeRoute } from "./src/features/public/qr-code/utils/public-qr-code-route.util";
 import { routing } from "./src/i18n/routing";
 
 const handleIntl = createMiddleware(routing);
 
+function withPublicQrInternalPath(request: NextRequest): NextRequest {
+  const parts = request.nextUrl.pathname.split("/").filter(Boolean);
+  let nextPath: string | null = null;
+
+  if (parts.length === 2 && isPublicQrCodeRoute(parts[0], parts[1])) {
+    nextPath = `/public/qr/${parts[0]}/${parts[1]}`;
+  } else if (
+    parts.length === 3 &&
+    (routing.locales as readonly string[]).includes(parts[0]) &&
+    isPublicQrCodeRoute(parts[1], parts[2])
+  ) {
+    nextPath = `/${parts[0]}/public/qr/${parts[1]}/${parts[2]}`;
+  }
+
+  if (!nextPath) return request;
+
+  const url = request.nextUrl.clone();
+  url.pathname = nextPath;
+  return new NextRequest(url, request);
+}
+
 export function proxy(request: NextRequest) {
-  return handleIntl(request);
+  return handleIntl(withPublicQrInternalPath(request));
 }
 
 export const config = {

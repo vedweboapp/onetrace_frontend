@@ -3,58 +3,94 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { fetchRoles, fetchUserProfile, inviteUser, updateUserProfile } from "@/features/users/api/user.api";
 import { createUserFormSchema, type UserFormValues } from "@/features/users/schemas/user-form-schema";
-import { emptyUserFormDefaults, mapInviteUserFormToPayload, mapUserFormToUpdatePayload, userToFormDefaults } from "@/features/users/utils/user-form-map";
-import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import {
+  emptyUserFormDefaults,
+  mapInviteUserFormToPayload,
+  mapUserFormToUpdatePayload,
+  userToFormDefaults,
+} from "@/features/users/utils/user-form-map";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
+import { UserAvailabilityFields } from "@/features/users/components/user-availability-fields";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
+  InputWithEndSelect,
   SurfacePhoneField,
+  SurfaceTextField,
   SurfaceShell,
-  surfaceInputClassName,
+  type InputWithEndSelectOption,
 } from "@/shared/ui";
 
 export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; userId?: number }) {
   const t = useTranslations("Dashboard.users");
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "settings/users");
+  const safeBack = useFormBackUrl("settings/users", routes.dashboard.settingsUsers);
   const isEdit = mode === "edit";
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [roleOptions, setRoleOptions] = React.useState<{ value: string; label: string }[]>([]);
 
-  const schema = React.useMemo(() => createUserFormSchema({
-    firstName: t("validation.firstName"),
-    lastName: t("validation.lastName"),
-    email: t("validation.email"),
-    phone: t("validation.phone"),
-    gender: t("validation.gender"),
-    role: t("validation.role"),
-    country: t("validation.country"),
-    state: t("validation.state"),
-    city: t("validation.city"),
-    pincode: t("validation.pincode"),
-  }), [t]);
+  const schema = React.useMemo(
+    () =>
+      createUserFormSchema({
+        firstName: t("validation.firstName"),
+        lastName: t("validation.lastName"),
+        email: t("validation.email"),
+        phone: t("validation.phone"),
+        gender: t("validation.gender"),
+        role: t("validation.role"),
+        basePay: t("validation.basePay"),
+        availabilityTime: t("validation.availabilityTime"),
+        availabilityRange: t("validation.availabilityRange"),
+        addressLine1: t("validation.addressLine1"),
+        country: t("validation.country"),
+        state: t("validation.state"),
+        city: t("validation.city"),
+        pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
+      }),
+    [t],
+  );
 
-  const { control, register, reset, setValue, handleSubmit, formState: { errors } } = useForm<UserFormValues>({
+  const {
+    control,
+    register,
+    reset,
+    setValue,
+    clearErrors,
+    setError,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyUserFormDefaults(),
   });
+
+  const phoneCountry = usePhoneCountryFromAddresses(control);
+
+  const basePayTypeOptions = React.useMemo<InputWithEndSelectOption[]>(
+    () => [
+      { value: "fixed_amount", label: t("fields.basePayTypeFixed") },
+      { value: "rate_per_hr", label: t("fields.basePayTypeRate") },
+    ],
+    [t],
+  );
 
   React.useEffect(() => {
     let cancelled = false;
@@ -101,16 +137,27 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   async function submit(values: UserFormValues) {
     setSaving(true);
     try {
+      const listBack = safeBack ?? routes.dashboard.settingsUsers;
       if (isEdit && userId) {
         await updateUserProfile(userId, mapUserFormToUpdatePayload(values));
         toastSuccess(t("updatedToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, userId, listBack));
       } else {
-        await inviteUser(mapInviteUserFormToPayload(values));
+        const created = await inviteUser(mapInviteUserFormToPayload(values));
         toastSuccess(t("createdToast"));
+        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, created.id, listBack));
       }
-      router.replace(safeBack ?? routes.dashboard.settingsUsers);
-    } catch {
-      toastError(t("saveError"));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError, t("saveError"), {
+        fieldMap: {
+          address1: "addresses.0.address_line_1",
+          address2: "addresses.0.address_line_2",
+          country: "addresses.0.country_iso",
+          state: "addresses.0.state_iso",
+          city: "addresses.0.city",
+          pincode: "addresses.0.pincode",
+        },
+      });
     } finally {
       setSaving(false);
     }
@@ -123,30 +170,79 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
         subtitle={isEdit ? t("page.editSubtitle") : t("page.createSubtitle")}
-        actions={<div className="flex items-center gap-2"><AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.settingsUsers)}>{t("modal.cancel")}</AppButton><AppButton type="submit" form="user-upsert-screen-form" variant="primary" size="sm" loading={saving}>{isEdit ? t("modal.saveChanges") : t("modal.save")}</AppButton></div>}
+        actions={
+          <div className="flex items-center gap-2">
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => router.push(safeBack ?? routes.dashboard.settingsUsers)}
+            >
+              {t("modal.cancel")}
+            </AppButton>
+            <AppButton
+              type="submit"
+              form="user-upsert-screen-form"
+              variant="primary"
+              size="sm"
+              loading={saving}
+            >
+              {isEdit ? t("modal.saveChanges") : t("modal.save")}
+            </AppButton>
+          </div>
+        }
       />
       <SurfaceShell className="rounded-none border-0 shadow-none ring-0">
         {loadingExisting ? (
-          <div className="space-y-3 p-4 sm:p-6"><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
+          <div className="space-y-3 p-4 sm:p-6">
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+          </div>
         ) : screenError ? (
-          <div className="space-y-4 p-4 sm:p-6"><p className="text-sm text-red-600 dark:text-red-400">{screenError}</p></div>
+          <div className="space-y-4 p-4 sm:p-6">
+            <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
+          </div>
         ) : (
-          <form id="user-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.firstName")} htmlFor="user-first-name" required>
-                <input id="user-first-name" aria-invalid={errors.first_name ? true : undefined} className={cn(surfaceInputClassName, errors.first_name && "border-red-500 dark:border-red-500")} {...register("first_name", { onChange: (e) => { e.target.value = capitalizeFirstLetter(e.target.value); } })} />
-                <FieldErrorText>{errors.first_name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.lastName")} htmlFor="user-last-name" required>
-                <input id="user-last-name" aria-invalid={errors.last_name ? true : undefined} className={cn(surfaceInputClassName, errors.last_name && "border-red-500 dark:border-red-500")} {...register("last_name", { onChange: (e) => { e.target.value = capitalizeFirstLetter(e.target.value); } })} />
-                <FieldErrorText>{errors.last_name?.message}</FieldErrorText>
-              </FieldGroup>
+          <form
+            id="user-upsert-screen-form"
+            className="space-y-6 p-4 sm:p-6"
+            noValidate
+            onSubmit={handleSubmit(submit)}
+          >
+            <FormFieldRow cols="2" from="md">
+              <SurfaceTextField
+                register={register}
+                name="first_name"
+                id="user-first-name"
+                label={t("fields.firstName")}
+                kind="name"
+                required
+                autoComplete="given-name"
+                error={errors.first_name?.message}
+              />
+              <SurfaceTextField
+                register={register}
+                name="last_name"
+                id="user-last-name"
+                label={t("fields.lastName")}
+                kind="name"
+                required
+                autoComplete="family-name"
+                error={errors.last_name?.message}
+              />
             </FormFieldRow>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.email")} htmlFor="user-email" required>
-                <input id="user-email" type="email" aria-invalid={errors.email ? true : undefined} className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")} {...register("email")} />
-                <FieldErrorText>{errors.email?.message}</FieldErrorText>
-              </FieldGroup>
+            <FormFieldRow cols="2" from="md">
+              <SurfaceTextField
+                register={register}
+                name="email"
+                id="user-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
               <SurfacePhoneField
                 control={control}
                 name="phone_number"
@@ -155,15 +251,30 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 required
                 error={errors.phone_number?.message}
                 disabled={saving}
+                countryIso={phoneCountry}
               />
             </FormFieldRow>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md">
               <FieldGroup label={t("fields.gender")} htmlFor="user-gender" required>
                 <Controller
                   control={control}
                   name="gender"
                   render={({ field }) => (
-                    <CheckmarkSelect id="user-gender" listLabel={t("fields.gender")} options={[{ value: "Male", label: t("genders.male") }, { value: "Female", label: t("genders.female") }, { value: "Other", label: t("genders.other") }]} value={field.value} emptyLabel={t("placeholders.gender")} disabled={saving} invalid={!!errors.gender} onBlur={field.onBlur} onChange={field.onChange} />
+                    <CheckmarkSelect
+                      id="user-gender"
+                      listLabel={t("fields.gender")}
+                      options={[
+                        { value: "Male", label: t("genders.male") },
+                        { value: "Female", label: t("genders.female") },
+                        { value: "Other", label: t("genders.other") },
+                      ]}
+                      value={field.value}
+                      emptyLabel={t("placeholders.gender")}
+                      disabled={saving}
+                      invalid={!!errors.gender}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
                   )}
                 />
                 <FieldErrorText>{errors.gender?.message}</FieldErrorText>
@@ -173,50 +284,87 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                   control={control}
                   name="role"
                   render={({ field }) => (
-                    <CheckmarkSelect id="user-role" listLabel={t("fields.role")} options={roleOptions} value={field.value} emptyLabel={t("placeholders.role")} disabled={saving || roleOptions.length === 0} invalid={!!errors.role} onBlur={field.onBlur} onChange={field.onChange} />
+                    <CheckmarkSelect
+                      id="user-role"
+                      listLabel={t("fields.role")}
+                      options={roleOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.role")}
+                      disabled={saving || roleOptions.length === 0}
+                      invalid={!!errors.role}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
                   )}
                 />
                 <FieldErrorText>{errors.role?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.address1")} htmlFor="user-address1"><input id="user-address1" className={surfaceInputClassName} {...register("address1")} /></FieldGroup>
-              <FieldGroup label={t("fields.address2")} htmlFor="user-address2"><input id="user-address2" className={surfaceInputClassName} {...register("address2")} /></FieldGroup>
+
+            <FormFieldRow cols="2" from="md">
+              <FieldGroup label={t("fields.basePay")} htmlFor="user-base-pay">
+                <Controller
+                  control={control}
+                  name="base_pay"
+                  render={({ field: payField }) => (
+                    <Controller
+                      control={control}
+                      name="base_pay_type"
+                      render={({ field: typeField }) => (
+                        <InputWithEndSelect
+                          inputId="user-base-pay"
+                          orgMoney
+                          showCurrencyAffix
+                          inputMode="decimal"
+                          inputValue={payField.value}
+                          onInputChange={payField.onChange}
+                          placeholder={t("placeholders.basePay")}
+                          disabled={saving}
+                          selectValue={typeField.value}
+                          onSelectChange={(v) =>
+                            typeField.onChange(v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount")
+                          }
+                          selectOptions={basePayTypeOptions}
+                          selectAriaLabel={t("fields.basePayType")}
+                        />
+                      )}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.base_pay?.message}</FieldErrorText>
+              </FieldGroup>
             </FormFieldRow>
-            <CascadingLocationFields<UserFormValues>
+
+            <UserAvailabilityFields control={control} errors={errors} disabled={saving} />
+
+            <EntityAddressesFields
               control={control}
+              register={register}
               setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
+              clearErrors={clearErrors}
+              errors={errors}
+              disabled={saving}
+              idPrefix="user-address"
+              includeGeo={false}
               labels={{
+                sectionTitle: t("fields.addresses"),
+                add: t("addresses.add"),
+                remove: t("addresses.remove"),
+                rowLabel: (index) => t("addresses.rowLabel", { number: index  }),
+                addressType: t("fields.addressType"),
+                addressLine1: t("fields.addressLine1"),
+                addressLine2: t("fields.addressLine2"),
                 country: t("fields.country"),
                 state: t("fields.state"),
                 city: t("fields.city"),
+                pincode: t("fields.pincode"),
+                countryPlaceholder: t("placeholders.country"),
+                statePlaceholder: t("placeholders.state"),
+                cityPlaceholder: t("placeholders.city"),
+                addressTypeBilling: t("addressType.billing"),
+                addressTypeShipping: t("addressType.shipping"),
+                addressTypeOther: t("addressType.other"),
               }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              disabled={saving}
-              errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
-                city: errors.city?.message,
-              }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="user-pincode" required>
-                  <input
-                    id="user-pincode"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "user-pincode-err" : undefined}
-                    className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="user-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
             />
           </form>
         )}

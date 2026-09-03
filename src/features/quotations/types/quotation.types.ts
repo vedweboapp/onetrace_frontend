@@ -62,6 +62,12 @@ export type QuotationPinItemDetail = {
 
 export type QuotationPlotPin = {
   id: number;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
+  status?: number | null;
+  status_id?: number | null;
+  status_name?: string | null;
+  coordinates?: number[][] | null;
   quantity?: number | null;
   item_detail?: QuotationPinItemDetail | null;
   composite_item_name?: string;
@@ -70,6 +76,16 @@ export type QuotationPlotPin = {
   price?: number | string | null;
   selling_price?: number | string | null;
   amount?: number | string | null;
+  description?: string | null;
+  location?: number | string | null;
+  variation?: boolean | null;
+  project_form?: number | { id?: number; name?: string | null; submission_id?: number | null; submission_status?: string | null } | null;
+  status_detail?: {
+    id?: number | null;
+    status_name?: string | null;
+    bg_colour?: string | null;
+    text_colour?: string | null;
+  } | null;
 };
 
 /** Level list row returned by `GET project/:id/level/` (includes plots + pins). */
@@ -77,9 +93,17 @@ export type ProjectLevelForQuotation = {
   id: number;
   name: string;
   order?: number | null;
+  drawing_file?: string | null;
+  drawing_file_size?: number | null;
+  drawing_file_type?: string | null;
+  block?: string | null;
+  level?: string | null;
   plots?: Array<{
     id: number;
     name: string;
+    coordinates?: number[][] | null;
+    plot_border?: string | null;
+    plot_bg?: string | null;
     pins?: QuotationPlotPin[];
   }>;
 };
@@ -87,6 +111,25 @@ export type ProjectLevelForQuotation = {
 export type QuotationProjectRef = {
   id: number;
   name: string;
+};
+
+export type QuotationQuoteSectionSourcePin = {
+  pin_id: number | null;
+  x_coordinate?: number | null;
+  y_coordinate?: number | null;
+  status?: number | null;
+  status_id?: number | null;
+  status_name?: string | null;
+  quantity?: number | null;
+  composite_item_id?: number | null;
+  name?: string | null;
+  description?: string | null;
+  location?: number | string | null;
+  project_form_id?: number | null;
+  project_form_name?: string | null;
+  submission_id?: number | null;
+  submission_status?: string | null;
+  variation?: boolean | null;
 };
 
 /** Pin row on a quote section plot (create/update quotation scope). */
@@ -99,12 +142,19 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  /** Product group selected when adding the line (service quotes). */
+  group_id?: number | null;
+  group_name?: string | null;
+  source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
 export type QuotationQuoteSectionPlot = {
   plot_order: number;
   plot_id: number | null;
   name: string;
+  coordinates?: number[][] | null;
+  plot_border?: string | null;
+  plot_bg?: string | null;
   /** Present on new API; omitted or legacy `lines` handled by `getQuotePlotPinsForDisplay`. */
   pins?: QuotationQuoteSectionPin[];
   plot_total: number;
@@ -115,6 +165,12 @@ export type QuotationQuoteSection = {
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  drawing_file?: string | null;
+  drawing_file_type?: string | null;
+  drawing_file_size?: number | null;
+  block?: string | null;
+  level?: string | null;
+  order?: number | null;
   plots: QuotationQuoteSectionPlot[];
   section_total: number;
 };
@@ -136,10 +192,11 @@ export type QuotationSiteSnapshot = {
 
 export type QuotationCreatePayload = {
   customer: number;
-  site: number;
+  sites: number[];
   quote_name: string;
   primary_customer_contact?: number | null;
-  additional_customer_contact?: number | null;
+  /** Contact ids selected as additional customer contacts, e.g. `[5, 6, 7]`. */
+  additional_customer_contact: number[];
   tags: number[];
   order_number?: string | null;
   due_date?: string | null;
@@ -147,21 +204,27 @@ export type QuotationCreatePayload = {
   project_manager?: number | null;
   technicians: number[];
   description?: string | null;
-  project: number;
+  /** Required for project quotations; omit/null for service quotations. */
+  project?: number | null;
+  /** `servicequote` | `projectquote`. */
+  quote_category?: "servicequote" | "projectquote";
   levels: number[];
   select_all_levels: boolean;
   /** Optional: full section/plot/pin ordering and totals for quotation scope. */
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
-  /** Nested snapshot of the selected site (address + `site_contact` at submission time). */
-  site_snapshot?: QuotationSiteSnapshot | null;
+  /** Quote workflow status: draft | sent | approved | rejected. */
+  status?: string | null;
 };
+
+export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
 
 export type QuotationListItem = {
   id: number;
   created_by: QuotationUserRef | null;
   modified_by: QuotationUserRef | null;
   created_at: string;
+  quotation_serial_number: string;
   modified_at: string | null;
   deleted_at: string | null;
   is_deleted: boolean;
@@ -170,7 +233,11 @@ export type QuotationListItem = {
   cost_centre?: number | null;
   quote_name: string;
   primary_customer_contact: number | null | QuotationContactNested;
-  additional_customer_contact: number | null | QuotationContactNested;
+  additional_customer_contact:
+  | number
+  | QuotationContactNested
+  | Array<number | QuotationContactNested>
+  | null;
   site_contact: number | null | QuotationContactNested;
   tags?: Array<number | QuotationTagNested>;
   order_number: string | null;
@@ -187,6 +254,19 @@ export type QuotationListItem = {
   select_all_levels: boolean;
   /** Quote workflow status; API may omit when not set. */
   status?: string | null;
+  /** `servicequote` | `projectquote` when API returns category. */
+  quote_category?: string | null;
+  /** @deprecated Prefer `quote_category`. */
+  category?: string | null;
+  /** Set when a job was created from this service quotation. */
+  job?: number | { id: number } | null;
+  job_id?: number | null;
+  has_job?: boolean | null;
+  is_job_created?: boolean | null;
+  service_job?: number | { id: number } | null;
+  linked_job?: number | { id: number } | null;
+  created_job?: number | { id: number } | null;
+  job_created?: boolean | null;
   is_active: boolean;
   organization: number | null;
 };
@@ -198,6 +278,9 @@ export type QuotationDetail = QuotationListItem & {
   quote_sections?: QuotationQuoteSection[];
   grand_total?: number | null;
   site_snapshot?: QuotationSiteSnapshot | null;
+  site_snapshots?: QuotationSiteSnapshot[];
+  comment: string | null;
+  sites?: Array<{ id: number; site_name: string }>;
 };
 
 export type QuotationPagination = {

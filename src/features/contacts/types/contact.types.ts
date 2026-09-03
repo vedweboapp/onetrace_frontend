@@ -1,8 +1,12 @@
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+
 export type ContactUserRef = {
   id: number;
   email: string;
   username: string;
 };
+
+export type ContactType = "client" | "vendor";
 
 export type ContactClientRef = {
   id: number;
@@ -12,18 +16,26 @@ export type ContactClientRef = {
   phone?: string | null;
 };
 
-export type ContactUpsertPayload = {
-  organization: number;
+export type ContactVendorRef = {
+  id: number;
   name: string;
+  email?: string | null;
+  phone?: string | null;
+};
+
+export type ContactAddress = EntityAddress;
+export type ContactAddressPayload = EntityAddressPayload;
+
+export type ContactUpsertPayload = {
+  organization?: number;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
-  client: number;
-  address_line_1: string;
-  address_line_2: string;
-  city: string;
-  state: string;
-  country: string;
-  pincode: string;
+  contact_type: ContactType;
+  client?: number;
+  vendor?: number;
+  addresses: ContactAddressPayload[];
 };
 
 export type ContactCreatePayload = ContactUpsertPayload;
@@ -35,10 +47,18 @@ export type Contact = {
   modified_at: string;
   deleted_at: string | null;
   is_deleted: boolean;
-  name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  /** Legacy single display name (read fallback only). */
+  name?: string | null;
   email: string;
   phone?: string | null;
-  client: number | ContactClientRef;
+  contact_type?: ContactType;
+  client?: number | ContactClientRef | null;
+  vendor?: number | ContactVendorRef | null;
+  /** Multi-address API shape. */
+  addresses?: ContactAddress[] | null;
+  /** Legacy flat fields (read fallback only). */
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

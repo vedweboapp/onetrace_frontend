@@ -1,37 +1,47 @@
 "use client";
 
 import * as React from "react";
-import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Crosshair, FileText, Hand, MapPinned, Maximize, SquareDashed, X, ZoomIn, ZoomOut, LayoutGrid, Download } from "lucide-react";
+import { Document, Page } from "react-pdf";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { fetchDrawingDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import { resolveDefaultPinStatus } from "@/features/pin-status/utils/pin-default-status.util";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
-import type { DrawingPin, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
+import type { FormListItem } from "@/features/forms/types/form.types";
+import type { DrawingPin, DrawingPinAttachment, DrawingPlot, DrawingPlotUpsert } from "@/features/projects/types/drawing.types";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
+import {
+  saveSelectedPlotCoordinates,
+  stagePlotCoordinates,
+  saveSelectedPinCoordinates,
+  stagePinCoordinates,
+  commitDrawingGeometryDraft,
+} from "@/features/projects/utils/pin-geometry.util";
 import {
   defaultQuantityForNewPin,
   resolvePinDisplayQuantity,
   resolvePinMarkerAbbreviation,
 } from "@/features/projects/utils/drawing-pin-display.util";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, ConfirmDialog, DetailPanel, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import DrawingBottomToolbar from "./drawing-bottom-toolbar";
 import PlotToolbar from "./plot-toolbar";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+import { fetchProjectFormsPage } from "../api/project.api";
 
 type Props = {
   projectId: number;
@@ -64,6 +74,19 @@ function inside(point: number[], vs: number[][]): boolean {
   return isInside;
 }
 
+const PIN_OUTSIDE_PLOT_MESSAGE = "Cannot edit boundary: Pin would be outside the plot. Move the pin first or remove it.";
+
+function pointOnSegment(point: number[], a: number[], b: number[], tolerance = 0.75): boolean {
+  return distanceToSegment(point, a, b) <= tolerance;
+}
+
+function insideOrOnBoundary(point: number[], polygon: number[][]): boolean {
+  if (inside(point, polygon)) return true;
+  return polygon.some((vertex, index) =>
+    pointOnSegment(point, vertex, polygon[(index + 1) % polygon.length]!),
+  );
+}
+
 const PLOT_PALETTE = [
   { border: "#059669", bg: "#0596690D" },  // Green
   { border: "#2563EB", bg: "#2563EB0D" },  // Blue
@@ -92,7 +115,10 @@ function normalizePlot(p: DrawingPlot): LocalPlot {
     id: p.id,
     name: p.name,
     coordinates: Array.isArray(p.coordinates) ? p.coordinates : [],
-    pins: Array.isArray(p.pins) ? p.pins : [],
+    pins: (Array.isArray(p.pins) ? p.pins : []).map((pin) => ({
+      ...pin,
+      formId: pin.formId ?? (pin as any).project_form ?? null,
+    })),
     plot_border: p.plot_border || defaultColor.border,
     plot_bg: p.plot_bg || defaultColor.bg,
   };
@@ -134,10 +160,59 @@ function pixelToPercent(pt: number[], pageSize: { width: number; height: number 
   ];
 }
 
+function plotContainsAllPins(
+  plot: LocalPlot,
+  coordinates: number[][],
+  pageSize: { width: number; height: number },
+): boolean {
+  if (coordinates.length < 3) return plot.pins.length === 0;
+  const polygon = coordinates.map((coordinate) => percentToPixel(coordinate, pageSize));
+  return plot.pins.every((pin) => {
+    const pinPoint = percentToPixel([pin.x_coordinate, pin.y_coordinate], pageSize);
+    return insideOrOnBoundary(pinPoint, polygon);
+  });
+}
+
 function getCentroid(points: number[][]): number[] {
   if (!points.length) return [0, 0];
-  const [sx, sy] = points.reduce((acc, p) => [acc[0] + (p[0] ?? 0), acc[1] + (p[1] ?? 0)], [0, 0]);
-  return [Math.round(sx / points.length), Math.round(sy / points.length)];
+
+  let signedArea = 0;
+  let cx = 0;
+  let cy = 0;
+
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i]!;
+    const p2 = points[(i + 1) % points.length]!;
+    const x0 = p1[0] ?? 0;
+    const y0 = p1[1] ?? 0;
+    const x1 = p2[0] ?? 0;
+    const y1 = p2[1] ?? 0;
+
+    const a = x0 * y1 - x1 * y0;
+    signedArea += a;
+    cx += (x0 + x1) * a;
+    cy += (y0 + y1) * a;
+  }
+
+  signedArea *= 0.5;
+
+  if (Math.abs(signedArea) < 1e-7) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const p of points) {
+      const x = p[0] ?? 0;
+      const y = p[1] ?? 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return [Math.round((minX + maxX) / 2), Math.round((minY + maxY) / 2)];
+  }
+
+  return [Math.round(cx / (6 * signedArea)), Math.round(cy / (6 * signedArea))];
 }
 
 function applyStableLocations(plots: LocalPlot[]) {
@@ -165,7 +240,7 @@ type PinMarkerProps = {
 };
 
 const PinMarker = ({ label, abbreviation, color = "#10b981" }: PinMarkerProps) => (
-  <svg width="40" height="46" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.2))" }}>
+  <svg width="40" height="46" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <path id="textCurve" d="M 10 25 A 10 10 0 0 1 30 25" />
     </defs>
@@ -309,6 +384,36 @@ const DetailRow = ({
   );
 };
 
+const PdfDrawingCanvas = React.memo(
+  function PdfDrawingCanvas({
+    pdfFile,
+    onLoadSuccess,
+    onLoadError,
+  }: {
+    pdfFile: any;
+    onLoadSuccess: (page: any) => void;
+    onLoadError: () => void;
+  }) {
+    return (
+      <Document
+        file={pdfFile}
+        loading={null}
+        error={null}
+        onLoadError={onLoadError}
+      >
+        <Page
+          pageNumber={1}
+          scale={1}
+          renderAnnotationLayer={false}
+          renderTextLayer={false}
+          onLoadSuccess={onLoadSuccess}
+        />
+      </Document>
+    );
+  },
+  (prevProps, nextProps) => prevProps.pdfFile === nextProps.pdfFile,
+);
+
 export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const router = useRouter();
@@ -323,19 +428,20 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [savingAll, setSavingAll] = React.useState(false);
   const [drawingName, setDrawingName] = React.useState("");
   const [filePath, setFilePath] = React.useState("");
+  const [fileType, setFileType] = React.useState<string | null>(null);
   const [plots, setPlots] = React.useState<LocalPlot[]>([]);
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>("");
+  const [hoveredPlotId, setHoveredPlotId] = React.useState<string | null>(null);
   const [activeTool, setActiveTool] = React.useState<Tool>("select");
   const [dirty, setDirty] = React.useState(false);
-  const [zoom, setZoom] = React.useState(0.4);
+  const [zoom, setZoom] = React.useState(1);
   const [showVariations, setShowVariations] = React.useState(false);
-
+  const [projectForms, setProjectForms] = React.useState<FormListItem[]>([]);
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [items, setItems] = React.useState<CompositeItem[]>([]);
   const [statuses, setStatuses] = React.useState<PinStatus[]>([]);
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>("");
   const [selectedCompositeId, setSelectedCompositeId] = React.useState<string>("");
-  const [selectedStatusId, setSelectedStatusId] = React.useState<string>("");
   const [selectedGroupItems, setSelectedGroupItems] = React.useState<GroupItemRef[] | null>(null);
   const [groupItemAbbrevByKey, setGroupItemAbbrevByKey] = React.useState<Record<string, string>>({});
   const fetchedGroupAbbrevRef = React.useRef<Set<number>>(new Set());
@@ -349,6 +455,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const [detailPin, setDetailPin] = React.useState<DrawingPin | null>(null);
   const [pinEditData, setPinEditData] = React.useState<Partial<DrawingPin>>({});
   const [isPinEditing, setIsPinEditing] = React.useState(false);
+  const [hasPinDraftChanges, setHasPinDraftChanges] = React.useState(false);
   const [hoveredPinId, setHoveredPinId] = React.useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [pinDeleteConfirmOpen, setPinDeleteConfirmOpen] = React.useState(false);
@@ -362,21 +469,159 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const originalPinStateRef = React.useRef<{ x: number, y: number, plotId: number } | null>(null);
   const draggingVertexRef = React.useRef<{ plotId: number, index: number } | null>(null);
 
+  const updatePinEditData = React.useCallback((updater: React.SetStateAction<Partial<DrawingPin>>) => {
+    setPinEditData((prev) => (typeof updater === "function"
+      ? (updater as (current: Partial<DrawingPin>) => Partial<DrawingPin>)(prev)
+      : updater));
+    setHasPinDraftChanges(true);
+  }, []);
+
   const [pageSize, setPageSize] = React.useState({ width: 1200, height: 900 });
+  const pageSizeRef = React.useRef(pageSize);
+  const didAutoFitRef = React.useRef(false);
+  React.useEffect(() => {
+    pageSizeRef.current = pageSize;
+  }, [pageSize]);
+
+  // Auto-fit zoom: once the real document dimensions arrive, scale to fill the viewport (both width and height).
+  React.useEffect(() => {
+    if (didAutoFitRef.current) return; // only run once per document
+    if (pageSize.width === 1200 && pageSize.height === 900) return; // still placeholder
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const PADDING = 80; // leave breathing room on each side/top/bottom
+    const widthFit = (vp.clientWidth - PADDING) / pageSize.width;
+    const heightFit = (vp.clientHeight - PADDING) / pageSize.height;
+    const fitZoom = Math.min(widthFit, heightFit);
+    setZoom(Math.min(Math.max(fitZoom, 0.2), 5)); // clamp between 0.2× and 5×
+    didAutoFitRef.current = true;
+  }, [pageSize]);
+
   const [panMode, setPanMode] = React.useState(false);
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = React.useState({ left: 0, top: 0 });
 
+  const lastPlacementTimeRef = React.useRef<number>(0);
+  const [isQKeyPressed, setIsQKeyPressed] = React.useState(false);
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const stageRef = React.useRef<HTMLDivElement>(null);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
+  const lastPinConstraintToastRef = React.useRef(0);
+
+  const zoomRef = React.useRef(zoom);
+  React.useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  const [isSpacePressed, setIsSpacePressed] = React.useState(false);
+
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.code === "Space" && !e.repeat) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    }
+
+    function handleKeyUp(e: KeyboardEvent) {
+      if (e.code === "Space") {
+        setIsSpacePressed(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+
+    let rAF: number | null = null;
+
+    function handleWheel(e: WheelEvent) {
+      const container = viewportRef.current;
+      const stage = stageRef.current;
+      if (!container || !stage) return;
+      e.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const currentZoom = zoomRef.current;
+      const contentX = (container.scrollLeft + mouseX) / currentZoom;
+      const contentY = (container.scrollTop + mouseY) / currentZoom;
+
+      const delta = e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY;
+      const scaleFactor = Math.pow(0.9985, delta);
+      const newZoom = Math.min(5, Math.max(0.2, Number((currentZoom * scaleFactor).toFixed(4))));
+
+      if (Math.abs(newZoom - currentZoom) < 0.0005) return;
+
+      zoomRef.current = newZoom;
+
+      if (rAF) cancelAnimationFrame(rAF);
+      rAF = requestAnimationFrame(() => {
+        const el = viewportRef.current;
+        const st = stageRef.current;
+        if (el && st) {
+          st.style.transform = `scale(${newZoom})`;
+          el.scrollLeft = contentX * newZoom - mouseX;
+          el.scrollTop = contentY * newZoom - mouseY;
+        }
+        setZoom(newZoom);
+      });
+    }
+
+    vp.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      vp.removeEventListener("wheel", handleWheel);
+      if (rAF) cancelAnimationFrame(rAF);
+    };
+  }, []);
+
 
   const selectedPlot = React.useMemo(
     () => plots.find((p) => String(p.id) === selectedPlotId) ?? null,
     [plots, selectedPlotId],
   );
+
+
+  React.useEffect(() => {
+    if (!selectedPlot) return;
+    if (selectedPlot.id <= 0) {
+      stagePlotCoordinates(projectId, drawingId, selectedPlot.id, selectedPlot.coordinates);
+    } else {
+      saveSelectedPlotCoordinates(projectId, drawingId, selectedPlot.id, selectedPlot.coordinates);
+    }
+  }, [selectedPlot, projectId, drawingId]);
+
   const normalizedFileUrl = React.useMemo(() => resolveDrawingFileUrl(filePath), [filePath]);
-  const isPdf = /\.pdf(\?|$)/i.test(filePath) || /\.pdf(\?|$)/i.test(normalizedFileUrl);
+  const isPdf = React.useMemo(() => {
+    if (fileType?.toLowerCase().includes("pdf")) return true;
+    return /\.pdf(\?|#|$)/i.test(filePath) || /\.pdf(\?|#|$)/i.test(normalizedFileUrl);
+  }, [filePath, normalizedFileUrl, fileType]);
+  const { file: pdfFile, failed: pdfFailed } = useAuthenticatedPdfFile(normalizedFileUrl, isPdf);
+
+  React.useEffect(() => {
+    if (pdfFailed) toastError(t("pdfRenderError"));
+  }, [pdfFailed, t]);
+
+  const handlePdfPageLoadSuccess = React.useCallback((page: any) => {
+    const vp = page.getViewport({ scale: 1 });
+    setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
+  }, []);
+
+  const handlePdfLoadError = React.useCallback(() => {
+    toastError(t("pdfRenderError"));
+  }, [t]);
 
   const groupOptions = React.useMemo(
     () => [{ value: "", label: t("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
@@ -425,6 +670,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     return m;
   }, [statuses]);
 
+  const defaultPinStatus = React.useMemo(() => resolveDefaultPinStatus(statuses), [statuses]);
+
   const loadAllData = React.useCallback(async () => {
     try {
       const results = await Promise.allSettled([
@@ -432,6 +679,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         fetchGroupsPage(1, 500),
         fetchCompositeItemsPage(1, 500),
         fetchPinStatusesPage(1, 500),
+        fetchProjectFormsPage(projectId, 1, 500),
+
       ]);
 
       // 1. Drawing Detail (Critical)
@@ -441,8 +690,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         applyStableLocations(normalized);
         setDrawingName(detail.name);
         setFilePath(detail.drawing_file);
+        setFileType(detail.drawing_file_type ?? null);
         setPlots(normalized);
-        setSelectedPlotId((prev) => prev || (normalized[0] ? String(normalized[0].id) : ""));
+        setSelectedPlotId((prev) => prev);
       } else {
         toastError(t("loadError"));
       }
@@ -459,12 +709,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       // 4. Pin Statuses
       if (results[3].status === "fulfilled") {
-        const statusItems = results[3].value.items;
-        setStatuses(statusItems);
-        setSelectedStatusId((prev) => prev || (statusItems[0] ? String(statusItems[0].id) : ""));
+        setStatuses(results[3].value.items);
       }
-    } catch {
-      toastError(t("loadError"));
+      //5.forms  lists
+      if (results[4].status === "fulfilled") {
+        setProjectForms(results[4].value.items);
+      }
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     }
   }, [drawingId, projectId, t]);
 
@@ -479,6 +731,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [loadAllData]);
+
 
   React.useEffect(() => {
     let cancelled = false;
@@ -500,7 +753,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       cancelled = true;
     };
   }, [selectedGroupId]);
-
+  console.log("project forms", projectForms);
   const groupIdsNeedingAbbrev = React.useMemo(() => {
     const ids = new Set<number>();
     for (const plot of plots) {
@@ -585,20 +838,34 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       const tag = target?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       const key = e.key.toLowerCase();
+      if (key === "q") setIsQKeyPressed(true);
       if (key === "v") setActiveTool("select");
       if (key === "p") setActiveTool("pen");
       if (key === "b") setActiveTool("plot-select");
       if (key === "a") setActiveTool("pin");
       if (key === "h") setActiveTool("hand");
-      if (key === "+") setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))));
+      if (key === "+") setZoom((z) => Math.min(5, Number((z + 0.1).toFixed(2))));
       if (key === "-") setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(2))));
       if (key === "0") setZoom(1);
       if (key === "backspace" && activeTool === "pen") {
         setTempPoints((prev) => prev.slice(0, -1));
       }
     }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "q") setIsQKeyPressed(false);
+    }
+    function onBlur() {
+      setIsQKeyPressed(false);
+      lastPlacementTimeRef.current = 0;
+    }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
   }, [activeTool]);
 
   function requestToolChange(tool: Tool) {
@@ -613,6 +880,63 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       setActiveTool(tool);
     }
   }
+  const filterForms = React.useCallback((CompositeItmeInstallationId: string) => {
+    if (!CompositeItmeInstallationId) {
+      return [];
+    }
+
+    const Fomrs = projectForms
+      ?.filter((form) => {
+        const formType = form?.installation_type?.id ?? form?.installation_type_id;
+        if (formType == null) return false;
+        return String(formType) === String(CompositeItmeInstallationId);
+      })
+      .map((projectform) => ({
+        label: projectform.name,
+        value: String(projectform.id)
+      }));
+    return Fomrs ?? [];
+  }, [projectForms]);
+
+  const compositeItemInstallationType = React.useMemo(() => {
+    if (!detailPin) return "";
+    const currentItemId = isPinEditing ? pinEditData.item : detailPin.item;
+    const selectedItem = items.find((i) => i.id === currentItemId) || (isPinEditing ? pinEditData.item_detail : detailPin.item_detail);
+    if (!selectedItem) return "";
+    const instType = selectedItem.installation_type;
+    if (instType && typeof instType === "object") {
+      return instType.id != null ? String(instType.id) : "";
+    }
+    return instType != null ? String(instType) : "";
+  }, [detailPin, isPinEditing, pinEditData.item, pinEditData.item_detail, items]);
+
+  const availableForms = React.useMemo(() => {
+    return filterForms(compositeItemInstallationType);
+  }, [compositeItemInstallationType, filterForms]);
+
+  React.useEffect(() => {
+    if (!detailPin || !isPinEditing) return;
+    if (!compositeItemInstallationType) return;
+
+    const forms = filterForms(compositeItemInstallationType);
+    const currentFormId = pinEditData.formId;
+
+    if (forms.length === 1) {
+      const singleFormId = Number(forms[0]!.value);
+      if (currentFormId !== singleFormId) {
+        setPinEditData((prev) => ({ ...prev, formId: singleFormId }));
+      }
+    } else if (forms.length === 0) {
+      if (currentFormId !== null && currentFormId !== undefined) {
+        setPinEditData((prev) => ({ ...prev, formId: null }));
+      }
+    } else {
+      const isValid = forms.some((f) => Number(f.value) === currentFormId);
+      if (!isValid && currentFormId !== null && currentFormId !== undefined) {
+        setPinEditData((prev) => ({ ...prev, formId: null }));
+      }
+    }
+  }, [detailPin?.id, isPinEditing, compositeItemInstallationType, pinEditData.formId, filterForms]);
 
   function requestClose() {
     if (tempPoints.length > 0 && activeTool === "pen") {
@@ -637,6 +961,24 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }
   }
 
+  async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
+    if (!files.length) return [];
+    const now = Date.now();
+    const out: DrawingPinAttachment[] = [];
+    let i = 0;
+    for (const file of files) {
+      out.push({
+        id: -(now + i),
+        file_name: file.name,
+        content_type: file.type || null,
+        file: file, // Keep reference to original binary File object
+        url: URL.createObjectURL(file), // Generate local object URL for preview/download
+      });
+      i++;
+    }
+    return out;
+  }
+
   function stagePointFromEvent(e: React.MouseEvent): number[] | null {
     const stage = stageRef.current;
     if (!stage) return null;
@@ -648,7 +990,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
 
   function onStageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand" || activeTool === "select" || activeTool === "plot-select") return;
+    if (activeTool === "hand" || panMode || isSpacePressed || e.button === 1) return;
+    if (activeTool === "select") {
+      setDetailPin(null);
+      setPinEditData({});
+      setIsPinEditing(false);
+      return;
+    }
+    if (activeTool === "plot-select") return;
     const pt = stagePointFromEvent(e);
     if (!pt) return;
     if (activeTool === "pen") {
@@ -697,27 +1046,32 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
       if (editingPlotId) {
         const pct = pixelToPercent(pt, pageSize);
+        const targetPlot = plots.find((p) => p.id === editingPlotId);
+        if (!targetPlot) return;
+
+        const coords = targetPlot.coordinates.map(c => percentToPixel(c, pageSize));
+        let bestIdx = coords.length;
+        let minDist = Infinity;
+
+        for (let i = 0; i < coords.length; i++) {
+          const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i + 1;
+          }
+        }
+
+        const nextCoords = [...targetPlot.coordinates];
+        nextCoords.splice(bestIdx, 0, pct);
+        if (!plotContainsAllPins(targetPlot, nextCoords, pageSize)) {
+          toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+          return;
+        }
+
         setPlots((prev) =>
-          prev.map((p) => {
-            if (p.id !== editingPlotId) return p;
-
-        
-            const coords = p.coordinates.map(c => percentToPixel(c, pageSize));
-            let bestIdx = coords.length;
-            let minDist = Infinity;
-
-            for (let i = 0; i < coords.length; i++) {
-              const d = distanceToSegment(pt, coords[i]!, coords[(i + 1) % coords.length]!);
-              if (d < minDist) {
-                minDist = d;
-                bestIdx = i + 1;
-              }
-            }
-
-            const nextCoords = [...p.coordinates];
-            nextCoords.splice(bestIdx, 0, pct);
-            return { ...p, coordinates: nextCoords };
-          })
+          prev.map((p) =>
+            p.id === editingPlotId ? { ...p, coordinates: nextCoords } : p,
+          )
         );
         setDirty(true);
         return;
@@ -732,7 +1086,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onPointerDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (activeTool === "hand") {
+    if (e.button === 1 || isSpacePressed || activeTool === "hand") {
+      e.preventDefault();
+      e.stopPropagation();
       const vp = viewportRef.current;
       if (!vp) return;
       setPanMode(true);
@@ -749,17 +1105,35 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   }
 
   function onPointerMove(e: React.MouseEvent<HTMLDivElement>) {
-    const pt = stagePointFromEvent(e);
-    if (!pt) {
-      if (panMode) {
-        const vp = viewportRef.current;
-        if (!vp) return;
-        const dx = e.clientX - panStart.x;
-        const dy = e.clientY - panStart.y;
-        vp.scrollLeft = scrollStart.left - dx;
-        vp.scrollTop = scrollStart.top - dy;
-      }
+    if (panMode || e.buttons === 4) {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      vp.scrollLeft = scrollStart.left - dx;
+      vp.scrollTop = scrollStart.top - dy;
       return;
+    }
+
+    const pt = stagePointFromEvent(e);
+    if (!pt) return;
+
+    if (isSpacePressed || activeTool === "hand") {
+      e.currentTarget.style.cursor = panMode ? "grabbing" : "grab";
+    } else if (activeTool === "pin") {
+      let isInsidePlot = false;
+      for (const plot of plots) {
+        const poly = plot.coordinates.map((c) => percentToPixel(c, pageSize));
+        if (insideOrOnBoundary(pt, poly)) {
+          isInsidePlot = true;
+          break;
+        }
+      }
+      e.currentTarget.style.cursor = isInsidePlot ? "crosshair" : "not-allowed";
+    } else if (activeTool === "pen" || activeTool === "plot-select") {
+      e.currentTarget.style.cursor = "crosshair";
+    } else {
+      e.currentTarget.style.cursor = "default";
     }
 
     if (activeTool === "plot-select" && selectionStart) {
@@ -767,20 +1141,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    if (panMode) {
-      const vp = viewportRef.current;
-      if (!vp) return;
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      vp.scrollLeft = scrollStart.left - dx;
-      vp.scrollTop = scrollStart.top - dy;
+    if (activeTool === "pin" && isQKeyPressed && e.buttons === 1) {
+      const now = Date.now();
+      if (now - lastPlacementTimeRef.current > 200) {
+        lastPlacementTimeRef.current = now;
+        void placePin(pt);
+      }
+      return;
     }
   }
 
   const draggingPinIdRef = React.useRef<number | null>(null);
-  const pageSizeRef = React.useRef(pageSize);
   const plotsRef = React.useRef(plots);
-  React.useEffect(() => { pageSizeRef.current = pageSize; }, [pageSize]);
   React.useEffect(() => { plotsRef.current = plots; }, [plots]);
   React.useEffect(() => { draggingPinIdRef.current = draggingPinId; }, [draggingPinId]);
   React.useEffect(() => { draggingVertexRef.current = draggingVertex; }, [draggingVertex]);
@@ -812,7 +1184,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
         // RESTRICTION: Pin never leaves its plot
         const poly = ownerPlot.coordinates.map(c => percentToPixel(c, ps));
-        if (!inside([x, y], poly)) {
+        if (!insideOrOnBoundary([x, y], poly)) {
           return; // Stop update if moving outside plot boundary
         }
 
@@ -825,6 +1197,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               : pin
           )
         })));
+        setDetailPin(prev => (prev && prev.id === pinId ? { ...prev, x_coordinate: pct[0]!, y_coordinate: pct[1]! } : prev));
+        setPinEditData(prev => (prev && prev.id === pinId ? { ...prev, x_coordinate: pct[0]!, y_coordinate: pct[1]! } : prev));
+        stagePinCoordinates(projectId, drawingId, pinId, pct[0]!, pct[1]!);
       } else if (vertex !== null) {
         // Validation: Prevent dragging vertex into another plot or crossing boundaries
         const targetPlot = currentPlots.find(p => p.id === vertex.plotId);
@@ -851,7 +1226,26 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               if (segmentsIntersect(newPt, p2, edgeStart, edgeEnd)) return;
             }
           }
+
+          // 3. Pin containment check: Ensure no pin is left outside the transformed boundary
+          const nextLogicalCoords = [...targetPlot.coordinates];
+          nextLogicalCoords[vertex.index] = pixelToPercent([x, y], ps);
+          const nextPolyPixels = nextLogicalCoords.map(c => percentToPixel(c, ps));
+
+          for (const pin of targetPlot.pins) {
+            const pinPt = percentToPixel([pin.x_coordinate, pin.y_coordinate], ps);
+            if (!insideOrOnBoundary(pinPt, nextPolyPixels)) {
+              const now = Date.now();
+              if (now - lastPinConstraintToastRef.current > 2000) {
+                toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+                lastPinConstraintToastRef.current = now;
+              }
+              return; // Block movement if any pin would be outside
+            }
+          }
         }
+
+
 
         const pct = pixelToPercent([x, y], ps);
         setPlots(prev => prev.map(p => {
@@ -866,17 +1260,18 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     function handleMouseUp() {
       const pinId = draggingPinIdRef.current;
       const vertex = draggingVertexRef.current;
+      const didActuallyDrag = wasDraggingRef.current;
 
       if (pinId !== null) {
         setDraggingPinId(null);
         draggingPinIdRef.current = null;
-        setDirty(true);
+        if (didActuallyDrag) setDirty(true);
       }
 
       if (vertex !== null) {
         setDraggingVertex(null);
         draggingVertexRef.current = null;
-        setDirty(true);
+        if (didActuallyDrag) setDirty(true);
       }
 
       if (pinId !== null || vertex !== null) {
@@ -886,6 +1281,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         }, 50);
         originalPinStateRef.current = null;
       }
+      lastPlacementTimeRef.current = 0;
       setPanMode(false);
     }
 
@@ -945,33 +1341,64 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPanMode(false);
   }
 
-  function toPayload(localPlots: LocalPlot[]): DrawingPlotUpsert[] {
-    return localPlots.map((p) => ({
+  function toPayload(localPlots: LocalPlot[], formData: FormData): DrawingPlotUpsert[] {
+    return localPlots.map((p, plotIndex) => ({
       ...(p.id > 0 ? { id: p.id } : {}),
+
       name: p.name,
       coordinates: p.coordinates,
       plot_border: p.plot_border,
       plot_bg: p.plot_bg,
-      pins: p.pins.map((pin) => ({
-        ...(pin.id > 0 ? { id: pin.id } : {}),
-        x_coordinate: pin.x_coordinate,
-        y_coordinate: pin.y_coordinate,
-        status: pin.status ?? undefined,
-        group: pin.group ?? null,
-        item: pin.item ?? null,
-        quantity: pin.quantity || 1,
-        variation: pin.variation ?? false,
-        location: pinLabels.get(pin.id) || 1,
-      })),
+
+      pins: p.pins.map((pin, pinIndex) => {
+        // Append file(s) to FormData
+        if (Array.isArray(pin.attachments) && pin.attachments.length) {
+          pin.attachments.forEach((att: any, idx) => {
+            if (att.file) {
+              formData.append(
+                `plots[${plotIndex}][pins][${pinIndex}][attachments][${idx}]`,
+                att.file
+              );
+            }
+          });
+        }
+
+        return {
+          ...(pin.id > 0 ? { id: pin.id } : {}),
+
+          x_coordinate: pin.x_coordinate,
+          y_coordinate: pin.y_coordinate,
+          status: pin.status ?? undefined,
+          group: pin.group ?? null,
+          item: pin.item ?? null,
+          project_form: pin.formId ?? null,
+          quantity: pin.quantity || 1,
+          variation: pin.variation ?? false,
+          location: pinLabels.get(pin.id),
+          description: pin.description ?? undefined,
+          attachments: pin.attachments?.filter((att) => !att.file) ?? [],
+        };
+      }),
     }));
   }
 
-  async function persistPlots(localPlots: LocalPlot[]) {
-    const updated = await updateDrawingPlots(projectId, drawingId, { plots: toPayload(localPlots) });
+  async function persistPlots(localPlots: LocalPlot[]): Promise<LocalPlot[]> {
+    // Create a new FormData for each save operation
+    const formData = new FormData();
+
+    // Build payload and attach files using the same FormData instance
+    const plotsPayload = toPayload(localPlots, formData);
+
+    // Append the JSON payload as a string field
+    formData.append('payload', JSON.stringify({ name: drawingName, plots: plotsPayload }));
+
+    // Send multipart/form-data to the backend
+    const updated = await updateDrawingPlots(projectId, drawingId, formData);
     const normalized = (updated.plots ?? []).map(normalizePlot);
     applyStableLocations(normalized);
     setPlots(normalized);
     setDirty(false);
+    return normalized;
   }
 
   async function savePlotFromModal() {
@@ -988,10 +1415,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const percentageCoordinates = tempPoints.map((pt) => pixelToPercent(pt, pageSize));
 
 
+    const createdPlotId = Date.now() * -1;
     const nextPlots = [
       ...plots,
       {
-        id: Date.now() * -1,
+        id: createdPlotId,
         name,
         coordinates: percentageCoordinates,
         pins: [],
@@ -1000,14 +1428,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
     ];
     setPlots(nextPlots);
-    const created = nextPlots.at(-1);
-    if (created) setSelectedPlotId(String(created.id));
+    setSelectedPlotId(String(createdPlotId));
+    stagePlotCoordinates(projectId, drawingId, createdPlotId, percentageCoordinates);
     setPlotNameDraft("");
     setPlotColorDraft(PLOT_PALETTE[0]!);
     setTempPoints([]);
     setNamingPlotOpen(false);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function placePin(point: number[], targetPlot?: LocalPlot) {
@@ -1016,33 +1443,34 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return;
     }
 
-    let plot = targetPlot ?? selectedPlot;
-
-    // If no plot matches or we are clicking a different one, try to find the actual plot under the point
-    const plotUnderPoint = plots.find(p => {
-      const poly = p.coordinates.map(c => percentToPixel(c, pageSize));
+    // Auto-detect the plot under the clicked point
+    const plotUnderPoint = plots.find((p) => {
+      const poly = p.coordinates.map((c) => percentToPixel(c, pageSize));
       return inside(point, poly);
     });
 
-    if (plotUnderPoint) {
-      plot = plotUnderPoint;
-      if (String(plot.id) !== selectedPlotId) {
-        setSelectedPlotId(String(plot.id));
-      }
+    let plot = plotUnderPoint ?? targetPlot ?? selectedPlot;
+
+    if (!plot && plots.length === 1 && plots[0]) {
+      plot = plots[0];
+    }
+
+    if (plot && String(plot.id) !== selectedPlotId) {
+      setSelectedPlotId(String(plot.id));
     }
 
     if (!plot) {
-      toastError(t("pinOutsidePlot"));
+      toastError("Click inside a plot area to place a pin.");
       return;
     }
 
     const plotStageCoordinates = plot.coordinates.map((p) => percentToPixel(p, pageSize));
     if (!inside(point, plotStageCoordinates)) {
-      toastError(t("pinOutsidePlot"));
+      toastError("Pin must be inside a plot area.");
       return;
     }
 
-    const selectedStatus = statuses.find((s) => String(s.id) === selectedStatusId);
+    const selectedStatus = defaultPinStatus;
     if (!selectedStatus) {
       toastError(t("statusRequired"));
       return;
@@ -1050,14 +1478,31 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
     const selectedItem = items.find(i => String(i.id) === selectedCompositeId);
 
+    let autoFormId: number | null = null;
+    if (selectedItem) {
+      const instType = selectedItem.installation_type;
+      const instTypeId = instType && typeof instType === "object" ? instType.id : instType;
+      if (instTypeId != null) {
+        const forms = filterForms(String(instTypeId));
+        if (forms.length === 1 && forms[0]?.value) {
+          autoFormId = Number(forms[0].value);
+        }
+      }
+    }
+
+    const nextPinId = Date.now() * -1;
     const nextPin = {
+      id: nextPinId,
       x_coordinate: Number(((point[0] / pageSize.width) * 100).toFixed(6)),
       y_coordinate: Number(((point[1] / pageSize.height) * 100).toFixed(6)),
       status: selectedStatus.id,
       variation: showVariations,
-      quantity: defaultQuantityForNewPin(selectedItem?.quantity),
+      quantity: 1,
       group: selectedGroupId ? Number.parseInt(selectedGroupId, 10) : undefined,
       item: selectedCompositeId ? Number.parseInt(selectedCompositeId, 10) : undefined,
+      formId: autoFormId ?? null,
+      description: "",
+      attachments: [],
       status_detail: {
         id: selectedStatus.id,
         status_name: selectedStatus.status_name,
@@ -1068,18 +1513,19 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         id: selectedItem.id,
         name: selectedItem.name,
         sku: selectedItem.sku || "",
-        is_composite: selectedItem.is_composite
+        is_composite: selectedItem.is_composite,
+        installation_type: selectedItem?.installation_type ?? null
       } : null
     };
 
     const nextPlots = plots.map((p) =>
-      p.id === plot.id ? { ...p, pins: [...p.pins, { id: Date.now() * -1, ...nextPin }] } : p,
+      p.id === plot.id ? { ...p, pins: [...p.pins, nextPin] } : p,
     );
     setPlots(nextPlots);
+    stagePinCoordinates(projectId, drawingId, nextPinId, nextPin.x_coordinate, nextPin.y_coordinate);
     setDetailPin(null);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveSelectedPlotName() {
@@ -1093,7 +1539,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     setPlots(nextPlots);
     setDetailPlotId(null);
     setDirty(true);
-    toastSuccess(t("plotSaved"));
   }
 
   async function deletePlot(id: number) {
@@ -1126,6 +1571,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     const updatedPin = {
       ...detailPin,
       ...pinEditData,
+      quantity: (pinEditData.quantity === "" as any || pinEditData.quantity == null || isNaN(Number(pinEditData.quantity))) ? 1 : Number(pinEditData.quantity),
       status_detail: nextStatus ? {
         id: nextStatus.id,
         status_name: nextStatus.status_name,
@@ -1136,7 +1582,11 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         id: nextItem.id,
         name: nextItem.name,
         sku: nextItem.sku || "",
-        is_composite: nextItem.is_composite
+        is_composite: nextItem.is_composite,
+        installation_type: nextItem?.installation_type ?? null,
+        ...(typeof (nextItem as CompositeItem & { attachments?: unknown }).attachments !== "undefined"
+          ? { attachments: (nextItem as CompositeItem & { attachments?: unknown }).attachments }
+          : {})
       } : detailPin.item_detail
     };
 
@@ -1146,20 +1596,34 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     }));
     setPlots(nextPlots);
     setDetailPin(updatedPin as DrawingPin);
+    setPinEditData(updatedPin as DrawingPin);
     setIsPinEditing(false);
+    setHasPinDraftChanges(false);
     setDirty(true);
-    toastSuccess(t("pinSaved"));
   }
 
   async function saveAllChanges() {
+    if (plots.some((plot) => !plotContainsAllPins(plot, plot.coordinates, pageSize))) {
+      toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+      return;
+    }
+
     setSavingAll(true);
     try {
-      await persistPlots(plots);
+      const normalized = await persistPlots(plots);
       toastSuccess(t("savedAll"));
       // Refresh all data from API after successful save
       await loadAllData();
-    } catch {
-      toastError(t("saveAllError"));
+
+      normalized.forEach((plot) => {
+        saveSelectedPlotCoordinates(projectId, drawingId, plot.id, plot.coordinates);
+        plot.pins.forEach((pin) => {
+          saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+        });
+      });
+      commitDrawingGeometryDraft(projectId, drawingId);
+    } catch (error) {
+      toastApiError(error, t("saveAllError"));
     } finally {
       setSavingAll(false);
     }
@@ -1168,27 +1632,29 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
   const allPins = React.useMemo(() => plots.flatMap((p) => p.pins), [plots]);
 
   const pinLabels = React.useMemo(() => {
-    const map = new Map<number, number>();
+    const map = new Map<number, string | number>();
 
-    // Pass 1: Saved pins WITH baked-in location
-    let maxSavedLoc = 0;
+    // Pass 1: Find the max numeric location to continue numbering
+    let maxLoc = 0;
     for (const plot of plots) {
       for (const pin of plot.pins) {
-        if (pin.id > 0 && pin.location) {
-          const loc = Number(pin.location);
-          map.set(pin.id, loc);
-          if (loc > maxSavedLoc) maxSavedLoc = loc;
+        if (pin.location) {
+          const num = Number(pin.location);
+          if (!isNaN(num)) maxLoc = Math.max(maxLoc, num);
         }
       }
     }
 
-    // Pass 2: Unsaved pins (id < 0) dynamic numbering
-    let unsavedCounter = maxSavedLoc + 1;
+    let nextCounter = maxLoc + 1;
+
+    // Pass 2: Assign labels
     for (const plot of plots) {
       for (const pin of plot.pins) {
-        if (pin.id < 0) {
-          map.set(pin.id, unsavedCounter);
-          unsavedCounter++;
+        if (pin.location) {
+          map.set(pin.id, pin.location);
+        } else {
+          map.set(pin.id, nextCounter);
+          nextCounter++;
         }
       }
     }
@@ -1227,17 +1693,22 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 <X className="size-4" />
               </button>
             </div>
-            <input
-              ref={nameInputRef}
-              value={plotNameDraft}
-              onChange={(e) => setPlotNameDraft(e.target.value)}
-              placeholder={t("plotNamePlaceholder")}
-              className={surfaceInputClassName}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void savePlotFromModal();
-              }}
-            />
-            <div className="mb-4">
+            <div className="space-y-2">
+              <input
+                ref={nameInputRef}
+                value={plotNameDraft}
+                onChange={(e) => setPlotNameDraft(e.target.value)}
+                placeholder={t("plotNamePlaceholder")}
+                className={surfaceInputClassName}
+                maxLength={20}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void savePlotFromModal();
+                }}
+              />
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-end justify-end">{plotNameDraft.length}/20</span>
+            </div>
+
+            <div className="my-4">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Select Color
               </label>
@@ -1299,13 +1770,22 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       <div
         className={cn(
           "fixed top-14 right-0 z-40 flex flex-col space-y-3 border-y border-slate-200 bg-white p-3  transition-all dark:border-slate-800 dark:bg-slate-950",
-          sidebarOpen ? "md:left-64" : "md:left-[52px]",
+          sidebarOpen ? "md:left-56" : "md:left-14",
           "left-0"
         )}
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{drawingName || t("title")}</h1>
+            <input
+              type="text"
+              // disabled
+              className="border-0 border-b border-transparent outline-none focus:border-b-blue-500 truncate text-lg font-semibold text-slate-900 dark:text-slate-50"
+              value={drawingName}
+              onChange={(e) => {
+                setDrawingName(e.target.value);
+                setDirty(true);
+              }}
+            />
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
           </div>
 
@@ -1343,7 +1823,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
             type="button"
             variant="secondary"
             className="size-12 rounded-lg p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-            onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
+            onClick={() => setZoom((z) => Math.min(5, Number((z + 0.1).toFixed(2))))}
           >
             <ZoomIn className="size-5" />
           </AppButton>
@@ -1376,8 +1856,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         <div
           ref={viewportRef}
           className={cn(
-            "relative flex h-[calc(100vh-210px)] min-h-[400px] w-full flex-col overflow-hidden bg-slate-100 p-1 transition-all dark:bg-slate-900/60",
-            activeTool === "hand" && "cursor-grab"
+            "relative flex h-[calc(100vh-210px)] min-h-[400px] w-full flex-col overflow-auto bg-slate-100 p-1 dark:bg-slate-900/60 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+            (activeTool === "hand" || isSpacePressed) && (panMode ? "cursor-grabbing" : "cursor-grab")
           )}
           onMouseMove={onPointerMove}
           onMouseUp={onPointerUp}
@@ -1426,13 +1906,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               >
                 <div
                   ref={stageRef}
-                  className="relative select-none shadow-2xl transition-transform duration-200"
+                  className="relative select-none shadow-2xl"
                   style={{
                     transform: `scale(${zoom})`,
                     transformOrigin: "top left",
                     width: pageSize.width,
                     height: pageSize.height,
-                    cursor: activeTool === "hand" ? "grab" : activeTool === "pen" ? "crosshair" : activeTool === "pin" ? "crosshair" : activeTool === "plot-select" ? "crosshair" : "default",
+                    cursor: panMode ? "grabbing" : (isSpacePressed || activeTool === "hand") ? "grab" : activeTool === "pen" ? "crosshair" : activeTool === "pin" ? "crosshair" : activeTool === "plot-select" ? "crosshair" : "default",
                   }}
                   onClick={onStageClick}
                   onMouseDown={onPointerDown}
@@ -1466,18 +1946,13 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                   }}
                 >
                   {isPdf ? (
-                    <Document file={normalizedFileUrl} onLoadError={() => toastError(t("pdfRenderError"))}>
-                      <Page
-                        pageNumber={1}
-                        scale={1}
-                        renderAnnotationLayer={false}
-                        renderTextLayer={false}
-                        onLoadSuccess={(page) => {
-                          const vp = page.getViewport({ scale: 1 });
-                          setPageSize({ width: Math.round(vp.width), height: Math.round(vp.height) });
-                        }}
+                    pdfFile ? (
+                      <PdfDrawingCanvas
+                        pdfFile={pdfFile}
+                        onLoadSuccess={handlePdfPageLoadSuccess}
+                        onLoadError={handlePdfLoadError}
                       />
-                    </Document>
+                    ) : null
                   ) : (
                     <img
                       src={normalizedFileUrl}
@@ -1502,8 +1977,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       const minY = plotPoints.length ? Math.min(...plotPoints.map((p) => p[1])) : 0;
                       const maxX = plotPoints.length ? Math.max(...plotPoints.map((p) => p[0])) : 0;
                       const maxY = plotPoints.length ? Math.max(...plotPoints.map((p) => p[1])) : 0;
-                      const labelX = minX + (maxX - minX) / 2;
-                      const labelY = minY + (maxY - minY) / 2;
+                      const [labelX, labelY] = getCentroid(plotPoints);
                       const isSelected = selectedPlotId === String(plot.id);
                       const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
                       const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
@@ -1522,6 +1996,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               strokeWidth={isSelected ? 3.5 : 2}
                               strokeDasharray="5 4"
                               className="cursor-pointer transition-all"
+                              onMouseEnter={() => setHoveredPlotId(String(plot.id))}
+                              onMouseLeave={() => setHoveredPlotId(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "pin") {
@@ -1548,6 +2024,8 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               stroke={plot.plot_border || "#059669"}
                               strokeWidth={3}
                               className="cursor-pointer"
+                              onMouseEnter={() => setHoveredPlotId(String(plot.id))}
+                              onMouseLeave={() => setHoveredPlotId(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "pin") {
@@ -1579,6 +2057,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               onMouseDown={(e) => {
                                 e.stopPropagation();
                                 if (activeTool === "hand") return;
+                                draggingVertexRef.current = { plotId: plot.id, index: idx };
                                 setDraggingVertex({ plotId: plot.id, index: idx });
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -1589,10 +2068,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                                   toastError("Polygon must have at least 3 points");
                                   return;
                                 }
+                                const nextCoords = [...plot.coordinates];
+                                nextCoords.splice(idx, 1);
+                                if (!plotContainsAllPins(plot, nextCoords, pageSize)) {
+                                  toastError(PIN_OUTSIDE_PLOT_MESSAGE);
+                                  return;
+                                }
                                 setPlots(prev => prev.map(p => {
                                   if (p.id !== plot.id) return p;
-                                  const nextCoords = [...p.coordinates];
-                                  nextCoords.splice(idx, 1);
                                   return { ...p, coordinates: nextCoords };
                                 }));
                                 setDirty(true);
@@ -1605,19 +2088,6 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               <line x1={maxX} y1={minY} x2={minX} y2={maxY} stroke={plot.plot_border || "#059669"} strokeWidth={2.5} />
                             </g>
                           ) : null}
-                          <g className="pointer-events-none">
-                            <rect
-                              x={labelX - badgeWidth / 2}
-                              y={Math.max(8, labelY - 30)}
-                              width={badgeWidth}
-                              height={24}
-                              rx={12}
-                              fill="rgba(15,23,42,0.9)"
-                            />
-                            <text x={labelX} y={Math.max(24, labelY - 14)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
-                              {labelText}
-                            </text>
-                          </g>
                         </g>
                       );
                     })}
@@ -1661,26 +2131,36 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                         const productName = pin.item_detail?.name || compositeLabelById[pin.item ?? 0] || "PIN";
                         const abbreviation = resolvePinMarkerAbbreviation(pin, groupItemAbbrevByKey, productName);
                         const pinQuantity = resolvePinDisplayQuantity(pin);
-                        const isHovered = hoveredPinId === pin.id;
-
+                        const isPinTool = activeTool === "pin";
+                        const isHovered = !isPinTool && hoveredPinId === pin.id;
+                        const innerScaleClass = draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "";
                         return (
                           <div
                             key={`pin-${pin.id}`}
-                            className="absolute"
+                            className={cn(
+                              "absolute transition-opacity duration-200",
+                              isPinTool && "pointer-events-none"
+                            )}
                             style={{
                               left: pinX,
                               top: pinY,
                               transformOrigin: "bottom center",
                               transform: `translate(-50%, -100%) scale(${1 / zoom})`,
                               zIndex: draggingPinId === pin.id ? 200 : isHovered ? 100 : 20,
-                              cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : "pointer",
+                              cursor: activeTool === "select" ? (draggingPinId === pin.id ? "grabbing" : "grab") : isPinTool ? "crosshair" : "pointer",
+                              pointerEvents: isPinTool ? "none" : "auto",
+                              opacity: isPinTool ? 0.4 : 1,
                             }}
-                            onMouseEnter={() => setHoveredPinId(pin.id)}
+                            onMouseEnter={() => {
+                              if (isPinTool) return;
+                              setHoveredPinId(pin.id);
+                            }}
                             onMouseLeave={() => setHoveredPinId(null)}
                             onMouseDown={(e) => {
-                              if (activeTool !== "select") return;
+                              if (isPinTool || activeTool !== "select") return;
                               e.stopPropagation();
                               e.preventDefault();
+                              draggingPinIdRef.current = pin.id;
                               setDraggingPinId(pin.id);
                               setDragOffset({ x: 0, y: 0 });
                               originalPinStateRef.current = {
@@ -1690,23 +2170,28 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                               };
                             }}
                             onClick={(e) => {
+                              if (isPinTool) return;
                               e.stopPropagation();
                               if (wasDraggingRef.current) return;
 
                               setDetailPlotId(null);
                               setDetailPin(pin);
                               setPinEditData(pin);
+                              setHasPinDraftChanges(false);
 
-                              // Pre-populate dropdowns for editing
+                              if (pin.id > 0) {
+                                saveSelectedPinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+                              } else {
+                                stagePinCoordinates(projectId, drawingId, pin.id, pin.x_coordinate, pin.y_coordinate);
+                              }
                               setSelectedGroupId(pin.group ? String(pin.group) : "");
                               setSelectedCompositeId(pin.item ? String(pin.item) : "");
-                              setSelectedStatusId(pin.status ? String(pin.status) : "");
 
                               setIsPinEditing(false);
                             }}
                           >
-                            {isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
-                            <div className={cn("duration-200 origin-bottom", draggingPinId === pin.id ? "scale-125" : isHovered ? "scale-110" : "", "cursor-grab")}>
+                            {!isPinTool && isHovered && <PinTooltip pin={pin} productName={productName} quantity={pinQuantity} />}
+                            <div className={cn("relative duration-200 origin-bottom", innerScaleClass, !isPinTool && "cursor-grab")}>
                               <PinMarker label={pinLabels.get(pin.id) || (index + 1)} abbreviation={abbreviation} color={color} />
                             </div>
                           </div>
@@ -1714,6 +2199,41 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       })}
                     </React.Fragment>
                   ))}
+
+                  {/* Plot Labels Layer (Top) */}
+                  <svg
+                    className="absolute left-0 top-0 pointer-events-none"
+                    style={{ zIndex: 300 }}
+                    width={pageSize.width}
+                    height={pageSize.height}
+                    viewBox={`0 0 ${pageSize.width} ${pageSize.height}`}
+                  >
+                    {plots.map((plot) => {
+                      if (hoveredPlotId === String(plot.id)) return null;
+                      const plotPoints = plot.coordinates.map((p) => percentToPixel(p, pageSize));
+                      if (plotPoints.length < 3) return null;
+
+                      const [labelX, labelY] = getCentroid(plotPoints);
+                      const labelText = plot.name.length > 24 ? `${plot.name.slice(0, 24)}...` : plot.name;
+                      const badgeWidth = Math.max(90, Math.min(220, labelText.length * 7 + 20));
+
+                      return (
+                        <g key={`plot-label-${plot.id}`}>
+                          <rect
+                            x={labelX - badgeWidth / 2}
+                            y={Math.max(8, labelY - 12)}
+                            width={badgeWidth}
+                            height={24}
+                            rx={12}
+                            fill="rgba(15,23,42,0.9)"
+                          />
+                          <text x={labelX} y={Math.max(24, labelY + 4)} fill="white" fontSize={12} fontWeight={700} textAnchor="middle">
+                            {labelText}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
                 </div>
               </div>
             </div>
@@ -1725,7 +2245,9 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
         open={detailPin !== null}
         onClose={() => {
           setDetailPin(null);
+          setPinEditData({});
           setIsPinEditing(false);
+          setHasPinDraftChanges(false);
           setPinDeleteConfirmOpen(false);
         }}
         title={detailPin ? (pinDeleteConfirmOpen ? "Delete Pin?" : `Location #${pinLabels.get(detailPin.id) || (allPins.findIndex(p => p.id === detailPin.id) + 1)}`) : ""}
@@ -1736,14 +2258,19 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
               {isPinEditing ? (
                 <>
                   <button
-                    onClick={() => setIsPinEditing(false)}
+                    onClick={() => {
+                      setIsPinEditing(false);
+                      if (detailPin) setPinEditData(detailPin);
+                      setHasPinDraftChanges(false);
+                    }}
                     className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => void savePinChanges()}
-                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none"
+                    disabled={!hasPinDraftChanges || savingPin}
+                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
                   >
                     Save
                   </button>
@@ -1807,15 +2334,82 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     type="select"
                     options={filteredItems.map(i => ({ value: i.id, label: i.name }))}
                     onChange={(val: string) => {
-                      setPinEditData(prev => ({ ...prev, item: parseInt(val) || undefined }));
+                      updatePinEditData({ ...pinEditData, item: parseInt(val) || undefined });
                     }}
                   />
+
+                  {/* Product Attachments - 2 Column Grid */}
+                  {(() => {
+                    const attachments = (detailPin.item_detail as (typeof detailPin.item_detail & { attachments?: Array<{ file_url?: string | null; url?: string | null; attachment?: string | null; file?: string | null; file_name?: string | null; name?: string | null; id?: number | null }> }) | null | undefined)?.attachments;
+                    return attachments && attachments.length > 0 ? (
+                      <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="text-slate-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.44 11.05 12 20.5a5 5 0 0 1-7.07-7.07l9.44-9.44a3.5 3.5 0 0 1 4.95 4.95L10.5 16a2 2 0 0 1-2.83-2.83l8.48-8.48" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("productAttachments")}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {attachments.map((att, idx) => {
+                            const url = att.file_url ?? att.url ?? (typeof att.attachment === "string" ? att.attachment : null) ?? (typeof att.file === "string" ? att.file : null);
+                            const name = att.file_name ?? att.name ?? (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                            const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
+                            return (
+                              <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg">
+                                <div className="flex flex-col min-w-0">
+                                  <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200">{name}</p>
+                                  <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!url}
+                                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
+                                  onClick={async () => {
+                                    if (!url) return;
+                                    if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                      const link = document.createElement("a");
+                                      link.href = url;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      return;
+                                    }
+                                    try {
+                                      const response = await fetch(url);
+                                      const blob = await response.blob();
+                                      const blobUrl = URL.createObjectURL(blob);
+                                      const link = document.createElement("a");
+                                      link.href = blobUrl;
+                                      link.download = name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      URL.revokeObjectURL(blobUrl);
+                                    } catch (error) {
+                                      console.error("Failed to download file:", error);
+                                      window.open(url, "_blank");
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
                   <DetailRow
                     icon={QuantityIcon}
                     label="Quantity"
-                    value={isPinEditing ? (pinEditData.quantity ?? 1) : (detailPin.quantity ?? 1)}
+                    value={isPinEditing ? (pinEditData.quantity !== undefined ? pinEditData.quantity : (detailPin.quantity ?? 1)) : (detailPin.quantity ?? 1)}
                     isEditing={isPinEditing}
-                    onChange={(val: string) => setPinEditData(prev => ({ ...prev, quantity: parseInt(val, 10) || 1 }))}
+                    onChange={(val: string) => updatePinEditData({ ...pinEditData, quantity: val === "" ? ("" as any) : parseInt(val, 10) })}
                   />
                   <DetailRow
                     icon={StatusIcon}
@@ -1831,8 +2425,14 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     statusTextColor={detailPin.status_detail?.text_colour || statuses.find(s => s.id === (pinEditData.status || detailPin.status))?.text_colour}
                     onChange={(val: string) => {
                       const s = statuses.find(st => String(st.id) === val);
-                      if (s) setPinEditData(prev => ({ ...prev, status: s.id }));
+                      if (s) updatePinEditData({ ...pinEditData, status: s.id });
                     }}
+                  />
+                  <DetailRow
+                    icon={MapPinned}
+                    label="Location"
+                    value={detailPin.location || pinLabels.get(detailPin.id) || "-"}
+                    isEditing={false}
                   />
                   <DetailRow
                     icon={BlockIcon}
@@ -1846,6 +2446,202 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     value={drawingName || "N/A"}
                     isEditing={false}
                   />
+
+                  {/* Pin description */}
+                  <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="text-slate-400">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 4h16v16H4z" />
+                          <path d="M8 8h8" />
+                          <path d="M8 12h8" />
+                          <path d="M8 16h5" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {isPinEditing ? (
+                        <textarea
+                          rows={3}
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
+                          value={String(pinEditData.description ?? detailPin.description ?? "")}
+                          onChange={(e) => updatePinEditData({ ...pinEditData, description: e.target.value })}
+                        />
+                      ) : (
+                        <p className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {detailPin.description || "-"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pin attachments */}
+                  <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-slate-400">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.44 11.05 12 20.5a5 5 0 0 1-7.07-7.07l9.44-9.44a3.5 3.5 0 0 1 4.95 4.95L10.5 16a2 2 0 0 1-2.83-2.83l8.48-8.48" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Attachments</span>
+                      </div>
+                      {isPinEditing ? (
+                        <div className="w-1/2">
+                          <input
+                            type="file"
+                            multiple
+                            className="block w-full text-sm text-slate-700 dark:text-slate-200"
+                            disabled={false}
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files ?? []);
+                              if (!files.length) return;
+                              void (async () => {
+                                const draftAttachments = await filesToPinAttachments(files);
+                                updatePinEditData({
+                                  ...pinEditData,
+                                  attachments: [
+                                    ...(pinEditData.attachments ?? detailPin.attachments ?? []),
+                                    ...draftAttachments,
+                                  ],
+                                });
+                              })();
+                              // Allow picking the same file again
+                              e.currentTarget.value = "";
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {(() => {
+                        const attachments = (isPinEditing ? pinEditData.attachments : detailPin.attachments) ?? [];
+                        if (!attachments.length) return <p className="text-sm text-slate-500">-</p>;
+                        return (
+                          <div className="grid grid-cols-2 gap-2">
+                            {attachments.map((att, idx) => {
+                              const url =
+                                att.url ??
+                                att.file_url ??
+                                (typeof att.attachment === "string" ? att.attachment : null) ??
+                                (typeof att.file === "string" ? att.file : null) ??
+                                att.data_url ??
+                                att.file_data ??
+                                (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
+                              const name =
+                                att.file_name ??
+                                att.name ??
+                                (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                              const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
+                              const isImage =
+                                (att.content_type ?? "").startsWith("image/") ||
+                                (typeof url === "string" && (url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)));
+                              return (
+                                <div key={idx} className={`flex flex-col gap-2 px-3 py-2 border rounded-lg ${isPinEditing ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50' : 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700'}`}>
+                                  <div className="flex flex-col min-w-0">
+                                    <p className={`text-xs truncate font-semibold ${isPinEditing ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`}>{name}</p>
+                                    <p className={`text-[10px] ${isPinEditing ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>{fileType}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 w-full">
+                                    {isPinEditing ? (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                        onClick={() => {
+                                          updatePinEditData({
+                                            ...pinEditData,
+                                            attachments: ((pinEditData.attachments ?? detailPin.attachments ?? []) as DrawingPinAttachment[]).filter((_, i) => i !== idx),
+                                          });
+                                        }}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                    {url ? (
+                                      <button
+                                        type="button"
+                                        className={`text-[10px] font-semibold ${isPinEditing ? 'text-blue-600 hover:text-blue-700' : 'text-slate-600 hover:text-slate-700'} hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5 flex-shrink-0 ${!isPinEditing ? 'ml-auto' : ''}`}
+                                        onClick={async () => {
+                                          if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            return;
+                                          }
+                                          try {
+                                            const response = await fetch(url);
+                                            const blob = await response.blob();
+                                            const blobUrl = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = blobUrl;
+                                            link.download = name;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(blobUrl);
+                                          } catch (error) {
+                                            console.error("Failed to download file:", error);
+                                            window.open(url, "_blank");
+                                          }
+                                        }}
+                                      >
+                                        <Download className="h-3 w-3" />
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                    <div className="flex items-center justify-between overflow-hidden">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <LayoutGrid className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
+                      </div>
+                      {
+                        availableForms.length > 0 ? (
+                          isPinEditing ? (
+                            <select
+                              value={isPinEditing ? String(pinEditData.formId ?? "") : String(detailPin?.formId ?? "")}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (isPinEditing) {
+                                  updatePinEditData({ ...pinEditData, formId: value ? Number(value) : null });
+                                }
+                              }}
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
+                            >
+                              <option value="">Select Form</option>
+                              {availableForms.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
+                            </span>
+                          )
+                        ) : compositeItemInstallationType ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[200px]">
+                            {t("noFormWithInstallationType")}
+                          </span>
+                        ) : null
+                      }
+                    </div>
+                  </div>
                   {/* Variation toggle row */}
                   <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
                     <div className="flex items-center gap-3">
@@ -1861,7 +2657,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                       disabled={!isPinEditing}
                       onClick={() => {
                         if (isPinEditing) {
-                          setPinEditData(prev => ({ ...prev, variation: !prev.variation }));
+                          updatePinEditData({ ...pinEditData, variation: !pinEditData.variation });
                         }
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${(isPinEditing ? pinEditData.variation : detailPin.variation)
@@ -1894,7 +2690,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                 </div>
               </div>
 
-              {!isPinEditing && (
+              {/* {!isPinEditing && (
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60">
                   <button
                     onClick={() => setPinDeleteConfirmOpen(true)}
@@ -1906,7 +2702,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     Delete Pin
                   </button>
                 </div>
-              )}
+              )} */}
             </div>
           )
         ) : null}
@@ -1963,7 +2759,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 uppercase">Plot name</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase">Plot Name</label>
                     <input
                       value={plotDetailDraftName}
                       onChange={(e) => setPlotDetailDraftName(e.target.value)}
@@ -1987,12 +2783,12 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                     </button>
                   </div>
 
-                  <button
+                  {/* <button
                     onClick={() => setDeleteConfirmOpen(true)}
                     className="w-full rounded-xl bg-red-50 py-3 text-sm font-bold text-red-600 hover:bg-red-100 transition-colors"
                   >
                     Delete Plot & Pins
-                  </button>
+                  </button> */}
                 </div>
               </>
             )}
@@ -2003,7 +2799,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       {selectedPlot && (activeTool === "pen" || activeTool === "plot-select") && (
         <div className={cn(
           "fixed bottom-24 left-0 right-0 z-50 flex justify-center px-6 transition-all",
-          sidebarOpen ? "md:left-64" : "md:left-[52px]"
+          sidebarOpen ? "md:left-56" : "md:left-14"
         )}>
           <PlotToolbar
             isEditing={editingPlotId === selectedPlot.id}

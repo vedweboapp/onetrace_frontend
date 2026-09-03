@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   DEFAULT_LIST_PAGE_SIZE,
+  type ListPageSizeChoice,
   normalizeListPageSize,
   parsePageSizeParam,
 } from "@/shared/utils/list-page-size.util";
@@ -31,24 +32,35 @@ export function hasListActiveFilters(args: {
   isActiveParam?: string | null;
   groupParam?: string | null;
   clientParam?: string | null;
+  vendorParam?: string | null;
   customerParam?: string | null;
   siteParam?: string | null;
   projectParam?: string | null;
   statusParam?: string | null;
   jobStatusParam?: string | null;
   assignedWorkerParam?: string | null;
+  workerNameParam?: string | null;
+  requestedDateParam?: string | null;
+  projectTypeParam?: string | null;
+  /** Quotations `quote_category` (or legacy category) URL param. */
+  categoryParam?: string | null;
+  quoteCategoryParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
-  /** Default list is active-only; only “inactive” is treated as an applied filter. */
-  if (args.isActiveParam === "false") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
   if (args.clientParam != null && args.clientParam.trim() !== "") return true;
+  if (args.vendorParam != null && args.vendorParam.trim() !== "") return true;
   if (args.customerParam != null && args.customerParam.trim() !== "") return true;
   if (args.siteParam != null && args.siteParam.trim() !== "") return true;
   if (args.projectParam != null && args.projectParam.trim() !== "") return true;
   if (args.statusParam != null && args.statusParam.trim() !== "") return true;
   if (args.jobStatusParam != null && args.jobStatusParam.trim() !== "") return true;
   if (args.assignedWorkerParam != null && args.assignedWorkerParam.trim() !== "") return true;
+  if (args.workerNameParam != null && args.workerNameParam.trim() !== "") return true;
+  if (args.requestedDateParam != null && args.requestedDateParam.trim() !== "") return true;
+  if (args.projectTypeParam != null && args.projectTypeParam.trim() !== "") return true;
+  if (args.categoryParam != null && args.categoryParam.trim() !== "") return true;
+  if (args.quoteCategoryParam != null && args.quoteCategoryParam.trim() !== "") return true;
   return false;
 }
 
@@ -65,10 +77,15 @@ export function parseListViewParam(param: string | null): ListPageViewMode {
   return param === "list" ? "list" : "table";
 }
 
-export function useListUrlState() {
+export type UseListUrlStateOptions = {
+  defaultPageSize?: ListPageSizeChoice;
+};
+
+export function useListUrlState(options: UseListUrlStateOptions = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const defaultPageSize = options.defaultPageSize ?? DEFAULT_LIST_PAGE_SIZE;
 
   const page = React.useMemo(() => {
     const raw = searchParams.get("page");
@@ -80,8 +97,8 @@ export function useListUrlState() {
   const isActiveParam = searchParams.get("is_active");
   const groupParam = searchParams.get("group");
   const pageSize = React.useMemo(
-    () => parsePageSizeParam(searchParams.get("page_size")),
-    [searchParams],
+    () => parsePageSizeParam(searchParams.get("page_size"), defaultPageSize),
+    [defaultPageSize, searchParams],
   );
 
   const listViewMode = React.useMemo(
@@ -102,7 +119,7 @@ export function useListUrlState() {
       if (p.get("page") === "1") {
         p.delete("page");
       }
-      if (p.get("page_size") === String(DEFAULT_LIST_PAGE_SIZE)) {
+      if (p.get("page_size") === String(defaultPageSize)) {
         p.delete("page_size");
       }
       const view = p.get("view");
@@ -117,7 +134,7 @@ export function useListUrlState() {
         router.push(href);
       }
     },
-    [pathname, router, searchParams],
+    [defaultPageSize, pathname, router, searchParams],
   );
 
   const setPage = React.useCallback(
@@ -130,16 +147,16 @@ export function useListUrlState() {
 
   const setPageSize = React.useCallback(
     (next: number) => {
-      const size = normalizeListPageSize(next);
+      const size = normalizeListPageSize(next, defaultPageSize);
       setUrl(
         {
-          page_size: size === DEFAULT_LIST_PAGE_SIZE ? null : String(size),
+          page_size: size === defaultPageSize ? null : String(size),
           page: null,
         },
         { replace: true },
       );
     },
-    [setUrl],
+    [defaultPageSize, setUrl],
   );
 
   const setListViewMode = React.useCallback(

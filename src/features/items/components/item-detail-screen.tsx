@@ -11,7 +11,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { ConfirmDialog } from "@/shared/ui";
 
 type Props = {
@@ -32,8 +32,8 @@ export function ItemDetailScreen({ itemId }: Props) {
       await deleteItem(detailForDelete.id);
       toastSuccess(t("deletedToast"));
       router.push(routes.dashboard.items);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -48,7 +48,6 @@ export function ItemDetailScreen({ itemId }: Props) {
       fetch={fetchItem}
       getTitle={(detail) => detail.name}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
@@ -79,7 +78,9 @@ export function ItemDetailScreen({ itemId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt }) => <ItemDetailBody detail={detail} dateFmt={dateFmt} />}
+      {({ detail, dateFmt, retry }) => (
+        <ItemDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+      )}
     </EntityDetailScreen>
   );
 }

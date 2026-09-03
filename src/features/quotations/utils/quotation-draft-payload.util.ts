@@ -3,12 +3,11 @@ import type {
   QuotationQuoteSection,
   QuotationQuoteSectionPin,
   QuotationQuoteSectionPlot,
-  QuotationSiteSnapshot,
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import { draftGrandTotal, draftPinTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
-import type { Site } from "@/features/sites/types/site.types";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { quotationDraftLineGroupPayload } from "@/features/quotations/utils/quotation-draft-line-group.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 /** Synthetic plot `name` in `quote_sections` when the section has `section_pins` (no drawing plot). */
 export const SECTION_DIRECT_PLOT_NAME = "Section items";
@@ -24,36 +23,10 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
       quantity: pin.quantity,
       selling_price: pin.selling_price,
       pins_total,
+      ...quotationDraftLineGroupPayload(pin),
+      source_pins: Array.isArray(pin.source_pins) ? pin.source_pins : [],
     };
   });
-}
-
-function buildSiteSnapshot(site: Site, siteContact: number | null): QuotationSiteSnapshot {
-  return {
-    id: site.id,
-    site_name: site.site_name,
-    address_line_1: site.address_line_1 ?? null,
-    address_line_2: site.address_line_2 ?? null,
-    city: site.city ?? null,
-    state: site.state ?? null,
-    country: site.country ?? null,
-    pincode: site.pincode ?? null,
-    what3words: site.what3words?.trim() || null,
-    site_contact: siteContact,
-  };
-}
-
-/**
- * Merges `site_snapshot` (address + optional `site_contact`) onto the quotation payload.
- * Safe to call for create/update whenever the selected site row is available.
- */
-export function applyQuotationSiteSnapshot<T extends QuotationCreatePayload>(
-  payload: T,
-  site: Site | null | undefined,
-  siteContact: number | null = null,
-): T {
-  if (!site || !Number.isFinite(site.id) || site.id <= 0) return payload;
-  return { ...payload, site_snapshot: buildSiteSnapshot(site, siteContact) };
 }
 
 /**
@@ -74,6 +47,9 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
         plot_order: plotOrder++,
         plot_id: null,
         name: SECTION_DIRECT_PLOT_NAME,
+        coordinates: null,
+        plot_border: null,
+        plot_bg: null,
         pins,
         plot_total,
       });
@@ -85,6 +61,9 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
         plot_order: plotOrder++,
         plot_id: plot.plot_id,
         name: plot.name,
+        coordinates: Array.isArray(plot.coordinates) ? plot.coordinates : null,
+        plot_border: typeof plot.plot_border === "string" ? plot.plot_border : null,
+        plot_bg: typeof plot.plot_bg === "string" ? plot.plot_bg : null,
         pins,
         plot_total,
       });
@@ -92,7 +71,13 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
     return {
       section_order: si,
       level_id: section.level_id,
-      name: capitalizeFirstLetter(section.name ?? ""),
+      name: sanitizeTitleInput(section.name ?? ""),
+      drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
+      drawing_file_type: typeof section.drawing_file_type === "string" ? section.drawing_file_type : null,
+      drawing_file_size: typeof section.drawing_file_size === "number" ? section.drawing_file_size : null,
+      block: typeof section.block === "string" ? section.block : null,
+      level: typeof section.level === "string" ? section.level : null,
+      order: typeof section.order === "number" ? section.order : null,
       plots: plotsOut,
       section_total: draftSectionTotal(section),
     };

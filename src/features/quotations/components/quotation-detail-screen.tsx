@@ -1,25 +1,48 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
+import { fetchQuotation, createJobFromServiceQuotation, sendQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  QUOTE_CATEGORY,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
+import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
-  getQuotationNestedSite,
-  getQuotationSiteId,
   getQuotationCustomerId,
+  getQuotationProjectId,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import {
+  fetchQuotationSiteRows,
+  mergeQuotationSiteOptionRows,
+  quotationSiteOptionRowsToRecord,
+} from "@/features/quotations/utils/quotation-site-options.util";
+import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
+import { quotationHasLinkedJob, markServiceQuoteJobCreated } from "@/features/quotations/utils/quotation-job.util";
+import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
-import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
+import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
 import type { Site } from "@/features/sites/types/site.types";
-import { hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-
+import { AppButton } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+ 
 type Props = {
   quotationId: number;
 };
@@ -29,11 +52,28 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
+  const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
   const [tagNames, setTagNames] = React.useState<Record<number, string>>({});
-  const [siteDetail, setSiteDetail] = React.useState<Site | null>(null);
-  const [siteDetailLoading, setSiteDetailLoading] = React.useState(false);
+  const [siteDetails, setSiteDetails] = React.useState<Site[]>([]);
+  const [siteDetailsLoading, setSiteDetailsLoading] = React.useState(false);
   const [detailForSite, setDetailForSite] = React.useState<QuotationDetail | null>(null);
+  const [contactOptions, setContactOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [salespersonOptions, setSalespersonOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  /** Keep header/sidebar quote category in sync when opening detail without `?quote_category=`. */
+  React.useEffect(() => {
+    if (!detailForSite) return;
+    const resolved = resolveQuotationQuoteCategory(detailForSite);
+    const current = parseQuoteCategoryParam(searchParams.get("quote_category"));
+    if (current === resolved) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("quote_category", resolved);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [detailForSite, pathname, router, searchParams]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -56,22 +96,122 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
+    const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
     (async () => {
       try {
-        const { items: sites } = await fetchSitesPage(1, 500);
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
+        if (customerId && customerId > 0) filters.client = customerId;
+        const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) {
           const mapped: Record<number, string> = {};
-          for (const row of sites) mapped[row.id] = row.site_name;
-          setSiteNames(mapped);
+          for (const row of projects) mapped[row.id] = row.name;
+          const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
+          if (projectId != null && !mapped[projectId]) {
+            const nested =
+              detailForSite?.project && typeof detailForSite.project === "object"
+                ? detailForSite.project
+                : null;
+            mapped[projectId] = nested?.name?.trim() || `Project #${projectId}`;
+          }
+          setProjectNames(mapped);
         }
       } catch {
-        if (!cancelled) setSiteNames({});
+        if (!cancelled) setProjectNames({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForSite]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!detailForSite) {
+      setSiteNames({});
+      return;
+    }
+
+    const customerId = getQuotationCustomerId(detailForSite.customer);
+    const projectId = getQuotationProjectId(detailForSite.project);
+    const isServiceQuotation = resolveQuotationQuoteCategory(detailForSite) === QUOTE_CATEGORY.service;
+    const sitesSourceReady = isServiceQuotation
+      ? customerId != null && customerId > 0
+      : projectId != null && projectId > 0;
+
+    if (!sitesSourceReady) {
+      setSiteNames(quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows([], detailForSite)));
+      return;
+    }
+
+    void (async () => {
+      try {
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation,
+          clientId: customerId,
+          projectId,
+        });
+        if (!cancelled) {
+          setSiteNames(
+            quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows(rows, detailForSite)),
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setSiteNames(
+            quotationSiteOptionRowsToRecord(mergeQuotationSiteOptionRows([], detailForSite)),
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForSite]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const byRole = await fetchUsersForAppRoles(["sales"]);
+        if (!cancelled) {
+          setSalespersonOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+        }
+      } catch {
+        if (!cancelled) setSalespersonOptions([]);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
+    if (!customerId) {
+      setContactOptions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        if (!cancelled) {
+          setContactOptions(
+            items.map((c) => ({
+              value: String(c.id),
+              label: formatContactOptionLabel(c),
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setContactOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForSite]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -97,63 +237,25 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   React.useEffect(() => {
     if (!detailForSite) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
+      setSiteDetails([]);
+      setSiteDetailsLoading(false);
       return;
     }
 
     let cancelled = false;
-    const snap = detailForSite.site_snapshot;
-    const snapshotAddressUsable =
-      !!snap &&
-      hasDetailAddress({
-        line1: snap.address_line_1,
-        line2: snap.address_line_2,
-        city: snap.city,
-        state: snap.state,
-        pincode: snap.pincode,
-        country: snap.country,
-      });
-    const nestedSite = getQuotationNestedSite(detailForSite.site);
-    const nestedSiteAddressUsable =
-      !!nestedSite &&
-      hasDetailAddress({
-        line1: nestedSite.address_line_1,
-        line2: nestedSite.address_line_2,
-        city: nestedSite.city,
-        state: nestedSite.state,
-        pincode: nestedSite.pincode,
-        country: nestedSite.country,
-      });
-    if (snapshotAddressUsable || nestedSiteAddressUsable) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const siteId = detailForSite.site != null ? getQuotationSiteId(detailForSite.site) : null;
-    if (siteId == null || !Number.isFinite(siteId)) {
-      setSiteDetail(null);
-      setSiteDetailLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setSiteDetailLoading(true);
-    setSiteDetail(null);
+    setSiteDetailsLoading(true);
+    setSiteDetails([]);
     void (async () => {
       try {
-        const row = await fetchSite(siteId);
-        if (!cancelled) setSiteDetail(row);
+        const rows = await resolveQuotationSiteDetails(detailForSite);
+        if (!cancelled) setSiteDetails(rows);
       } catch {
-        if (!cancelled) setSiteDetail(null);
+        if (!cancelled) setSiteDetails([]);
       } finally {
-        if (!cancelled) setSiteDetailLoading(false);
+        if (!cancelled) setSiteDetailsLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -169,41 +271,180 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ detail, listBack }) => (
-        <>
-          <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
-          <EntityDetailEditButton
-            label={t("edit")}
-            listBack={listBack}
-            fallbackRoute={routes.dashboard.quotations}
-          />
-        </>
+      actions={({ detail, listBack, retry, reloadQuiet }) => (
+        <QuotationDetailActions
+          quotationId={quotationId}
+          detail={detail}
+          listBack={listBack}
+          onStatusSaved={retry}
+          onJobCreated={() => void reloadQuiet()}
+          t={t}
+        />
       )}
     >
-      {({ detail, dateFmt }) => {
+      {({ detail, dateFmt, retry }) => {
         const customerIdForLookup = getQuotationCustomerId(detail.customer);
-        const siteIdForLookup = getQuotationSiteId(detail.site);
+        const projectIdForLookup = getQuotationProjectId(detail.project);
+        const clientOptions = Object.entries(clientNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const projectOptions = Object.entries(projectNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const siteOptions = Object.entries(siteNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
+        const tagOptions = Object.entries(tagNames).map(([id, name]) => ({
+          value: id,
+          label: name,
+        }));
         return (
           <QuotationDetailBody
             detail={detail}
             customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
-            siteName={
-              detail.site_snapshot?.site_name?.trim() ||
-              (siteIdForLookup != null ? siteNames[siteIdForLookup] : undefined)
-            }
+            projectName={projectIdForLookup != null ? projectNames[projectIdForLookup] : undefined}
+            siteNames={siteNames}
             tagLookup={tagNames}
-            siteDetail={siteDetail}
-            siteDetailLoading={siteDetailLoading}
+            siteDetails={siteDetails}
+            siteDetailsLoading={siteDetailsLoading}
             dateFmt={dateFmt}
             dueFmt={dueFmt}
+            onSaved={retry}
+            clientOptions={clientOptions}
+            projectOptions={projectOptions}
+            siteOptions={siteOptions}
+            tagOptions={tagOptions}
+            contactOptions={contactOptions}
+            salespersonOptions={salespersonOptions}
           />
         );
       }}
     </EntityDetailScreen>
+  );
+}
+
+function QuotationDetailActions({
+  quotationId,
+  detail,
+  listBack,
+  onStatusSaved,
+  onJobCreated,
+  t,
+}: {
+  quotationId: number;
+  detail: QuotationDetail;
+  listBack: string;
+  onStatusSaved: () => void;
+  onJobCreated: () => void;
+  t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
+}) {
+  const [statusOpen, setStatusOpen] = React.useState(false);
+  const [statusSaving, setStatusSaving] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+  const [creatingJob, setCreatingJob] = React.useState(false);
+  const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
+
+  React.useEffect(() => {
+    if (quotationHasLinkedJob(detail, quotationId)) {
+      setJobCreated(true);
+    }
+  }, [detail, quotationId]);
+
+  const isServiceQuotation = resolveQuotationQuoteCategory(detail) === QUOTE_CATEGORY.service;
+  const isApproved = normalizeQuotationStatusValue(detail.status) === "approved";
+  const showCreateJob = isServiceQuotation && isApproved && !jobCreated;
+
+  async function handleStatusUpdate(status: string) {
+    setStatusSaving(true);
+    try {
+      await updateQuotation(detail.id, { status });
+      toastSuccess(t("statusUpdatedToast"));
+      setStatusOpen(false);
+      onStatusSaved();
+    } catch (error) {
+      toastApiError(error, t("statusUpdateError"));
+    } finally {
+      setStatusSaving(false);
+    }
+  }
+
+  async function handleSendQuotation() {
+    setSending(true);
+    try {
+      await sendQuotation(quotationId);
+      toastSuccess("Quotation sent successfully");
+      onStatusSaved();
+    } catch (error) {
+      toastApiError(error, "Failed to send quotation");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleCreateJob() {
+    setCreatingJob(true);
+    try {
+      const job = await createJobFromServiceQuotation(quotationId);
+      markServiceQuoteJobCreated(quotationId, job.id);
+      setJobCreated(true);
+      toastSuccess(t("detail.createJobToast"));
+      onJobCreated();
+    } catch (error) {
+      toastApiError(error, t("detail.createJobError"));
+    } finally {
+      setCreatingJob(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {showCreateJob ? (
+        <AppButton
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={creatingJob}
+          disabled={creatingJob}
+          aria-label={t("detail.createJobAria")}
+          onClick={() => void handleCreateJob()}
+        >
+          {t("detail.createJob")}
+        </AppButton>
+      ) : null}
+      <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
+        {t("updateStatus.action")}
+      </AppButton>
+      <AppButton
+        type="button"
+        variant="secondary"
+        size="sm"
+        loading={sending}
+        disabled={sending}
+        onClick={() => void handleSendQuotation()}
+      >
+        Send Quotation
+      </AppButton>
+      <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
+      <EntityDetailEditButton
+        label={t("edit")}
+        listBack={listBack}
+        fallbackRoute={routes.dashboard.quotations}
+      />
+      <QuotationUpdateStatusDialog
+        open={statusOpen}
+        currentStatus={detail.status}
+        quoteName={detail.quote_name}
+        saving={statusSaving}
+        onClose={() => setStatusOpen(false)}
+        onConfirm={(status) => void handleStatusUpdate(status)}
+      />
+    </div>
   );
 }

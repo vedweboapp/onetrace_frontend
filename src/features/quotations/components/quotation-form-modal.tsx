@@ -4,13 +4,17 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import { createQuotation, fetchProjectLevelRowsForQuotation, fetchWorkspaceUsers } from "@/features/quotations/api/quotation.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
+import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
+import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
 import type { ProjectLevelForQuotation } from "@/features/quotations/types/quotation.types";
-import { applyQuotationSiteSnapshot, mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
+import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import {
   createQuotationFormSchema,
   type QuotationFormValues,
@@ -22,11 +26,20 @@ import {
 } from "@/features/quotations/utils/quotation-form-map";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
-import type { Site } from "@/features/sites/types/site.types";
+import { fetchQuotationSiteRows, type QuotationSiteOptionRow } from "@/features/quotations/utils/quotation-site-options.util";
+import {
+  fetchUsersForAppRoles,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
@@ -36,6 +49,7 @@ import {
   FieldGroup,
   FormFieldRow,
   MultiCheckSelect,
+  SurfaceDateInput,
   surfaceInputClassName,
   surfaceTextareaClassName,
 } from "@/shared/ui";
@@ -52,6 +66,7 @@ type Props = {
 
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   const t = useTranslations("Dashboard.quotations");
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
 
@@ -59,10 +74,12 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (open) setFormTab("project");
   }, [open]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
-  const [siteRows, setSiteRows] = React.useState<Site[]>([]);
+  const [siteRows, setSiteRows] = React.useState<QuotationSiteOptionRow[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
-  const [userOptions, setUserOptions] = React.useState<Option[]>([]);
+  const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<Option[]>([]);
+  const [technicianOptions, setTechnicianOptions] = React.useState<Option[]>([]);
   const [levelRows, setLevelRows] = React.useState<ProjectLevelForQuotation[]>([]);
 
   const schema = React.useMemo(
@@ -70,30 +87,24 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       createQuotationFormSchema({
         quoteName: t("validation.quoteName"),
         customer: t("validation.customer"),
-        site: t("validation.site"),
+        sites: t("validation.sites"),
         project: t("validation.project"),
       }),
     [t],
   );
 
-  const { control, register, reset, setValue, getValues, handleSubmit, formState: { errors } } =
+  const { control, register, reset, setValue, getValues, setError, handleSubmit, formState: { errors } } =
     useForm<QuotationFormValues>({
       resolver: zodResolver(schema),
       defaultValues: emptyQuotationFormDefaults(),
+      shouldUnregister: false,
     });
 
   const quoteNameRegister = register("quote_name");
 
   const customerIdStr = useWatch({ control, name: "customer" });
   const projectIdStr = useWatch({ control, name: "project" });
-  const siteIdStr = useWatch({ control, name: "site" });
-
-  const selectedSiteForPayload = React.useMemo(() => {
-    const raw = siteIdStr?.trim();
-    if (!raw || !/^\d+$/.test(raw)) return null;
-    const id = Number.parseInt(raw, 10);
-    return siteRows.find((s) => s.id === id) ?? null;
-  }, [siteIdStr, siteRows]);
+  const sitesStr = useWatch({ control, name: "sites" });
   React.useEffect(() => {
     if (!open) return;
     reset(emptyQuotationFormDefaults());
@@ -129,7 +140,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const filters: { is_active: true; client?: number } = { is_active: true };
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
         const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
@@ -147,17 +158,18 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const users = await fetchWorkspaceUsers();
+        const byRole = await fetchUsersForAppRoles(["technician", "sales", "manager"]);
         if (!cancelled) {
-          setUserOptions(
-            users.map((u) => ({
-              value: String(u.id),
-              label: u.username?.trim() || u.email?.trim() || `#${u.id}`,
-            })),
-          );
+          setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+          setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+          setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
         }
       } catch {
-        if (!cancelled) setUserOptions([]);
+        if (!cancelled) {
+          setTechnicianOptions([]);
+          setSalesOptions([]);
+          setManagerOptions([]);
+        }
       }
     })();
     return () => {
@@ -171,10 +183,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       setSiteRows([]);
       return;
     }
-    (async () => {
+    void (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
-        if (!cancelled) setSiteRows(items);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation: false,
+          projectId,
+        });
+        if (!cancelled) setSiteRows(rows);
       } catch {
         if (!cancelled) setSiteRows([]);
       }
@@ -192,9 +207,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
-          setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
       } catch {
         if (!cancelled) setContactOptions([]);
@@ -232,6 +247,31 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     [projectRows],
   );
 
+  const clientQuickCreate = useQuickCreate({ kind: "client" });
+
+  const projectQuickCreate = useQuickCreate({
+    kind: "project",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+
+  const contactQuickCreate = useQuickCreate({
+    kind: "contact",
+    clientId: customerId,
+    addDisabled: saving || !customerId,
+  });
+  const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
+  const openUsersSettings = React.useCallback(() => {
+    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
+    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
+  }, [router]);
+
   React.useEffect(() => {
     if (!open) return;
     const selectedProject = getValues("project")?.trim();
@@ -239,44 +279,42 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
     if (!stillExists) {
       setValue("project", "", { shouldDirty: true, shouldValidate: true });
-      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+      setValue("sites", [], { shouldDirty: true, shouldValidate: true });
     }
   }, [open, projectRows, customerId, getValues, setValue]);
 
   React.useEffect(() => {
     if (!open || !projectId || projectId <= 0) return;
-    const selectedSite = getValues("site")?.trim();
-    if (selectedSite) return;
+    const selectedSites = getValues("sites") ?? [];
+    if (selectedSites.length > 0) return;
     if (siteOptions.length !== 1) return;
-    setValue("site", siteOptions[0].value, { shouldValidate: true, shouldDirty: true });
+    setValue("sites", [siteOptions[0].value], { shouldValidate: true, shouldDirty: true });
   }, [open, projectId, siteOptions, getValues, setValue]);
 
   React.useEffect(() => {
     if (!open) return;
-    const selectedSite = getValues("site");
-    if (!selectedSite) return;
-    const stillExists = siteOptions.some((s) => s.value === selectedSite);
-    if (!stillExists) {
-      setValue("site", "", { shouldDirty: true, shouldValidate: true });
+    const selectedSites = getValues("sites") ?? [];
+    if (selectedSites.length === 0) return;
+    const valid = new Set(siteOptions.map((s) => s.value));
+    const next = selectedSites.filter((id) => valid.has(id));
+    if (next.length !== selectedSites.length) {
+      setValue("sites", next, { shouldDirty: true, shouldValidate: true });
     }
   }, [open, siteOptions, getValues, setValue]);
 
   async function submit(values: QuotationFormValues) {
     setSaving(true);
     try {
-      const base = mapQuotationFormToPayload(values);
+      const base = mapQuotationFormToPayload(values, { quote_category: QUOTE_CATEGORY.project });
       const withDraft = quoteDraft ? mergeQuotationDraftIntoPayload(base, quoteDraft) : base;
-      const payload = applyQuotationSiteSnapshot(
-        withDraft,
-        selectedSiteForPayload,
-        parseOptionalId(values.site_contact),
-      );
-      await createQuotation(payload);
+      const payload = withDraft;
+      const saved = await createQuotation(payload);
       toastSuccess(t("createdToast"));
       onSaved();
       onClose();
-    } catch {
-      toastError(t("saveError"));
+      router.push(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, routes.dashboard.quotations));
+    } catch (error) {
+      reportFormSubmitApiError(error, setError, t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -323,12 +361,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         </>
       }
     >
+      <>
       <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit)}>
-        {noClients ? (
+        {/* {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             {t("noClientsHint")}
           </p>
-        ) : null}
+        ) : null} */}
 
         <AppTabs
           tabs={[
@@ -355,7 +394,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               {...quoteNameRegister}
               onBlur={(e) => {
                 quoteNameRegister.onBlur(e);
-                const next = capitalizeFirstLetter(e.target.value);
+                const next = sanitizeTitleInput(e.target.value);
                 if (next !== e.target.value) setValue("quote_name", next, { shouldValidate: true });
               }}
             />
@@ -373,15 +412,18 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   options={clientOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.customer")}
-                  disabled={saving || noClients}
+                  disabled={saving}
                   invalid={!!errors.customer}
                   onBlur={field.onBlur}
+                  onAdd={clientQuickCreate.onAdd}
+                  addAriaLabel={clientQuickCreate.addAriaLabel}
+                  addLabel={clientQuickCreate.addLabel}
                   onChange={(v) => {
                     field.onChange(v);
-                    setValue("site", "");
+                    setValue("sites", []);
                     setValue("project", "");
                     setValue("primary_customer_contact", "");
-                    setValue("additional_customer_contact", "");
+                    setValue("additional_customer_contacts", []);
                     setValue("site_contact", "");
                   }}
                 />
@@ -402,12 +444,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   options={projectOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.project")}
-                  disabled={saving || !customerId || projectOptions.length === 0}
+                  disabled={saving || !customerId}
                   invalid={!!errors.project}
                   onBlur={field.onBlur}
+                  onAdd={projectQuickCreate.onAdd}
+                  addAriaLabel={projectQuickCreate.addAriaLabel}
+                  addLabel={projectQuickCreate.addLabel}
                   onChange={(v) => {
                     field.onChange(v);
-                    setValue("site", "");
+                    setValue("sites", []);
                     setValue("site_contact", "");
                   }}
                 />
@@ -415,27 +460,27 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             />
             <FieldErrorText>{errors.project?.message}</FieldErrorText>
           </FieldGroup>
-          <FieldGroup label={t("fields.site")} htmlFor="quotation-site" required>
+          <FieldGroup label={t("fields.sites")} htmlFor="quotation-sites" required>
             <Controller
               control={control}
-              name="site"
+              name="sites"
               render={({ field }) => (
-                <CheckmarkSelect
-                  id="quotation-site"
-                  portaled
-                  searchable
-                  listLabel={t("fields.site")}
+                <MultiCheckSelect
+                  id="quotation-sites"
                   options={siteOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.site")}
-                  disabled={saving || !projectId || siteOptions.length === 0}
-                  invalid={!!errors.site}
-                  onBlur={field.onBlur}
+                  values={field.value ?? []}
                   onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={saving || !projectId}
+                  placeholder={t("placeholders.site")}
+                  listLabel={t("fields.sites")}
+                  onAdd={siteQuickCreate.onAdd}
+                  addAriaLabel={siteQuickCreate.addAriaLabel}
+                  addLabel={siteQuickCreate.addLabel}
                 />
               )}
             />
-            <FieldErrorText>{errors.site?.message}</FieldErrorText>
+            <FieldErrorText>{errors.sites?.message}</FieldErrorText>
           </FieldGroup>
         </FormFieldRow>
 
@@ -454,30 +499,33 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.contactOptional")}
                   disabled={saving || !customerId}
                   onBlur={field.onBlur}
+                  onAdd={contactQuickCreate.onAdd}
+                  addAriaLabel={contactQuickCreate.addAriaLabel}
+                  addLabel={contactQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
             />
           </FieldGroup>
-          <FieldGroup label={t("fields.additionalContact")} htmlFor="quotation-additional-contact">
-            <Controller
-              control={control}
-              name="additional_customer_contact"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="quotation-additional-contact"
-                  portaled
-                  listLabel={t("fields.additionalContact")}
-                  options={contactOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.contactOptional")}
-                  disabled={saving || !customerId}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                />
-              )}
-            />
+          <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
+            <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
           </FieldGroup>
+        </FormFieldRow>
+
+        <QuotationAdditionalContactsFields
+          control={control}
+          contactOptions={contactOptions}
+          customerId={customerId}
+          disabled={saving}
+          onAddContact={contactQuickCreate.onAdd}
+          addAriaLabel={contactQuickCreate.addAriaLabel}
+          addLabel={contactQuickCreate.addLabel}
+          onRequestAddContact={(rowIndex) => {
+            pendingAdditionalContactRowRef.current = rowIndex;
+          }}
+        />
+
+        <FormFieldRow cols="2">
           <FieldGroup label={t("fields.siteContact")} htmlFor="quotation-site-contact">
             <Controller
               control={control}
@@ -492,16 +540,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   emptyLabel={t("placeholders.contactOptional")}
                   disabled={saving || !customerId}
                   onBlur={field.onBlur}
+                  onAdd={contactQuickCreate.onAdd}
+                  addAriaLabel={contactQuickCreate.addAriaLabel}
+                  addLabel={contactQuickCreate.addLabel}
                   onChange={field.onChange}
                 />
               )}
             />
-          </FieldGroup>
-          <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
-            <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
-          </FieldGroup>
-          <FieldGroup label={t("fields.dueDate")} htmlFor="quotation-due">
-            <input id="quotation-due" type="date" className={surfaceInputClassName} {...register("due_date")} />
           </FieldGroup>
         </FormFieldRow>
 
@@ -515,11 +560,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   id="quotation-sales"
                   portaled
                   listLabel={t("fields.salesperson")}
-                  options={userOptions}
+                  options={salesOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
                   onBlur={field.onBlur}
+                  onAdd={openUsersSettings}
+                  addAriaLabel="Add user"
+                  addLabel="Add new"
                   onChange={field.onChange}
                 />
               )}
@@ -534,11 +582,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   id="quotation-pm"
                   portaled
                   listLabel={t("fields.projectManager")}
-                  options={userOptions}
+                  options={managerOptions}
                   value={field.value}
                   emptyLabel={t("placeholders.userOptional")}
                   disabled={saving}
                   onBlur={field.onBlur}
+                  onAdd={openUsersSettings}
+                  addAriaLabel="Add user"
+                  addLabel="Add new"
                   onChange={field.onChange}
                 />
               )}
@@ -557,7 +608,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.tags")}</p>
           </FieldGroup>
           <FieldGroup label={t("fields.technicians")} htmlFor="quotation-modal-technicians">
-            {userOptions.length === 0 ? (
+            {technicianOptions.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
             ) : (
               <Controller
@@ -566,7 +617,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                 render={({ field }) => (
                   <MultiCheckSelect
                     id="quotation-modal-technicians"
-                    options={userOptions}
+                    options={technicianOptions}
                     values={(field.value ?? []).map(String)}
                     onChange={(next) =>
                       field.onChange(
@@ -577,6 +628,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                     disabled={saving}
                     listLabel={t("fields.technicians")}
                     placeholder={t("placeholders.userOptional")}
+                    onAdd={openUsersSettings}
+                    addAriaLabel="Add user"
+                    addLabel="Add new"
                   />
                 )}
               />
@@ -589,9 +643,11 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             id="quotation-desc"
             rows={4}
             className={surfaceTextareaClassName}
-            {...register("description")}
+            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+            {...register("description", rhfRegisterOptions("description"))}
           />
         </FieldGroup>
+        <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
         </div>
         <div
           role="tabpanel"
@@ -606,10 +662,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
               onDraftChange={setQuoteDraft}
               saving={saving}
               canShow={canShowLevels}
+              allowManualLines={false}
             />
           </div>
+          <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t("formTabs.prevToProject")} />
         </div>
       </form>
+      </>
     </AppModal>
   );
 }

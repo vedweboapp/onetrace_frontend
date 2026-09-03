@@ -9,6 +9,8 @@ function asMembership(row: unknown): AuthOrganizationMembership | null {
       id: typeof o.id === "number" ? o.id : undefined,
       organization_id: raw,
       organization_name: typeof o.organization_name === "string" ? o.organization_name : undefined,
+      role: typeof o.role === "string" ? o.role : undefined,
+      role_name: typeof o.role_name === "string" ? o.role_name : undefined,
     };
   }
   if (typeof raw === "string" && raw.trim() !== "") {
@@ -17,6 +19,8 @@ function asMembership(row: unknown): AuthOrganizationMembership | null {
       return {
         organization_id: n,
         organization_name: typeof o.organization_name === "string" ? o.organization_name : undefined,
+        role: typeof o.role === "string" ? o.role : undefined,
+        role_name: typeof o.role_name === "string" ? o.role_name : undefined,
       };
     }
   }

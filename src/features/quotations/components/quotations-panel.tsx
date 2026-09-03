@@ -1,49 +1,78 @@
 "use client";
 
+import { cn } from "@/core/utils/http.util";
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
+import { fetchAllQuotationIds, fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  QUOTE_CATEGORY,
+} from "@/features/quotations/constants/quotation-category";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
+  getQuotationProjectId,
   getQuotationSiteId,
   quotationCustomerLabel,
+  quotationProjectLabel,
   quotationSiteLabel,
   quotationTagsLabels,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
+import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
+import {
+  fetchUsersForAppRoles,
+  resolveUserProfileSelectId,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
   CheckmarkSelect,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
+  ListPageCardMetaLine,
   ListPageCardSkeleton,
   ListPageHeader,
   ListPageSearchField,
+  listPageCardScrollClassName,
   SurfaceShell,
 } from "@/shared/ui";
-import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import {
+  MassActionBar,
+  buildQuotationMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 
 export function QuotationsPanel() {
   const t = useTranslations("Dashboard.quotations");
@@ -75,13 +104,14 @@ export function QuotationsPanel() {
   const siteParam = searchParams.get("site");
   const projectParam = searchParams.get("project");
   const statusParam = searchParams.get("status");
+  const categoryParam = searchParams.get("quote_category");
 
   const customerFilter =
     customerParam && /^\d+$/.test(customerParam) ? Number.parseInt(customerParam, 10) : undefined;
-  const siteFilter = siteParam && /^\d+$/.test(siteParam) ? Number.parseInt(siteParam, 10) : undefined;
   const projectFilter =
     projectParam && /^\d+$/.test(projectParam) ? Number.parseInt(projectParam, 10) : undefined;
   const statusFilter = statusParam?.trim() || undefined;
+  const categoryFilter = parseQuoteCategoryParam(categoryParam);
 
   const [items, setItems] = React.useState<QuotationListItem[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -94,19 +124,37 @@ export function QuotationsPanel() {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const refreshNonce = 0;
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchCustomerOptions, setFetchCustomerOptions] = React.useState(() => Boolean(customerParam));
+  const [fetchSiteOptions, setFetchSiteOptions] = React.useState(() => Boolean(siteParam || customerParam));
+  const [fetchProjectOptions, setFetchProjectOptions] = React.useState(
+    () => Boolean(projectParam) || categoryFilter === QUOTE_CATEGORY.project,
+  );
+  const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
   const [siteRows, setSiteRows] = React.useState<Site[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
-  const [tagLabelById, setTagLabelById] = React.useState<Record<number, string>>({});
+  const [massSiteOptions, setMassSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massContactOptions, setMassContactOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massTagOptions, setMassTagOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
+
+  const loadCustomerOptions = React.useCallback(async () => {
+    const { items } = await fetchClientsPage(1, 500, { is_active: true });
+    return items.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(loadCustomerOptions, fetchCustomerOptions);
   const openCreate = React.useCallback(() => {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
-  }, [listHref, pathname, router]);
+    const cat = categoryFilter ?? QUOTE_CATEGORY.service;
+    router.push(
+      buildPathWithStoredBack(`${pathname}/new?quote_category=${encodeURIComponent(cat)}`, listHref),
+    );
+  }, [categoryFilter, listHref, pathname, router]);
 
   const openEdit = React.useCallback(
     (id: number) => {
-      router.push(`${pathname}/${id}/edit?back=${encodeURIComponent(listHref)}`);
+      router.push(buildPathWithStoredBack(`${pathname}/${id}/edit`, listHref));
     },
     [listHref, pathname, router],
   );
@@ -117,11 +165,19 @@ export function QuotationsPanel() {
     () => [
       { value: "draft", label: t("quoteStatus.draft") },
       { value: "sent", label: t("quoteStatus.sent") },
-      { value: "accepted", label: t("quoteStatus.accepted") },
+      { value: "approved", label: t("quoteStatus.approved") },
       { value: "rejected", label: t("quoteStatus.rejected") },
     ],
     [t],
   );
+
+  React.useEffect(() => {
+    if (categoryFilter) return;
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("quote_category", QUOTE_CATEGORY.service);
+    const qs = p.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+  }, [categoryFilter, pathname, router, searchParams]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -132,29 +188,12 @@ export function QuotationsPanel() {
   );
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) {
-          setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-        }
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
+    if (!fetchSiteOptions) return;
     let cancelled = false;
     (async () => {
       try {
         const { items } = await fetchSitesPage(1, 500, {
           client: customerFilter,
-          is_active: true,
         });
         if (!cancelled) setSiteRows(items);
       } catch {
@@ -164,9 +203,10 @@ export function QuotationsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [customerFilter]);
+  }, [fetchSiteOptions, customerFilter]);
 
   React.useEffect(() => {
+    if (!fetchProjectOptions) return;
     let cancelled = false;
     (async () => {
       try {
@@ -179,31 +219,69 @@ export function QuotationsPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchProjectOptions]);
 
   React.useEffect(() => {
+    if (!fetchMassOptions) return;
     let cancelled = false;
     (async () => {
       try {
-        const { items: tags } = await fetchTagsPage(1, 500, { is_active: true });
+        const [contactsRes, tagsRes, roleUsers, sitesRes] = await Promise.all([
+          fetchContactsPage(1, 500, { is_active: true }),
+          fetchTagsPage(1, 500, { is_active: true }),
+          fetchUsersForAppRoles(["technician", "manager", "sales"]),
+          fetchSitesPage(1, 500),
+        ]);
         if (!cancelled) {
-          const mapped: Record<number, string> = {};
-          for (const row of tags) {
-            const label = (row.name ?? row.tag_name ?? "").trim();
-            if (label) mapped[row.id] = label;
-          }
-          setTagLabelById(mapped);
+          setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
+          const tagLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
+          setMassTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: tagLabel(row) })));
+          const mergedUsers = [
+            ...(roleUsers.technician ?? []),
+            ...(roleUsers.manager ?? []),
+            ...(roleUsers.sales ?? []),
+          ];
+          const uniqueById = new Map(mergedUsers.map((u) => [resolveUserProfileSelectId(u), u]));
+          setMassUserOptions(userProfilesToSelectOptions([...uniqueById.values()]));
+          setMassSiteOptions(sitesRes.items.map((s) => ({ value: String(s.id), label: s.site_name })));
+          setFetchCustomerOptions(true);
         }
       } catch {
-        if (!cancelled) setTagLabelById({});
+        if (!cancelled) {
+          setMassContactOptions([]);
+          setMassTagOptions([]);
+          setMassUserOptions([]);
+          setMassSiteOptions([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchMassOptions]);
 
   React.useEffect(() => {
+    if (customerParam) setFetchCustomerOptions(true);
+  }, [customerParam]);
+
+  React.useEffect(() => {
+    if (siteParam || customerParam) setFetchSiteOptions(true);
+  }, [siteParam, customerParam]);
+
+  React.useEffect(() => {
+    if (projectParam) setFetchProjectOptions(true);
+  }, [projectParam]);
+
+  React.useEffect(() => {
+    if (categoryFilter === QUOTE_CATEGORY.project) setFetchProjectOptions(true);
+  }, [categoryFilter]);
+
+  React.useEffect(() => {
+    if (customerFilter) setFetchSiteOptions(true);
+  }, [customerFilter]);
+
+  React.useEffect(() => {
+    if (!categoryFilter) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -212,17 +290,17 @@ export function QuotationsPanel() {
         const { items: nextItems, pagination: p } = await fetchQuotationsPage(page, pageSize, {
           search: search || undefined,
           customer: customerFilter,
-          site: siteFilter,
-          project: projectFilter,
+          project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
           status: statusFilter,
+          quote_category: categoryFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -237,9 +315,9 @@ export function QuotationsPanel() {
     pageSize,
     search,
     customerFilter,
-    siteFilter,
     projectFilter,
     statusFilter,
+    categoryFilter,
     refreshNonce,
     t,
   ]);
@@ -259,6 +337,21 @@ export function QuotationsPanel() {
     return m;
   }, [siteRows]);
 
+  const tagLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const row of items) {
+      if (!Array.isArray(row.tags)) continue;
+      for (const tag of row.tags) {
+        if (typeof tag !== "object" || tag === null || typeof tag.id !== "number") continue;
+        const label =
+          (typeof tag.name === "string" && tag.name.trim()) ||
+          (typeof tag.tag_name === "string" && tag.tag_name.trim());
+        if (label) m[tag.id] = label;
+      }
+    }
+    return m;
+  }, [items]);
+
   const projectOptionsForFilter = React.useMemo(() => {
     if (!customerFilter || customerFilter <= 0) {
       return projectRows.map((p) => ({ value: String(p.id), label: p.name }));
@@ -268,19 +361,94 @@ export function QuotationsPanel() {
       .map((p) => ({ value: String(p.id), label: p.name }));
   }, [projectRows, customerFilter]);
 
-  const siteOptionsForFilter = React.useMemo(
-    () => siteRows.map((s) => ({ value: String(s.id), label: s.site_name })),
-    [siteRows],
+  const projectLabelById = React.useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const p of projectRows) m[p.id] = p.name;
+    return m;
+  }, [projectRows]);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      customer: customerFilter,
+      project: categoryFilter === QUOTE_CATEGORY.project ? projectFilter : undefined,
+      status: statusFilter,
+      quote_category: categoryFilter,
+    }),
+    [search, customerFilter, projectFilter, statusFilter, categoryFilter],
   );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildQuotationMassUpdateFields(
+        {
+          clientOptions,
+          siteOptions: massSiteOptions,
+          contactOptions: massContactOptions,
+          userOptions: massUserOptions,
+          tagOptions: massTagOptions,
+          statusOptions: statusFilterOptions,
+        },
+        {
+          quoteName: t("fields.quoteName"),
+          customer: t("fields.customer"),
+          site: t("fields.site"),
+          primaryContact: t("fields.primaryContact"),
+          additionalContact: t("fields.additionalContact"),
+          siteContact: t("fields.siteContact"),
+          orderNumber: t("fields.orderNumber"),
+          dueDate: t("fields.dueDate"),
+          salesperson: t("fields.salesperson"),
+          projectManager: t("fields.projectManager"),
+          technicians: t("fields.technicians"),
+          tags: t("fields.tags"),
+          description: t("fields.description"),
+          status: t("table.status"),
+          isActive: t("filterState"),
+          activeLabel: t("status.active"),
+          inactiveLabel: t("status.inactive"),
+        },
+      ),
+    [
+      clientOptions,
+      massSiteOptions,
+      massContactOptions,
+      massUserOptions,
+      massTagOptions,
+      statusFilterOptions,
+      t,
+    ],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllQuotationIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "quotations",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, customerFilter, projectFilter, statusFilter, categoryFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  React.useEffect(() => {
+    if (mass.selectedCount > 0) setFetchMassOptions(true);
+  }, [mass.selectedCount]);
 
   const hasActiveFilters = hasListActiveFilters({
     search,
     customerParam,
-    siteParam,
     projectParam,
     statusParam,
   });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const showProjectFilter = categoryFilter === QUOTE_CATEGORY.project;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   const quoteStatusLabel = React.useCallback((code: string | null | undefined) => {
@@ -289,7 +457,7 @@ export function QuotationsPanel() {
     const norm = raw.toLowerCase();
     if (norm === "draft") return t("quoteStatus.draft");
     if (norm === "sent") return t("quoteStatus.sent");
-    if (norm === "accepted") return t("quoteStatus.accepted");
+    if (norm === "approved" || norm === "accepted") return t("quoteStatus.approved");
     if (norm === "rejected") return t("quoteStatus.rejected");
     return raw;
   }, [t]);
@@ -300,47 +468,91 @@ export function QuotationsPanel() {
       const customerId = getQuotationCustomerId(row.customer);
       return quotationCustomerLabel(row.customer, customerId != null ? clientLabelById[customerId] : undefined);
     };
-    const siteDisplay = (row: QuotationListItem) => {
-      const siteId = getQuotationSiteId(row.site);
-      return quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
+    const projectDisplay = (row: QuotationListItem) => {
+      const projectId = getQuotationProjectId(row.project);
+      return quotationProjectLabel(row.project, projectId != null ? projectLabelById[projectId] : undefined);
     };
     const tagsDisplay = (row: QuotationListItem) => quotationTagsLabels(row.tags, tagLabelById);
 
     return [
-      c.primary("quote", t("table.quote"), (r) => r.quote_name),
-      c.truncate("customer", t("table.customer"), (r) => customerDisplay(r), {
-        title: (r) => customerDisplay(r),
-      }),
-      c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
-        title: (r) => siteDisplay(r),
-      }),
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
+      c.primary("quote", t("table.quote"), (r) => r.quotation_serial_number),
+      c.link(
+        "customer",
+        t("table.customer"),
+        (r) => customerDisplay(r),
+        (r) => {
+          const customerId = getQuotationCustomerId(r.customer);
+          return customerId != null ? `${routes.dashboard.clients}/${customerId}` : null;
+        },
+        { title: (r) => customerDisplay(r) },
+      ),
+      ...(showProjectFilter
+        ? [
+            c.link(
+              "project",
+              t("table.project"),
+              (r) => projectDisplay(r),
+              (r) => {
+                const projectId = getQuotationProjectId(r.project);
+                return projectId != null ? `${routes.dashboard.projects}/${projectId}` : null;
+              },
+              { title: (r) => projectDisplay(r) },
+            ),
+          ]
+        : []),
+      // c.truncate("site", t("table.site"), (r) => siteDisplay(r), {
+      //   title: (r) => siteDisplay(r),
+      // }),
       c.truncate("tags", t("table.tags"), (r) => tagsDisplay(r), {
         title: (r) => tagsDisplay(r),
       }),
       c.text("status", t("table.status"), (r) => quoteStatusLabel(r.status)),
       c.tabular("due", t("table.due"), (r) => formatFlexibleApiDate(r.due_date, dueFmt)),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", tList("openRowActions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => openEdit(row.id),
-            },
-          ]}
-        />
-      )),
     ];
-  }, [t, tList, dateFmt, dueFmt, clientLabelById, siteLabelById, tagLabelById, quoteStatusLabel]);
+  }, [
+    t,
+    tList,
+    dateFmt,
+    dueFmt,
+    clientLabelById,
+    projectLabelById,
+    tagLabelById,
+    quoteStatusLabel,
+    showProjectFilter,
+    mass,
+    items.length,
+  ]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -368,36 +580,31 @@ export function QuotationsPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchCustomerOptions(true);
+                }}
                 onChange={(v) =>
-                  setUrl({ customer: v || null, site: null, project: null, page: null }, { replace: true })
+                  setUrl({ customer: v || null, project: null, page: null }, { replace: true })
                 }
               />
-              <CheckmarkSelect
-                listLabel={t("filterSite")}
-                buttonAriaLabel={t("filterSite")}
-                options={siteOptionsForFilter}
-                value={siteParam ?? ""}
-                emptyLabel={t("filterAllSites")}
-                portaled
-                searchable
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onChange={(v) => setUrl({ site: v || null, page: null }, { replace: true })}
-              />
-              <CheckmarkSelect
-                listLabel={t("filterProject")}
-                buttonAriaLabel={t("filterProject")}
-                options={projectOptionsForFilter}
-                value={projectParam ?? ""}
-                emptyLabel={t("filterAllProjects")}
-                portaled
-                searchable
-                clearable
-                clearAriaLabel={tList("clearFilter")}
-                className="w-full min-w-0 sm:w-56"
-                onChange={(v) => setUrl({ project: v || null, page: null }, { replace: true })}
-              />
+              {showProjectFilter ? (
+                <CheckmarkSelect
+                  listLabel={t("filterProject")}
+                  buttonAriaLabel={t("filterProject")}
+                  options={projectOptionsForFilter}
+                  value={projectParam ?? ""}
+                  emptyLabel={t("filterAllProjects")}
+                  portaled
+                  searchable
+                  clearable
+                  clearAriaLabel={tList("clearFilter")}
+                  className="w-full min-w-0 sm:w-56"
+                  onOpenChange={(open) => {
+                    if (open) setFetchProjectOptions(true);
+                  }}
+                  onChange={(v) => setUrl({ project: v || null, page: null }, { replace: true })}
+                />
+              ) : null}
               <CheckmarkSelect
                 listLabel={t("filterStatus")}
                 buttonAriaLabel={t("filterStatus")}
@@ -405,6 +612,8 @@ export function QuotationsPanel() {
                 value={statusParam ?? ""}
                 emptyLabel={t("filterAllStatuses")}
                 portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-44"
                 onChange={(v) => setUrl({ status: v || null, page: null }, { replace: true })}
               />
@@ -413,12 +622,21 @@ export function QuotationsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -433,39 +651,29 @@ export function QuotationsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    setUrl(
-                      { search: null, is_active: null, customer: null, site: null, project: null, status: null, page: null },
-                      { replace: true },
-                    )
-                  }
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="clients"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "clients",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() =>
+              setUrl(
+                {
+                  search: null,
+                  customer: null,
+                  project: null,
+                  status: null,
+                  page: null,
+                },
+                { replace: true },
+              )
+            }
+          />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => {
                 const dueLabel = formatFlexibleApiDate(row.due_date, dueFmt);
@@ -474,47 +682,86 @@ export function QuotationsPanel() {
                   row.customer,
                   customerId != null ? clientLabelById[customerId] : undefined,
                 );
+                const projectId = getQuotationProjectId(row.project);
+                const projectDisplay = quotationProjectLabel(
+                  row.project,
+                  projectId != null ? projectLabelById[projectId] : undefined,
+                );
                 const siteId = getQuotationSiteId(row.site);
                 const siteDisplay = quotationSiteLabel(row.site, siteId != null ? siteLabelById[siteId] : undefined);
-                const tagsLine = quotationTagsLabels(row.tags, tagLabelById);
+                const relatedLabel = showProjectFilter ? projectDisplay : siteDisplay;
+                const serial = row.quotation_serial_number?.trim();
+                const quoteName = row.quote_name?.trim() || "—";
                 return (
                   <ListPageCard
                     key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
-                    title={row.quote_name}
-                    subtitle={tagsLine !== "—" ? tagsLine : undefined}
+                    leading={
+                      <input
+                        type="checkbox"
+                        className={mass.selection.rowCheckboxClassName}
+                        checked={mass.selection.isSelected(row.id)}
+                        aria-label={mass.selectRowAriaLabel}
+                        onChange={() => mass.selection.toggleRowSelected(row.id)}
+                      />
+                    }
+                    title={
+                      <span className={cn(entityNameLinkClassName, "block truncate")}>
+                        {serial || quoteName}
+                      </span>
+                    }
+                    subtitle={serial && quoteName !== serial ? quoteName : undefined}
                     meta={
-                      <span className="block min-w-0 truncate" title={`${customerDisplay} · ${siteDisplay}`}>
-                        {customerDisplay}
-                        <span className="text-slate-400 dark:text-slate-500" aria-hidden>
-                          {" "}
-                          ·{" "}
+                      <ListPageCardMetaLine>
+                        <span
+                          className="flex min-w-0 items-center gap-1.5 truncate"
+                          title={`${customerDisplay} · ${relatedLabel}`}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          {customerId != null ? (
+                            <DetailEntityLink
+                              href={`${routes.dashboard.clients}/${customerId}`}
+                              className="min-w-0 truncate font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {customerDisplay}
+                            </DetailEntityLink>
+                          ) : (
+                            <span className="min-w-0 truncate">{customerDisplay}</span>
+                          )}
+                          <span className="shrink-0 text-slate-300 dark:text-slate-600" aria-hidden>
+                            ·
+                          </span>
+                          {showProjectFilter && projectId != null ? (
+                            <DetailEntityLink
+                              href={`${routes.dashboard.projects}/${projectId}`}
+                              className="min-w-0 truncate font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {projectDisplay}
+                            </DetailEntityLink>
+                          ) : (
+                            <span className="min-w-0 truncate">{relatedLabel}</span>
+                          )}
                         </span>
-                        {siteDisplay}
+                      </ListPageCardMetaLine>
+                    }
+                    badge={
+                      <span className="inline-flex max-w-full truncate rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
+                        {quoteStatusLabel(row.status)}
                       </span>
                     }
                     footer={
-                      <div className="flex w-full flex-col gap-2">
-                        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                          <div className="flex min-w-0 flex-wrap items-center gap-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                              <Calendar className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                              <span className="tabular-nums">{dueLabel}</span>
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                              {quoteStatusLabel(row.status)}
-                            </span>
-                            <ActiveStatusBadge
-                              active={row.is_active}
-                              label={row.is_active ? t("status.active") : t("status.inactive")}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                      <ListPageCardFooter
+                        start={
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                            <Calendar className="size-3.5 shrink-0" aria-hidden />
+                            <span className="tabular-nums">{dueLabel}</span>
                           </span>
-                        </div>
-                      </div>
+                        }
+                      />
                     }
                     onCardClick={() => openDetail(row.id)}
                     menu={

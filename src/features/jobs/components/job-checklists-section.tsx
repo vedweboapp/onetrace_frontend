@@ -1,0 +1,108 @@
+"use client";
+
+import { Check } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { JobChecklistItemTitle } from "@/features/jobs/components/job-checklist-item-title";
+import type { JobChecklistItem } from "@/features/jobs/types/job.types";
+import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { cn } from "@/core/utils/http.util";
+import { AppButton } from "@/shared/ui";
+
+type Props = {
+  checklists: JobChecklistItem[];
+  onCompleteChecks?: () => void;
+};
+
+export function JobChecklistsSection({ checklists, onCompleteChecks }: Props) {
+  const t = useTranslations("Dashboard.jobs.checklists");
+  const dateFmt = useDashboardDateFormat();
+
+  if (checklists.length === 0) return null;
+
+  const pendingRequired = checklists.filter((item) => {
+    const basicChecked = item.is_checked;
+    const concentricChecked = !item.concentric_point || item.concentric_point_is_checked === true;
+    return item.is_required && (!basicChecked || !concentricChecked);
+  }).length;
+
+  return (
+    <DetailPanelCard
+      title={t("sectionTitle")}
+      badge={
+        pendingRequired > 0 ? (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            {pendingRequired}
+          </span>
+        ) : null
+      }
+      headerRight={
+        onCompleteChecks ? (
+          <AppButton type="button" variant="secondary" size="sm" onClick={onCompleteChecks}>
+            {t("completeChecks")}
+          </AppButton>
+        ) : null
+      }
+    >
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{t("verifyHint")}</p>
+      <ul className="space-y-2">
+        {checklists.map((item) => (
+          <li
+            key={item.id}
+            className={cn(
+              "flex items-start gap-3 rounded-lg border px-3 py-2.5",
+              "border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-800/40",
+            )}
+          >
+            <span
+              className={cn(
+                "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border",
+                item.is_checked
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900",
+              )}
+              aria-hidden
+            >
+              {item.is_checked ? <Check className="size-3" strokeWidth={3} /> : null}
+            </span>
+            <div className="min-w-0 flex-1">
+              <JobChecklistItemTitle item={item} />
+              {item.is_checked && item.checked_at ? (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t("checkedAt", { when: dateFmt.format(new Date(item.checked_at)) })}
+                </p>
+              ) : null}
+              <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                {item.file ? (
+                  <a
+                    href={item.file}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {t("viewFile")}
+                  </a>
+                ) : null}
+                {item.concentric_point ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                    <span
+                      className={cn(
+                        "flex size-3.5 items-center justify-center rounded border",
+                        item.concentric_point_is_checked
+                          ? "border-emerald-500 bg-emerald-500 text-white"
+                          : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900",
+                      )}
+                    >
+                      {item.concentric_point_is_checked ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                    </span>
+                    <span>{t("concentricPoint")}</span>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </DetailPanelCard>
+  );
+}

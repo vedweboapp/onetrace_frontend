@@ -3,9 +3,9 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import { createClient, updateClient } from "@/features/clients/api/client.api";
 import { createClientFormSchema, type ClientFormValues } from "@/features/clients/schemas/client-form-schema";
 import type { Client } from "@/features/clients/types/client.types";
@@ -15,19 +15,21 @@ import {
   mapClientFormToPayload,
 } from "@/features/clients/utils/client-form-map";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
-  CascadingLocationFields,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
-  FormFieldSpanFull,
   SurfacePhoneField,
+  SurfaceTextField,
   surfaceInputClassName,
 } from "@/shared/ui";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 
 const FORM_DOM_ID = "client-upsert-form";
 
@@ -37,11 +39,13 @@ type Props = {
   mode: "create" | "edit";
   client: Client | null;
   onSaved: () => void;
+  /** When set, returns the created client without requiring a list refresh. */
+  onCreated?: (client: Client) => void;
 };
 
-export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props) {
+export function ClientFormModal({ open, onClose, mode, client, onSaved, onCreated }: Props) {
   const t = useTranslations("Dashboard.clients");
-  const organizations = useAuthStore((s) => s.organizations);
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
@@ -55,6 +59,8 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -64,12 +70,16 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
     register,
     reset,
     setValue,
+    clearErrors,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyClientFormDefaults(),
   });
+
+  const phoneCountry = usePhoneCountryFromAddresses(control);
 
   React.useEffect(() => {
     if (!open) return;
@@ -78,25 +88,25 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
   }, [open, mode, client, reset]);
 
   async function submit(values: ClientFormValues) {
-    const organizationId =
-      getSessionOrganizationId(organizations) ??
-      (mode === "edit" && client ? client.organization : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapClientFormToPayload(values, organizationId);
+    const payload = mapClientFormToPayload(values);
     setSaving(true);
     try {
       if (mode === "edit" && client) {
         await updateClient(client.id, payload);
         toastSuccess(t("updatedToast"));
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.clients, client.id, routes.dashboard.clients));
       } else {
-        await createClient(payload);
+        const created = await createClient(payload);
         toastSuccess(t("createdToast"));
+        onCreated?.(created);
+        onSaved();
+        onClose();
+        router.push(buildEntityDetailHrefAfterSave(routes.dashboard.clients, created.id, routes.dashboard.clients));
       }
-      onSaved();
-      onClose();
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
@@ -140,132 +150,73 @@ export function ClientFormModal({ open, onClose, mode, client, onSaved }: Props)
     >
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         <div>
-        
           <FormFieldRow cols="2" className="mt-3">
-            <FieldGroup label={t("fields.name")} htmlFor="client-name" required>
-              <input
+            <SurfaceTextField
+                register={register}
+                name="name"
                 id="client-name"
-                autoComplete="name"
-                aria-invalid={errors.name ? true : undefined}
-                aria-describedby={errors.name ? "client-name-err" : undefined}
-                className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                {...register("name", {
-                  onChange: (e) => {
-                    e.target.value = capitalizeFirstLetter(e.target.value);
-                  },
-                })}
-              />
-              <FieldErrorText id="client-name-err">{errors.name?.message}</FieldErrorText>
-            </FieldGroup>
-          </FormFieldRow>
-        </div>
-
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("detail.sectionContact")}
-          </h3>
-          <FormFieldRow cols="2" className="mt-3">
-            <FieldGroup label={t("fields.email")} htmlFor="client-email" required>
-              <input
-                id="client-email"
-                type="email"
-                autoComplete="email"
-                aria-invalid={errors.email ? true : undefined}
-                aria-describedby={errors.email ? "client-email-err" : undefined}
-                className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-                {...register("email")}
-              />
-              <FieldErrorText id="client-email-err">{errors.email?.message}</FieldErrorText>
-            </FieldGroup>
-            <FormFieldSpanFull className="sm:col-span-2 lg:col-span-2">
-              <SurfacePhoneField
-                control={control}
-                name="phone"
-                id="client-phone"
-                label={t("fields.phone")}
+                label={t("fields.name")}
+                kind="companyName"
                 required
-                error={errors.phone?.message}
-                disabled={saving}
+                autoComplete="name"
+                error={errors.name?.message}
               />
-            </FormFieldSpanFull>
+            <SurfaceTextField
+                register={register}
+                name="email"
+                id="client-email"
+                label={t("fields.email")}
+                kind="email"
+                required
+                autoComplete="email"
+                error={errors.email?.message}
+              />
           </FormFieldRow>
         </div>
 
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("form.section.address")}
-          </h3>
-          <FormFieldRow cols="1" className="mt-3">
-            <FieldGroup label={t("fields.addressLine1")} htmlFor="client-line1" required>
-              <input
-                id="client-line1"
-                autoComplete="address-line1"
-                aria-invalid={errors.address_line_1 ? true : undefined}
-                aria-describedby={errors.address_line_1 ? "client-line1-err" : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.address_line_1 && "border-red-500 dark:border-red-500",
-                )}
-                {...register("address_line_1")}
-              />
-              <FieldErrorText id="client-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-            </FieldGroup>
-            <FieldGroup label={t("fields.addressLine2")} htmlFor="client-line2">
-              <input
-                id="client-line2"
-                autoComplete="address-line2"
-                aria-invalid={errors.address_line_2 ? true : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  errors.address_line_2 && "border-red-500 dark:border-red-500",
-                )}
-                {...register("address_line_2")}
-              />
-              <FieldErrorText>{errors.address_line_2?.message}</FieldErrorText>
-            </FieldGroup>
-          </FormFieldRow>
+        <FormFieldRow cols="2">
+          <SurfacePhoneField
+            control={control}
+            name="phone"
+            id="client-phone"
+            label={t("fields.phone")}
+            required
+            error={errors.phone?.message}
+            disabled={saving}
+            countryIso={phoneCountry}
+          />
+        </FormFieldRow>
 
-          <div className="mt-4">
-            <CascadingLocationFields<ClientFormValues>
-              control={control}
-              setValue={setValue}
-              countryIsoName="country_iso"
-              stateIsoName="state_iso"
-              cityName="city"
-              labels={{
-                country: t("fields.country"),
-                state: t("fields.stateProvince"),
-                city: t("fields.city"),
-              }}
-              placeholders={{
-                country: t("placeholders.country"),
-                state: t("placeholders.state"),
-                city: t("placeholders.city"),
-              }}
-              disabled={saving}
-              errors={{
-                country: errors.country_iso?.message,
-                state: errors.state_iso?.message,
-                city: errors.city?.message,
-              }}
-              trailingSlot={
-                <FieldGroup label={t("fields.pincode")} htmlFor="client-pincode" required>
-                  <input
-                    id="client-pincode"
-                    autoComplete="postal-code"
-                    aria-invalid={errors.pincode ? true : undefined}
-                    aria-describedby={errors.pincode ? "client-pincode-err" : undefined}
-                    className={cn(
-                      surfaceInputClassName,
-                      errors.pincode && "border-red-500 dark:border-red-500",
-                    )}
-                    {...register("pincode")}
-                  />
-                  <FieldErrorText id="client-pincode-err">{errors.pincode?.message}</FieldErrorText>
-                </FieldGroup>
-              }
-            />
-          </div>
+        <div>
+          <EntityAddressesFields
+            control={control}
+            register={register}
+            setValue={setValue}
+            clearErrors={clearErrors}
+            errors={errors}
+            disabled={saving}
+            idPrefix="client-modal-address"
+            includeGeo={false}
+            labels={{
+              sectionTitle: t("fields.addresses"),
+              add: t("addresses.add"),
+              remove: t("addresses.remove"),
+              rowLabel: (index) => t("addresses.rowLabel", { number: index  }),
+              addressType: t("fields.addressType"),
+              addressLine1: t("fields.addressLine1"),
+              addressLine2: t("fields.addressLine2"),
+              country: t("fields.country"),
+              state: t("fields.stateProvince"),
+              city: t("fields.city"),
+              pincode: t("fields.pincode"),
+              countryPlaceholder: t("placeholders.country"),
+              statePlaceholder: t("placeholders.state"),
+              cityPlaceholder: t("placeholders.city"),
+              addressTypeBilling: t("addressType.billing"),
+              addressTypeShipping: t("addressType.shipping"),
+              addressTypeOther: t("addressType.other"),
+            }}
+          />
         </div>
       </form>
     </AppModal>

@@ -7,12 +7,19 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Link } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  parseQuoteCategoryParam,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
+import { DetailEntityLink, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { fetchCompositeItem } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { parseCompositeScopeRepeat } from "@/features/quotations/utils/quotation-composite-scope-nav.util";
+import { loadQuotationScopePinDetails } from "@/features/quotations/utils/quotation-composite-scope-pins.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import {
@@ -29,9 +36,10 @@ import {
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
+import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
-
+ 
 function parseUnitPrice(detail: CompositeItem): number {
   const n =
     typeof detail.selling_price === "number"
@@ -56,22 +64,58 @@ function childUnitPrice(child: Item | undefined): number {
 type Props = {
   compositeItemId: number;
   defaultBackHref: string;
+  quotationId?: number;
 };
 
-export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBackHref }: Props) {
+export function QuotationCompositeScopeDetailScreen({
+  compositeItemId,
+  defaultBackHref,
+  quotationId,
+}: Props) {
   const t = useTranslations("Dashboard.quotations.compositeScope");
   const tItems = useTranslations("Dashboard.items");
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const repeatCount = parseCompositeScopeRepeat(searchParams.get("repeat"));
   const sectionLabel = searchParams.get("section")?.trim() || null;
   const plotLabel = searchParams.get("plot")?.trim() || null;
-  const backHref =
-    sanitizeInternalListBack(searchParams.get("back"), "quotations") ??
-    sanitizeInternalListBack(searchParams.get("back"), "projects") ??
-    defaultBackHref;
+  const pinDetailsKey = searchParams.get("pinDetailsKey");
+  const pinDetails = React.useMemo(() => loadQuotationScopePinDetails(pinDetailsKey), [pinDetailsKey]);
+  const backHref = React.useMemo(
+    () =>
+      normalizeQuotationScopeBackHref(
+        searchParams.get("back"),
+        mergeUrlQueryParam(defaultBackHref, "tab", "pricing"),
+      ),
+    [searchParams, defaultBackHref],
+  );
+
+  /** Keep header/sidebar quote category in sync (project vs service). */
+  React.useEffect(() => {
+    if (!quotationId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const detail = await fetchQuotation(quotationId);
+        if (cancelled) return;
+        const resolved = resolveQuotationQuoteCategory(detail);
+        const current = parseQuoteCategoryParam(searchParams.get("quote_category"));
+        if (current === resolved) return;
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("quote_category", resolved);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      } catch {
+        // Non-blocking — URL may already carry quote_category from navigation.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [quotationId, pathname, router, searchParams]);
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,6 +123,13 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
   const [childItemsById, setChildItemsById] = React.useState<Map<number, Item>>(new Map());
 
   React.useEffect(() => {
+    if (pinDetails) {
+      setLoading(false);
+      setError(null);
+      setDetail(null);
+      setChildItemsById(new Map());
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -107,30 +158,33 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
     return () => {
       cancelled = true;
     };
-  }, [compositeItemId, t]);
+  }, [compositeItemId, t, pinDetails]);
 
   const components = detail?.components ?? [];
   const packageUnitPrice = detail ? parseUnitPrice(detail) : 0;
   const scopeLineTotal = packageUnitPrice * repeatCount;
-  const contextParts = [sectionLabel, plotLabel].filter(Boolean);
+  const contextParts = [pinDetails?.sectionLabel ?? sectionLabel, pinDetails?.plotLabel ?? plotLabel].filter(Boolean);
+  const pinTotalQty = pinDetails ? pinDetails.rows.reduce((sum, row) => sum + row.quantity, 0) : 0;
+  const pinTotalAmount = pinDetails ? pinDetails.rows.reduce((sum, row) => sum + row.pins_total, 0) : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <DetailPageHeader
-        title={loading ? t("loadingTitle") : (detail?.name ?? t("loadingTitle"))}
+        title={pinDetails?.title ?? detail?.name ?? tItems("detailMetaTitle")}
+        titleLoading={loading}
         backHref={backHref}
         backAriaLabel={t("backAria")}
         subtitle={
           contextParts.length > 0 ? (
             <span>
               {contextParts.join(" · ")}
-              {repeatCount > 1 ? (
+              {pinDetails ? null : repeatCount > 1 ? (
                 <span className="ml-2 font-medium text-slate-700 dark:text-slate-200">
                   {t("repeatBadge", { count: repeatCount })}
                 </span>
               ) : null}
             </span>
-          ) : repeatCount > 1 ? (
+          ) : pinDetails ? null : repeatCount > 1 ? (
             t("repeatBadge", { count: repeatCount })
           ) : null
         }
@@ -138,7 +192,9 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
 
       <DetailPagePadding className="flex-1">
         {loading ? (
-          <SurfaceShell className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("loadingTitle")}</SurfaceShell>
+          <SurfaceShell>
+            <EntityDetailLoadingSkeleton />
+          </SurfaceShell>
         ) : error ? (
           <SurfaceShell className="space-y-3 p-6">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -146,10 +202,120 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
               {tItems("detail.retry")}
             </AppButton>
           </SurfaceShell>
+        ) : pinDetails ? (
+          <div className={detailPageStackClassName}>
+            <DetailPanelCard >
+              <DetailMetricsGrid>
+                <DetailMetricCard label={t("colQtyInScope")}>
+                  <span className="tabular-nums font-semibold">{pinTotalQty}</span>
+                </DetailMetricCard>
+                <DetailMetricCard label={t("colLineTotal")}>
+                  <span className="tabular-nums font-semibold text-[color:var(--dash-accent)]">
+                    {formatMoneyDisplay(pinTotalAmount, loc)}
+                  </span>
+                </DetailMetricCard>
+              </DetailMetricsGrid>
+            </DetailPanelCard>
+
+          <DetailPanelCard title={t("sectionComponents")}>
+  {pinDetails.rows.length > 0 ? (
+    <DetailLinkedTable
+      columns={[
+        {
+          id: "product",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colProductName")}
+            </span>
+          ),
+        },
+        {
+          id: "qty",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colQtyInScope")}
+            </span>
+          ),
+        },
+        {
+          id: "unit",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colUnitPrice")}
+            </span>
+          ),
+        },
+        {
+          id: "line",
+          header: (
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {t("colLineTotal")}
+            </span>
+          ),
+        },
+      ]}
+    >
+      {pinDetails.rows.map((row, index) => (
+        <DetailLinkedTableRow
+          key={`${row.pin_id ?? "draft"}-${row.pins_order}-${index}`}
+          index={index}
+        >
+          {/* Product Name */}
+          <DetailLinkedTableTd
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "font-medium text-slate-700 dark:text-slate-200 min-w-[220px]",
+            })}
+          >
+            {row.name || "-"}
+          </DetailLinkedTableTd>
+
+          {/* Quantity */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums text-slate-600 dark:text-slate-300",
+            })}
+          >
+            {row.quantity}
+          </DetailLinkedTableTd>
+
+          {/* Unit Price */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums text-slate-600 dark:text-slate-300",
+            })}
+          >
+            {formatMoneyDisplay(row.selling_price, loc)}
+          </DetailLinkedTableTd>
+
+          {/* Line Total */}
+          <DetailLinkedTableTd
+            narrow
+            className={detailLinkedTableCellClassName({
+              cellClassName:
+                "tabular-nums font-semibold text-slate-900 dark:text-white",
+            })}
+          >
+            {formatMoneyDisplay(row.pins_total, loc)}
+          </DetailLinkedTableTd>
+        </DetailLinkedTableRow>
+      ))}
+    </DetailLinkedTable>
+  ) : (
+    <p className="text-sm text-slate-500 dark:text-slate-400">
+      {t("noComponents")}
+    </p>
+  )}
+</DetailPanelCard>
+          </div>
         ) : detail ? (
           <div className={detailPageStackClassName}>
             <DetailPanelCard title={t("sectionQuoteLine")}>
-              <DetailMetricsGrid className="sm:grid-cols-2 lg:grid-cols-3">
+              <DetailMetricsGrid>
                 {repeatCount > 1 ? (
                   <DetailMetricCard label={t("includedTimes")}>
                     <span className="tabular-nums font-semibold">×{repeatCount}</span>
@@ -167,7 +333,7 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
             </DetailPanelCard>
 
             <DetailPanelCard title={tItems("detail.sectionOverview")}>
-              <DetailMetricsGrid className="lg:grid-cols-2">
+              <DetailMetricsGrid>
                 <DetailMetricCard label={tItems("detail.sku")}>
                   <span className="font-mono">{detail.sku?.trim() ? detail.sku : "—"}</span>
                 </DetailMetricCard>
@@ -188,12 +354,12 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                 </DetailMetricCard>
               </DetailMetricsGrid>
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.compositeItems}/${detail.id}`}
-                  className="font-medium text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-medium text-blue-600 underline-offset-2 hover:underline"
                 >
                   {t("openCatalogItem")}
-                </Link>
+                </DetailEntityLink>
               </p>
             </DetailPanelCard>
 
@@ -223,12 +389,12 @@ export function QuotationCompositeScopeDetailScreen({ compositeItemId, defaultBa
                             cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                           })}
                         >
-                          <Link
+                          <DetailEntityLink
                             href={`${routes.dashboard.items}/${component.child_item}`}
-                            className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                            className="block truncate text-blue-600 underline-offset-2 hover:underline"
                           >
-                            {child?.name ?? `${tItems("detail.componentItem")} #${component.child_item}`}
-                          </Link>
+                            {child?.name ?? "—"}
+                          </DetailEntityLink>
                         </DetailLinkedTableTd>
                         <DetailLinkedTableTd
                           narrow

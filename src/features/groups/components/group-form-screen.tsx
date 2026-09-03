@@ -3,22 +3,38 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { createGroup, fetchGroup, updateGroup } from "@/features/groups/api/group.api";
-import type { GroupItemRef } from "@/features/groups/types/group.types";
+import {
+  validateGroupCompositeRows,
+  normalizeGroupAbbreviation,
+  GROUP_ABBREVIATION_MAX_LENGTH,
+  type GroupCompositeRowError,
+} from "@/features/groups/utils/group-composite-rows.util";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
+  resolveFormBackUrl,
+} from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { cn } from "@/core/utils/http.util";
 import {
   AppButton,
   CheckmarkSelect,
   type CheckmarkSelectOption,
-  FieldLabel,
+  FieldGroup,
+  FieldErrorText,
+  RequiredMark,
   fieldErrorTextClassName,
   SurfaceShell,
   surfaceInputClassName,
@@ -35,20 +51,41 @@ function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function toNumberOrNull(raw: string): number | null {
-  const t = raw.trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+const COMPOSITE_ITEMS_GRID =
+  "grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:gap-x-3";
+
+const compositeHeaderCellClassName =
+  "hidden border-b border-slate-100 bg-slate-50/95 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-300 sm:block";
+
+function compositeItemCellClassName(rowIndex: number) {
+  return cn(
+    "min-w-0 px-3 py-2",
+    rowIndex > 0 && "border-t border-slate-100 dark:border-slate-800",
+  );
+}
+
+function compositeAbbreviationCellClassName(rowIndex: number) {
+  return cn("px-3 py-2", rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800");
+}
+
+function compositeActionsCellClassName(rowIndex: number) {
+  return cn(
+    // Start-align so Remove sits next to Abbreviation; column width follows the
+    // widest row (Remove + Add row) and justify-end would leave a large gap.
+    "flex flex-wrap items-center gap-2 px-3 py-2",
+    rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800",
+  );
 }
 
 export function GroupFormScreen({ mode, groupId }: Props) {
   const t = useTranslations("Dashboard.groups");
   const tModal = useTranslations("Dashboard.groups.modal");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "groups");
+  const safeBack = useFormBackUrl("groups", routes.dashboard.groups);
   const isEdit = mode === "edit";
+  const pendingCompositeRowRef = React.useRef<string | null>(null);
 
   const nameId = React.useId();
   const [name, setName] = React.useState("");
@@ -58,6 +95,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [itemsTouched, setItemsTouched] = React.useState(false);
+  const [rowErrors, setRowErrors] = React.useState<Record<string, GroupCompositeRowError>>({});
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
 
@@ -68,6 +106,55 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(() => ({ name, rows }), [name, rows]);
+
+  const restoreFormDraft = React.useCallback((draft: unknown) => {
+    const saved = draft as { name?: string; rows?: CompositeRow[] };
+    if (typeof saved.name === "string") setName(saved.name);
+    if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
+  }, []);
+
+  const reloadComposites = React.useCallback(async () => {
+    setCompositeLoadError(null);
+    try {
+      const { items } = await fetchCompositeItemsPage(1, 500);
+      setCompositeOptions(items);
+    } catch {
+      setCompositeLoadError(tModal("compositeLoadError"));
+    }
+  }, [tModal]);
+
+  const compositeQuickCreate = useQuickCreate({
+    kind: "composite-item",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: reloadComposites,
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "composite-item") return;
+      const rowId = pendingCompositeRowRef.current;
+      if (rowId) {
+        setRows((prev) => prev.map((x) => (x.id === rowId ? { ...x, item: selectId } : x)));
+      } else {
+        setRows((prev) => {
+          const emptyIdx = prev.findIndex((r) => !r.item.trim());
+          if (emptyIdx >= 0) {
+            return prev.map((x, i) => (i === emptyIdx ? { ...x, item: selectId } : x));
+          }
+          return [...prev, { id: nextRowId(), item: selectId, abbreviation: "" }];
+        });
+      }
+      pendingCompositeRowRef.current = null;
+    },
+  });
 
   const compositeOptionsForRow = React.useCallback(
     (rowId: string) =>
@@ -132,20 +219,17 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     return next.length > 0 ? next : [{ id: nextRowId(), item: "", abbreviation: "" }];
   }
 
-  function buildCompositeItemsPayload(): GroupItemRef[] | null {
-    const out: GroupItemRef[] = [];
-    const seen = new Set<number>();
-    for (const row of rows) {
-      const id = toNumberOrNull(row.item);
-      const abbreviation = row.abbreviation.trim();
-      const emptyRow = id == null && abbreviation.length === 0;
-      if (emptyRow) continue;
-      if (id == null || abbreviation.length === 0) return null;
-      if (seen.has(id)) return null;
-      seen.add(id);
-      out.push({ item: id, abbreviation });
-    }
-    return out;
+  function clearRowError(rowId: string, field: keyof GroupCompositeRowError) {
+    setRowErrors((prev) => {
+      const current = prev[rowId];
+      if (!current?.[field]) return prev;
+      const next = { ...current, [field]: undefined };
+      if (!next.item && !next.abbreviation) {
+        const { [rowId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [rowId]: next };
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -153,12 +237,19 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     setNameTouched(true);
     setItemsTouched(true);
     if (!name.trim()) return;
-    if (!hasAtLeastOneItem) return;
-    const compositeItems = buildCompositeItemsPayload();
-    if (compositeItems == null) {
-      toastError(tModal("duplicateCompositeItemError"));
+    if (!hasAtLeastOneItem) {
+      setRowErrors({});
       return;
     }
+
+    const { items: compositeItems, errors } = validateGroupCompositeRows(rows, {
+      compositeItemRequired: tModal("compositeItemRequired"),
+      abbreviationRequired: tModal("abbreviationRequired"),
+      abbreviationMaxLength: tModal("abbreviationMaxLength"),
+      duplicateCompositeItem: tModal("duplicateCompositeItemError"),
+    });
+    setRowErrors(errors);
+    if (compositeItems == null) return;
 
     setSubmitting(true);
     try {
@@ -167,9 +258,17 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           ? await updateGroup(groupId, { name: name.trim(), items: compositeItems })
           : await createGroup({ name: name.trim(), items: compositeItems });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
-    } catch {
-      toastError(t("loadError"));
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.groups,
+        }),
+      );
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setSubmitting(false);
     }
@@ -206,94 +305,130 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           </div>
         ) : (
           <form id="group-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div>
-              <FieldLabel htmlFor={nameId} required>
-                {tModal("name")}
-              </FieldLabel>
+            <FieldGroup label={tModal("name")} htmlFor={nameId} required>
               <input
                 id={nameId}
                 type="text"
                 autoComplete="off"
                 value={name}
-                onChange={(e) => setName(capitalizeFirstLetter(e.target.value))}
+                onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
                 onBlur={() => setNameTouched(true)}
                 disabled={submitting}
                 placeholder={tModal("namePlaceholder")}
                 className={surfaceInputClassName}
               />
-              {nameInvalid ? <p className={fieldErrorTextClassName}>{tModal("nameError")}</p> : null}
-            </div>
+              {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
+            </FieldGroup>
             <div>
-              <FieldLabel>{tModal("compositeItems")}</FieldLabel>
               {compositeLoadError ? (
-                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>
               ) : null}
-              <div className="mt-2 space-y-2">
-                {rows.map((row, idx) => (
-                  <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto] sm:items-end">
-                    <div>
-                      <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {tModal("compositeItem")}
-                        <span className="ml-1 text-red-500">*</span>
-                      </span>
-                      <CheckmarkSelect
-                        listLabel={tModal("compositeItem")}
-                        buttonAriaLabel={tModal("compositeItem")}
-                        value={row.item}
-                        onChange={(value) => {
-                          setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
-                        }}
-                        options={compositeOptionsForRow(row.id)}
-                        emptyLabel={tModal("compositeItemPlaceholder")}
-                        disabled={submitting}
-                        portaled
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {tModal("abbreviation")}
-                      </span>
-                      <input
-                        type="text"
-                        autoComplete="off"
-                        value={row.abbreviation}
-                        onChange={(e) => {
-                          const value = e.target.value.toUpperCase();
-                          setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
-                        }}
-                        disabled={submitting}
-                        placeholder={tModal("abbreviationPlaceholder")}
-                        className={surfaceInputClassName}
-                      />
-                    </div>
-                    <div className="flex gap-2 sm:justify-end">
-                      <AppButton
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={submitting || rows.length <= 1}
-                        onClick={() => setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)))}
-                      >
-                        {tModal("removeCompositeItem")}
-                      </AppButton>
-                      {idx === rows.length - 1 ? (
+              <div
+                className={cn(
+                  "overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950",
+                  compositeLoadError ? "mt-2" : undefined,
+                )}
+              >
+                <div className={COMPOSITE_ITEMS_GRID}>
+                  <span className={compositeHeaderCellClassName}>
+                    {tModal("compositeItem")}
+                    <RequiredMark alwaysVisible />
+                  </span>
+                  <span className={compositeHeaderCellClassName}>
+                    {tModal("abbreviation")}
+                    <RequiredMark alwaysVisible />
+                  </span>
+                  <span className={compositeHeaderCellClassName} aria-hidden />
+                  {rows.map((row, idx) => {
+                    const errors = rowErrors[row.id];
+                    return (
+                    <React.Fragment key={row.id}>
+                      <div className={compositeItemCellClassName(idx)}>
+                        <CheckmarkSelect
+                          listLabel={tModal("compositeItem")}
+                          buttonAriaLabel={tModal("compositeItem")}
+                          value={row.item}
+                          onChange={(value) => {
+                            clearRowError(row.id, "item");
+                            setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, item: value } : x)));
+                          }}
+                          options={compositeOptionsForRow(row.id)}
+                          emptyLabel={tModal("compositeItemPlaceholder")}
+                          disabled={submitting}
+                          invalid={Boolean(errors?.item)}
+                          portaled
+                          searchable
+                          className="w-full"
+                          onAdd={
+                            compositeQuickCreate.onAdd
+                              ? () => {
+                                  pendingCompositeRowRef.current = row.id;
+                                  compositeQuickCreate.onAdd?.();
+                                }
+                              : undefined
+                          }
+                          addAriaLabel={compositeQuickCreate.addAriaLabel}
+                          addLabel={compositeQuickCreate.addLabel}
+                        />
+                        {errors?.item ? <p className={fieldErrorTextClassName}>{errors.item}</p> : null}
+                      </div>
+                      <div className={compositeAbbreviationCellClassName(idx)}>
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          value={row.abbreviation}
+                          maxLength={GROUP_ABBREVIATION_MAX_LENGTH}
+                          onChange={(e) => {
+                            const value = normalizeGroupAbbreviation(e.target.value);
+                            clearRowError(row.id, "abbreviation");
+                            setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, abbreviation: value } : x)));
+                          }}
+                          disabled={submitting}
+                          placeholder={tModal("abbreviationPlaceholder")}
+                          className={cn(
+                            surfaceInputClassName,
+                            "w-full",
+                            errors?.abbreviation && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+                          )}
+                        />
+                        {errors?.abbreviation ? (
+                          <p className={fieldErrorTextClassName}>{errors.abbreviation}</p>
+                        ) : null}
+                      </div>
+                      <div className={compositeActionsCellClassName(idx)}>
                         <AppButton
                           type="button"
                           variant="secondary"
                           size="sm"
-                          disabled={submitting}
-                          onClick={() => setRows((prev) => [...prev, { id: nextRowId(), item: "", abbreviation: "" }])}
+                          disabled={submitting || rows.length <= 1}
+                          onClick={() => {
+                            setRowErrors((prev) => {
+                              const { [row.id]: _, ...rest } = prev;
+                              return rest;
+                            });
+                            setRows((prev) => normalizeRows(prev.filter((x) => x.id !== row.id)));
+                          }}
                         >
-                          {tModal("addCompositeItem")}
+                          {tModal("removeCompositeItem")}
                         </AppButton>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
+                        {idx === rows.length - 1 ? (
+                          <AppButton
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={submitting}
+                            onClick={() => setRows((prev) => [...prev, { id: nextRowId(), item: "", abbreviation: "" }])}
+                          >
+                            {tModal("addCompositeItem")}
+                          </AppButton>
+                        ) : null}
+                      </div>
+                    </React.Fragment>
+                    );
+                  })}
+                </div>
               </div>
               {itemsInvalid ? <p className={fieldErrorTextClassName}>{tModal("atLeastOneCompositeItemError")}</p> : null}
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{tModal("compositeItemsHint")}</p>
             </div>
           </form>
         )}

@@ -2,14 +2,42 @@
 
 import * as React from "react";
 import { FileText } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import { cn } from "@/core/utils/http.util";
+import "@/shared/utils/pdfjs-worker";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { useAuthenticatedPdfFile } from "@/features/projects/hooks/use-authenticated-pdf-file";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// ── Intersection-observer hook ──────────────────────────────────────────────
+/**
+ * Returns true once the element has entered the viewport (stays true thereafter).
+ * Uses a small root margin so cards start loading just before they become visible.
+ */
+function useInView(ref: React.RefObject<Element | null>, rootMargin = "200px"): boolean {
+  const [inView, setInView] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return; // already visible — nothing to do
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect(); // one-shot: no need to watch further
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, rootMargin, inView]);
+
+  return inView;
+}
 
 function isPdfFile(file: string, fileType?: string | null): boolean {
   if (fileType?.toLowerCase().includes("pdf")) return true;
@@ -28,16 +56,33 @@ type Props = {
   /** PDF first page render width (px). Should match the layout width for sharpness. */
   widthPx: number;
   className?: string;
+  /** Called with (width / height) once the file's natural dimensions are known. */
+  onNaturalAspect?: (ar: number) => void;
 };
 
-export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className }: Props) {
-  const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
-  const [failed, setFailed] = React.useState(false);
+export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, className, onNaturalAspect }: Props) {
+  const containerRef = React.useRef<HTMLSpanElement>(null);
+  const inView = useInView(containerRef);
 
-  const showFallback = !url || failed;
+  const url = React.useMemo(() => resolveDrawingFileUrl(drawingFile), [drawingFile]);
+  const isPdf = isPdfFile(drawingFile, fileType);
+  const [imgFailed, setImgFailed] = React.useState(false);
+
+  // Only start the authenticated PDF fetch once the card is in the viewport
+  const { file: pdfFile, loading: pdfLoading, failed: pdfFailed } = useAuthenticatedPdfFile(url, isPdf && inView);
+
+  const failed = isPdf ? pdfFailed : imgFailed;
+  const showFallback = !url || failed || (isPdf && inView && !pdfLoading && !pdfFile);
+
+  const skeleton = (
+    <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
+      <span className="size-[40%] max-h-6 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+    </span>
+  );
 
   const shell = (child: React.ReactNode) => (
     <span
+      ref={containerRef}
       className={cn(
         "relative flex shrink-0 items-start justify-center overflow-hidden bg-slate-100 dark:bg-slate-900/80",
         className,
@@ -47,6 +92,11 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
     </span>
   );
 
+  // Not yet scrolled into view — show skeleton placeholder, no fetch started
+  if (!inView) {
+    return shell(skeleton);
+  }
+
   if (showFallback) {
     return shell(
       <span className="flex size-full min-h-9 min-w-9 items-center justify-center">
@@ -55,14 +105,28 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
     );
   }
 
-  if (isPdfFile(drawingFile, fileType)) {
+  if (isPdf) {
+    if (pdfLoading || !pdfFile) {
+      return shell(skeleton);
+    }
+
     return shell(
-      <Document file={url} onLoadError={() => setFailed(true)} className="flex justify-center">
+      <Document
+        file={pdfFile}
+        loading={null}
+        error={null}
+        className="flex justify-center"
+      >
         <Page
           pageNumber={1}
           width={widthPx}
           renderAnnotationLayer={false}
           renderTextLayer={false}
+          onRenderSuccess={(page) => {
+            if (onNaturalAspect && page.width > 0 && page.height > 0) {
+              onNaturalAspect(page.width / page.height);
+            }
+          }}
         />
       </Document>,
     );
@@ -70,13 +134,18 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
 
   if (isImageFile(drawingFile, fileType)) {
     return shell(
-      
       <img
         src={url}
         alt={alt}
         className="h-full w-full object-cover object-top"
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={() => setImgFailed(true)}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            onNaturalAspect(img.naturalWidth / img.naturalHeight);
+          }
+        }}
       />,
     );
   }
@@ -87,7 +156,13 @@ export function DrawingFilePreview({ drawingFile, fileType, alt, widthPx, classN
       alt={alt}
       className="h-full w-full object-cover object-top"
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setImgFailed(true)}
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        if (onNaturalAspect && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          onNaturalAspect(img.naturalWidth / img.naturalHeight);
+        }
+      }}
     />,
   );
 }
@@ -97,12 +172,14 @@ type FillProps = {
   fileType?: string | null;
   alt: string;
   className?: string;
+  /** Called with (width / height) once the file's natural dimensions are known. */
+  onNaturalAspect?: (ar: number) => void;
 };
 
 /**
  * Fills the parent (use inside a sized / aspect-ratio container). PDF first page scales to container width.
  */
-export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className }: FillProps) {
+export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className, onNaturalAspect }: FillProps) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const [w, setW] = React.useState(320);
 
@@ -124,7 +201,9 @@ export function DrawingFilePreviewFill({ drawingFile, fileType, alt, className }
         alt={alt}
         widthPx={w}
         className="size-full"
+        onNaturalAspect={onNaturalAspect}
       />
     </div>
   );
 }
+

@@ -2,13 +2,15 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import { updateGroup } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
-import { moneyDisplay } from "@/features/groups/utils/group-linked-item-display.util";
 import { routes } from "@/shared/config/routes";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import {
   DetailLinkedTable,
   DetailLinkedTableRow,
@@ -17,9 +19,9 @@ import {
 } from "@/shared/components/layout/detail-linked-table";
 import {
   DetailMetricCard,
+  DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
-  DetailStatusMetric,
   detailPageStackClassName,
 } from "@/shared/components/layout/detail-metric-card";
 
@@ -37,14 +39,25 @@ function formatLinkedItemLabel(name: string, abbreviation?: string | null) {
 export function GroupDetailBody({
   detail,
   dateFmt,
+  onSaved,
 }: {
   detail: Group;
   dateFmt: Intl.DateTimeFormat;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.groups");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const linkedItems = detail.items ?? [];
   const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
+
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateGroup>[1]) => updateGroup(detail.id, body),
+    { success: t("modal.updatedToast"), error: t("detailLoadError") },
+    onSaved,
+  );
 
   React.useEffect(() => {
     if (linkedItems.length === 0) {
@@ -70,20 +83,22 @@ export function GroupDetailBody({
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <DetailStatusMetric
-              label={t("table.status")}
-              isActive={detail.is_active}
-              activeLabel={t("statusActive")}
-              inactiveLabel={t("statusInactive")}
-            />
-            <DetailMetricCard label={t("detail.metaGroupId")}>
-              <span className="tabular-nums">#{detail.id}</span>
-            </DetailMetricCard>
+          <DetailMetricsGrid>
+            <DetailEditableField
+              label={t("table.name")}
+              value={detail.name}
+              kind="text"
+              required
+              requiredMessage={t("modal.nameError")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ name: next.trim() })}
+            >
+              <span className="break-words">{detail.name}</span>
+            </DetailEditableField>
             <DetailMetricCard label={t("table.itemCount")}>
               <span className="tabular-nums">{linkedItems.length}</span>
             </DetailMetricCard>
-          </div>
+          </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionItems")}>
@@ -106,7 +121,7 @@ export function GroupDetailBody({
             >
               {linkedItems.map((entry, index) => {
                 const composite = compositeById.get(entry.item);
-                const displayName = entry.item_name ?? composite?.name ?? `#${entry.item}`;
+                const displayName = entry.item_name ?? composite?.name ?? "—";
                 const componentCount = composite?.components?.length ?? 0;
                 return (
                   <DetailLinkedTableRow key={`${entry.id ?? index}-${entry.item}`} index={index}>
@@ -116,12 +131,12 @@ export function GroupDetailBody({
                         cellClassName: "font-medium text-slate-900 dark:text-slate-100",
                       })}
                     >
-                      <Link
+                      <DetailEntityLink
                         href={`${routes.dashboard.compositeItems}/${entry.item}`}
-                        className="block truncate text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                        className="block truncate text-blue-600 underline-offset-2 hover:underline"
                       >
                         {formatLinkedItemLabel(displayName, entry.abbreviation)}
-                      </Link>
+                      </DetailEntityLink>
                     </DetailLinkedTableTd>
                     <DetailLinkedTableTd
                       narrow

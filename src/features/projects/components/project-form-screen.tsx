@@ -5,12 +5,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useRouter } from "@/i18n/navigation";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { fetchUsersPage } from "@/features/users/api/user.api";
+import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -19,11 +23,34 @@ import {
 } from "@/features/projects/utils/project-form-map";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { sanitizeInternalListBack } from "@/shared/utils/detail-from-list.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
-import { AppButton, CheckmarkSelect, FieldErrorText, FieldGroup, FormFieldRow, MultiCheckSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  QUICK_CREATE_CLIENT_PARAM,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
+  resolveFormBackUrl,
+} from "@/shared/utils/quick-create-navigation.util";
+import {
+  AppButton,
+  CheckmarkSelect,
+  FieldErrorText,
+  FieldGroup,
+  FormFieldRow,
+  MultiCheckSelect,
+  SurfaceDateInput,
+  SurfaceShell,
+  surfaceInputClassName,
+} from "@/shared/ui";
+import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
+import { resolveDefaultProjectStatusId } from "@/features/project-status/utils/project-default-status.util";
+
 
 type Props = {
   mode: "create" | "edit";
@@ -33,23 +60,33 @@ type Props = {
 export function ProjectFormScreen({ mode, projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safeBack = sanitizeInternalListBack(searchParams.get("back"), "projects");
-  const organizations = useAuthStore((s) => s.organizations);
+  const safeBack = useFormBackUrl("projects", routes.dashboard.projects);
   const isEdit = mode === "edit";
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [clientSearchQuery, setClientSearchQuery] = React.useState("");
+  const [projectClientName, setProjectClientName] = React.useState("");
+  const [managerSearchQuery, setManagerSearchQuery] = React.useState("");
+  const [managerFallbackLabels, setManagerFallbackLabels] = React.useState<Record<string, string>>({});
+  const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [organizationIdForEdit, setOrganizationIdForEdit] = React.useState<number | null>(null);
-
+  const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [projectStatusOptions, setProjectStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const initialClientsLoaded = React.useRef(false);
+  const initialManagersLoaded = React.useRef(false);
+  const previousProjectTypeRef = React.useRef<string | null>(null);
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
         name: t("validation.name"),
         client: t("validation.client"),
+        projectType: t("validation.projectType"),
         description: t("validation.description"),
         startDate: t("validation.startDate"),
         endDate: t("validation.endDate"),
@@ -63,6 +100,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     register,
     reset,
     setValue,
+    getValues,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -71,17 +110,130 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   });
 
   const selectedClient = useWatch({ control, name: "client" });
+  const selectedProjectType = useWatch({ control, name: "project_type" });
+
+  const reloadClients = React.useCallback(async (searchQuery?: string) => {
+    try {
+      const { items } = await fetchClientsPage(1, 100, { is_active: true, search: searchQuery }, { silent: true });
+      setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+    } catch {
+      setClientOptions([]);
+    }
+  }, []);
+
+  const reloadManagers = React.useCallback(async (searchQuery?: string) => {
+    try {
+      const { items } = await fetchUsersPage(1, 100, { search: searchQuery });
+      setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+    } catch {
+      setManagerOptions([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!initialClientsLoaded.current) {
+      initialClientsLoaded.current = true;
+      void reloadClients("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadClients(clientSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [clientSearchQuery, reloadClients]);
+
+  React.useEffect(() => {
+    if (!initialManagersLoaded.current) {
+      initialManagersLoaded.current = true;
+      void reloadManagers("");
+      return;
+    }
+    const t = setTimeout(() => {
+      void reloadManagers(managerSearchQuery);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [managerSearchQuery, reloadManagers]);
+
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
+  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  const restoreFormDraft = React.useCallback(
+    (draft: unknown) => {
+      reset(draft as ProjectFormValues, { keepDefaultValues: false });
+    },
+    [reset],
+  );
+
+  const urlClientId = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+  const lockClient = !isEdit && Boolean(urlClientId && /^\d+$/.test(urlClientId));
+
+  const clientQuickCreate = useQuickCreate({
+    kind: "client",
+    getFormDraft: !isEdit && !lockClient ? getFormDraft : undefined,
+    addDisabled: lockClient,
+  });
+
+  const clientIdForQuick =
+    selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
+
+  const reloadSites = React.useCallback(async () => {
+    if (!clientIdForQuick || clientIdForQuick <= 0) {
+      setSiteOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick });
+      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+    } catch {
+      setSiteOptions([]);
+    }
+  }, [clientIdForQuick]);
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientIdForQuick,
+    addDisabled: !clientIdForQuick,
+  });
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    const presetClient = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
+    if (!presetClient || !/^\d+$/.test(presetClient)) return;
+    setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
+  }, [isEdit, searchParams, setValue]);
+
+  useQuickCreateReturn({
+    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    onReloadOptions: async () => {
+      await reloadClients();
+      await reloadSites();
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget === "client") {
+        if (lockClient) return;
+        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+        return;
+      }
+      if (selectTarget === "site") {
+        setValue("sites", [selectId], { shouldDirty: true, shouldValidate: true });
+      }
+    },
+  });
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
         if (!cancelled) {
-          setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setProjectTypeOptions(items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) })));
         }
       } catch {
-        if (!cancelled) setClientOptions([]);
+        if (!cancelled) setProjectTypeOptions([]);
       }
     })();
     return () => {
@@ -89,30 +241,73 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     };
   }, []);
 
+  // Reload forms when the selected project type changes
+  React.useEffect(() => {
+    if (!selectedProjectType || !/^\d+$/.test(selectedProjectType)) {
+      setFormOptions([]);
+      return;
+    }
+
+    // Only clear form_ids if project type actually changed (not on initial load)
+    if (previousProjectTypeRef.current !== null && previousProjectTypeRef.current !== selectedProjectType) {
+      const currentFormIds = getValues("form_ids");
+      if (currentFormIds && currentFormIds.length > 0) {
+        setValue("form_ids", []);
+      }
+    }
+
+    // Update the ref after processing
+    previousProjectTypeRef.current = selectedProjectType;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchFormsPage(1, 500, { project_type: selectedProjectType }, { silent: true });
+        if (!cancelled) {
+          setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
+        }
+      } catch {
+        if (!cancelled) {
+          setFormOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectType, setValue, getValues]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
+        if (!cancelled) {
+          setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
+          if (!isEdit) {
+            const defaultStatusId = resolveDefaultProjectStatusId(items);
+            if (defaultStatusId != null) {
+              setValue("project_status", String(defaultStatusId), { shouldDirty: false });
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) setProjectStatusOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, setValue]);
+
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
       setSiteOptions([]);
       setValue("sites", []);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchSitesPage(1, 500, {
-          client: Number.parseInt(selectedClient, 10),
-          is_active: true,
-        });
-        if (!cancelled) {
-          setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
-        }
-      } catch {
-        if (!cancelled) setSiteOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedClient, setValue]);
+    void reloadSites();
+  }, [selectedClient, setValue, reloadSites]);
 
   React.useEffect(() => {
     if (!isEdit || !projectId) return;
@@ -124,7 +319,28 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         const row = await fetchProject(projectId);
         if (!cancelled) {
           reset(projectToFormDefaults(row));
-          setOrganizationIdForEdit(row.organization);
+          if (row.client && typeof row.client === "object" && row.client.name) {
+            setProjectClientName(row.client.name);
+          }
+          const labels: Record<string, string> = {};
+          if (Array.isArray(row.manager_detail)) {
+            for (const entry of row.manager_detail) {
+              const m = entry?.manager;
+              if (m && typeof m === "object") {
+                const id = String(m.id);
+                const full = `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim();
+                labels[id] = full || m.username || m.email || `#${id}`;
+              }
+            }
+          } else if (Array.isArray(row.managers)) {
+            for (const m of row.managers) {
+              if (m && typeof m === "object") {
+                const id = String(m.id);
+                labels[id] = m.username || m.email || `#${id}`;
+              }
+            }
+          }
+          setManagerFallbackLabels(labels);
         }
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
@@ -138,27 +354,37 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [isEdit, projectId, reset, t]);
 
   async function submit(values: ProjectFormValues) {
-    const organizationId = getSessionOrganizationId(organizations) ?? (isEdit ? organizationIdForEdit : null);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapProjectFormToPayload(values, organizationId);
+    const payload = mapProjectFormToPayload(values);
     if (!Number.isFinite(payload.client) || payload.client <= 0) {
       toastError(t("validation.client"));
+      return;
+    }
+    if (!Number.isFinite(payload.project_type) || payload.project_type <= 0) {
+      toastError(t("validation.projectType"));
       return;
     }
     setSaving(true);
     try {
       const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(`${safeBack}?highlight=${saved.id}`);
+      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: saved.id,
+          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          backHref: safeBack,
+          listPath: routes.dashboard.projects,
+        }),
+      );
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const noClients = !lockClient && clientOptions.length === 0;
+  const noProjectTypes = projectTypeOptions.length === 0;
 
   return (
     <div className="pb-12">
@@ -172,7 +398,14 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
             <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.projects)}>
               {t("modal.cancel")}
             </AppButton>
-            <AppButton type="submit" form="project-upsert-screen-form" variant="primary" size="sm" loading={saving} disabled={noClients}>
+            <AppButton
+              type="submit"
+              form="project-upsert-screen-form"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              disabled={noClients || noProjectTypes}
+            >
               {isEdit ? t("modal.saveChanges") : t("modal.save")}
             </AppButton>
           </div>
@@ -190,112 +423,223 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
           </div>
         ) : (
-          <form id="project-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            {noClients ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                {t("noClientsHint")}
-              </p>
-            ) : null}
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
-                <input
-                  id="project-name"
-                  aria-invalid={errors.name ? true : undefined}
-                  aria-describedby={errors.name ? "project-name-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-                  {...register("name", {
-                    onChange: (e) => {
-                      e.target.value = capitalizeFirstLetter(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText id="project-name-err">{errors.name?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.client")} htmlFor="project-client" required>
-                <Controller
-                  control={control}
-                  name="client"
-                  render={({ field }) => (
-                    <CheckmarkSelect
-                      id="project-client"
-                      portaled
-                      searchable
-                      listLabel={t("fields.client")}
-                      options={clientOptions}
-                      value={field.value}
-                      emptyLabel={t("placeholders.client")}
-                      disabled={saving || noClients}
-                      invalid={!!errors.client}
-                      onBlur={field.onBlur}
-                      onChange={(v) => {
-                        field.onChange(v);
-                        setValue("sites", []);
-                      }}
-                    />
-                  )}
-                />
-                <FieldErrorText>{errors.client?.message}</FieldErrorText>
-              </FieldGroup>
-            </FormFieldRow>
-            <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
-              <Controller
-                control={control}
-                name="sites"
-                render={({ field }) => (
-                  <MultiCheckSelect
-                    id="project-sites"
-                    options={siteOptions}
-                    values={field.value ?? []}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={saving || !selectedClient || siteOptions.length === 0}
-                    placeholder={t("placeholders.site")}
-                    listLabel={t("fields.sites")}
+          <>
+            <form id="project-upsert-screen-form" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
+              {noClients ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  {t("noClientsHint")}
+                </p>
+              ) : null}
+              {noProjectTypes ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  {t("noProjectTypesHint")}
+                </p>
+              ) : null}
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
+                  <input
+                    id="project-name"
+                    aria-invalid={errors.name ? true : undefined}
+                    aria-describedby={errors.name ? "project-name-err" : undefined}
+                    className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
+                    {...register("name", {
+                      onChange: (e) => {
+                        e.target.value = sanitizeTitleInput(e.target.value);
+                      },
+                    })}
                   />
-                )}
-              />
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
-            </FieldGroup>
-            <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-              <textarea
-                id="project-description"
-                rows={4}
-                aria-invalid={errors.description ? true : undefined}
-                aria-describedby={errors.description ? "project-desc-err" : undefined}
-                className={cn(
-                  surfaceInputClassName,
-                  "h-auto min-h-[100px] resize-y py-3 leading-5",
-                  errors.description && "border-red-500 dark:border-red-500",
-                )}
-                {...register("description")}
-              />
-              <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-            </FieldGroup>
-            <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
-              <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
-                <input
-                  id="project-start"
-                  type="date"
-                  aria-invalid={errors.start_date ? true : undefined}
-                  aria-describedby={errors.start_date ? "project-start-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.start_date && "border-red-500 dark:border-red-500")}
-                  {...register("start_date")}
-                />
-                <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
-              </FieldGroup>
-              <FieldGroup label={t("fields.endDate")} htmlFor="project-end" required>
-                <input
-                  id="project-end"
-                  type="date"
-                  aria-invalid={errors.end_date ? true : undefined}
-                  aria-describedby={errors.end_date ? "project-end-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.end_date && "border-red-500 dark:border-red-500")}
-                  {...register("end_date")}
-                />
-                <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
-              </FieldGroup>
-            </FormFieldRow>
-          </form>
+                  <FieldErrorText id="project-name-err">{errors.name?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.client")} htmlFor="project-client" required>
+                  <Controller
+                    control={control}
+                    name="client"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-client"
+                        portaled
+                        searchable
+                        listLabel={t("fields.client")}
+                        options={clientOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.client")}
+                        disabled={saving || noClients}
+                        locked={lockClient}
+                        invalid={!!errors.client}
+                        onBlur={field.onBlur}
+                        onChange={(v) => {
+                          field.onChange(v);
+                          setValue("sites", []);
+                        }}
+                        onAdd={clientQuickCreate.onAdd}
+                        addAriaLabel={clientQuickCreate.addAriaLabel}
+                        addLabel={clientQuickCreate.addLabel}
+                        onSearchChange={setClientSearchQuery}
+                        fallbackLabel={projectClientName}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.projectType")} htmlFor="project-type" required>
+                  <Controller
+                    control={control}
+                    name="project_type"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-type"
+                        portaled
+                        searchable
+                        listLabel={t("fields.projectType")}
+                        options={projectTypeOptions}
+                        value={field.value}
+                        emptyLabel={t("placeholders.projectType")}
+                        disabled={saving || noProjectTypes}
+                        invalid={!!errors.project_type}
+                        onBlur={field.onBlur}
+                        onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
+                        addAriaLabel="Add project type"
+                        addLabel="Add project type"
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.project_type?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.projectStatus")} htmlFor="project-status" required>
+                  <Controller
+                    control={control}
+                    name="project_status"
+                    render={({ field }) => (
+                      <CheckmarkSelect
+                        id="project-status"
+                        portaled
+                        searchable
+                        // listLabel={t("fields.projectStatus")}
+                        options={projectStatusOptions}
+                        value={field.value ?? ""}
+                        emptyLabel={t("placeholders.projectStatus")}
+                        disabled={saving || projectStatusOptions.length === 0}
+                        invalid={!!errors.project_status}
+                        onBlur={field.onBlur}
+                        onAdd={() => router.push(routes.dashboard.settingsProjectStatus)}
+                        addAriaLabel="Add project status"
+                        addLabel="Add project status"
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <FieldErrorText>{errors.project_status?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label="Forms" htmlFor="project-form-ids">
+                  <Controller
+                    control={control}
+                    name="form_ids"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-form-ids"
+                        options={formOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving || !selectedProjectType || formOptions.length === 0}
+                        placeholder="Select forms..."
+                        listLabel="Forms"
+                      />
+                    )}
+                  />
+                  {selectedProjectType && formOptions.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
+                  ) : null}
+                </FieldGroup>
+                <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+                  <textarea
+                    id="project-description"
+                    rows={4}
+                    aria-invalid={errors.description ? true : undefined}
+                    aria-describedby={errors.description ? "project-desc-err" : undefined}
+                    className={cn(
+                      surfaceInputClassName,
+                      "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                      errors.description && "border-red-500 dark:border-red-500",
+                    )}
+                    {...register("description", rhfRegisterOptions("description"))}
+                    maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                  />
+                  <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
+                  <Controller
+                    control={control}
+                    name="sites"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-sites"
+                        options={siteOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving || !selectedClient}
+                        placeholder={t("placeholders.site")}
+                        listLabel={t("fields.sites")}
+                        onAdd={siteQuickCreate.onAdd}
+                        addAriaLabel={siteQuickCreate.addAriaLabel}
+                        addLabel={siteQuickCreate.addLabel}
+                      />
+                    )}
+                  />
+                </FieldGroup>
+                <FieldGroup label="Managers" htmlFor="project-managers">
+                  <Controller
+                    control={control}
+                    name="manager_ids"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-managers"
+                        options={managerOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving}
+                        placeholder="Select managers..."
+                        listLabel="Managers"
+                        onSearchChange={setManagerSearchQuery}
+                        fallbackLabels={managerFallbackLabels}
+                      />
+                    )}
+                  />
+                </FieldGroup>
+              </FormFieldRow>
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
+                  <SurfaceDateInput
+                    id="project-start"
+                    type="date"
+                    aria-invalid={errors.start_date ? true : undefined}
+                    aria-describedby={errors.start_date ? "project-start-err" : undefined}
+                    invalid={!!errors.start_date}
+                    {...register("start_date")}
+                  />
+                  <FieldErrorText id="project-start-err">{errors.start_date?.message}</FieldErrorText>
+                </FieldGroup>
+                <FieldGroup label={t("fields.endDate")} htmlFor="project-end">
+                  <SurfaceDateInput
+                    id="project-end"
+                    type="date"
+                    aria-invalid={errors.end_date ? true : undefined}
+                    aria-describedby={errors.end_date ? "project-end-err" : undefined}
+                    invalid={!!errors.end_date}
+                    {...register("end_date")}
+                  />
+                  <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+            </form>
+          </>
         )}
       </SurfaceShell>
     </div>

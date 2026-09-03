@@ -1,24 +1,35 @@
 "use client";
 
+import * as React from "react";
 import dynamic from "next/dynamic";
-import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import type { Site } from "@/features/sites/types/site.types";
-import { routes } from "@/shared/config/routes";
-import { DetailFormattedAddress } from "@/shared/components/layout/detail-formatted-address";
+import { updateSite } from "@/features/sites/api/site.api";
+import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
+import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import {
+  DetailAddressLine1EditableField,
+  flatAddressPatchFromPlace,
+} from "@/shared/components/layout/detail-address-line1-field";
+import {
+  DetailAddressLocationFields,
+  detailLocationCountryPayload,
+  detailLocationStatePayload,
+} from "@/shared/components/layout/detail-address-location-fields";
+import { countryIsoFromName } from "@/shared/form/entity-address-form.util";
 import {
   DetailPageMapLayout,
   detailMapFillClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import {
-  DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
-  DetailStatusMetric,
 } from "@/shared/components/layout/detail-metric-card";
-import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
+import { routes } from "@/shared/config/routes";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import { type CheckmarkSelectOption } from "@/shared/ui";
 
 const AddressMiniMap = dynamic(
   () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
@@ -32,19 +43,47 @@ export function SiteDetailBody({
   detail,
   dateFmt,
   clientName,
+  clientOptions = [],
+  contactNameById = {},
+  titleNameById = {},
+  onSaved,
 }: {
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
+  clientOptions?: CheckmarkSelectOption[];
+  contactNameById?: Record<number, string>;
+  titleNameById?: Record<string, string>;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("Dashboard.sites");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const clientId =
     typeof detail.client === "number"
       ? detail.client
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
+
+  const clientSelectOptions = React.useMemo(() => {
+    const list = [...clientOptions];
+    if (clientId != null && !list.some((o) => o.value === String(clientId))) {
+      list.unshift({
+        value: String(clientId),
+        label: clientName?.trim() || `#${clientId}`,
+      });
+    }
+    return list;
+  }, [clientOptions, clientId, clientName]);
+
+  const patchSiteField = useDetailPatch(
+    (body: Partial<SiteUpdatePayload>) => updateSite(detail.id, body as SiteUpdatePayload),
+    { success: t("updatedToast"), error: t("toggleActiveError") },
+    onSaved,
+  );
+
   const addressParts = {
     line1: detail.address_line_1,
     line2: detail.address_line_2,
@@ -72,48 +111,148 @@ export function SiteDetailBody({
 
   return (
     <DetailPagePadding>
-      <DetailPageMapLayout map={mapNode} mapTitle={t("detail.sectionMap")} showMap>
-        <DetailPanelCard>
+      <DetailPageMapLayout
+        map={mapNode}
+        mapTitle={t("detail.sectionMap")}
+        showMap
+        mapFillHeight
+      >
+        <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid>
-            <DetailStatusMetric
-              label={t("fields.status")}
-              isActive={detail.is_active}
-              activeLabel={t("status.active")}
-              inactiveLabel={t("status.inactive")}
-            />
-            <DetailMetricCard label={t("fields.client")}>
+            <DetailEditableField
+              label={t("fields.siteName")}
+              value={detail.site_name}
+              kind="text"
+              required
+              requiredMessage={t("validation.siteName")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchSiteField({ site_name: next })}
+            >
+              {detail.site_name}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("fields.client")}
+              value={clientId != null ? String(clientId) : ""}
+              kind="select"
+              options={clientSelectOptions}
+              selectSearchable
+              required
+              requiredMessage={t("validation.client")}
+              editAriaLabel={tActions("edit")}
+              onSave={async (next) => {
+                const nextId = Number.parseInt(next, 10);
+                if (!Number.isFinite(nextId) || nextId <= 0) return;
+                // Changing client clears contact persons (same as create/edit form).
+                await patchSiteField({
+                  client: nextId,
+                  ...(clientId !== nextId ? { contacts: [] as SiteContactPersonPayload[] } : {}),
+                });
+              }}
+            >
               {clientId ? (
-                <Link
+                <DetailEntityLink
                   href={`${routes.dashboard.clients}/${clientId}`}
-                  className="font-semibold text-[color:var(--dash-accent)] underline-offset-2 hover:underline"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
                 >
-                  {clientName ?? `#${clientId}`}
-                </Link>
+                  {clientName ?? "—"}
+                </DetailEntityLink>
               ) : (
                 <span>{clientName ?? "—"}</span>
               )}
-            </DetailMetricCard>
+            </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
 
         <DetailPanelCard title={t("detail.sectionAddress")}>
-          <DetailFormattedAddress
-            line1={addressParts.line1}
-            line2={addressParts.line2}
-            city={addressParts.city}
-            state={addressParts.state}
-            pincode={addressParts.pincode}
-            country={addressParts.country}
-            emptyMessage={
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.addressUnavailable")}</p>
-            }
-          />
-          <What3WordsInline
-            value={detail.what3words}
-            label={t("fields.what3words")}
-            className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
-          />
+          <DetailMetricsGrid>
+            <DetailAddressLine1EditableField
+              fieldId={String(detail.id)}
+              label={t("fields.addressLine1")}
+              addressLine1={addressParts.line1}
+              country={addressParts.country}
+              state={addressParts.state}
+              city={addressParts.city}
+              pincode={addressParts.pincode}
+              required
+              requiredMessage={t("validation.addressLine1")}
+              editAriaLabel={tActions("edit")}
+              onSaveLine={(next) => patchSiteField({ address_line_1: next })}
+              onSavePlace={(place) => patchSiteField(flatAddressPatchFromPlace(place))}
+            >
+              {addressParts.line1?.trim() ? addressParts.line1 : null}
+            </DetailAddressLine1EditableField>
+            <DetailEditableField
+              label={t("fields.addressLine2")}
+              value={addressParts.line2 ?? ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchSiteField({ address_line_2: next })}
+            >
+              {addressParts.line2?.trim() ? addressParts.line2 : null}
+            </DetailEditableField>
+            <DetailAddressLocationFields
+              country={addressParts.country}
+              state={addressParts.state}
+              city={addressParts.city}
+              labels={{
+                country: t("fields.country"),
+                state: t("fields.stateProvince"),
+                city: t("fields.city"),
+              }}
+              editAriaLabel={tActions("edit")}
+              requiredMessages={{
+                country: t("validation.country"),
+                state: t("validation.state"),
+                city: t("validation.city"),
+              }}
+              onSaveCountry={async (countryIso) => {
+                await patchSiteField({
+                  country: detailLocationCountryPayload(countryIso),
+                  state: "",
+                  city: "",
+                });
+              }}
+              onSaveState={async (stateIsoOrName) => {
+                const iso = countryIsoFromName(addressParts.country);
+                await patchSiteField({
+                  state: detailLocationStatePayload(iso, stateIsoOrName) || stateIsoOrName,
+                  city: "",
+                });
+              }}
+              onSaveCity={(cityName) => patchSiteField({ city: cityName })}
+            />
+            <DetailEditableField
+              label={t("fields.pincode")}
+              value={addressParts.pincode ?? ""}
+              kind="text"
+              required
+              requiredMessage={t("validation.pincode")}
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchSiteField({ pincode: next })}
+            >
+              {addressParts.pincode?.trim() ? addressParts.pincode : null}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("fields.what3words")}
+              value={detail.what3words ?? ""}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchSiteField({ what3words: next })}
+            >
+              {detail.what3words?.trim() ? detail.what3words : null}
+            </DetailEditableField>
+          </DetailMetricsGrid>
         </DetailPanelCard>
+
+        <SiteDetailContactPersonsEditor
+          title={t("contactPerson.sectionTitle")}
+          detail={detail}
+          contactNameById={contactNameById}
+          titleNameById={titleNameById}
+          onSaveContacts={(contacts) => patchSiteField({ contacts })}
+        />
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}

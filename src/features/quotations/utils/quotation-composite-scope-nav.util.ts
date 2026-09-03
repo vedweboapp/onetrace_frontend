@@ -1,3 +1,5 @@
+import type { QuoteCategoryApi } from "@/features/quotations/constants/quotation-category";
+
 export type QuotationScopeNavContext =
   | { mode: "new" }
   | { mode: "edit"; quotationId: number }
@@ -9,25 +11,27 @@ type CompositeScopeHrefParams = {
   sectionLabel?: string;
   plotLabel?: string;
   backHref?: string;
+  quoteCategory?: QuoteCategoryApi;
 };
 
 export function buildQuotationCompositeScopeHref(
   context: QuotationScopeNavContext,
   params: CompositeScopeHrefParams,
 ): string {
-  const { compositeItemId, repeatCount, sectionLabel, plotLabel, backHref } = params;
+  const { compositeItemId, repeatCount, sectionLabel, plotLabel, backHref, quoteCategory } = params;
   const base =
     context.mode === "new"
-      ? `/dashboard/quotations/new/composite/${compositeItemId}`
+      ? `/quotations/new/composite/${compositeItemId}`
       : context.mode === "edit"
-        ? `/dashboard/quotations/${context.quotationId}/edit/composite/${compositeItemId}`
-        : `/dashboard/quotations/${context.quotationId}/composite/${compositeItemId}`;
+        ? `/quotations/${context.quotationId}/edit/composite/${compositeItemId}`
+        : `/quotations/${context.quotationId}/composite/${compositeItemId}`;
 
   const q = new URLSearchParams();
   if (repeatCount > 1) q.set("repeat", String(repeatCount));
   if (sectionLabel?.trim()) q.set("section", sectionLabel.trim());
   if (plotLabel?.trim()) q.set("plot", plotLabel.trim());
   if (backHref?.trim()) q.set("back", backHref.trim());
+  if (quoteCategory) q.set("quote_category", quoteCategory);
   const qs = q.toString();
   return qs ? `${base}?${qs}` : base;
 }

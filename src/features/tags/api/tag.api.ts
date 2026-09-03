@@ -24,6 +24,7 @@ function toTagWritePayload(body: TagCreatePayload | TagUpdatePayload): Record<st
     text_colour?: string;
     bg_color?: string;
     text_color?: string;
+    is_active?: boolean;
   };
   const out: Record<string, unknown> = {};
   if (typeof src.name === "string") out.name = src.name;
@@ -31,6 +32,7 @@ function toTagWritePayload(body: TagCreatePayload | TagUpdatePayload): Record<st
   const text = src.text_color ?? src.text_colour;
   if (typeof bg === "string") out.bg_color = bg;
   if (typeof text === "string") out.text_color = text;
+  if (typeof src.is_active === "boolean") out.is_active = src.is_active;
   return out;
 }
 

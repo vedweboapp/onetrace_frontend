@@ -50,7 +50,6 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
       fetch={fetchCompositeItem}
       getTitle={(detail) => detail.name}
       labels={{
-        loadingTitle: tItems("detail.loadingTitle"),
         metaTitle: tItems("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: tItems("detail.retry"),
@@ -81,7 +80,9 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt }) => <ItemDetailBody detail={detail} dateFmt={dateFmt} />}
+      {({ detail, dateFmt, retry }) => (
+        <ItemDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+      )}
     </EntityDetailScreen>
   );
 }

@@ -11,7 +11,7 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { ConfirmDialog } from "@/shared/ui";
 
 type Props = {
@@ -32,8 +32,8 @@ export function GroupDetailScreen({ groupId }: Props) {
       await deleteGroup(detailForDelete.id);
       toastSuccess(t("deletedToast"));
       router.push(routes.dashboard.groups);
-    } catch {
-      toastError(t("loadError"));
+    } catch (error) {
+      toastApiError(error, t("loadError"));
     } finally {
       setDeleting(false);
     }
@@ -48,7 +48,6 @@ export function GroupDetailScreen({ groupId }: Props) {
       fetch={fetchGroup}
       getTitle={(detail) => detail.name}
       labels={{
-        loadingTitle: t("detail.loadingTitle"),
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
@@ -79,7 +78,9 @@ export function GroupDetailScreen({ groupId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt }) => <GroupDetailBody detail={detail} dateFmt={dateFmt} />}
+      {({ detail, dateFmt, retry }) => (
+        <GroupDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+      )}
     </EntityDetailScreen>
   );
 }

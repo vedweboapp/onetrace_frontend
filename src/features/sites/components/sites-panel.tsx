@@ -1,28 +1,35 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { deleteSite, fetchSitesPage, patchSite } from "@/features/sites/api/site.api";
+import { deleteSite, fetchAllSiteIds, fetchSitesPage } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
-import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  MassActionBar,
+  buildSiteMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
+  AppButton,
   CheckmarkSelect,
   ConfirmDialog,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
-  ListPageActiveFilter,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -30,9 +37,10 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 
 function siteClientId(row: Site): number | null {
   if (typeof row.client === "number" && Number.isFinite(row.client) && row.client > 0) return row.client;
@@ -72,9 +80,8 @@ export function SitesPanel() {
     [listHref, pathname, router],
   );
 
-  const { page, pageSize, listViewMode, search, isActiveParam, setUrl, setPage, setPageSize, setListViewMode } =
+  const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
   const clientParam = searchParams.get("client");
   const clientFilter = clientParam && /^\d+$/.test(clientParam) ? Number.parseInt(clientParam, 10) : undefined;
 
@@ -90,27 +97,68 @@ export function SitesPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
+
+  const loadClientOptions = React.useCallback(async () => {
+    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    return clients.map((c) => ({ value: String(c.id), label: c.name }));
+  }, []);
+
+  const { options: clientOptions } = useDeferredListOptions(
+    loadClientOptions,
+    fetchClientOptions,
+  );
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingSite, setDeletingSite] = React.useState<Site | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+      client: clientFilter,
+    }),
+    [search, clientFilter],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildSiteMassUpdateFields(clientOptions, {
+        siteName: t("fields.siteName"),
+        client: t("fields.client"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        what3words: t("fields.what3words"),
+        latitude: t("fields.latitude"),
+        longitude: t("fields.longitude"),
+      }),
+    [clientOptions, t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllSiteIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "sites",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search, clientFilter],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
-      } catch {
-        if (!cancelled) setClientOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (mass.selectedCount > 0) setFetchClientOptions(true);
+  }, [mass.selectedCount]);
+
+  React.useEffect(() => {
+    if (clientParam) setFetchClientOptions(true);
+  }, [clientParam]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -120,16 +168,15 @@ export function SitesPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchSitesPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
           client: clientFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -139,7 +186,7 @@ export function SitesPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, clientFilter, refreshNonce, t]);
+  }, [page, pageSize, search, clientFilter, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -150,84 +197,70 @@ export function SitesPanel() {
     return m;
   }, [clientOptions]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam, clientParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const hasActiveFilters = hasListActiveFilters({ search, clientParam });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
-
-  async function handleToggleActive(row: Site, next: boolean) {
-    setTogglingId(row.id);
-    try {
-      await patchSite(row.id, { is_active: next });
-      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-      setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
-    } finally {
-      setTogglingId(null);
-    }
-  }
 
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Site>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("name", t("table.name"), (r) => r.site_name),
-      c.text("client", t("table.client"), (r) => siteClientName(r, clientLabelById)),
+      c.link(
+        "client",
+        t("table.client"),
+        (r) => siteClientName(r, clientLabelById),
+        (r) => {
+          const id = siteClientId(r);
+          return id != null ? `${routes.dashboard.clients}/${id}` : null;
+        },
+      ),
       c.truncate("address", t("table.address"), (r) => r.address_line_1?.trim() || "—", { maxWidth: "md" }),
       c.truncate("what3words", t("table.what3words"), (r) => r.what3words?.trim() || "—", { maxWidth: "sm", responsive: "md" }),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
-            },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingSite(row);
-                setDeleteOpen(true);
-              },
-            },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+
     ];
-  }, [t, tList, dateFmt, clientLabelById, togglingId, listHref, pathname, router]);
+  }, [t, dateFmt, clientLabelById, mass, items.length]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}>
+            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}>
               {t("add")}
             </AppButton>
           }
@@ -251,87 +284,105 @@ export function SitesPanel() {
                 clearable
                 clearAriaLabel={tList("clearFilter")}
                 className="w-full min-w-0 sm:w-56"
+                onOpenChange={(open) => {
+                  if (open) setFetchClientOptions(true);
+                }}
                 onChange={(v) => setUrl({ client: v || null, page: null }, { replace: true })}
-              />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
               />
             </div>
           }
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
           ) : (
             <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, is_active: null, client: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>}
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="projects"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />}
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "projects",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: (
+                <AddButton
+                  type="button"
+                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
+                />
+              ),
+            }}
+            onClearFilters={() =>
+              setUrl({ search: null, client: null, page: null }, { replace: true })
+            }
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
+              {items.map((row) => {
+                const clientId = siteClientId(row);
+                const clientLabel = siteClientName(row, clientLabelById);
+                return (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
-                  title={row.site_name}
-                  subtitle={siteClientName(row, clientLabelById)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
+                  title={<span className={entityNameLinkClassName}>{row.site_name}</span>}
+                  subtitle={
+                    clientId != null ? (
+                      <DetailEntityLink
+                        href={`${routes.dashboard.clients}/${clientId}`}
+                        className="font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {clientLabel}
+                      </DetailEntityLink>
+                    ) : (
+                      clientLabel
+                    )
+                  }
                   meta={row.city?.trim() || row.state?.trim() || row.country?.trim() || "—"}
-                  footer={<div className="flex w-full items-center justify-between gap-3"><ActiveStatusBadge active={row.is_active} label={row.is_active ? t("status.active") : t("status.inactive")} /><span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span></div>}
+                  footer={
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                    </span>
+                  }
                   onCardClick={() => openSiteDetail(row.id)}
                   menu={
                     <DataTableRowActionsMenu
                       menuAriaLabel={tList("openRowActions")}
                       items={[
-                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) },
+                        { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) },
                         { id: "delete", label: t("delete"), icon: Trash2, tone: "danger", onSelect: () => { setDeletingSite(row); setDeleteOpen(true); } },
-                        row.is_active
-                          ? {
-                              id: "deactivate",
-                              label: t("deactivate"),
-                              icon: PowerOff,
-                              onSelect: () => void handleToggleActive(row, false),
-                              disabled: togglingId === row.id,
-                            }
-                          : {
-                              id: "activate",
-                              label: t("activate"),
-                              icon: Power,
-                              onSelect: () => void handleToggleActive(row, true),
-                              disabled: togglingId === row.id,
-                            },
                       ]}
                     />
                   }
                 />
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (
@@ -343,7 +394,7 @@ export function SitesPanel() {
           />
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", { start: pageRange.start, end: pageRange.end, total: pagination.total_records })}
@@ -360,7 +411,7 @@ export function SitesPanel() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => (!deleting ? setDeleteOpen(false) : undefined)}
-        onConfirm={() => void (async () => { if (!deletingSite) return; setDeleting(true); try { await deleteSite(deletingSite.id); toastSuccess(t("deletedToast")); setDeleteOpen(false); setDeletingSite(null); setRefreshNonce((n) => n + 1); } catch { toastError(t("deleteError")); } finally { setDeleting(false); } })()}
+        onConfirm={() => void (async () => { if (!deletingSite) return; setDeleting(true); try { await deleteSite(deletingSite.id); toastSuccess(t("deletedToast")); setDeleteOpen(false); setDeletingSite(null); setRefreshNonce((n) => n + 1); } catch (error) { toastApiError(error, t("deleteError")); } finally { setDeleting(false); } })()}
         title={t("deleteConfirmTitle")}
         body={t("deleteConfirmBody")}
         highlight={deletingSite?.site_name}

@@ -1,4 +1,4 @@
-import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-appearance.store";
+import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 
 
 export const ACCENT_HEX: Record<DashboardAccentId, string> = {
