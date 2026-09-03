@@ -39,6 +39,17 @@ export type SubmitJobFormSummary = {
   total_fields?: number;
 };
 
+/** GET /jobs/{id}/worker-form-submissions/ list row. */
+export type WorkerFormSubmissionListItem = {
+  id: number;
+  worker_id: number;
+  worker_name: string;
+  project_form_name: string;
+  status: string;
+  submitted_at?: string | null;
+};
+
+/** @deprecated Prefer WorkerFormSubmissionListItem — API returns a flat list. */
 export type WorkerFormSubmissionSummary = {
   id: number;
   project_form_name: string;
@@ -46,6 +57,7 @@ export type WorkerFormSubmissionSummary = {
   submitted_at?: string | null;
 };
 
+/** @deprecated Prefer WorkerFormSubmissionListItem — API returns a flat list. */
 export type WorkerFormSubmissionsGroup = {
   id: number;
   worker_name: string;
@@ -53,10 +65,7 @@ export type WorkerFormSubmissionsGroup = {
   submissions: WorkerFormSubmissionSummary[];
 };
 
-export type WorkerFormSubmissionTableRow = WorkerFormSubmissionSummary & {
-  worker_name: string;
-  worker_id: number;
-};
+export type WorkerFormSubmissionTableRow = WorkerFormSubmissionListItem;
 
 export type SubmitJobFormPayload = {
   job_form_id: number;

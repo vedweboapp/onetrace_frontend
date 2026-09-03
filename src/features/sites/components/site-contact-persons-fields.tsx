@@ -10,13 +10,8 @@ import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-cont
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
-import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
-import { AppButton, CheckmarkSelect, FieldErrorSlot, FieldErrorText, FieldGroup } from "@/shared/ui";
-import { FormFieldRow } from "@/shared/ui/form-field-grid";
-
-/** Align delete control with the top of inputs when labels sit above fields. */
-const contactRowDeleteAlignClassName = "pt-[calc(var(--dash-label-size,0.875rem)*1.35+0.375rem)]";
+import { AppButton, CheckmarkSelect, FieldErrorSlot, FieldErrorText } from "@/shared/ui";
 
 type Props = {
   control: Control<SiteFormValues>;
@@ -195,78 +190,82 @@ export function SiteContactPersonsFields({
               const titleErr = rowErrors?.[index]?.title?.message;
               const contactErr = rowErrors?.[index]?.contact?.message;
               return (
-                <li key={field.id} className="flex items-start gap-2">
-                  <FormFieldRow cols="2" from="sm" labelTop className="min-w-0 flex-1 gap-x-4 gap-y-0">
-                    <FieldGroup label={t("contactPerson.titleLabel")} htmlFor={`site-cp-title-${index}`} required>
-                      <Controller
-                        control={control}
-                        name={`contacts.${index}.title`}
-                        render={({ field: titleField }) => (
-                          <CheckmarkSelect
-                            id={`site-cp-title-${index}`}
-                            portaled
-                            listLabel={t("contactPerson.titleLabel")}
-                            options={getRowTitleOptions(titleField.value)}
-                            value={titleField.value}
-                            emptyLabel={t("contactPerson.titlePlaceholder")}
-                            disabled={disabled}
-                            invalid={!!titleErr}
-                            onBlur={titleField.onBlur}
-                            onChange={titleField.onChange}
-                          />
-                        )}
-                      />
-                      <FieldErrorSlot>{titleErr}</FieldErrorSlot>
-                    </FieldGroup>
+                <li
+                  key={field.id}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+                >
+                  <div className="min-w-0">
+                    <Controller
+                      control={control}
+                      name={`contacts.${index}.title`}
+                      render={({ field: titleField }) => (
+                        <CheckmarkSelect
+                          id={`site-cp-title-${index}`}
+                          portaled
+                          size="sm"
+                          listLabel={t("contactPerson.titleLabel")}
+                          buttonAriaLabel={t("contactPerson.titleLabel")}
+                          options={getRowTitleOptions(titleField.value)}
+                          value={titleField.value}
+                          emptyLabel={t("contactPerson.titlePlaceholder")}
+                          disabled={disabled}
+                          invalid={!!titleErr}
+                          className="w-full min-w-0"
+                          onBlur={titleField.onBlur}
+                          onChange={titleField.onChange}
+                        />
+                      )}
+                    />
+                    <FieldErrorSlot>{titleErr}</FieldErrorSlot>
+                  </div>
 
-                    <FieldGroup label={t("contactPerson.contactLabel")} htmlFor={`site-cp-contact-${index}`} required>
-                      <Controller
-                        control={control}
-                        name={`contacts.${index}.contact`}
-                        render={({ field: contactField }) => (
-                          <CheckmarkSelect
-                            id={`site-cp-contact-${index}`}
-                            portaled
-                            searchable
-                            listLabel={t("contactPerson.contactLabel")}
-                            options={contactSelectOptions}
-                            value={contactField.value}
-                            emptyLabel={
-                              loadingContacts
-                                ? t("contactPerson.loadingContacts")
-                                : contactOptions.length === 0
-                                  ? t("contactPerson.noContactsForClient")
-                                  : t("contactPerson.contactPlaceholder")
-                            }
-                            disabled={disabled || !clientId || loadingContacts}
-                            invalid={!!contactErr}
-                            onBlur={contactField.onBlur}
-                            onChange={contactField.onChange}
-                            onAdd={
-                              contactQuickCreate.onAdd
-                                ? () => {
-                                    pendingContactRowRef.current = index;
-                                    contactQuickCreate.onAdd?.();
-                                  }
-                                : undefined
-                            }
-                            addAriaLabel={contactQuickCreate.addAriaLabel}
-                            addLabel={contactQuickCreate.addLabel}
-                          />
-                        )}
-                      />
-                      <FieldErrorSlot>{contactErr}</FieldErrorSlot>
-                    </FieldGroup>
-                  </FormFieldRow>
+                  <div className="min-w-0">
+                    <Controller
+                      control={control}
+                      name={`contacts.${index}.contact`}
+                      render={({ field: contactField }) => (
+                        <CheckmarkSelect
+                          id={`site-cp-contact-${index}`}
+                          portaled
+                          size="sm"
+                          searchable
+                          listLabel={t("contactPerson.contactLabel")}
+                          buttonAriaLabel={t("contactPerson.contactLabel")}
+                          options={contactSelectOptions}
+                          value={contactField.value}
+                          emptyLabel={
+                            loadingContacts
+                              ? t("contactPerson.loadingContacts")
+                              : contactOptions.length === 0
+                                ? t("contactPerson.noContactsForClient")
+                                : t("contactPerson.contactPlaceholder")
+                          }
+                          disabled={disabled || !clientId || loadingContacts}
+                          invalid={!!contactErr}
+                          className="w-full min-w-0"
+                          onBlur={contactField.onBlur}
+                          onChange={contactField.onChange}
+                          onAdd={
+                            contactQuickCreate.onAdd
+                              ? () => {
+                                  pendingContactRowRef.current = index;
+                                  contactQuickCreate.onAdd?.();
+                                }
+                              : undefined
+                          }
+                          addAriaLabel={contactQuickCreate.addAriaLabel}
+                          addLabel={contactQuickCreate.addLabel}
+                        />
+                      )}
+                    />
+                    <FieldErrorSlot>{contactErr}</FieldErrorSlot>
+                  </div>
 
                   <AppButton
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn(
-                      contactRowDeleteAlignClassName,
-                      "h-9 w-9 shrink-0 px-0 text-slate-500 hover:text-red-600 dark:hover:text-red-400",
-                    )}
+                    className="h-9 w-9 shrink-0 justify-self-end px-0 text-slate-500 hover:text-red-600 sm:justify-self-auto dark:hover:text-red-400"
                     disabled={disabled}
                     aria-label={t("contactPerson.remove")}
                     onClick={() => remove(index)}

@@ -78,6 +78,7 @@ export type QuotationPlotPin = {
   amount?: number | string | null;
   description?: string | null;
   location?: number | string | null;
+  variation?: boolean | null;
   project_form?: number | { id?: number; name?: string | null; submission_id?: number | null; submission_status?: string | null } | null;
   status_detail?: {
     id?: number | null;

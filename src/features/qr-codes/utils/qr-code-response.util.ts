@@ -1,6 +1,7 @@
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import type { QrCode, QrCodeGenerateResult, QrCodePagination } from "../types/qr-code.types";
+import { normalizeQrAssignedToDetail } from "./qr-code-assignment.util";
 
 /** Django REST framework paginated list (`count`, `results`, `next`, `previous`). */
 export type QrCodeDrfListResponse = {
@@ -18,7 +19,10 @@ export type QrCodeEnvelopeListResponse = {
 };
 
 export function normalizeQrCode(row: QrCode): QrCode {
-  return { ...row };
+  return {
+    ...row,
+    assigned_to_detail: normalizeQrAssignedToDetail(row.assigned_to_detail),
+  };
 }
 
 function normalizeQrCodeGenerateResult(row: QrCodeGenerateResult, message?: string): QrCodeGenerateResult {

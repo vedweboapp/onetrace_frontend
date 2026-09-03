@@ -1,8 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import type { QrCode } from "@/features/qr-codes/types/qr-code.types";
+import {
+  getQrAssignedJobId,
+  getQrAssignedPinHref,
+  getQrAssignedPinId,
+  qrAssignedLabel,
+} from "@/features/qr-codes/utils/qr-code-assignment.util";
 import {
   DetailMetricCard,
   DetailMetricsGrid,
@@ -28,6 +34,10 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
   const t = useTranslations("Dashboard.qrCodes");
   const tMeta = useTranslations("Dashboard.common.detail");
   const assigned = detail.status === "assigned" || detail.is_assigned;
+  const pinHref = getQrAssignedPinHref(detail);
+  const jobId = getQrAssignedJobId(detail);
+  const pinId = getQrAssignedPinId(detail);
+  const assignedLabel = qrAssignedLabel(detail);
 
   return (
     <DetailPagePadding>
@@ -60,6 +70,20 @@ export function QrCodeDetailBody({ detail, dateFmt }: Props) {
               <span className="font-mono">
                 {detail.batch_detail?.batch_number?.trim() || "—"}
               </span>
+            </DetailMetricCard>
+            <DetailMetricCard label={t("detail.assignedJob")}>
+              {pinHref ? (
+                <DetailEntityLink href={pinHref}>
+                  {assignedLabel}
+                  {jobId != null && pinId != null ? (
+                    <span className="ml-1 text-slate-500 dark:text-slate-400">
+                      ({t("detail.assignedPinHint", { jobId, pinId })})
+                    </span>
+                  ) : null}
+                </DetailEntityLink>
+              ) : (
+                <span>{t("detail.notAssigned")}</span>
+              )}
             </DetailMetricCard>
             <DetailMetricCard label={t("table.lastScanned")}>
               <span>{formatOptionalDate(detail.last_scanned_at, dateFmt)}</span>

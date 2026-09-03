@@ -1326,7 +1326,6 @@ export function SchedulingPanel({
             loading={false}
             singleWorker={singleWorker}
             onDayClick={setAgendaDay}
-            onCreateSchedule={allowCreate ? openCreateSchedule : undefined}
           />
         )
       ) : showScheduleSkeleton ? (

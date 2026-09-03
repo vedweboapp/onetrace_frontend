@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ScheduleCreateCellButton } from "@/features/scheduling/components/schedule-create-cell-button";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import { rowsForTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
@@ -33,7 +32,6 @@ type Props = {
   loading: boolean;
   singleWorker?: SchedulingTechnician | null;
   onDayClick: (day: Date) => void;
-  onCreateSchedule?: (tech: SchedulingTechnician | null, day: Date) => void;
 };
 
 export function SchedulingMonthCalendar({
@@ -45,7 +43,6 @@ export function SchedulingMonthCalendar({
   loading,
   singleWorker,
   onDayClick,
-  onCreateSchedule,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
@@ -104,16 +101,11 @@ export function SchedulingMonthCalendar({
                     ),
                   ),
                 );
-            const blocked =
-              Boolean(singleWorker) && (tone === "unavailable" || tone === "timeoff" || tone === "unknown");
-            const canCreate =
-              Boolean(onCreateSchedule) && inMonth && !blocked && (!singleWorker || tone === "available");
-
             return (
               <div
                 key={dayKey}
                 className={cn(
-                  "group/cell relative flex min-h-[4.75rem] flex-col border-b border-r border-slate-100 p-1 last:border-r-0 sm:min-h-[7rem] sm:p-1.5 dark:border-slate-800/80",
+                  "relative flex min-h-[4.75rem] flex-col border-b border-r border-slate-100 p-1 last:border-r-0 sm:min-h-[7rem] sm:p-1.5 dark:border-slate-800/80",
                   !inMonth && "bg-slate-50/80 dark:bg-slate-900/40",
                   inMonth && availabilityToneClass(tone),
                   isToday && inMonth && tone === "unknown" && "bg-sky-50/50 dark:bg-sky-950/20",
@@ -135,15 +127,6 @@ export function SchedulingMonthCalendar({
                   >
                     {day.getDate()}
                   </button>
-                  {canCreate ? (
-                    <div className="opacity-0 transition group-hover/cell:opacity-100 max-sm:opacity-100">
-                      <ScheduleCreateCellButton
-                        iconOnly
-                        className="size-6"
-                        onClick={() => onCreateSchedule?.(singleWorker ?? null, day)}
-                      />
-                    </div>
-                  ) : null}
                 </div>
 
                 {inMonth ? (

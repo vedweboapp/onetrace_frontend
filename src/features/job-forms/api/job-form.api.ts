@@ -4,7 +4,7 @@ import { assertApiSuccess } from "@/core/types/api.types";
 import type {
   JobFormSubmission,
   SubmitJobFormSummary,
-  WorkerFormSubmissionsGroup,
+  WorkerFormSubmissionListItem,
 } from "@/features/job-forms/types/job-form-submission.types";
 import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
 import { JOB_FORM_PATHS } from "./job-form.paths";
@@ -17,27 +17,59 @@ export async function fetchJobFormSchema(formId: number, jobId?: number | string
 }
 
 function normalizeSubmissionRow(
-  row: JobFormSubmission & { submission_id?: number },
+  row: JobFormSubmission & {
+    submission_id?: number;
+    project_form?: number | { id?: number };
+  },
 ): JobFormSubmission {
+  const projectFormFromNested =
+    typeof row.project_form === "number"
+      ? row.project_form
+      : row.project_form && typeof row.project_form === "object"
+        ? Number(row.project_form.id)
+        : undefined;
+  const projectFormId =
+    row.project_form_id ??
+    (Number.isFinite(projectFormFromNested) && (projectFormFromNested as number) > 0
+      ? (projectFormFromNested as number)
+      : undefined) ??
+    row.form_id;
+
   return {
     ...row,
     id: row.id ?? row.submission_id ?? 0,
+    project_form_id: projectFormId,
+    form_id: row.form_id ?? projectFormId ?? 0,
     values: Array.isArray(row.values) ? row.values : [],
     files: Array.isArray(row.files) ? row.files : [],
   };
 }
 
+function normalizeWorkerFormSubmissionListItem(row: Partial<WorkerFormSubmissionListItem>): WorkerFormSubmissionListItem | null {
+  const id = Number(row.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return {
+    id,
+    worker_id: Number(row.worker_id) || 0,
+    worker_name: typeof row.worker_name === "string" ? row.worker_name : "",
+    project_form_name: typeof row.project_form_name === "string" ? row.project_form_name : "",
+    status: typeof row.status === "string" ? row.status : "",
+    submitted_at: row.submitted_at ?? null,
+  };
+}
+
+/** GET /jobs/{id}/worker-form-submissions/ — flat paginated list of worker submissions. */
 export async function fetchJobWorkerFormSubmissions(
   jobId: number,
-): Promise<WorkerFormSubmissionsGroup[]> {
-  const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionsGroup[]>>(
+): Promise<WorkerFormSubmissionListItem[]> {
+  const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionListItem[]>>(
     JOB_FORM_PATHS.workerFormSubmissions(jobId),
   );
   assertApiSuccess(data);
-  return data.data.map((group) => ({
-    ...group,
-    submissions: Array.isArray(group.submissions) ? group.submissions : [],
-  }));
+  const rows = Array.isArray(data.data) ? data.data : [];
+  return rows
+    .map((row) => normalizeWorkerFormSubmissionListItem(row))
+    .filter((row): row is WorkerFormSubmissionListItem => row != null);
 }
 
 export async function fetchJobSubmittedForms(jobId: number): Promise<JobFormSubmission[]> {

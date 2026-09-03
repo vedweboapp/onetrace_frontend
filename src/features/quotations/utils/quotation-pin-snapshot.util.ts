@@ -2,9 +2,12 @@ import { getOrCreateLevelSnapshot, releaseLevelSnapshot, registerReleaseCallback
 import { createConcurrencyLimiter } from "@/shared/utils/concurrency-limit.util";
 import { resolveDrawingFileUrl } from "@/features/projects/utils/drawing-file-url";
 import type {
+  ProjectLevelForQuotation,
+  QuotationPlotPin,
   QuotationQuoteSection,
   QuotationQuoteSectionSourcePin,
 } from "@/features/quotations/types/quotation.types";
+import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
 
 /** Concurrency limit for snapshot generation queue. */
 export const PIN_SNAP_CONCURRENCY_LIMIT = 5;
@@ -198,6 +201,188 @@ function toFiniteCoord(raw: unknown): number | null {
   return null;
 }
 
+/** Drawing editors usually store 0–100%; some APIs return 0–1 fractions. */
+function asPercentCoord(n: number): number {
+  if (n > 0 && n < 1) return n * 100;
+  return n;
+}
+
+function coordsFromSourcePin(sourcePin: QuotationQuoteSectionSourcePin): { x: number; y: number } | null {
+  let x = toFiniteCoord(sourcePin.x_coordinate);
+  let y = toFiniteCoord(sourcePin.y_coordinate);
+  const coords = (sourcePin as { coordinates?: unknown }).coordinates;
+  if ((x == null || y == null) && Array.isArray(coords) && coords.length >= 2) {
+    x = toFiniteCoord(coords[0]);
+    y = toFiniteCoord(coords[1]);
+  }
+  if (x == null || y == null) return null;
+  return { x: asPercentCoord(x), y: asPercentCoord(y) };
+}
+
+type LevelPinLookup = {
+  x: number;
+  y: number;
+  location: number | string | null;
+  name: string | null;
+  quantity: number | null;
+  description: string | null;
+  variation: boolean | null;
+};
+
+function plotPinDisplayName(pin: QuotationPlotPin): string | null {
+  const detail = pin.item_detail;
+  const fromDetail = typeof detail?.name === "string" ? detail.name.trim() : "";
+  if (fromDetail) return fromDetail;
+  const c1 = typeof pin.composite_item_name === "string" ? pin.composite_item_name.trim() : "";
+  if (c1) return c1;
+  const c2 = typeof pin.composite_name === "string" ? pin.composite_name.trim() : "";
+  if (c2) return c2;
+  const n = typeof pin.name === "string" ? pin.name.trim() : "";
+  return n || null;
+}
+
+function buildLevelPinLookup(levels: ProjectLevelForQuotation[]): {
+  byPinId: Map<number, LevelPinLookup>;
+  drawingByLevelId: Map<number, string>;
+} {
+  const byPinId = new Map<number, LevelPinLookup>();
+  const drawingByLevelId = new Map<number, string>();
+
+  for (const level of levels) {
+    if (typeof level.drawing_file === "string" && level.drawing_file.trim()) {
+      drawingByLevelId.set(level.id, level.drawing_file.trim());
+    }
+    for (const plot of level.plots ?? []) {
+      for (const pin of plot.pins ?? []) {
+        if (typeof pin.id !== "number" || !Number.isFinite(pin.id) || pin.id <= 0) continue;
+        const x = toFiniteCoord(pin.x_coordinate);
+        const y = toFiniteCoord(pin.y_coordinate);
+        if (x == null || y == null) continue;
+        byPinId.set(pin.id, {
+          x: asPercentCoord(x),
+          y: asPercentCoord(y),
+          location: pin.location ?? null,
+          name: plotPinDisplayName(pin),
+          quantity: typeof pin.quantity === "number" && Number.isFinite(pin.quantity) ? pin.quantity : null,
+          description: typeof pin.description === "string" ? pin.description : null,
+          variation: typeof pin.variation === "boolean" ? pin.variation : null,
+        });
+      }
+    }
+  }
+
+  return { byPinId, drawingByLevelId };
+}
+
+function mergeSourcePinFromLookup(
+  sourcePin: QuotationQuoteSectionSourcePin,
+  lookup: LevelPinLookup | undefined,
+): QuotationQuoteSectionSourcePin {
+  if (!lookup) return sourcePin;
+  const existing = coordsFromSourcePin(sourcePin);
+  return {
+    ...sourcePin,
+    x_coordinate: existing?.x ?? lookup.x,
+    y_coordinate: existing?.y ?? lookup.y,
+    location:
+      sourcePin.location != null && String(sourcePin.location).trim() !== ""
+        ? sourcePin.location
+        : lookup.location,
+    name: sourcePin.name?.trim() ? sourcePin.name : lookup.name,
+    quantity: sourcePin.quantity ?? lookup.quantity,
+    description: sourcePin.description ?? lookup.description,
+    variation: sourcePin.variation ?? lookup.variation,
+  };
+}
+
+/**
+ * Resolve quotation `project` id whether the API returns a number or `{ id }`.
+ */
+export function resolveQuotationProjectId(project: unknown): number | null {
+  if (typeof project === "number" && Number.isFinite(project) && project > 0) return project;
+  if (project && typeof project === "object" && "id" in project) {
+    const id = Number((project as { id: unknown }).id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+}
+
+/**
+ * Fills missing drawing_file / pin coordinates / location labels from project level rows
+ * so PDF pin snapshots match the pin-location detail view.
+ */
+export function enrichQuoteSectionsForPinSnapshots(
+  quoteSections: QuotationQuoteSection[],
+  levels: ProjectLevelForQuotation[],
+): QuotationQuoteSection[] {
+  if (!quoteSections.length) return quoteSections;
+  const { byPinId, drawingByLevelId } = buildLevelPinLookup(levels);
+  if (byPinId.size === 0 && drawingByLevelId.size === 0) return quoteSections;
+
+  return quoteSections.map((sec) => {
+    const drawingFromLevel =
+      typeof sec.level_id === "number" && sec.level_id > 0
+        ? drawingByLevelId.get(sec.level_id)
+        : undefined;
+    const drawing_file =
+      typeof sec.drawing_file === "string" && sec.drawing_file.trim()
+        ? sec.drawing_file
+        : drawingFromLevel ?? sec.drawing_file ?? null;
+
+    const plots = (sec.plots ?? []).map((plot) => {
+      const pins = getQuotePlotPinsForDisplay(plot).map((group) => {
+        const sourcePins = group.source_pins ?? [];
+        if (sourcePins.length > 0) {
+          return {
+            ...group,
+            source_pins: sourcePins.map((sp) => {
+              const pinId =
+                typeof sp.pin_id === "number" && sp.pin_id > 0
+                  ? sp.pin_id
+                  : sourcePins.length === 1 &&
+                      typeof group.pin_id === "number" &&
+                      group.pin_id > 0
+                    ? group.pin_id
+                    : null;
+              return mergeSourcePinFromLookup(sp, pinId != null ? byPinId.get(pinId) : undefined);
+            }),
+          };
+        }
+
+        if (typeof group.pin_id === "number" && group.pin_id > 0) {
+          const lookup = byPinId.get(group.pin_id);
+          if (lookup) {
+            return {
+              ...group,
+              source_pins: [
+                mergeSourcePinFromLookup(
+                  {
+                    pin_id: group.pin_id,
+                    x_coordinate: null,
+                    y_coordinate: null,
+                    name: group.name,
+                    quantity: group.quantity,
+                    status_name: null,
+                    location: null,
+                    variation: null,
+                    description: null,
+                  },
+                  lookup,
+                ),
+              ],
+            };
+          }
+        }
+
+        return group;
+      });
+      return { ...plot, pins };
+    });
+
+    return { ...sec, drawing_file, plots };
+  });
+}
+
 /**
  * Scans quote_sections to extract all real positioned source_pins tasks.
  */
@@ -212,11 +397,13 @@ export function extractPinSnapshotTasks(
     if (!resolvedUrl) return;
 
     (sec.plots ?? []).forEach((plot, plotIdx) => {
-      (plot.pins ?? []).forEach((group, groupIdx) => {
-        (group.source_pins ?? []).forEach((sourcePin, pinIdx) => {
-          const xPercent = toFiniteCoord(sourcePin.x_coordinate);
-          const yPercent = toFiniteCoord(sourcePin.y_coordinate);
-          if (xPercent == null || yPercent == null) return;
+      getQuotePlotPinsForDisplay(plot).forEach((group, groupIdx) => {
+        const sourcePins = group.source_pins ?? [];
+        if (sourcePins.length === 0) return;
+
+        sourcePins.forEach((sourcePin, pinIdx) => {
+          const coords = coordsFromSourcePin(sourcePin);
+          if (!coords) return;
 
           tasks.push({
             key: getQuotationPinSnapshotKey(secIdx, plotIdx, groupIdx, pinIdx),
@@ -226,8 +413,8 @@ export function extractPinSnapshotTasks(
             sourcePinIndex: pinIdx,
             drawingFile: resolvedUrl,
             sourcePin,
-            xPercent,
-            yPercent,
+            xPercent: coords.x,
+            yPercent: coords.y,
           });
         });
       });
@@ -298,7 +485,7 @@ export async function generateQuotationPinSnapshots(
           const levelSnap = await withTimeout(
             getSectionSnapshot(task.drawingFile),
             45000,
-            `Failed to load blueprint drawing: ${task.drawingFile}`
+            `Failed to load blueprint drawing: ${task.drawingFile}`,
           );
 
           if (isCancelled?.()) return;
@@ -310,7 +497,7 @@ export async function generateQuotationPinSnapshots(
               locationLabel: task.sourcePin.location ?? undefined,
             }),
             15000,
-            "Failed to crop pin thumbnail snapshot"
+            "Failed to crop pin thumbnail snapshot",
           );
 
           if (isCancelled?.()) return;
@@ -329,8 +516,8 @@ export async function generateQuotationPinSnapshots(
             releaseLevelSnapshot(task.drawingFile);
           }
         }
-      })
-    )
+      }),
+    ),
   );
 
   return resultMap;
