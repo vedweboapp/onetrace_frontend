@@ -28,22 +28,11 @@ import { toastApiError } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { DashboardEmptyState } from "@/shared/ui";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   detail: Job;
 };
-
-function flattenWorkerFormSubmissions(
-  groups: Awaited<ReturnType<typeof fetchJobWorkerFormSubmissions>>,
-): WorkerFormSubmissionTableRow[] {
-  return groups.flatMap((group) =>
-    group.submissions.map((submission) => ({
-      ...submission,
-      worker_name: group.worker_name,
-      worker_id: group.id,
-    })),
-  );
-}
 
 export function JobFormsTab({ detail }: Props) {
   const t = useTranslations("Dashboard.jobs");
@@ -65,10 +54,8 @@ export function JobFormsTab({ detail }: Props) {
       setLoading(true);
       setLoadError(null);
       try {
-        const groups = await fetchJobWorkerFormSubmissions(detail.id);
-        if (!cancelled) {
-          setRows(flattenWorkerFormSubmissions(groups));
-        }
+        const list = await fetchJobWorkerFormSubmissions(detail.id);
+        if (!cancelled) setRows(list);
       } catch {
         if (!cancelled) {
           setRows([]);
@@ -87,16 +74,19 @@ export function JobFormsTab({ detail }: Props) {
     if (openingSubmissionId != null) return;
     setOpeningSubmissionId(row.id);
     try {
+      // GET /jobs/{jobId}/submitted-forms/{submissionId}/
       const submission = await fetchJobSubmittedForm(detail.id, row.id);
       const formId = submission.project_form_id ?? submission.form_id;
       const jobFormId = submission.job_form_id;
-      if (!formId || !jobFormId) {
+      if (!formId || formId <= 0) {
         toastApiError(new Error("Missing form identifiers"), t("forms.loadError"));
         return;
       }
-      const formName = row.project_form_name.trim() || submission.form_name?.trim() || t("forms.untitledForm");
+      const resolvedJobFormId = jobFormId > 0 ? jobFormId : formId;
+      const formName =
+        row.project_form_name.trim() || submission.form_name?.trim() || t("forms.untitledForm");
       const back = `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
-      const href = `${routes.dashboard.jobFormFill(detail.id, formId, jobFormId)}&submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}`;
+      const href = `${routes.dashboard.jobFormFill(detail.id, formId, resolvedJobFormId)}&submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}`;
       router.push(href);
     } catch (error) {
       toastApiError(error, t("forms.loadError"));
@@ -146,46 +136,52 @@ export function JobFormsTab({ detail }: Props) {
                 ]}
                 showRowNumbers={false}
               >
-                {rows.map((row) => (
-                  <DetailLinkedTableRow key={row.id} index={row.id} showRowNumber={false}>
-                    <DetailLinkedTableTd
-                      narrow
-                      className={detailLinkedTableCellClassName({ narrow: true, cellClassName: "tabular-nums" })}
+                {rows.map((row) => {
+                  const busy = openingSubmissionId === row.id;
+                  return (
+                    <DetailLinkedTableRow
+                      key={row.id}
+                      index={row.id}
+                      showRowNumber={false}
+                      clickable
+                      className={cn(busy && "opacity-60")}
+                      onClick={() => {
+                        if (!busy) void openSubmission(row);
+                      }}
                     >
-                      <button
-                        type="button"
-                        className={entityNameLinkClassName}
-                        disabled={openingSubmissionId === row.id}
-                        onClick={() => void openSubmission(row)}
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({
+                          narrow: true,
+                          cellClassName: "tabular-nums",
+                        })}
                       >
-                        {row.id}
-                      </button>
-                    </DetailLinkedTableTd>
-                    <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
-                      {row.worker_name || "—"}
-                    </DetailLinkedTableTd>
-                    <DetailLinkedTableTd
-                      className={detailLinkedTableCellClassName({
-                        cellClassName: "font-medium text-slate-900 dark:text-slate-100",
-                      })}
-                    >
-                      <button
-                        type="button"
-                        className={entityNameLinkClassName}
-                        disabled={openingSubmissionId === row.id}
-                        onClick={() => void openSubmission(row)}
+                        <span className={entityNameLinkClassName}>{row.id}</span>
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd className={detailLinkedTableCellClassName({})}>
+                        {row.worker_name || "—"}
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        className={detailLinkedTableCellClassName({
+                          cellClassName: "font-medium text-slate-900 dark:text-slate-100",
+                        })}
                       >
-                        {row.project_form_name || "—"}
-                      </button>
-                    </DetailLinkedTableTd>
-                    <DetailLinkedTableTd
-                      narrow
-                      className={detailLinkedTableCellClassName({ narrow: true, cellClassName: "tabular-nums" })}
-                    >
-                      {formatFlexibleApiDate(row.submitted_at, dateFmt) || "—"}
-                    </DetailLinkedTableTd>
-                  </DetailLinkedTableRow>
-                ))}
+                        <span className={entityNameLinkClassName}>
+                          {row.project_form_name || "—"}
+                        </span>
+                      </DetailLinkedTableTd>
+                      <DetailLinkedTableTd
+                        narrow
+                        className={detailLinkedTableCellClassName({
+                          narrow: true,
+                          cellClassName: "tabular-nums",
+                        })}
+                      >
+                        {formatFlexibleApiDate(row.submitted_at, dateFmt) || "—"}
+                      </DetailLinkedTableTd>
+                    </DetailLinkedTableRow>
+                  );
+                })}
               </DetailLinkedTable>
             </div>
           </DetailPanelCard>

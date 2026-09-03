@@ -21,7 +21,6 @@ import { cn } from "@/core/utils/http.util";
 import {
     Calendar,
     Mail,
-    Phone,
     Plus,
     Trash2,
 } from "lucide-react";
@@ -460,147 +459,160 @@ const PersonalProfileForm = forwardRef<
             {/* Contact Details */}
             <FormSectionCard title={t("ContactDetails")} icon={<Mail size={20} />}>
                 <div className="flex flex-col gap-8">
-                    <div className="form-fields-host">
-                      <div className="form-field-row grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div className="min-w-0 space-y-3">
-                            <div className="flex items-center justify-between gap-2">
-                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    <Mail size={14} aria-hidden className="shrink-0" />
-                                    {t("Emails")}
-                                </h3>
-                                {isEditing && (
-                                    <AppButton
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => appendEmail({ email: "", is_primary: false })}
-                                        className="gap-2"
-                                    >
-                                        <Plus size={14} /> {t("AddEmail")}
-                                    </AppButton>
-                                )}
-                            </div>
-                            <div className="flex flex-col space-y-3">
-                                {emailFields.map((field, index) => (
-                                    <div key={field.id} className="group flex items-end gap-3">
-                                        <div className="relative min-w-0 w-full">
-                                            <Input
-                                                register={register(`emails.${index}.email` as const)}
-                                                placeholder="Enter email address"
-                                                className="flex-1"
-                                                readOnly={!isEditing}
-                                            />
-                                            {field?.is_primary ? (
-                                              <p className="absolute right-2 top-2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                                                {t("Primary")}
-                                              </p>
-                                            ) : null}
-                                        </div>
-                                        {isEditing && (
-                                            <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap">
-                                                <input
-                                                    type="radio"
-                                                    name="email_primary"
-                                                    checked={!!watchedEmails?.[index]?.is_primary}
-                                                    onChange={() => {
-                                                        emailFields.forEach((_, i) => {
-                                                            setValue(`emails.${i}.is_primary`, i === index, { shouldValidate: true });
-                                                        });
-                                                    }}
-                                                    className="w-4 h-4 cursor-pointer"
-                                                />
-                                                <span className="text-slate-600 dark:text-slate-300">
-                                                    {t("Primary")}
-                                                </span>
-                                            </label>
-                                        )}
-                                        {isEditing && emailFields.length > 1 && (
-                                            <AppButton
-                                                variant="ghost"
-                                                size="sm"
-                                                className="size-11 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                                onClick={() => removeEmail(index)}
+                    <div className="space-y-4">
+                        {Array.from(
+                            { length: Math.max(emailFields.length, phoneFields.length, 1) },
+                            (_, index) => {
+                                const emailField = emailFields[index];
+                                const phoneField = phoneFields[index];
+                                return (
+                                    <FormFieldRow key={`contact-${emailField?.id ?? "e"}-${phoneField?.id ?? "p"}-${index}`} cols="2">
+                                        {emailField ? (
+                                            <FieldGroup
+                                                label={t("Emails")}
+                                                htmlFor={`profile-email-${index}`}
                                             >
-                                                <Trash2 size={18} />
-                                            </AppButton>
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <div className="relative min-w-0 flex-1">
+                                                        <Input
+                                                            id={`profile-email-${index}`}
+                                                            register={register(`emails.${index}.email` as const)}
+                                                            placeholder="Enter email address"
+                                                            className={cn(
+                                                                "flex-1",
+                                                                emailField.is_primary && !isEditing && "pr-20",
+                                                            )}
+                                                            readOnly={!isEditing}
+                                                        />
+                                                        {emailField.is_primary && !isEditing ? (
+                                                            <p className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                                {t("Primary")}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                    {isEditing ? (
+                                                        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-slate-50 px-3 py-2 text-sm dark:bg-slate-700">
+                                                            <input
+                                                                type="radio"
+                                                                name="email_primary"
+                                                                checked={!!watchedEmails?.[index]?.is_primary}
+                                                                onChange={() => {
+                                                                    emailFields.forEach((_, i) => {
+                                                                        setValue(`emails.${i}.is_primary`, i === index, {
+                                                                            shouldValidate: true,
+                                                                        });
+                                                                    });
+                                                                }}
+                                                                className="h-4 w-4 cursor-pointer"
+                                                            />
+                                                            <span className="text-slate-600 dark:text-slate-300">
+                                                                {t("Primary")}
+                                                            </span>
+                                                        </label>
+                                                    ) : null}
+                                                    {isEditing && emailFields.length > 1 ? (
+                                                        <AppButton
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="size-11 shrink-0 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
+                                                            onClick={() => removeEmail(index)}
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </AppButton>
+                                                    ) : null}
+                                                </div>
+                                            </FieldGroup>
+                                        ) : (
+                                            <div className="min-w-0" />
                                         )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="min-w-0 space-y-3">
-                            <div className="flex items-center justify-between gap-2">
-                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                                    <Phone size={14} aria-hidden className="shrink-0" />
-                                    {t("Phones")}
-                                </h3>
-                                {isEditing && (
-                                    <AppButton
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => appendPhone({ phone: "", is_primary: false })}
-                                        className="gap-2"
-                                    >
-                                        <Plus size={14} /> {t("AddPhone")}
-                                    </AppButton>
-                                )}
-                            </div>
-                            <div className="space-y-3">
-                                {phoneFields.map((field, index) => (
-                                    <div key={field.id} className="group flex items-start gap-3">
-                                        <div className="relative min-w-0 w-full">
-                                            <SurfacePhoneField
-                                                control={control}
-                                                name={`phones.${index}.phone` as const}
-                                                id={`phone-${index}`}
-                                                label=""
-                                                className="flex-1"
-                                                disabled={!isEditing}
-                                                countryIso={phoneCountry}
-                                            />
-                                            {field?.is_primary ? (
-                                              <p className="absolute right-2 top-2 z-[1] rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                                                {t("Primary")}
-                                              </p>
-                                            ) : null}
-                                        </div>
 
-                                        {isEditing && (
-                                            <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-700 text-sm whitespace-nowrap mt-1.5">
-                                                <input
-                                                    type="radio"
-                                                    name="phone_primary"
-                                                    checked={!!watchedPhones?.[index]?.is_primary}
-                                                    onChange={() => {
-                                                        phoneFields.forEach((_, i) => {
-                                                            setValue(`phones.${i}.is_primary`, i === index, { shouldValidate: true });
-                                                        });
-                                                    }}
-                                                    className="w-4 h-4 cursor-pointer"
-                                                />
-                                                <span className="text-slate-600 dark:text-slate-300">
-                                                    {t("Primary")}
-                                                </span>
-                                            </label>
-                                        )}
-                                        {isEditing && phoneFields.length > 1 && (
-                                            <AppButton
-                                                variant="ghost"
-                                                size="sm"
-                                                className="mt-1.5 size-11 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                                onClick={() => removePhone(index)}
+                                        {phoneField ? (
+                                            <FieldGroup
+                                                label={t("Phones")}
+                                                htmlFor={`phone-${index}`}
                                             >
-                                                <Trash2 size={18} />
-                                            </AppButton>
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <div className="relative min-w-0 flex-1">
+                                                        <SurfacePhoneField
+                                                            control={control}
+                                                            name={`phones.${index}.phone` as const}
+                                                            id={`phone-${index}`}
+                                                            label=""
+                                                            className="flex-1"
+                                                            disabled={!isEditing}
+                                                            countryIso={phoneCountry}
+                                                        />
+                                                        {phoneField.is_primary && !isEditing ? (
+                                                            <p className="pointer-events-none absolute right-2 top-1/2 z-[1] -translate-y-1/2 rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                                {t("Primary")}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                    {isEditing ? (
+                                                        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-slate-50 px-3 py-2 text-sm dark:bg-slate-700">
+                                                            <input
+                                                                type="radio"
+                                                                name="phone_primary"
+                                                                checked={!!watchedPhones?.[index]?.is_primary}
+                                                                onChange={() => {
+                                                                    phoneFields.forEach((_, i) => {
+                                                                        setValue(`phones.${i}.is_primary`, i === index, {
+                                                                            shouldValidate: true,
+                                                                        });
+                                                                    });
+                                                                }}
+                                                                className="h-4 w-4 cursor-pointer"
+                                                            />
+                                                            <span className="text-slate-600 dark:text-slate-300">
+                                                                {t("Primary")}
+                                                            </span>
+                                                        </label>
+                                                    ) : null}
+                                                    {isEditing && phoneFields.length > 1 ? (
+                                                        <AppButton
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="size-11 shrink-0 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
+                                                            onClick={() => removePhone(index)}
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </AppButton>
+                                                    ) : null}
+                                                </div>
+                                            </FieldGroup>
+                                        ) : (
+                                            <div className="min-w-0" />
                                         )}
-                                    </div>
-                                ))}
+                                    </FormFieldRow>
+                                );
+                            },
+                        )}
+
+                        {isEditing ? (
+                            <div className="flex flex-wrap gap-2">
+                                <AppButton
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => appendEmail({ email: "", is_primary: false })}
+                                    className="gap-2"
+                                >
+                                    <Plus size={14} /> {t("AddEmail")}
+                                </AppButton>
+                                <AppButton
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => appendPhone({ phone: "", is_primary: false })}
+                                    className="gap-2"
+                                >
+                                    <Plus size={14} /> {t("AddPhone")}
+                                </AppButton>
                             </div>
-                        </div>
+                        ) : null}
                     </div>
-                    </div>
-                    {/* Emails Section */}
 
                     <div className="h-px bg-slate-100 dark:bg-slate-700/50" />
 

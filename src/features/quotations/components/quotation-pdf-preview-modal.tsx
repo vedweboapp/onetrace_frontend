@@ -2,27 +2,26 @@
 
 import * as React from "react";
 import { Download, Loader2 } from "lucide-react";
-import { fetchQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  fetchProjectLevelRowsForQuotation,
+  fetchQuotation,
+} from "@/features/quotations/api/quotation.api";
 import type {
   QuotationDetail,
   QuotationQuoteSection,
   QuotationQuoteSectionPin,
   QuotationQuoteSectionSourcePin,
 } from "@/features/quotations/types/quotation.types";
+import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
 import { AppButton, AppModal } from "@/shared/ui";
 import {
+  enrichQuoteSectionsForPinSnapshots,
   generateQuotationPinSnapshots,
   extractPinSnapshotTasks,
   getQuotationPinSnapshotKey,
+  resolveQuotationProjectId,
 } from "@/features/quotations/utils/quotation-pin-snapshot.util";
-import { formatOrgMoneyValue } from "@/shared/money/format-money.util";
-import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
-
-/* ── helpers ─────────────────────────────────────────── */
-
-function fmtMoney(value: number | string | null | undefined): string {
-  return formatOrgMoneyValue(value ?? 0, getOrgCurrencySettings());
-}
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "\u2014";
@@ -89,6 +88,16 @@ type PinRow = {
   pinGroupIdx: number;
 };
 
+function pinLocationLabel(sp: QuotationQuoteSectionSourcePin, fallbackIndex: number): string {
+  if (sp.location != null && String(sp.location).trim() !== "") {
+    return `#${sp.location}`;
+  }
+  if (sp.pin_id != null && Number.isFinite(sp.pin_id) && sp.pin_id > 0) {
+    return `#${sp.pin_id}`;
+  }
+  return `#${fallbackIndex}`;
+}
+
 function buildPinRows(section: QuotationQuoteSection) {
   const allRows: { plotName: string; rows: PinRow[]; plotSubtotal: number; plotVat: number; plotTotal: number }[] = [];
   for (let plotIdx = 0; plotIdx < section.plots.length; plotIdx++) {
@@ -97,7 +106,7 @@ function buildPinRows(section: QuotationQuoteSection) {
     const plotVat = plotSubtotal * 0.2;
     const plotTotal = plotSubtotal + plotVat;
     const rows: PinRow[] = [];
-    const pins = plot.pins ?? [];
+    const pins = getQuotePlotPinsForDisplay(plot);
     for (let groupIdx = 0; groupIdx < pins.length; groupIdx++) {
       const group = pins[groupIdx];
       const sourcePins = group.source_pins ?? [];
@@ -105,7 +114,15 @@ function buildPinRows(section: QuotationQuoteSection) {
         sourcePins.forEach((sp, spIdx) => rows.push({ sp, group, pinIdx: spIdx, pinGroupIdx: groupIdx }));
       } else {
         rows.push({
-          sp: { pin_id: null, x_coordinate: null, y_coordinate: null, name: group.name, status_name: null, location: null } as QuotationQuoteSectionSourcePin,
+          sp: {
+            pin_id: group.pin_id,
+            x_coordinate: null,
+            y_coordinate: null,
+            name: group.name,
+            status_name: null,
+            location: null,
+            quantity: group.quantity,
+          } as QuotationQuoteSectionSourcePin,
           group,
           pinIdx: 0,
           pinGroupIdx: groupIdx,
@@ -130,6 +147,7 @@ function PlotTable({
   pinSnapshots,
   quotationId,
   onPinClick,
+  formatMoney,
 }: {
   sectionIdx: number;
   plotIdx: number;
@@ -141,6 +159,7 @@ function PlotTable({
   pinSnapshots: Map<string, string>;
   quotationId?: number;
   onPinClick?: (pinId: number) => void;
+  formatMoney: (value: number | string | null | undefined) => string;
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
@@ -160,10 +179,7 @@ function PlotTable({
           </thead>
           <tbody>
             {rows.map(({ sp, group, pinIdx, pinGroupIdx }, rowIdx) => {
-              const locText =
-                sp.location != null && String(sp.location).trim() !== ""
-                  ? `#${sp.location}`
-                  : sp.pin_id != null ? `Pin #${sp.pin_id}` : `#${pinIdx + 1}`;
+              const locText = pinLocationLabel(sp, rowIdx + 1);
               const itemName = sp.name || group.name || "Item";
               const pinKey = getQuotationPinSnapshotKey(sectionIdx, plotIdx, pinGroupIdx, pinIdx);
               const qty = sp.quantity ?? group.quantity ?? 1;
@@ -181,7 +197,7 @@ function PlotTable({
                   : null;
 
               return (
-                <tr key={rowIdx} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
+                <tr key={`${pinGroupIdx}-${pinIdx}-${sp.pin_id ?? rowIdx}`} style={{ borderTop: "1px solid #f1f5f9", background: rowIdx % 2 === 1 ? "#f8fafc" : "white" }}>
                   <td style={{ padding: "8px 10px" }}>
                     {sp.pin_id && onPinClick ? (
                       <button
@@ -202,7 +218,7 @@ function PlotTable({
                         <PinSnapshotCell
                           pinKey={pinKey}
                           pinSnapshots={pinSnapshots}
-                          locationLabel={sp.location}
+                          locationLabel={sp.location ?? rowIdx + 1}
                         />
                       </button>
                     ) : pinLink ? (
@@ -215,14 +231,14 @@ function PlotTable({
                         <PinSnapshotCell
                           pinKey={pinKey}
                           pinSnapshots={pinSnapshots}
-                          locationLabel={sp.location}
+                          locationLabel={sp.location ?? rowIdx + 1}
                         />
                       </a>
                     ) : (
                       <PinSnapshotCell
                         pinKey={pinKey}
                         pinSnapshots={pinSnapshots}
-                        locationLabel={sp.location}
+                        locationLabel={sp.location ?? rowIdx + 1}
                       />
                     )}
                   </td>
@@ -246,15 +262,15 @@ function PlotTable({
         <div style={{ minWidth: 220, border: "1px solid #e2e8f0", borderRadius: 4, overflow: "hidden", fontSize: 11 }}>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", background: "#f8fafc" }}>
             <span style={{ color: "#64748b", fontWeight: 500 }}>Sub-Total ex VAT</span>
-            <span style={{ fontWeight: 600 }}>{fmtMoney(plotSubtotal)}</span>
+            <span style={{ fontWeight: 600 }}>{formatMoney(plotSubtotal)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid #e2e8f0" }}>
             <span style={{ color: "#64748b", fontWeight: 500 }}>VAT (20%)</span>
-            <span style={{ fontWeight: 600 }}>{fmtMoney(plotVat)}</span>
+            <span style={{ fontWeight: 600 }}>{formatMoney(plotVat)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderTop: "1px solid #e2e8f0", background: "#e2e8f0" }}>
             <span style={{ fontWeight: 700, color: "#111827" }}>Total inc VAT</span>
-            <span style={{ fontWeight: 700, color: "#111827" }}>{fmtMoney(plotTotal)}</span>
+            <span style={{ fontWeight: 700, color: "#111827" }}>{formatMoney(plotTotal)}</span>
           </div>
         </div>
       </div>
@@ -270,12 +286,14 @@ function SectionBlock({
   pinSnapshots,
   quotationId,
   onPinClick,
+  formatMoney,
 }: {
   sectionIdx: number;
   section: QuotationQuoteSection;
   pinSnapshots: Map<string, string>;
   quotationId?: number;
   onPinClick?: (pinId: number) => void;
+  formatMoney: (value: number | string | null | undefined) => string;
 }) {
   const grandTotal = section.section_total ?? 0;
   const vat = grandTotal * 0.2;
@@ -303,13 +321,14 @@ function SectionBlock({
           pinSnapshots={pinSnapshots}
           quotationId={quotationId}
           onPinClick={onPinClick}
+          formatMoney={formatMoney}
         />
       ))}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 16 }}>
         <div style={{ minWidth: 220, border: "1px solid #334155", borderRadius: 6, overflow: "hidden", background: "#334155", color: "white", fontSize: 11 }}>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px" }}>
             <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Section Total inc VAT</span>
-            <span style={{ fontWeight: 700 }}>{fmtMoney(total)}</span>
+            <span style={{ fontWeight: 700 }}>{formatMoney(total)}</span>
           </div>
         </div>
       </div>
@@ -438,6 +457,11 @@ export type DocumentBodyProps = {
 };
 
 export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: DocumentBodyProps) {
+  const { formatMoneyValue } = useOrgCurrency();
+  const formatMoney = React.useCallback(
+    (value: number | string | null | undefined) => formatMoneyValue(value ?? 0),
+    [formatMoneyValue],
+  );
   const grandTotalExVat = sections.reduce((s, sec) => s + (sec.section_total ?? 0), 0);
   const vatAmount = grandTotalExVat * 0.2;
   const grandTotalIncVat = grandTotalExVat + vatAmount;
@@ -544,7 +568,7 @@ export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: Docum
                   {sections.map((sec, i) => (
                     <tr key={i} style={{ borderTop: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "8px 10px", fontWeight: 500 }}>{sec.name}</td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{fmtMoney(sec.section_total)}</td>
+                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{formatMoney(sec.section_total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -553,9 +577,9 @@ export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: Docum
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
               <div style={{ minWidth: 220, border: "1px solid #e2e8f0", borderRadius: 4, overflow: "hidden", fontSize: 11 }}>
                 {[
-                  ["Sub-Total ex VAT", fmtMoney(grandTotalExVat), "#f8fafc", "#64748b"],
-                  ["VAT (20%)", fmtMoney(vatAmount), "white", "#64748b"],
-                  ["Total inc VAT", fmtMoney(grandTotalIncVat), "#334155", "white"],
+                  ["Sub-Total ex VAT", formatMoney(grandTotalExVat), "#f8fafc", "#64748b"],
+                  ["VAT (20%)", formatMoney(vatAmount), "white", "#64748b"],
+                  ["Total inc VAT", formatMoney(grandTotalIncVat), "#334155", "white"],
                 ].map(([label, val, bg, color]) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", background: bg, borderTop: label !== "Sub-Total ex VAT" ? "1px solid #e2e8f0" : undefined }}>
                     <span style={{ color, fontWeight: label === "Total inc VAT" ? 700 : 500 }}>{label}</span>
@@ -576,6 +600,7 @@ export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: Docum
             pinSnapshots={pinSnapshots}
             quotationId={data.id}
             onPinClick={onPinClick}
+            formatMoney={formatMoney}
           />
         ))}
 
@@ -699,6 +724,7 @@ type Props = {
 export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose }: Props) {
   const [loading, setLoading] = React.useState(false);
   const [quoteDetail, setQuoteDetail] = React.useState<QuotationDetail | null>(null);
+  const [pdfSections, setPdfSections] = React.useState<QuotationQuoteSection[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   // Upfront snapshot generation state
@@ -712,10 +738,11 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
 
   const { state: dlState, error: dlError, download } = useDownloadPdf(quoteName, quotationId);
 
-  // Fetch quotation data
+  // Fetch quotation data (+ project level pins for accurate PDF snapshots)
   React.useEffect(() => {
     if (!open) {
       setQuoteDetail(null);
+      setPdfSections([]);
       setError(null);
       setGenerationStatus("idle");
       setGenerationProgress({ completed: 0, total: 0 });
@@ -726,18 +753,41 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchQuotation(quotationId)
-      .then((result) => { if (!cancelled) setQuoteDetail(result); })
-      .catch(() => { if (!cancelled) setError("Failed to load quotation data. Please try again."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    void (async () => {
+      try {
+        const result = await fetchQuotation(quotationId);
+        if (cancelled) return;
+        const projectId = resolveQuotationProjectId(result.project);
+        let sections = result.quote_sections ?? [];
+        if (projectId) {
+          try {
+            const levels = await fetchProjectLevelRowsForQuotation(projectId);
+            if (!cancelled) {
+              sections = enrichQuoteSectionsForPinSnapshots(sections, levels);
+            }
+          } catch (err) {
+            console.warn("Failed to enrich quotation pin snapshots from project levels:", err);
+          }
+        }
+        if (cancelled) return;
+        setQuoteDetail(result);
+        setPdfSections(sections);
+      } catch {
+        if (!cancelled) setError("Failed to load quotation data. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, quotationId]);
 
   // Upfront snapshot generation pass
   React.useEffect(() => {
     if (!quoteDetail) return;
 
-    const tasks = extractPinSnapshotTasks(quoteDetail.quote_sections ?? []);
+    const tasks = extractPinSnapshotTasks(pdfSections);
     if (tasks.length === 0) {
       setPinSnapshots(new Map());
       setGenerationProgress({ completed: 0, total: 0 });
@@ -751,7 +801,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
     setGenerationProgress({ completed: 0, total: tasks.length });
 
     generateQuotationPinSnapshots(
-      quoteDetail.quote_sections ?? [],
+      pdfSections,
       (key, dataUrl) => {
         if (cancelled) return;
         setPinSnapshots((prev) => {
@@ -761,7 +811,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
         });
         setGenerationProgress((prev) => ({ ...prev, completed: prev.completed + 1 }));
       },
-      () => cancelled
+      () => cancelled,
     )
       .then(() => {
         if (cancelled) return;
@@ -777,7 +827,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
     return () => {
       cancelled = true;
     };
-  }, [quoteDetail]);
+  }, [quoteDetail, pdfSections]);
 
   const isCapturing = dlState === "capturing";
   const isBusy = isCapturing;
@@ -869,7 +919,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
                 <DocumentBody
                   data={quoteDetail}
                   pinSnapshots={pinSnapshots}
-                  sections={quoteDetail.quote_sections ?? []}
+                  sections={pdfSections}
                 />
               </div>
             </div>
@@ -892,7 +942,7 @@ export function QuotationPdfPreviewModal({ open, quotationId, quoteName, onClose
             <DocumentBody
               data={quoteDetail}
               pinSnapshots={pinSnapshots}
-              sections={quoteDetail.quote_sections ?? []}
+              sections={pdfSections}
             />
           </div>
         </>
