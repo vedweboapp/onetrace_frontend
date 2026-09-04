@@ -5,6 +5,11 @@ import { useTranslations } from "next-intl";
 import { fetchDispatchesPage } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchListItem } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
+import {
+  dispatchItemsCount,
+  dispatchTotalQty,
+  normalizeDispatchList,
+} from "@/features/dispatches/utils/dispatch-normalize.util";
 import type { Job } from "@/features/jobs/types/job.types";
 import { DetailEntityLink, EntityDetailErrorState, EntityDetailTabLoadingState } from "@/shared/components/entity";
 import {
@@ -49,7 +54,7 @@ export function JobDispatchTab({ detail }: Props) {
       try {
         const { items } = await fetchDispatchesPage(1, 50, { job: detail.id });
         if (!cancelled) {
-          setDispatches(items);
+          setDispatches(normalizeDispatchList(items as any));
         }
       } catch {
         if (!cancelled) {
@@ -94,15 +99,22 @@ export function JobDispatchTab({ detail }: Props) {
             <div className="mt-3">
               <DetailLinkedTable
                 columns={[
-                  { id: "dispatch_id", header: tDispatches("table.dispatchId"), widthClass: "w-[34%]" },
-                  { id: "date", header: tDispatches("table.dispatchDate"), widthClass: "w-[22%]", narrow: true },
-                  { id: "worker", header: tDispatches("table.workerName"), widthClass: "w-[28%]" },
+                  { id: "dispatch_id", header: tDispatches("table.dispatchId"), widthClass: "w-[28%]" },
+                  { id: "date", header: tDispatches("table.dispatchDate"), widthClass: "w-[18%]", narrow: true },
+                  { id: "worker", header: tDispatches("table.workerName"), widthClass: "w-[24%]" },
+                  {
+                    id: "items",
+                    header: tDispatches("table.items"),
+                    narrow: true,
+                    align: "right",
+                    widthClass: "w-[12%]",
+                  },
                   {
                     id: "qty",
                     header: tDispatches("table.qty"),
                     narrow: true,
                     align: "right",
-                    widthClass: "w-[16%]",
+                    widthClass: "w-[18%]",
                   },
                 ]}
                 showRowNumbers={false}
@@ -138,7 +150,17 @@ export function JobDispatchTab({ detail }: Props) {
                         cellClassName: "tabular-nums",
                       })}
                     >
-                      {row.total_qty} {tDispatches("units")}
+                      {dispatchItemsCount(row as any)}
+                    </DetailLinkedTableTd>
+                    <DetailLinkedTableTd
+                      narrow
+                      className={detailLinkedTableCellClassName({
+                        align: "right",
+                        narrow: true,
+                        cellClassName: "tabular-nums",
+                      })}
+                    >
+                      {dispatchTotalQty(row as any)} {tDispatches("units")}
                     </DetailLinkedTableTd>
                   </DetailLinkedTableRow>
                 ))}

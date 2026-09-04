@@ -281,6 +281,14 @@ export type QuotationDetail = QuotationListItem & {
   site_snapshots?: QuotationSiteSnapshot[];
   comment: string | null;
   sites?: Array<{ id: number; site_name: string }>;
+  /** Client acceptance signature (URL or data URL) after approve. */
+  signature?: string | null;
+  signature_url?: string | null;
+  client_signature?: string | null;
+  acceptance_signature?: string | null;
+  signed_at?: string | null;
+  approved_at?: string | null;
+  accepted_at?: string | null;
 };
 
 export type QuotationPagination = {

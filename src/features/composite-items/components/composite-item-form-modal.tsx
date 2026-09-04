@@ -525,39 +525,6 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           </FieldGroup>
         </FormFieldRow>
 
-        <FormFieldRow cols="2" from="md" className="gap-4">
-          <FieldGroup label={t("costPrice")} htmlFor={costId} required>
-            <MoneyInput
-              id={costId}
-              type="number"
-              inputMode="decimal"
-              value={cost}
-              onChange={(e) => {
-                costManualRef.current = true;
-                setCost(e.target.value);
-              }}
-              disabled={submitting}
-              min={0}
-              step="0.01"
-            />
-          </FieldGroup>
-          <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
-            <MoneyInput
-              id={sellId}
-              type="number"
-              inputMode="decimal"
-              value={sell}
-              onChange={(e) => {
-                sellManualRef.current = true;
-                setSell(e.target.value);
-              }}
-              disabled={submitting}
-              min={0}
-              step="0.01"
-            />
-          </FieldGroup>
-        </FormFieldRow>
-
         <FormSubsection title={t("components")}>
           {itemsError ? (
             <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p>
@@ -635,6 +602,44 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
           </div>
           {componentsInvalid ? <FieldErrorText>{t("atLeastOneComponentError")}</FieldErrorText> : null}
         </FormSubsection>
+
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {t("pricesFromComponentsHint")}
+          </p>
+          <FormFieldRow cols="2" from="md" className="gap-4">
+            <FieldGroup label={t("costPrice")} htmlFor={costId} required>
+              <MoneyInput
+                id={costId}
+                type="number"
+                inputMode="decimal"
+                value={cost}
+                onChange={(e) => {
+                  costManualRef.current = true;
+                  setCost(e.target.value);
+                }}
+                disabled={submitting}
+                min={0}
+                step="0.01"
+              />
+            </FieldGroup>
+            <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
+              <MoneyInput
+                id={sellId}
+                type="number"
+                inputMode="decimal"
+                value={sell}
+                onChange={(e) => {
+                  sellManualRef.current = true;
+                  setSell(e.target.value);
+                }}
+                disabled={submitting}
+                min={0}
+                step="0.01"
+              />
+            </FieldGroup>
+          </FormFieldRow>
+        </div>
       </form>
     </AppModal>
   );

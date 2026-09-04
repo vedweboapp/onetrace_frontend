@@ -54,6 +54,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   technician: CreateScheduleTechnician | null;
+  /** When scheduling several workers at once (bulk / group). */
+  technicians?: CreateScheduleTechnician[] | null;
   defaultDateKey: string;
   prefill?: CreateSchedulePrefill | null;
   existingSchedule?: Schedule | null;
@@ -64,6 +66,11 @@ type Props = {
     ignoreScheduleId?: number;
   }) => string | null;
   onCreated?: (schedule: Schedule) => void;
+  onBulkResult?: (result: {
+    schedule: Schedule;
+    scheduledCount: number;
+    skipped: Array<{ workerId: number; workerName: string; reason: string }>;
+  }) => void;
 };
 
 function isUnassignedJob(job: Job): boolean {
@@ -98,14 +105,21 @@ export function CreateScheduleModal({
   open,
   onClose,
   technician,
+  technicians,
   defaultDateKey,
   prefill,
   existingSchedule,
   getBookingConflict,
   onCreated,
+  onBulkResult,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const isReschedule = Boolean(existingSchedule);
+  const bulkWorkers = React.useMemo(() => {
+    if (Array.isArray(technicians) && technicians.length > 0) return technicians;
+    return technician ? [technician] : [];
+  }, [technician, technicians]);
+  const isBulk = bulkWorkers.length > 1;
   const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(
     t("modal.technicianFallbackTitle"),
     {
@@ -118,7 +132,6 @@ export function CreateScheduleModal({
   const [jobsById, setJobsById] = React.useState<Record<number, Job>>({});
   const [loadingJobs, setLoadingJobs] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-
   const [workerId, setWorkerId] = React.useState("");
   const [clientId, setClientId] = React.useState("");
   const [jobId, setJobId] = React.useState("");
@@ -142,13 +155,13 @@ export function CreateScheduleModal({
   }, [catalog]);
 
   const selectedWorker = React.useMemo(() => {
-    if (technician) return technician;
+    if (bulkWorkers.length > 0) return bulkWorkers[0] ?? null;
     const id = Number(workerId);
     if (!Number.isFinite(id) || id <= 0 || !catalog) return null;
     const row = catalog.technicians.find((w) => w.id === id);
     if (!row) return null;
     return { id: row.id, name: row.name, title: row.title, initials: row.initials };
-  }, [technician, workerId, catalog]);
+  }, [bulkWorkers, workerId, catalog]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -287,6 +300,9 @@ export function CreateScheduleModal({
     if (!Number.isFinite(jobNum) || jobNum <= 0 || !Number.isFinite(clientNum)) return;
 
     const job = jobsById[jobNum];
+    const workerIds = (isBulk ? bulkWorkers : [selectedWorker])
+      .map((w) => w.id)
+      .filter((id) => Number.isFinite(id) && id > 0);
 
     setSaving(true);
     try {
@@ -295,8 +311,8 @@ export function CreateScheduleModal({
 
       const payload = {
         job_id: jobNum,
-        worker_id: selectedWorker.id,
-        worker_ids: [selectedWorker.id],
+        worker_id: workerIds[0] ?? selectedWorker.id,
+        worker_ids: workerIds.length > 0 ? workerIds : [selectedWorker.id],
         client_id: clientNum,
         project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
         start_at: startIso,
@@ -307,11 +323,32 @@ export function CreateScheduleModal({
         all_day: false,
       };
 
-      const row = existingSchedule
-        ? await updateSchedule(existingSchedule.id, payload)
-        : await createSchedule(payload);
-      toastSuccess(isReschedule ? t("modal.successRescheduleToast") : t("modal.successToast"));
-      onCreated?.(row);
+      if (existingSchedule) {
+        const row = await updateSchedule(existingSchedule.id, payload);
+        toastSuccess(t("modal.successRescheduleToast"));
+        onCreated?.(row);
+        onClose();
+        return;
+      }
+
+      const result = await createSchedule(payload);
+      if (isBulk || result.skipped.length > 0) {
+        onBulkResult?.({
+          schedule: result.schedule,
+          scheduledCount: result.scheduledWorkerIds.length,
+          skipped: result.skipped,
+        });
+        if (result.scheduledWorkerIds.length > 0) {
+          toastSuccess(t("bulk.partialSuccessToast", { count: result.scheduledWorkerIds.length }));
+          onCreated?.(result.schedule);
+        } else if (result.skipped.length === 0) {
+          toastSuccess(t("modal.successToast"));
+          onCreated?.(result.schedule);
+        }
+      } else {
+        toastSuccess(t("modal.successToast"));
+        onCreated?.(result.schedule);
+      }
       onClose();
     } catch (error) {
       toastApiError(error, isReschedule ? t("modal.errorRescheduleToast") : t("modal.errorToast"));
@@ -351,20 +388,25 @@ export function CreateScheduleModal({
         </div>
       }
     >
-      {selectedWorker && technician ? (
+      {selectedWorker && (technician || isBulk || bulkWorkers.length > 0) ? (
         <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold uppercase text-white"
             aria-hidden
           >
-            {selectedWorker.initials}
+            {isBulk ? bulkWorkers.length : selectedWorker.initials}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {selectedWorker.name}
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+              {isBulk ? t("bulk.workersSelected", { count: bulkWorkers.length }) : selectedWorker.name}
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {t("modal.currentTitle", { title: techTitle })}
+              {isBulk
+                ? bulkWorkers
+                    .slice(0, 4)
+                    .map((w) => w.name)
+                    .join(", ") + (bulkWorkers.length > 4 ? ` +${bulkWorkers.length - 4}` : "")
+                : t("modal.currentTitle", { title: techTitle })}
             </p>
           </div>
         </div>

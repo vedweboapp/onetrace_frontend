@@ -52,10 +52,21 @@ function normalizeDispatchOrderNumber<T extends { dispatch_order_number?: string
 
 function normalizeDispatchListItem(row: DispatchListItem): DispatchListItem {
   const norm = normalizeDispatchOrderNumber(row) as any;
+  const lines = Array.isArray(norm.lines) ? norm.lines : undefined;
+  const itemsCount =
+    typeof norm.items_count === "number" && Number.isFinite(norm.items_count)
+      ? norm.items_count
+      : typeof norm.line_count === "number" && Number.isFinite(norm.line_count)
+        ? norm.line_count
+        : Array.isArray(lines)
+          ? lines.length
+          : null;
   return {
     ...norm,
     worker_name: norm.worker ?? norm.worker_name,
     material_request_id: norm.material_request ?? norm.material_request_id,
+    lines,
+    items_count: itemsCount,
   };
 }
 

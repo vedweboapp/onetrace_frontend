@@ -70,11 +70,16 @@ export function parseGroupIdParam(param: string | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-/** Table (default) vs card grid list view; only `list` is stored in the URL (`?view=list`). */
-export type ListPageViewMode = "table" | "list";
+/**
+ * Table (default) vs card grid vs map.
+ * Non-default modes are stored in the URL: `?view=list` (cards) or `?view=map`.
+ */
+export type ListPageViewMode = "table" | "list" | "map";
 
 export function parseListViewParam(param: string | null): ListPageViewMode {
-  return param === "list" ? "list" : "table";
+  if (param === "list") return "list";
+  if (param === "map") return "map";
+  return "table";
 }
 
 export type UseListUrlStateOptions = {
@@ -123,7 +128,7 @@ export function useListUrlState(options: UseListUrlStateOptions = {}) {
         p.delete("page_size");
       }
       const view = p.get("view");
-      if (view && view !== "list") {
+      if (view && view !== "list" && view !== "map") {
         p.delete("view");
       }
       const qs = p.toString();
@@ -161,7 +166,10 @@ export function useListUrlState(options: UseListUrlStateOptions = {}) {
 
   const setListViewMode = React.useCallback(
     (mode: ListPageViewMode) => {
-      setUrl({ view: mode === "list" ? "list" : null, page: null }, { replace: true });
+      setUrl(
+        { view: mode === "table" ? null : mode, page: null },
+        { replace: true },
+      );
     },
     [setUrl],
   );

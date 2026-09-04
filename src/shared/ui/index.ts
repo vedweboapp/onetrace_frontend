@@ -108,6 +108,7 @@ export { SubmitButton } from "./submit-button";
 export type { SubmitButtonProps } from "./submit-button";
 export { ListPageSearchField } from "./list-page-search-field";
 export { ListPageHeader } from "./list-page-header";
+export { ListViewModeToggle } from "./list-view-mode-toggle";
 export { ActiveStatusBadge } from "./active-status-badge";
 export type { ActiveStatusBadgeProps } from "./active-status-badge";
 export { ListPageCard, ListPageCardFooter, ListPageCardGrid, ListPageCardMetaLine, ListPageCardSkeleton } from "./list-page-card";

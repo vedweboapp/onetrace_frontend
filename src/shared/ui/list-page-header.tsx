@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, LayoutGrid, List, Funnel } from "lucide-react";
+import { ArrowLeft, Funnel } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-chrome.store";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
+import { ListViewModeToggle } from "@/shared/ui/list-view-mode-toggle";
 import { cn } from "@/core/utils/http.util";
 
 type ListPageHeaderProps = {
@@ -24,6 +25,8 @@ type ListPageHeaderProps = {
   defaultViewMode?: ListPageViewMode;
   tableViewLabel?: string;
   listViewLabel?: string;
+  mapViewLabel?: string;
+  showMapView?: boolean;
   variant?: "toolbar" | "page";
   filtersActive?: boolean;
 };
@@ -43,6 +46,8 @@ export function ListPageHeader({
   defaultViewMode = "table",
   tableViewLabel = "Card view",
   listViewLabel = "List view",
+  mapViewLabel = "Map view",
+  showMapView = false,
   variant = "toolbar",
   filtersActive = false,
 }: ListPageHeaderProps) {
@@ -129,38 +134,14 @@ export function ListPageHeader({
       ) : null;
 
     const viewToggle = showViewToggle ? (
-      <div className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
-        <button
-          type="button"
-          onClick={() => setMode("list")}
-          title={tableViewLabel}
-          aria-label={tableViewLabel}
-          aria-pressed={viewMode === "list"}
-          className={cn(
-            "inline-flex size-7 items-center justify-center rounded transition",
-            viewMode === "list"
-              ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-          )}
-        >
-          <LayoutGrid className="size-3.5" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("table")}
-          title={listViewLabel}
-          aria-label={listViewLabel}
-          aria-pressed={viewMode === "table"}
-          className={cn(
-            "inline-flex size-7 items-center justify-center rounded transition",
-            viewMode === "table"
-              ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
-              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-          )}
-        >
-          <List className="size-3.5" strokeWidth={2} />
-        </button>
-      </div>
+      <ListViewModeToggle
+        viewMode={viewMode}
+        onViewModeChange={setMode}
+        tableViewLabel={tableViewLabel}
+        listViewLabel={listViewLabel}
+        mapViewLabel={mapViewLabel}
+        showMapView={showMapView}
+      />
     ) : null;
 
     if (variant === "page") {
