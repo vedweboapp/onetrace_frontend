@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   ClipboardList,
+  ClipboardPen,
   FileText,
   FolderKanban,
   Home,
@@ -112,6 +113,7 @@ export function DashboardHeader() {
   const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
   const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
+  const formsHref = routes.dashboard.forms;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -181,6 +183,7 @@ export function DashboardHeader() {
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
+  const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -271,6 +274,8 @@ export function DashboardHeader() {
                         ? tNav("scheduling")
                         : qrCodesActive
                         ? tNav("qrCodes")
+                        : formsActive
+                          ? tNav("forms")
                         : groupsActive
                           ? tNav("groups")
                           : materialRequestsActive
@@ -471,6 +476,7 @@ export function DashboardHeader() {
             />
             <TopNavLink href={schedulingHref} label={tNav("scheduling")} icon={CalendarDays} active={schedulingActive} resolved={resolved} />
             <TopNavLink href={qrCodesHref} label={tNav("qrCodes")} icon={QrCode} active={qrCodesActive} resolved={resolved} />
+            <TopNavLink href={formsHref} label={tNav("forms")} icon={ClipboardPen} active={formsActive} resolved={resolved} />
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />
             <TopNavLink href={groupsHref} label={tNav("groups")} icon={Layers} active={groupsActive} resolved={resolved} />
             <TopNavLink href={materialRequestsHref} label={tNav("materialRequests")} icon={ClipboardList} active={materialRequestsActive} resolved={resolved} />

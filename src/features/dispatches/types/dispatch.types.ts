@@ -128,6 +128,10 @@ export type DispatchListItem = {
   status: string;
   worker_name?: number | DispatchWorkerRef | null;
   total_qty: number;
+  /** Number of line items (distinct from total_qty units). */
+  items_count?: number | null;
+  line_count?: number | null;
+  lines?: DispatchLineItem[] | null;
   created_at?: string;
 };
 

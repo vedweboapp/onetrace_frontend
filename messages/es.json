@@ -340,6 +340,7 @@
       "flyoutProject": "Proyecto",
       "scheduling": "Programación",
       "qrCodes": "Códigos QR",
+      "forms": "Formularios",
       "projects": "Proyectos",
       "groups": "Grupos",
       "materialRequests": "Solicitudes de Material",
@@ -2290,6 +2291,26 @@
         "createdBy": "Creado por"
       }
     },
+    "workerForms": {
+      "metaTitle": "Formularios",
+      "title": "Formularios",
+      "subtitle": "Formularios enviados de todos los trabajos.",
+      "searchPlaceholder": "Buscar formularios, trabajadores o trabajos…",
+      "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay formularios",
+      "emptyDescription": "Los formularios enviados de trabajos aparecerán aquí.",
+      "missingJob": "Este envío no tiene referencia de trabajo, por lo que no se puede abrir.",
+      "pageLabel": "Mostrando {start}-{end} de {total} formularios",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "columns": {
+        "id": "ID",
+        "job": "Trabajo",
+        "workerName": "Trabajador",
+        "projectFormName": "Formulario",
+        "submittedAt": "Enviado"
+      }
+    },
     "contacts": {
       "metaTitle": "Contactos",
       "detailMetaTitle": "Detalle del contacto",
@@ -3400,12 +3421,16 @@
       "actions": {
         "view": "Ver detalle"
       },
+      "card": {
+        "items": "{count} Ítems · {qty} Unidades"
+      },
       "table": {
         "dispatchId": "Número de envío",
         "jobName": "Trabajo",
         "dispatchDate": "Fecha",
         "status": "Estado",
         "workerName": "Trabajador",
+        "items": "Ítems",
         "qty": "Cant.",
         "materialItem": "Material",
         "requested": "Solicitado",
@@ -3579,6 +3604,24 @@
       "emptyUsers": "No se encontraron usuarios.",
       "emptyUsersHint": "Prueba otro grupo o borra la búsqueda para ver usuarios.",
       "clearPeopleFilters": "Borrar filtros",
+      "bulk": {
+        "selectAll": "Seleccionar todos los usuarios visibles",
+        "selectWorker": "Seleccionar {name}",
+        "scheduleSelected": "Programar ({count})",
+        "scheduleGroup": "Programar grupo",
+        "groupSelectAria": "Filtrar o programar por grupo",
+        "noneSelected": "Selecciona uno o más usuarios primero.",
+        "pickGroup": "Elige un grupo primero.",
+        "groupEmpty": "No hay usuarios en ese grupo.",
+        "workersSelected": "{count} usuarios seleccionados",
+        "partialSuccessToast": "Se programaron {count} usuarios",
+        "resultTitle": "Resultado de programación masiva",
+        "scheduledCount": "{count, plural, one {Se programó # usuario.} other {Se programaron # usuarios.}}",
+        "noneScheduled": "No se programó ningún usuario.",
+        "notScheduledHeading": "No programados",
+        "unknownWorker": "Trabajador #{id}",
+        "close": "Cerrar"
+      },
       "legendAvailable": "Disponible",
       "legendUnavailable": "No disponible",
       "legendScheduled": "Programado",
@@ -3773,6 +3816,11 @@
       "pageLabel": "Mostrando {start}-{end} de {total} trabajos",
       "prev": "Anterior",
       "next": "Siguiente",
+      "mapView": {
+        "emptyTitle": "Sin sitios de trabajo en el mapa",
+        "emptyDescription": "Los trabajos de esta página no tienen una dirección de sitio que se pueda ubicar en el mapa. Añade detalles de dirección o cambia de página.",
+        "skippedCount": "{count, plural, one {# trabajo de esta página no tiene dirección de sitio y está oculto en el mapa.} other {# trabajos de esta página no tienen dirección de sitio y están ocultos en el mapa.}}"
+      },
       "delete": "Eliminar",
       "deleteConfirmTitle": "¿Eliminar este trabajo?",
       "deleteConfirmBody": "Esta acción no se puede deshacer.",
@@ -4062,6 +4110,7 @@
       "tableView": "Vista de tabla",
       "listView": "Vista de tabla",
       "cardView": "Vista de tarjetas",
+      "mapView": "Vista de mapa",
       "openRowActions": "Abrir acciones de la fila",
       "noResultsTitle": "No hay resultados",
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
@@ -4247,6 +4296,12 @@
         "cardByUser": "Por {user}",
         "cardOpenAria": "Abrir plano",
         "cardPinCount": "{count} pins",
+        "rename": "Renombrar",
+        "renameAria": "Renombrar plano",
+        "renameSaveAria": "Guardar nombre del plano",
+        "renameCancelAria": "Cancelar renombrado",
+        "renamedToast": "Nombre del plano actualizado",
+        "renameError": "No se pudo renombrar el plano. Inténtalo de nuevo.",
         "table": {
           "drawing": "Plano",
           "block": "Bloque",
@@ -4632,6 +4687,7 @@
         "quantity": "Cantidad",
         "costPrice": "Precio de coste",
         "sellingPrice": "Precio de venta",
+        "pricesFromComponentsHint": "El precio de coste y el de venta se calculan a partir de los ítems componentes seleccionados (y sus cantidades).",
         "components": "Componentes",
         "componentsHint": "Añade uno o más ítems componentes y sus cantidades.",
         "itemsLoadError": "No se pudieron cargar los ítems para componentes.",

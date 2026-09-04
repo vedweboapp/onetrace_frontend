@@ -7,6 +7,21 @@ function asFiniteNumber(value: unknown): number | null {
   return null;
 }
 
+/** Number of line items on a dispatch (not total units). */
+export function dispatchItemsCount(row: {
+  items_count?: number | string | null;
+  line_count?: number | string | null;
+  lines?: unknown[] | null;
+}): number {
+  const lines = Array.isArray(row.lines) ? row.lines : [];
+  if (lines.length > 0) return lines.length;
+  return (
+    asFiniteNumber(row.items_count) ??
+    asFiniteNumber(row.line_count) ??
+    0
+  );
+}
+
 /** Sum dispatched units across lines — not the number of line items. */
 export function dispatchTotalQty(row: {
   total_qty?: number | string | null;
@@ -26,11 +41,13 @@ export function dispatchTotalQty(row: {
 // callers can still access `lines` and other fields.
 export function normalizeDispatchForList(raw: any): any {
   const worker = raw.worker ?? raw.worker_name ?? null;
+  const itemsCount = dispatchItemsCount(raw);
 
   return {
     ...raw,
     worker_name: worker,
     total_qty: dispatchTotalQty(raw),
+    items_count: itemsCount,
   };
 }
 

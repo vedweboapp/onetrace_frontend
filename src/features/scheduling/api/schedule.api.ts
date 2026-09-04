@@ -5,8 +5,10 @@ import { assertApiSuccess } from "@/core/types/api.types";
 import { SCHEDULE_PATHS } from "@/features/scheduling/api/schedule.paths";
 import type {
   CreateSchedulePayload,
+  CreateScheduleResult,
   CreateWorkerTimeOffPayload,
   Schedule,
+  ScheduleBulkSkipRow,
   ScheduleListFilters,
   UpdateSchedulePayload,
   WorkerTimeOff,
@@ -17,6 +19,7 @@ import {
   normalizeScheduleList,
   normalizeWorkerTimeOff,
   normalizeWorkerTimeOffList,
+  scheduleWorkerIds,
 } from "@/features/scheduling/utils/schedule-map.util";
 
 type ListEnvelope<T> = {
@@ -90,12 +93,112 @@ export async function fetchSchedule(id: number): Promise<Schedule | null> {
   return normalizeSchedule(data.data);
 }
 
-export async function createSchedule(payload: CreateSchedulePayload): Promise<Schedule> {
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function parsePositiveId(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function parseSkipReason(row: Record<string, unknown>): string {
+  const reason =
+    row.reason ??
+    row.message ??
+    row.error ??
+    row.detail ??
+    row.description ??
+    row.status_message;
+  if (typeof reason === "string" && reason.trim()) return reason.trim();
+  return "Unavailable";
+}
+
+function parseSkipName(row: Record<string, unknown>, workerId: number): string {
+  const nested = asRecord(row.worker);
+  const name =
+    row.worker_name ??
+    row.name ??
+    row.username ??
+    nested?.worker_name ??
+    nested?.name ??
+    nested?.username;
+  if (typeof name === "string" && name.trim()) return name.trim();
+  return `Worker #${workerId}`;
+}
+
+/** Pull skipped / unavailable workers from common bulk-create response shapes. */
+export function parseScheduleSkippedWorkers(payload: unknown): ScheduleBulkSkipRow[] {
+  const root = asRecord(payload);
+  if (!root) return [];
+
+  const candidates: unknown[] = [];
+  const pushList = (value: unknown) => {
+    if (Array.isArray(value)) candidates.push(...value);
+  };
+
+  pushList(root.skipped);
+  pushList(root.skipped_workers);
+  pushList(root.failed_workers);
+  pushList(root.unavailable_workers);
+  pushList(root.not_scheduled);
+  pushList(root.not_scheduled_workers);
+  pushList(root.errors);
+
+  const data = asRecord(root.data);
+  if (data) {
+    pushList(data.skipped);
+    pushList(data.skipped_workers);
+    pushList(data.failed_workers);
+    pushList(data.unavailable_workers);
+    pushList(data.not_scheduled);
+    pushList(data.not_scheduled_workers);
+  }
+
+  const out: ScheduleBulkSkipRow[] = [];
+  const seen = new Set<string>();
+  for (const item of candidates) {
+    if (typeof item === "string" && item.trim()) {
+      const key = `0:${item.trim()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ workerId: 0, workerName: "", reason: item.trim() });
+      continue;
+    }
+    const row = asRecord(item);
+    if (!row) continue;
+    const nested = asRecord(row.worker);
+    const workerId =
+      parsePositiveId(row.worker_id) ??
+      parsePositiveId(row.id) ??
+      parsePositiveId(row.worker) ??
+      parsePositiveId(nested?.id) ??
+      0;
+    const reason = parseSkipReason(row);
+    const workerName = parseSkipName(row, workerId || 0);
+    const key = `${workerId}:${reason}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ workerId, workerName, reason });
+  }
+  return out;
+}
+
+export async function createSchedule(payload: CreateSchedulePayload): Promise<CreateScheduleResult> {
   const { data } = await api.post<ApiEnvelope<unknown>>(SCHEDULE_PATHS.list, payload);
   assertApiSuccess(data);
   const row = normalizeSchedule(data.data);
   if (!row) throw new ApiBusinessError("Request failed");
-  return row;
+  const skipped = parseScheduleSkippedWorkers(data);
+  const requested = Array.isArray(payload.worker_ids) ? payload.worker_ids.filter((id) => id > 0) : [];
+  const skippedIds = new Set(skipped.map((s) => s.workerId).filter((id) => id > 0));
+  const scheduledWorkerIds =
+    requested.length > 0
+      ? requested.filter((id) => !skippedIds.has(id))
+      : scheduleWorkerIds(row);
+  return { schedule: row, skipped, scheduledWorkerIds };
 }
 
 export async function updateSchedule(id: number, payload: UpdateSchedulePayload): Promise<Schedule> {

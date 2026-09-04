@@ -22,6 +22,7 @@ import {
   MarkUnavailableModal,
   type TimeOffPrefill,
 } from "@/features/scheduling/components/mark-unavailable-modal";
+import { ScheduleBulkResultModal } from "@/features/scheduling/components/schedule-bulk-result-modal";
 import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
 import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
 import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
@@ -32,7 +33,7 @@ import { SchedulingPeopleHeader } from "@/features/scheduling/components/schedul
 import { SchedulingWeekCalendar } from "@/features/scheduling/components/scheduling-week-calendar";
 import { SchedulingWeekDayStrip } from "@/features/scheduling/components/scheduling-week-day-strip";
 import { useSchedulingCatalog } from "@/features/scheduling/hooks/use-scheduling-catalog";
-import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
+import type { Schedule, ScheduleBulkSkipRow, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import {
   availabilityHeaderBarClass,
   availabilityToneClass,
@@ -198,9 +199,14 @@ export function SchedulingPanel({
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createTech, setCreateTech] = React.useState<CreateScheduleTechnician | null>(null);
+  const [createTechs, setCreateTechs] = React.useState<CreateScheduleTechnician[] | null>(null);
   const [createDateKey, setCreateDateKey] = React.useState(toDateKey(new Date()));
   const [createPrefill, setCreatePrefill] = React.useState<CreateSchedulePrefill | null>(null);
   const [creatingSchedule, setCreatingSchedule] = React.useState(false);
+  const [selectedWorkerIds, setSelectedWorkerIds] = React.useState<Set<number>>(() => new Set());
+  const [bulkResultOpen, setBulkResultOpen] = React.useState(false);
+  const [bulkScheduledCount, setBulkScheduledCount] = React.useState(0);
+  const [bulkSkipped, setBulkSkipped] = React.useState<ScheduleBulkSkipRow[]>([]);
   const [pendingCreate, setPendingCreate] = React.useState<{
     techId: number;
     dayKey: string;
@@ -575,6 +581,7 @@ export function SchedulingPanel({
     }
 
     setCreateTech(tech ? toCreateTech(tech) : null);
+    setCreateTechs(null);
     setCreateDateKey(toDateKey(day));
     const jobPrefill: CreateSchedulePrefill = {
       dateKey: toDateKey(day),
@@ -709,13 +716,156 @@ export function SchedulingPanel({
         all_day: false,
       });
       toastSuccess(t("modal.successToast"));
-      onScheduleCreated(created);
+      onScheduleCreated(created.schedule);
     } catch (error) {
       toastApiError(error, t("modal.errorToast"));
     } finally {
       setCreatingSchedule(false);
       setPendingCreate(null);
     }
+  }
+
+  function showBulkResult(scheduledCount: number, skipped: ScheduleBulkSkipRow[]) {
+    if (skipped.length === 0) return;
+    setBulkScheduledCount(scheduledCount);
+    setBulkSkipped(skipped);
+    setBulkResultOpen(true);
+  }
+
+  function toggleWorkerSelected(tech: SchedulingTechnician) {
+    setSelectedWorkerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tech.id)) next.delete(tech.id);
+      else next.add(tech.id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedWorkerIds((prev) => {
+      const visibleIds = filteredTechs.map((tech) => tech.id);
+      const allSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(visibleIds);
+    });
+  }
+
+  function resolveBulkWorkers(ids: number[]): SchedulingTechnician[] {
+    return filteredTechs.filter((tech) => ids.includes(tech.id));
+  }
+
+  function openBulkCreateSchedule(workers: SchedulingTechnician[], groupId?: number | null) {
+    if (workers.length === 0) {
+      toastError(t("bulk.noneSelected"));
+      return;
+    }
+    const day = days[0] ?? anchorDate;
+    const dateKey = toDateKey(day);
+    const mapped = workers.map(toCreateTech);
+    setCreateTechs(mapped);
+    setCreateTech(mapped[0] ?? null);
+    setCreateDateKey(dateKey);
+
+    if (jobScopedId) {
+      void createBulkForScopedJob(
+        workers.map((w) => w.id),
+        day,
+        groupId,
+      );
+      return;
+    }
+
+    setCreatePrefill({
+      dateKey,
+      workerId: workers[0]?.id,
+    });
+    setCreateOpen(true);
+  }
+
+  async function createBulkForScopedJob(
+    workerIds: number[],
+    day: Date,
+    groupId?: number | null,
+  ) {
+    if (!jobScopedId || creatingSchedule) return;
+    if (!jobScopedClientId) {
+      toastError(t("validation.client"));
+      return;
+    }
+    const uniqueIds = [...new Set(workerIds.filter((id) => Number.isFinite(id) && id > 0))];
+    if (uniqueIds.length === 0) {
+      toastError(t("bulk.noneSelected"));
+      return;
+    }
+
+    const primaryTech =
+      catalog?.technicians.find((row) => uniqueIds.some((id) => technicianMatchesWorkerId(row, id))) ??
+      null;
+    const window = primaryTech ? getDayAvailabilityWindow(primaryTech.availableDays, day) : null;
+    const startTime = window ? minutesToTime(window.startMinutes) : "09:00";
+    const endTime = window
+      ? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes))
+      : "10:00";
+    const dateKey = toDateKey(day);
+    const startIso = combineDateAndTimeToIso(dateKey, startTime, false);
+    const endIso = combineDateAndTimeEndToIso(dateKey, endTime, false);
+
+    setCreatingSchedule(true);
+    setPendingCreate({
+      techId: uniqueIds[0]!,
+      dayKey: dateKey,
+      startTime,
+      endTime,
+    });
+    try {
+      const result = await createSchedule({
+        job_id: jobScopedId,
+        worker_id: uniqueIds[0]!,
+        worker_ids: uniqueIds,
+        client_id: jobScopedClientId,
+        project_id: jobScopedProjectId,
+        group_id: groupId ?? null,
+        start_at: startIso,
+        end_at: endIso,
+        notes: null,
+        recurrence: "none",
+        recurrence_end_at: null,
+        all_day: false,
+      });
+      if (result.scheduledWorkerIds.length > 0) {
+        toastSuccess(t("bulk.partialSuccessToast", { count: result.scheduledWorkerIds.length }));
+        onScheduleCreated(result.schedule);
+      }
+      showBulkResult(result.scheduledWorkerIds.length, result.skipped);
+      setSelectedWorkerIds(new Set());
+    } catch (error) {
+      toastApiError(error, t("modal.errorToast"));
+    } finally {
+      setCreatingSchedule(false);
+      setPendingCreate(null);
+    }
+  }
+
+  function scheduleSelectedWorkers() {
+    const workers = resolveBulkWorkers([...selectedWorkerIds]);
+    openBulkCreateSchedule(workers);
+  }
+
+  function scheduleSelectedGroup() {
+    if (!groupFilter || !Number.isFinite(Number(groupFilter))) {
+      toastError(t("bulk.pickGroup"));
+      return;
+    }
+    const group = (catalog?.userGroups ?? []).find((g) => g.id === Number(groupFilter));
+    const memberIds = new Set((group?.users ?? []).map((u) => u.id));
+    const workers = filteredTechs.filter(
+      (tech) => memberIds.has(tech.id) || memberIds.has(tech.profileId),
+    );
+    if (workers.length === 0) {
+      toastError(t("bulk.groupEmpty"));
+      return;
+    }
+    openBulkCreateSchedule(workers, Number(groupFilter));
   }
 
   function getBookingConflict(input: {
@@ -886,7 +1036,7 @@ export function SchedulingPanel({
         ...copiedSchedule,
         worker_ids: [...new Set([...scheduleWorkerIds(copiedSchedule), tech.id])],
       });
-      onScheduleCreated(created);
+      onScheduleCreated(created.schedule);
     } catch (error) {
       toastApiError(error, t("copy.pasteError"));
     } finally {
@@ -956,6 +1106,7 @@ export function SchedulingPanel({
   function clearPeopleFilters() {
     setTechSearch("");
     setGroupFilter("");
+    setSelectedWorkerIds(new Set());
     if (!fixedWorkerId) setWorkerFilter("");
   }
 
@@ -973,6 +1124,23 @@ export function SchedulingPanel({
       prominent={false}
       onBack={!fixedWorkerId && focusedWorker ? () => setWorkerFilter("") : undefined}
       onSearchChange={setTechSearch}
+      groupOptions={groupOptions}
+      groupValue={groupFilter}
+      onGroupChange={(value) => {
+        setGroupFilter(value);
+        setSelectedWorkerIds(new Set());
+      }}
+      groupsLoading={filtersLoading}
+      selectedCount={selectedWorkerIds.size}
+      allVisibleSelected={
+        filteredTechs.length > 0 && filteredTechs.every((tech) => selectedWorkerIds.has(tech.id))
+      }
+      someVisibleSelected={filteredTechs.some((tech) => selectedWorkerIds.has(tech.id))}
+      onToggleSelectAll={toggleSelectAllVisible}
+      onScheduleSelected={scheduleSelectedWorkers}
+      onScheduleGroup={scheduleSelectedGroup}
+      scheduleBusy={creatingSchedule}
+      allowBulkSchedule={allowCreate && !focusedWorker}
     />
   );
 
@@ -1304,6 +1472,8 @@ export function SchedulingPanel({
                 onPasteSchedule={(tech) => void pasteScheduleToWorker(tech)}
                 onRemoveTimeOff={setDeleteTimeOff}
                 onWorkerClick={openWorkerCalendar}
+                selectedWorkerIds={selectedWorkerIds}
+                onToggleWorkerSelected={allowCreate ? toggleWorkerSelected : undefined}
               />
             )}
           </div>
@@ -1419,6 +1589,15 @@ export function SchedulingPanel({
                 style={{ gridTemplateColumns: colTemplate }}
               >
                 <div className="flex min-w-0 items-center gap-3 border-r border-slate-200 px-4 py-3 dark:border-slate-800">
+                  {allowCreate ? (
+                    <input
+                      type="checkbox"
+                      className="size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      checked={selectedWorkerIds.has(tech.id)}
+                      onChange={() => toggleWorkerSelected(tech)}
+                      aria-label={t("bulk.selectWorker", { name: tech.name })}
+                    />
+                  ) : null}
                   <div
                     className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
                     aria-hidden
@@ -1483,12 +1662,30 @@ export function SchedulingPanel({
 
       <CreateScheduleModal
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setCreateOpen(false);
+          setCreateTechs(null);
+        }}
         technician={createTech}
+        technicians={createTechs}
         defaultDateKey={createDateKey}
         prefill={createPrefill}
         getBookingConflict={getBookingConflict}
-        onCreated={onScheduleCreated}
+        onCreated={(schedule) => {
+          onScheduleCreated(schedule);
+          setSelectedWorkerIds(new Set());
+          setCreateTechs(null);
+        }}
+        onBulkResult={({ scheduledCount, skipped }) => {
+          showBulkResult(scheduledCount, skipped);
+        }}
+      />
+
+      <ScheduleBulkResultModal
+        open={bulkResultOpen}
+        scheduledCount={bulkScheduledCount}
+        skipped={bulkSkipped}
+        onClose={() => setBulkResultOpen(false)}
       />
 
       <SchedulingDayAgendaPanel

@@ -46,6 +46,7 @@ export const routes = {
     materialRequests: "/material-requests",
     dispatches: "/dispatches",
     returnToStock: "/return-to-stock",
+    forms: "/forms",
     settings: "/settings",
     settingsPinStatus: "/settings/pin-status",
     settingsProjectStatus: "/settings/project-status",

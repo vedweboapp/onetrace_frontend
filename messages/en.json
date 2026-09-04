@@ -347,6 +347,7 @@
       "flyoutProject": "Project",
       "scheduling": "Scheduling",
       "qrCodes": "QR codes",
+      "forms": "Forms",
       "projects": "Projects",
       "groups": "Groups",
       "materialRequests": "Material Requests",
@@ -2301,6 +2302,26 @@
         "createdBy": "Created By"
       }
     },
+    "workerForms": {
+      "metaTitle": "Forms",
+      "title": "Forms",
+      "subtitle": "Submitted forms across all jobs.",
+      "searchPlaceholder": "Search forms, workers, or jobs…",
+      "loadError": "Could not load forms. Try again.",
+      "emptyTitle": "No Forms Yet",
+      "emptyDescription": "Submitted job forms will appear here.",
+      "missingJob": "This submission is missing a job reference, so it cannot be opened.",
+      "pageLabel": "Showing {start}-{end} of {total} forms",
+      "prev": "Previous",
+      "next": "Next",
+      "columns": {
+        "id": "ID",
+        "job": "Job",
+        "workerName": "Worker",
+        "projectFormName": "Form",
+        "submittedAt": "Submitted"
+      }
+    },
     "contacts": {
       "metaTitle": "Contacts",
       "detailMetaTitle": "Contact Details",
@@ -3415,12 +3436,16 @@
       "actions": {
         "view": "View details"
       },
+      "card": {
+        "items": "{count} Items · {qty} Units"
+      },
       "table": {
         "dispatchId": "Dispatch Number",
         "jobName": "Job Name",
         "dispatchDate": "Dispatch Date",
         "status": "Status",
         "workerName": "Worker Name",
+        "items": "Items",
         "qty": "Qty",
         "materialItem": "Material Item",
         "requested": "Requested",
@@ -3594,6 +3619,24 @@
       "emptyUsers": "No users found.",
       "emptyUsersHint": "Try another group or clear the search to see users.",
       "clearPeopleFilters": "Clear filters",
+      "bulk": {
+        "selectAll": "Select all visible users",
+        "selectWorker": "Select {name}",
+        "scheduleSelected": "Schedule ({count})",
+        "scheduleGroup": "Schedule group",
+        "groupSelectAria": "Filter or schedule by group",
+        "noneSelected": "Select one or more users first.",
+        "pickGroup": "Choose a group first.",
+        "groupEmpty": "No users found in that group.",
+        "workersSelected": "{count} users selected",
+        "partialSuccessToast": "Scheduled {count} users",
+        "resultTitle": "Bulk schedule result",
+        "scheduledCount": "{count, plural, one {# user was scheduled.} other {# users were scheduled.}}",
+        "noneScheduled": "No users were scheduled.",
+        "notScheduledHeading": "Not scheduled",
+        "unknownWorker": "Worker #{id}",
+        "close": "Close"
+      },
       "legendAvailable": "Available",
       "legendUnavailable": "Unavailable",
       "legendScheduled": "Scheduled",
@@ -3788,6 +3831,11 @@
       "pageLabel": "Showing {start}-{end} of {total} jobs",
       "prev": "Previous",
       "next": "Next",
+      "mapView": {
+        "emptyTitle": "No mappable job sites",
+        "emptyDescription": "Jobs on this page do not have a site address that can be placed on the map. Add site address details, or switch page.",
+        "skippedCount": "{count, plural, one {# job on this page has no site address and is hidden from the map.} other {# jobs on this page have no site address and are hidden from the map.}}"
+      },
       "delete": "Delete",
       "deleteConfirmTitle": "Delete This Job?",
       "deleteConfirmBody": "This action cannot be undone.",
@@ -4079,6 +4127,7 @@
       "tableView": "Table view",
       "listView": "Table view",
       "cardView": "Card view",
+      "mapView": "Map view",
       "openRowActions": "Open row actions",
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
@@ -4267,6 +4316,12 @@
         "cardByUser": "By {user}",
         "cardOpenAria": "Open drawing",
         "cardPinCount": "{count} pins",
+        "rename": "Rename",
+        "renameAria": "Rename drawing",
+        "renameSaveAria": "Save drawing name",
+        "renameCancelAria": "Cancel rename",
+        "renamedToast": "Drawing name updated",
+        "renameError": "Could not rename drawing. Try again.",
         "table": {
           "drawing": "Drawing",
           "block": "Block",
@@ -4653,6 +4708,7 @@
         "quantity": "Quantity",
         "costPrice": "Cost price",
         "sellingPrice": "Selling price",
+        "pricesFromComponentsHint": "Cost and selling price are calculated from the selected component items (and quantities).",
         "components": "Components",
         "componentsHint": "Add one or more component items and quantities.",
         "itemsLoadError": "Could not load items for components.",

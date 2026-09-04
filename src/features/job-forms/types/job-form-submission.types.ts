@@ -40,7 +40,7 @@ export type SubmitJobFormSummary = {
   total_fields?: number;
 };
 
-/** GET /jobs/{id}/worker-form-submissions/ list row. */
+/** GET /jobs/{id}/worker-form-submissions/ (or /jobs/worker-form-submissions/) list row. */
 export type WorkerFormSubmissionListItem = {
   id: number;
   worker_id: number;
@@ -48,6 +48,10 @@ export type WorkerFormSubmissionListItem = {
   project_form_name: string;
   project_form_id?: number | null;
   job_form_id?: number | null;
+  /** Present on the all-jobs list; required to open submission detail. */
+  job_id?: number | null;
+  job_serial_number?: string | null;
+  job_name?: string | null;
   status: string;
   submitted_at?: string | null;
 };
