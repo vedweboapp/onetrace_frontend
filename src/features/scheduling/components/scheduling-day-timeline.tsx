@@ -119,6 +119,9 @@ type Props = {
   onPasteSchedule?: (tech: SchedulingTechnician) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
   onWorkerClick: (tech: SchedulingTechnician) => void;
+  /** Multi-select workers for bulk schedule. */
+  selectedWorkerIds?: Set<number>;
+  onToggleWorkerSelected?: (tech: SchedulingTechnician) => void;
 };
 
 export function SchedulingDayTimeline({
@@ -146,6 +149,8 @@ export function SchedulingDayTimeline({
   onPasteSchedule,
   onRemoveTimeOff,
   onWorkerClick,
+  selectedWorkerIds,
+  onToggleWorkerSelected,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
@@ -435,9 +440,19 @@ export function SchedulingDayTimeline({
             >
               {hideWorkerColumn ? null : (
                 <div
-                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950"
+                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2 border-r border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
                   style={{ width: WORKER_COL_PX }}
                 >
+                  {onToggleWorkerSelected ? (
+                    <input
+                      type="checkbox"
+                      className="mt-2 size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      checked={selectedWorkerIds?.has(tech.id) ?? false}
+                      onChange={() => onToggleWorkerSelected(tech)}
+                      aria-label={t("bulk.selectWorker", { name: tech.name })}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : null}
                   <div
                     className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
                     aria-hidden

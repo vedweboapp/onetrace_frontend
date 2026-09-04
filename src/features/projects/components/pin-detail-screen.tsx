@@ -14,6 +14,11 @@ import {
 } from "@/features/job-forms/utils/job-form-schema.util";
 import { mapSubmissionValuesToFormDefaults } from "@/features/job-forms/utils/job-form-values.util";
 import { fetchJob } from "@/features/jobs/api/job.api";
+import {
+  parseJobCategoryParam,
+  resolveJobCategory,
+  type JobCategoryApi,
+} from "@/features/jobs/constants/job-category";
 import { jobFormEntries } from "@/features/jobs/utils/job-nested-fields.util";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import { fetchDrawingDetail, fetchDrawingsPage } from "@/features/projects/api/drawing.api";
@@ -42,7 +47,7 @@ import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -146,6 +151,8 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const t = useTranslations("Dashboard.jobs.forms");
   const tPins = useTranslations("Dashboard.projects.pins");
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const defaultBack =
     jobId != null
@@ -163,6 +170,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [context, setContext] = React.useState<PinContext | null>(null);
   const [reloadToken, setReloadToken] = React.useState(0);
+  const [jobCategoryForNav, setJobCategoryForNav] = React.useState<JobCategoryApi | null>(null);
 
   const dateFmt = React.useMemo(
     () =>
@@ -185,15 +193,27 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [defaultValues, setDefaultValues] = React.useState<Record<string, unknown>>({});
   const [hasSubmission, setHasSubmission] = React.useState(false);
 
+  /** Keep header/sidebar job category in sync (QR links omit `?job_category=`). */
+  React.useEffect(() => {
+    if (jobId == null || jobCategoryForNav == null) return;
+    const current = parseJobCategoryParam(searchParams.get("job_category"));
+    if (current === jobCategoryForNav) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("job_category", jobCategoryForNav);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [jobId, jobCategoryForNav, pathname, router, searchParams]);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setLoadError(null);
+      setJobCategoryForNav(null);
       try {
         if (jobId != null && jobId > 0) {
           const job = await fetchJob(jobId, { silent: true });
           if (cancelled) return;
+          setJobCategoryForNav(resolveJobCategory(job));
           const typed = job as unknown as {
             levels?: LevelLike[];
             level?: LevelLike | LevelLike[];

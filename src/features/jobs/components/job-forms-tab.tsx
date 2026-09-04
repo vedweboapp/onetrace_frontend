@@ -3,12 +3,10 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import {
-  fetchJobSubmittedForm,
-  fetchJobWorkerFormSubmissions,
-} from "@/features/job-forms/api/job-form.api";
+import { fetchJobWorkerFormSubmissions } from "@/features/job-forms/api/job-form.api";
 import type { WorkerFormSubmissionTableRow } from "@/features/job-forms/types/job-form-submission.types";
 import type { Job } from "@/features/jobs/types/job.types";
+import { jobFormEntries } from "@/features/jobs/utils/job-nested-fields.util";
 import { EntityDetailErrorState, EntityDetailTabLoadingState } from "@/shared/components/entity";
 import { entityNameLinkClassName } from "@/shared/components/entity/detail-entity-link";
 import {
@@ -33,6 +31,39 @@ import { cn } from "@/core/utils/http.util";
 type Props = {
   detail: Job;
 };
+
+function resolveFormIdsForSubmission(detail: Job, row: WorkerFormSubmissionTableRow) {
+  const entries = jobFormEntries(detail);
+  const bySubmission = entries.find((entry) => entry.submitted_form_id === row.id);
+  if (bySubmission) {
+    return {
+      formId: bySubmission.project_form_id,
+      jobFormId: bySubmission.id,
+    };
+  }
+
+  const nameKey = row.project_form_name.trim().toLowerCase();
+  if (nameKey) {
+    const byName = entries.find((entry) => (entry.name ?? "").trim().toLowerCase() === nameKey);
+    if (byName) {
+      return {
+        formId: byName.project_form_id,
+        jobFormId: byName.id,
+      };
+    }
+  }
+
+  const listFormId = row.project_form_id != null && row.project_form_id > 0 ? row.project_form_id : null;
+  const listJobFormId = row.job_form_id != null && row.job_form_id > 0 ? row.job_form_id : null;
+  if (listFormId != null || listJobFormId != null) {
+    return {
+      formId: listFormId ?? listJobFormId ?? 0,
+      jobFormId: listJobFormId ?? listFormId ?? 0,
+    };
+  }
+
+  return null;
+}
 
 export function JobFormsTab({ detail }: Props) {
   const t = useTranslations("Dashboard.jobs");
@@ -70,24 +101,26 @@ export function JobFormsTab({ detail }: Props) {
     };
   }, [detail.id, t, refreshNonce]);
 
-  async function openSubmission(row: WorkerFormSubmissionTableRow) {
+  function openSubmission(row: WorkerFormSubmissionTableRow) {
     if (openingSubmissionId != null) return;
     setOpeningSubmissionId(row.id);
     try {
-      // GET /jobs/{jobId}/submitted-forms/{submissionId}/
-      const submission = await fetchJobSubmittedForm(detail.id, row.id);
-      const formId = submission.project_form_id ?? submission.form_id;
-      const jobFormId = submission.job_form_id;
-      if (!formId || formId <= 0) {
-        toastApiError(new Error("Missing form identifiers"), t("forms.loadError"));
+      const resolved = resolveFormIdsForSubmission(detail, row);
+      const formName =
+        row.project_form_name.trim() || t("forms.untitledForm");
+      const back = `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
+      const common = `submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}`;
+
+      if (resolved && resolved.formId > 0) {
+        const jobFormId = resolved.jobFormId > 0 ? resolved.jobFormId : resolved.formId;
+        router.push(
+          `${routes.dashboard.jobFormFill(detail.id, resolved.formId, jobFormId)}&${common}`,
+        );
         return;
       }
-      const resolvedJobFormId = jobFormId > 0 ? jobFormId : formId;
-      const formName =
-        row.project_form_name.trim() || submission.form_name?.trim() || t("forms.untitledForm");
-      const back = `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
-      const href = `${routes.dashboard.jobFormFill(detail.id, formId, resolvedJobFormId)}&submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}`;
-      router.push(href);
+
+      // Submitted-forms detail often omits project_form_id; open view-only with submission_id.
+      router.push(`${routes.dashboard.jobs}/${detail.id}/form?${common}`);
     } catch (error) {
       toastApiError(error, t("forms.loadError"));
     } finally {
@@ -146,7 +179,7 @@ export function JobFormsTab({ detail }: Props) {
                       clickable
                       className={cn(busy && "opacity-60")}
                       onClick={() => {
-                        if (!busy) void openSubmission(row);
+                        if (!busy) openSubmission(row);
                       }}
                     >
                       <DetailLinkedTableTd

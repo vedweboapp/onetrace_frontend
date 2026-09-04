@@ -86,13 +86,10 @@ export function getQrAssignedPinHref(row: QrCode): string | null {
   return routes.dashboard.jobPinDetail(jobId, pinId);
 }
 
+/** Display label for the Assigned ID column — pin id (link target). */
 export function qrAssignedLabel(row: QrCode): string {
-  const job = row.assigned_to_detail?.job;
-  if (job) {
-    const title = job.title?.trim() || job.name?.trim() || job.job_serial_number?.trim();
-    if (title) return title;
-    if (job.id > 0) return `#${job.id}`;
-  }
   const pinId = getQrAssignedPinId(row);
-  return pinId != null ? `Pin #${pinId}` : "—";
+  if (pinId != null) return `#${pinId}`;
+  const jobId = getQrAssignedJobId(row);
+  return jobId != null ? `#${jobId}` : "—";
 }

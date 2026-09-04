@@ -35,6 +35,21 @@ export type CreateSchedulePayload = {
   recurrence?: ScheduleRecurrence;
   recurrence_end_at?: string | null;
   all_day?: boolean;
+  /** Optional group context when scheduling a whole user group. */
+  group_id?: number | null;
+};
+
+export type ScheduleBulkSkipRow = {
+  workerId: number;
+  workerName: string;
+  reason: string;
+};
+
+/** Result of create when API may skip unavailable workers in a bulk request. */
+export type CreateScheduleResult = {
+  schedule: Schedule;
+  skipped: ScheduleBulkSkipRow[];
+  scheduledWorkerIds: number[];
 };
 
 export type UpdateSchedulePayload = Partial<CreateSchedulePayload>;

@@ -34,6 +34,7 @@ import {
   type CheckmarkSelectOption,
   FieldGroup,
   FieldErrorText,
+  FormFieldRow,
   RequiredMark,
   fieldErrorTextClassName,
   SurfaceShell,
@@ -305,20 +306,22 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           </div>
         ) : (
           <form id="group-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <FieldGroup label={tModal("name")} htmlFor={nameId} required>
-              <input
-                id={nameId}
-                type="text"
-                autoComplete="off"
-                value={name}
-                onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
-                onBlur={() => setNameTouched(true)}
-                disabled={submitting}
-                placeholder={tModal("namePlaceholder")}
-                className={surfaceInputClassName}
-              />
-              {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
-            </FieldGroup>
+            <FormFieldRow cols="2" from="md" labelTop>
+              <FieldGroup label={tModal("name")} htmlFor={nameId} required>
+                <input
+                  id={nameId}
+                  type="text"
+                  autoComplete="off"
+                  value={name}
+                  onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
+                  onBlur={() => setNameTouched(true)}
+                  disabled={submitting}
+                  placeholder={tModal("namePlaceholder")}
+                  className={surfaceInputClassName}
+                />
+                {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
+              </FieldGroup>
+            </FormFieldRow>
             <div>
               {compositeLoadError ? (
                 <p className="text-sm text-amber-700 dark:text-amber-300">{compositeLoadError}</p>

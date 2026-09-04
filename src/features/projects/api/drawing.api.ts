@@ -18,13 +18,6 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
   }
 }
 
-function sortDrawings(items: Drawing[]): Drawing[] {
-  return [...items].sort((a, b) => {
-    if (a.order !== b.order) return a.order - b.order;
-    return a.name.localeCompare(b.name);
-  });
-}
-
 function defaultPagination(items: Drawing[]): ProjectPagination {
   return {
     total_records: items.length,
@@ -52,7 +45,8 @@ export async function fetchDrawingsPage(
     },
   });
   assertEnvelopeSuccess(data);
-  const items = sortDrawings(data.data);
+  // Keep API list order (do not re-sort by `order` — that reverses levels relative to the response).
+  const items = Array.isArray(data.data) ? [...data.data] : [];
   const pagination = data.pagination ?? defaultPagination(items);
   return { items, pagination };
 }
@@ -111,4 +105,31 @@ export async function updateDrawingPlots(
     body,
   );
   return readDrawingDetailFromResponse(data);
+}
+
+/** Rename a drawing/level without touching plots or the file. */
+export async function updateDrawingName(
+  projectId: number,
+  drawingId: number,
+  name: string,
+): Promise<Drawing> {
+  const trimmed = name.trim();
+  const fd = new FormData();
+  fd.append("name", trimmed);
+  fd.append("payload", JSON.stringify({ name: trimmed }));
+  const { data } = await api.patch<ApiEnvelope<Drawing> | Drawing>(
+    DRAWING_PATHS.detail(projectId, drawingId),
+    fd,
+  );
+  if (
+    data &&
+    typeof data === "object" &&
+    "success" in data &&
+    "data" in data
+  ) {
+    const envelope = data as ApiEnvelope<Drawing>;
+    assertApiSuccess(envelope);
+    return envelope.data;
+  }
+  return data as Drawing;
 }

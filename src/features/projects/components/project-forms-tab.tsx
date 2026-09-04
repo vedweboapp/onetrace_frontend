@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { LayoutGrid, List, Pencil, Plus, Power, PowerOff } from "lucide-react";
+import { Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useParams, useSearchParams } from "next/navigation";
@@ -9,7 +9,6 @@ import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { updateProjectJobForm } from "@/features/projects/api/project-job-form.api";
 import { fetchProject, fetchProjectFormsPage, updateProject } from "@/features/projects/api/project.api";
 import type { FormListItem } from "@/features/forms/types/form.types";
-import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
@@ -32,9 +31,11 @@ import {
   ListPageCardFooter,
   ListPageCardGrid,
   ListPageCardMetaLine,
+  ListViewModeToggle,
   MultiCheckSelect,
   SurfaceShell,
 } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -279,38 +280,16 @@ export function ProjectFormsTab() {
   }, [dateFmt, handleToggleActive, openEdit, t, tList, togglingId]);
 
   const viewToggle = (
-    <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-      <button
-        type="button"
-        onClick={() => setViewMode("list")}
-        title={tList("tableView")}
-        aria-label={tList("tableView")}
-        aria-pressed={viewMode === "list"}
-        className={cn(
-          "inline-flex size-8 items-center justify-center rounded-md transition",
-          viewMode === "list"
-            ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-        )}
-      >
-        <LayoutGrid className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => setViewMode("table")}
-        title={tList("listView")}
-        aria-label={tList("listView")}
-        aria-pressed={viewMode === "table"}
-        className={cn(
-          "inline-flex size-8 items-center justify-center rounded-md transition",
-          viewMode === "table"
-            ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-        )}
-      >
-        <List className="size-4" />
-      </button>
-    </div>
+    <ListViewModeToggle
+      viewMode={viewMode}
+      onViewModeChange={(mode) => {
+        if (mode === "map") return;
+        setViewMode(mode);
+      }}
+      tableViewLabel={tList("tableView")}
+      listViewLabel={tList("listView")}
+      size="md"
+    />
   );
 
   return (

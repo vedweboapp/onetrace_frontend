@@ -216,3 +216,67 @@ export function enrichSectionsWithSubmissionFiles(
     },
   ];
 }
+
+/**
+ * Build a read-only form schema from a submitted-forms detail payload
+ * when project_form_id / metadata is not available (worker submissions API).
+ */
+export function synthesizeFormSectionsFromSubmission(input: {
+  values?: Array<{
+    field_id: number;
+    value?: string;
+    field_label?: string | null;
+    api_name?: string | null;
+    field_type?: string | null;
+  }>;
+  files?: Array<{
+    field_id: number;
+    field_label?: string | null;
+    api_name?: string | null;
+    field_type?: string | null;
+    file_url?: string;
+    is_deleted?: boolean;
+  }>;
+}): NormalizedFormSection[] {
+  const values = Array.isArray(input.values) ? input.values : [];
+  const files = Array.isArray(input.files) ? input.files : [];
+  const byFieldId = new Map<number, NormalizedFormField>();
+
+  for (const row of values) {
+    const fieldId = coerceFieldId(row.field_id);
+    if (fieldId == null) continue;
+    const apiName = String(row.api_name?.trim() || `field_${fieldId}`);
+    byFieldId.set(fieldId, {
+      id: fieldId,
+      api_name: apiName,
+      field_label: String(row.field_label?.trim() || apiName),
+      field_type: String(row.field_type?.trim() || "single_line"),
+      readOnly: true,
+    });
+  }
+
+  for (const file of files) {
+    if (file.is_deleted) continue;
+    const fieldId = coerceFieldId(file.field_id);
+    if (fieldId == null) continue;
+    const existing = byFieldId.get(fieldId);
+    const apiName = String(file.api_name?.trim() || existing?.api_name || `field_${fieldId}`);
+    byFieldId.set(fieldId, {
+      id: fieldId,
+      api_name: apiName,
+      field_label: String(file.field_label?.trim() || existing?.field_label || apiName),
+      field_type: String(file.field_type?.trim() || existing?.field_type || "file_upload"),
+      readOnly: true,
+    });
+  }
+
+  const fields = Array.from(byFieldId.values());
+  if (fields.length === 0) return [];
+  return [
+    {
+      name: "Submission",
+      column_count: 1,
+      fields,
+    },
+  ];
+}

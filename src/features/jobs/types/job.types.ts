@@ -41,6 +41,10 @@ export type JobSiteRef = {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
+  /** Some APIs return `zip_code` instead of `pincode`. */
+  zip_code?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   what3words?: string | null;
   is_active?: boolean;
 };

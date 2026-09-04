@@ -1082,38 +1082,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   disabled={submitting}
                 />
               </FieldGroup>
-              <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
-                <MoneyInput
-                  id={costId}
-                  type="number"
-                  inputMode="decimal"
-                  value={cost}
-                  onChange={(e) => {
-                    costManualRef.current = true;
-                    setCost(e.target.value);
-                  }}
-                  disabled={submitting}
-                  min={0}
-                  step="0.01"
-                />
-              </FieldGroup>
-            </FormFieldRow>
-            <FormFieldRow cols="2" from="md" className="gap-4">
-              <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
-                <MoneyInput
-                  id={sellId}
-                  type="number"
-                  inputMode="decimal"
-                  value={sell}
-                  onChange={(e) => {
-                    sellManualRef.current = true;
-                    setSell(e.target.value);
-                  }}
-                  disabled={submitting}
-                  min={0}
-                  step="0.01"
-                />
-              </FieldGroup>
             </FormFieldRow>
             <FormSubsection title={tModal("fulfilmentDetails")}>
               <FormFieldRow cols="2" from="md" className="gap-4">
@@ -1205,6 +1173,43 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               </div>
               {componentsInvalid ? <FieldErrorText>{tModal("atLeastOneComponentError")}</FieldErrorText> : null}
             </FormSubsection>
+            <div className="space-y-3">
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                {tModal("pricesFromComponentsHint")}
+              </p>
+              <FormFieldRow cols="2" from="md" className="gap-4">
+                <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
+                  <MoneyInput
+                    id={costId}
+                    type="number"
+                    inputMode="decimal"
+                    value={cost}
+                    onChange={(e) => {
+                      costManualRef.current = true;
+                      setCost(e.target.value);
+                    }}
+                    disabled={submitting}
+                    min={0}
+                    step="0.01"
+                  />
+                </FieldGroup>
+                <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
+                  <MoneyInput
+                    id={sellId}
+                    type="number"
+                    inputMode="decimal"
+                    value={sell}
+                    onChange={(e) => {
+                      sellManualRef.current = true;
+                      setSell(e.target.value);
+                    }}
+                    disabled={submitting}
+                    min={0}
+                    step="0.01"
+                  />
+                </FieldGroup>
+              </FormFieldRow>
+            </div>
             <FormSubsection title={tModal("attachments")}>
               <div className="flex items-center gap-2">
                 <input

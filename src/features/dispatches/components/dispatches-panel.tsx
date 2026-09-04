@@ -10,7 +10,10 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchDispatchesPage } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchListItem } from "@/features/dispatches/types/dispatch.types";
 import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
-import { dispatchTotalQty } from "@/features/dispatches/utils/dispatch-normalize.util";
+import {
+  dispatchItemsCount,
+  dispatchTotalQty,
+} from "@/features/dispatches/utils/dispatch-normalize.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -61,7 +64,7 @@ export function DispatchesPanel() {
   );
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
-  const [items, setItems] = React.useState<any[]>([]);
+  const [items, setItems] = React.useState<DispatchListItem[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
@@ -126,6 +129,7 @@ export function DispatchesPanel() {
         // support responses that include either `worker_name` or `worker` object
         (r) => dispatchWorkerLabel((r as any).worker_name ?? (r as any).worker),
       ),
+      c.tabular("items", t("table.items"), (r) => String(dispatchItemsCount(r as any))),
       c.tabular(
         "total_qty",
         t("table.qty"),
@@ -199,16 +203,20 @@ export function DispatchesPanel() {
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
-              {items.map((row) => (
-                <div key={row.id}>
+              {items.map((row) => {
+                const itemsCount = dispatchItemsCount(row as any);
+                const qty = dispatchTotalQty(row as any);
+                return (
                   <ListPageCard
+                    key={row.id}
                     dataListRowId={row.id}
                     className={highlightClassName(row.id)}
                     title={row.dispatch_order_number}
                     subtitle={dispatchWorkerLabel((row as any).worker_name ?? (row as any).worker)}
                     meta={
                       <span className="block truncate">
-                        {row.material_request_number?.trim() || (row.material_request_id > 0 ? `#${row.material_request_id}` : "—")}
+                        {row.material_request_number?.trim() ||
+                          (row.material_request_id > 0 ? `#${row.material_request_id}` : "—")}
                       </span>
                     }
                     footer={
@@ -219,7 +227,7 @@ export function DispatchesPanel() {
                         </span>
                         <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                           <Package className="size-3.5" aria-hidden />
-                          {dispatchTotalQty(row as any)} {t("units")}
+                          {t("card.items", { count: itemsCount, qty })}
                         </span>
                       </div>
                     }
@@ -237,17 +245,8 @@ export function DispatchesPanel() {
                       />
                     }
                   />
-                  {Array.isArray((row as any).lines) ? (
-                    <div className="px-3 pb-3 text-sm text-slate-600">
-                      {(row as any).lines.map((l: any) => (
-                        <div key={l.id} className="py-0.5">
-                          {l.item_name ?? `#${l.item}`}{l.is_extra ? " (extra)" : ""}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </ListPageCardGrid>
           </div>
         ) : (

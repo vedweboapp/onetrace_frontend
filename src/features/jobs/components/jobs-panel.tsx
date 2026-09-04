@@ -60,6 +60,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack, storeBackHrefFo
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { JobsMapView } from "@/features/jobs/components/jobs-map-view";
 
 export function JobsPanel() {
   const t = useTranslations("Dashboard.jobs");
@@ -523,8 +524,10 @@ export function JobsPanel() {
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
-          tableViewLabel={tList("tableView")}
+          tableViewLabel={tList("cardView")}
           listViewLabel={tList("listView")}
+          mapViewLabel={tList("mapView")}
+          showMapView
           action={<AddButton type="button" onClick={openCreate} />}
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -590,6 +593,10 @@ export function JobsPanel() {
                   <ListPageCardSkeleton key={i} />
                 ))}
               </ListPageCardGrid>
+            </div>
+          ) : listViewMode === "map" ? (
+            <div className="p-4 sm:p-6">
+              <div className="h-[min(70vh,560px)] min-h-[320px] w-full animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             </div>
           ) : (
             <div className="space-y-2 p-6">
@@ -706,6 +713,8 @@ export function JobsPanel() {
               })}
             </ListPageCardGrid>
           </div>
+        ) : listViewMode === "map" ? (
+          <JobsMapView jobs={items} onJobClick={openJobDetail} />
         ) : (
           <EntityDataTable
             columns={tableColumns}

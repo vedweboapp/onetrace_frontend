@@ -46,10 +46,8 @@ import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { cn } from "@/core/utils/http.util";
 import { CalendarDays, ChevronRight, Layers, MapPinned } from "lucide-react";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
-import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
-import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
@@ -72,7 +70,7 @@ type JobDrawingLevel = {
 };
 
 const PIN_TABLE_GRID =
-  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.75rem)_minmax(0,3.5rem)_minmax(0,1.1fr)_minmax(0,5rem)_minmax(0,0.45fr)_minmax(0,0.35fr)_minmax(0,0.75fr)_minmax(0,0.45fr)] items-center gap-x-3 sm:gap-x-4";
+  "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,3.5rem)_minmax(0,1.1fr)_minmax(0,5rem)_minmax(0,0.45fr)_minmax(0,0.35fr)_minmax(0,0.75fr)_minmax(0,0.45fr)] items-center gap-x-3 sm:gap-x-4";
 
 const PIN_TABLE_HEADER_CLASS = cn(
   PIN_TABLE_GRID,
@@ -82,11 +80,6 @@ const PIN_TABLE_HEADER_CLASS = cn(
 const PIN_TABLE_ROW_CLASS = cn(
   PIN_TABLE_GRID,
   "px-4 py-3 text-sm transition-colors border-b border-slate-100 last:border-b-0 dark:border-slate-800/80",
-);
-
-const pinCheckboxClassName = cn(
-  "size-4 shrink-0 rounded border-slate-300 text-[color:var(--dash-accent,#0f172a)]",
-  "focus:ring-[color:var(--dash-accent,#0f172a)] dark:border-slate-600",
 );
 
 function PinStatusChip({ pin }: { pin: DrawingPin }) {
@@ -105,42 +98,12 @@ function PinStatusChip({ pin }: { pin: DrawingPin }) {
   );
 }
 
-function ProjectPinTableHeader({
-  allSelectableSelected,
-  someSelectableSelected,
-  hasSelectable,
-  onToggleSelectAll,
-}: {
-  allSelectableSelected: boolean;
-  someSelectableSelected: boolean;
-  hasSelectable: boolean;
-  onToggleSelectAll: () => void;
-}) {
+function ProjectPinTableHeader() {
   const locale = useLocale();
   const isEs = locale === "es";
-  const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
-  const selectAllRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = someSelectableSelected && !allSelectableSelected;
-    }
-  }, [someSelectableSelected, allSelectableSelected]);
 
   return (
     <div className={PIN_TABLE_HEADER_CLASS}>
-      <span className="flex items-center justify-center">
-        <input
-          ref={selectAllRef}
-          type="checkbox"
-          className={pinCheckboxClassName}
-          checked={allSelectableSelected && hasSelectable}
-          disabled={!hasSelectable}
-          onChange={onToggleSelectAll}
-          aria-label={tQa("selectAll")}
-          title={tQa("selectAll")}
-        />
-      </span>
       <span>Pin ID</span>
       <span>Product</span>
       <span>Preview</span>
@@ -168,9 +131,6 @@ function ProjectPinRow({
   snapshotState,
   plots,
   drawingName,
-  selected,
-  selectable,
-  onToggleSelected,
 }: {
   pin: DrawingPin;
   form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
@@ -187,9 +147,6 @@ function ProjectPinRow({
   snapshotState?: LevelSnapshotState;
   plots: DrawingPlot[];
   drawingName?: string;
-  selected: boolean;
-  selectable: boolean;
-  onToggleSelected: (pinId: number) => void;
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
@@ -213,23 +170,6 @@ function ProjectPinRow({
       }}
       className={cn(PIN_TABLE_ROW_CLASS, "cursor-pointer bg-white dark:bg-slate-950 dark:hover:bg-slate-900/80")}
     >
-      <span
-        className="flex items-center justify-center"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        {selectable ? (
-          <input
-            type="checkbox"
-            className={pinCheckboxClassName}
-            checked={selected}
-            onChange={() => onToggleSelected(pin.id)}
-            aria-label={`Select pin #${pin.id}`}
-          />
-        ) : (
-          <span className="size-4" aria-hidden />
-        )}
-      </span>
       <span className="font-semibold text-slate-500">#{pin.id}</span>
       <div className="flex flex-col min-w-0 pl-4">
         <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{productName}</span>
@@ -422,8 +362,6 @@ function PlotPinCategoryGroup({
   snapshotState,
   drawingName,
   plot,
-  selectedPinIds,
-  onTogglePinSelected,
 }: {
   category: PinCategory;
   expanded: boolean;
@@ -442,8 +380,6 @@ function PlotPinCategoryGroup({
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
   plot: JobDrawingPlot;
-  selectedPinIds: Set<number>;
-  onTogglePinSelected: (pinId: number) => void;
 }) {
   return (
     <div className="rounded-b-xl border-t border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
@@ -464,34 +400,26 @@ function PlotPinCategoryGroup({
       </button>
       {expanded && (
         <div className="space-y-0">
-          {category.pins.map((pin) => {
-            const selectable =
-              isPinEligibleForQualityAssurance(pin) &&
-              !isQualityAssuranceDecided(pin.quality_assurance);
-            return (
-              <ProjectPinRow
-                key={pin.id}
-                pin={pin}
-                form={getPinForm(pin)}
-                onPreview={() => onPreviewPin(pin)}
-                onOpenDetail={() => onOpenPinDetail(pin)}
-                checklistsComplete={checklistsComplete}
-                checklistMarked={checklistMarked}
-                onOpenGateModal={onOpenGateModal}
-                onNavigate={onNavigate}
-                pinStatuses={pinStatuses}
-                onUpdatePinStatus={onUpdatePinStatus}
-                drawingFile={drawingFile}
-                drawingFileType={drawingFileType}
-                snapshotState={snapshotState}
-                plots={[plot as DrawingPlot]}
-                drawingName={drawingName}
-                selected={selectedPinIds.has(pin.id)}
-                selectable={selectable}
-                onToggleSelected={onTogglePinSelected}
-              />
-            );
-          })}
+          {category.pins.map((pin) => (
+            <ProjectPinRow
+              key={pin.id}
+              pin={pin}
+              form={getPinForm(pin)}
+              onPreview={() => onPreviewPin(pin)}
+              onOpenDetail={() => onOpenPinDetail(pin)}
+              checklistsComplete={checklistsComplete}
+              checklistMarked={checklistMarked}
+              onOpenGateModal={onOpenGateModal}
+              onNavigate={onNavigate}
+              pinStatuses={pinStatuses}
+              onUpdatePinStatus={onUpdatePinStatus}
+              drawingFile={drawingFile}
+              drawingFileType={drawingFileType}
+              snapshotState={snapshotState}
+              plots={[plot as DrawingPlot]}
+              drawingName={drawingName}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -515,9 +443,6 @@ function PlotPinsBlock({
   drawingFileType,
   snapshotState,
   drawingName,
-  selectedPinIds,
-  onTogglePinSelected,
-  onToggleSelectAllInPlot,
 }: {
   plot: JobDrawingPlot;
   plotName: string;
@@ -535,9 +460,6 @@ function PlotPinsBlock({
   drawingFileType?: string;
   snapshotState?: LevelSnapshotState;
   drawingName?: string;
-  selectedPinIds: Set<number>;
-  onTogglePinSelected: (pinId: number) => void;
-  onToggleSelectAllInPlot: (pinIds: number[]) => void;
 }) {
   const categorizedPins = React.useMemo(() => {
     return pins.reduce((acc: PinCategory[], currentPin) => {
@@ -573,22 +495,6 @@ function PlotPinsBlock({
     setExpandedCategoryIds(new Set(categorizedPins.map((category) => category.id)));
   }, [categorizedPins]);
 
-  const selectableIds = React.useMemo(
-    () =>
-      pins
-        .filter(
-          (p) =>
-            isPinEligibleForQualityAssurance(p) &&
-            !isQualityAssuranceDecided(p.quality_assurance),
-        )
-        .map((p) => p.id),
-    [pins],
-  );
-  const allSelectableSelected =
-    selectableIds.length > 0 && selectableIds.every((id) => selectedPinIds.has(id));
-  const someSelectableSelected =
-    selectableIds.some((id) => selectedPinIds.has(id)) && !allSelectableSelected;
-
   return (
     <div className="w-full overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-950/30">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950/40">
@@ -605,12 +511,7 @@ function PlotPinsBlock({
           </p>
         ) : (
           <>
-            <ProjectPinTableHeader
-              allSelectableSelected={allSelectableSelected}
-              someSelectableSelected={someSelectableSelected}
-              hasSelectable={selectableIds.length > 0}
-              onToggleSelectAll={() => onToggleSelectAllInPlot(selectableIds)}
-            />
+            <ProjectPinTableHeader />
             {categorizedPins.map((category) => (
               <PlotPinCategoryGroup
                 key={category.id}
@@ -631,8 +532,6 @@ function PlotPinsBlock({
                 snapshotState={snapshotState}
                 drawingName={drawingName}
                 plot={plot}
-                selectedPinIds={selectedPinIds}
-                onTogglePinSelected={onTogglePinSelected}
               />
             ))}
           </>
@@ -657,7 +556,6 @@ export function JobDetailBody({
   onOpenScheduling?: () => void;
 }) {
   const t = useTranslations("Dashboard.jobs");
-  const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
   const locale = useLocale();
@@ -704,65 +602,6 @@ export function JobDetailBody({
     if (!rawLevels) return [];
     return Array.isArray(rawLevels) ? rawLevels : [rawLevels];
   }, [detail]);
-
-  const allJobPins = React.useMemo(() => {
-    const pins: DrawingPin[] = [];
-    for (const level of levels) {
-      for (const plot of level.plots ?? []) {
-        for (const pin of plot.pins ?? []) pins.push(pin);
-      }
-    }
-    return pins;
-  }, [levels]);
-
-  const pendingQaPinIds = React.useMemo(
-    () =>
-      allJobPins
-        .filter(
-          (pin) =>
-            isPinEligibleForQualityAssurance(pin) &&
-            !isQualityAssuranceDecided(pin.quality_assurance),
-        )
-        .map((pin) => pin.id),
-    [allJobPins],
-  );
-
-  const [selectedPinIds, setSelectedPinIds] = React.useState<Set<number>>(() => new Set());
-
-  React.useEffect(() => {
-    setSelectedPinIds((prev) => {
-      const pending = new Set(pendingQaPinIds);
-      const next = new Set<number>();
-      for (const id of prev) {
-        if (pending.has(id)) next.add(id);
-      }
-      return next;
-    });
-  }, [pendingQaPinIds]);
-
-  const togglePinSelected = React.useCallback((pinId: number) => {
-    setSelectedPinIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(pinId)) next.delete(pinId);
-      else next.add(pinId);
-      return next;
-    });
-  }, []);
-
-  const toggleSelectAllInPlot = React.useCallback((pinIds: number[]) => {
-    setSelectedPinIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = pinIds.length > 0 && pinIds.every((id) => next.has(id));
-      if (allSelected) {
-        for (const id of pinIds) next.delete(id);
-      } else {
-        for (const id of pinIds) next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const selectedPinIdList = React.useMemo(() => [...selectedPinIds], [selectedPinIds]);
 
   const levelsAsDrawings = React.useMemo(
     () =>
@@ -1072,21 +911,6 @@ export function JobDetailBody({
           <DetailPanelCard
             title={locale === "es" ? "Planos y Pins" : "Drawings & Pins"}
           >
-            {selectedPinIdList.length > 0 ? (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                  {tQa("selectedCount", { count: selectedPinIdList.length })}
-                </span>
-                <JobQualityAssuranceControls
-                  jobId={detail.id}
-                  pinIds={selectedPinIdList}
-                  onSuccess={() => {
-                    setSelectedPinIds(new Set());
-                    onChecklistsUpdated?.();
-                  }}
-                />
-              </div>
-            ) : null}
             <div className="space-y-8 mt-3">
               {levels.map((level) => {
                 const plots = level.plots ?? [] as JobDrawingPlot[];
@@ -1147,9 +971,6 @@ export function JobDetailBody({
                             drawingFileType={level.drawing_file_type}
                             snapshotState={levelSnapshots.get(level.id)}
                             drawingName={level.name}
-                            selectedPinIds={selectedPinIds}
-                            onTogglePinSelected={togglePinSelected}
-                            onToggleSelectAllInPlot={toggleSelectAllInPlot}
                           />
                         ))
                       )}

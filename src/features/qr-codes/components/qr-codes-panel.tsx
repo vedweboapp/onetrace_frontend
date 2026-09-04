@@ -143,7 +143,7 @@ export function QrCodesPanel() {
         { statusOptions: statusFilterOptions, jobOptions },
         {
           status: t("table.status"),
-          assignedTo: t("table.assignedJob"),
+          assignedTo: t("table.assignedId"),
         },
       ),
     [t, statusFilterOptions, jobOptions],
@@ -257,7 +257,7 @@ export function QrCodesPanel() {
       ),
       c.link(
         "assigned",
-        t("table.assignedJob"),
+        t("table.assignedId"),
         (r) => qrAssignedLabel(r),
         (r) => getQrAssignedPinHref(r),
         { title: (r) => qrAssignedLabel(r) },

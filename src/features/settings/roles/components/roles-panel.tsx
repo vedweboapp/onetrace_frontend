@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { LayoutGrid, List, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/core/utils/http.util";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { deleteRole, fetchRolesList } from "@/features/settings/roles/api/role.api";
 import type { Role } from "@/features/settings/roles/types/role.types";
@@ -22,6 +21,7 @@ import {
   ListPageCardGrid,
   ListPageHeader,
   ListPageSearchField,
+  ListViewModeToggle,
   SurfaceShell,
 } from "@/shared/ui";
 
@@ -172,38 +172,12 @@ export function RolesPanel() {
               {t("add")}
             </AddButton>
 
-            <div className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-800 dark:bg-slate-950">
-              <button
-                type="button"
-                onClick={() => setListViewMode("list")}
-                title={tList("cardView")}
-                aria-label={tList("cardView")}
-                aria-pressed={listViewMode === "list"}
-                className={cn(
-                  "inline-flex size-7 items-center justify-center rounded-md transition-colors",
-                  listViewMode === "list"
-                    ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-                    : "text-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-300",
-                )}
-              >
-                <LayoutGrid className="size-4" strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setListViewMode("table")}
-                title={tList("tableView")}
-                aria-label={tList("tableView")}
-                aria-pressed={listViewMode === "table"}
-                className={cn(
-                  "inline-flex size-7 items-center justify-center rounded-md transition-colors",
-                  listViewMode === "table"
-                    ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-                    : "text-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-300",
-                )}
-              >
-                <List className="size-4" strokeWidth={2} />
-              </button>
-            </div>
+            <ListViewModeToggle
+              viewMode={listViewMode}
+              onViewModeChange={setListViewMode}
+              tableViewLabel={tList("cardView")}
+              listViewLabel={tList("tableView")}
+            />
           </div>
         </div>
 
