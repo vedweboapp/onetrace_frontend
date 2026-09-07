@@ -49,6 +49,8 @@ import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-p
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
+import { fetchJobSubmittedForms } from "@/features/job-forms/api/job-form.api";
+import type { JobFormSubmission } from "@/features/job-forms/types/job-form-submission.types";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
@@ -133,7 +135,7 @@ function ProjectPinRow({
   drawingName,
 }: {
   pin: DrawingPin;
-  form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  form?: { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   onPreview: () => void;
   onOpenDetail: () => void;
   checklistsComplete: boolean;
@@ -368,7 +370,7 @@ function PlotPinCategoryGroup({
   onToggleExpanded: () => void;
   onPreviewPin: (pin: DrawingPin) => void;
   onOpenPinDetail: (pin: DrawingPin) => void;
-  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
@@ -449,7 +451,7 @@ function PlotPinsBlock({
   pins: DrawingPin[];
   onPreviewPin: (pin: DrawingPin) => void;
   onOpenPinDetail: (pin: DrawingPin) => void;
-  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
@@ -695,23 +697,56 @@ export function JobDetailBody({
     }
   }
 
+  const [submittedForms, setSubmittedForms] = React.useState<JobFormSubmission[]>([]);
+
+  React.useEffect(() => {
+    if (!detail?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await fetchJobSubmittedForms(detail.id);
+        if (!cancelled) setSubmittedForms(list);
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.id]);
+
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
       const meta = resolvePinFormMeta(pin, { formEntries });
       if (!meta) return null;
 
+      const targetPinId = Number(pin.job_pin_id ?? pin.id);
+      const matchedSubmission = submittedForms.find((sub) => {
+        const subPinId = Number((sub as any).job_pin_id ?? (sub as any).job_pin);
+        if (Number.isFinite(targetPinId) && targetPinId > 0 && subPinId === targetPinId) return true;
+        if (sub.job_form_id === meta.jobFormId || sub.project_form_id === meta.projectFormId) return true;
+        return false;
+      });
+
+      const effectiveSubmissionId =
+        meta.submissionId ??
+        (matchedSubmission && matchedSubmission.id > 0 ? matchedSubmission.id : null);
+      const isSubmitted = meta.submitted || Boolean(matchedSubmission);
+
       const baseHref = `${routes.dashboard.jobFormFill(detail.id, meta.projectFormId, meta.jobFormId)}&name=${encodeURIComponent(
         meta.label,
-      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${Number(pin.job_pin_id)}`;
+      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${targetPinId}`;
 
       return {
         label: meta.label,
-        href: meta.submitted && meta.submissionId ? `${baseHref}&submission_id=${meta.submissionId}` : baseHref,
+        href: isSubmitted && effectiveSubmissionId ? `${baseHref}&submission_id=${effectiveSubmissionId}` : baseHref,
         projectFormId: meta.projectFormId,
-        submitted: meta.submitted,
+        jobFormId: meta.jobFormId,
+        submissionId: effectiveSubmissionId,
+        submitted: isSubmitted,
       };
     },
-    [detail.id, formEntries],
+    [detail.id, formEntries, submittedForms],
   );
 
   const assignedWorkers = React.useMemo(() => getJobAssignedWorkerRows(detail), [detail]);
@@ -948,13 +983,29 @@ export function JobDetailBody({
                             }}
                             onOpenPinDetail={(pin) => {
                               const backHref = `${routes.dashboard.jobs}/${detail.id}`;
-                              // Project jobs: open via project pin route (loads pin from drawings API).
-                              // Service jobs without a project: keep job-scoped pin route.
-                              const detailHref =
+                              const baseRoute =
                                 projectId != null
-                                  ? routes.dashboard.projectPinDetail(projectId, pin.id, level.id)
-                                  : routes.dashboard.jobPinDetail(detail.id, pin.id, level.id);
-                              router.push(mergeUrlQueryParam(detailHref, "back", backHref));
+                                  ? routes.dashboard.projectPinDetail(projectId, pin.id)
+                                  : routes.dashboard.jobPinDetail(detail.id, pin.id);
+
+                              const params = new URLSearchParams({ back: backHref });
+                              if (level?.id != null) {
+                                params.set("drawingId", String(level.id));
+                              }
+                              // Always carry the job ID so the form can be submitted or loaded.
+                              params.set("jobId", String(detail.id));
+
+                              const pinForm = getPinForm(pin);
+                              if (pinForm) {
+                                params.set("formId", String(pinForm.projectFormId));
+                                params.set("job_form_id", String(pinForm.jobFormId ?? pinForm.projectFormId));
+                                params.set("name", pinForm.label);
+                                params.set("job_pin_id", String(Number(pin.job_pin_id ?? pin.id)));
+                                if (pinForm.submissionId != null && pinForm.submissionId > 0) {
+                                  params.set("submission_id", String(pinForm.submissionId));
+                                }
+                              }
+                              router.push(`${baseRoute}?${params.toString()}`);
                             }}
                             getPinForm={getPinForm}
                             checklistsComplete={checklistsComplete}
@@ -998,6 +1049,7 @@ export function JobDetailBody({
           }}
         />
       </div>
+      
       {previewPinData && (
         <DrawingPinPreviewModal
           open={previewPinData !== null}
