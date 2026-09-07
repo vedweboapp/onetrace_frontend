@@ -18,6 +18,11 @@ type UseQuotationDraftStateOptions = {
   /** When true, skip all auto-seed (e.g. workspace restored after block detail). */
   preventAutoSeedRef?: React.MutableRefObject<boolean>;
   initialDraft?: QuotationDraft | null;
+  /**
+   * When true and there is no project id, seed an empty draft once so manual/service
+   * quotations can add sections without selecting a project.
+   */
+  emptyWhenNoProject?: boolean;
 };
 
 export function useQuotationDraftState(
@@ -71,6 +76,15 @@ export function useQuotationDraftState(
 
     const pid = projectId && projectId > 0 ? projectId : null;
     if (pid == null) {
+      if (options?.emptyWhenNoProject) {
+        // Sentinel: service/manual empty seed (distinct from any real project id).
+        if (seededProjectRef.current !== -1) {
+          seededProjectRef.current = -1;
+          hadRowsRef.current = false;
+          queueDraft({ sections: [] });
+        }
+        return;
+      }
       seededProjectRef.current = null;
       hadRowsRef.current = false;
       queueDraft(null);
@@ -90,7 +104,7 @@ export function useQuotationDraftState(
       hadRowsRef.current = true;
       queueDraft(seedDraftFromSortedLevels(sortedLevelRows));
     }
-  }, [enabled, projectId, sortedLevelRows, editSeed]);
+  }, [enabled, projectId, sortedLevelRows, editSeed, options?.emptyWhenNoProject, options?.preventAutoSeedRef]);
 
   return [draft, setDraft];
 }

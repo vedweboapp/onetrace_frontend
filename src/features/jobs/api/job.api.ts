@@ -3,7 +3,15 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { JOB_PATHS } from "./job.paths";
-import type { Job, JobCreatePayload, JobListResponse, JobUpdatePayload } from "../types/job.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type {
+  Job,
+  JobChecklistUpdateItem,
+  JobCreateFromQuotationPayload,
+  JobCreatePayload,
+  JobListResponse,
+  JobUpdatePayload,
+} from "../types/job.types";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -17,6 +25,11 @@ export type JobListFilters = {
   is_active?: boolean;
   job_status?: number;
   assigned_worker?: number;
+  /** Filter jobs belonging to a client (when supported by API). */
+  client?: number;
+  job_category?: string;
+
+  job_type?: string;
 };
 
 type JobRequestOptions = {
@@ -28,6 +41,7 @@ export async function fetchJobsPage(
   pageSize = 20,
   filters?: JobListFilters,
   options?: JobRequestOptions,
+  
 ): Promise<{ items: Job[]; pagination: JobListResponse["pagination"] }> {
   const params: Record<string, string | number> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
@@ -39,6 +53,16 @@ export async function fetchJobsPage(
   if (typeof filters?.assigned_worker === "number" && Number.isFinite(filters.assigned_worker)) {
     params.assigned_worker = filters.assigned_worker;
   }
+  if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
+    params.client = filters.client;
+  }
+  if (filters?.job_category) {
+    params.job_category = filters.job_category;
+  }
+
+  if (filters?.job_type) {
+    params.job_type = filters.job_type;
+  }
 
   const { data } = await api.get<JobListResponse>(JOB_PATHS.list, {
     params,
@@ -46,6 +70,14 @@ export async function fetchJobsPage(
   });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+/** Collect every job id matching list filters (all pages). */
+export async function fetchAllJobIds(
+  filters?: JobListFilters,
+  options?: JobRequestOptions,
+): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchJobsPage(page, pageSize, filters, options));
 }
 
 export async function fetchJob(id: number, options?: JobRequestOptions): Promise<Job> {
@@ -56,8 +88,7 @@ export async function fetchJob(id: number, options?: JobRequestOptions): Promise
   return data.data;
 }
 
-export async function createJob(body: JobCreatePayload): Promise<Job> {
-  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
   if ("pagination" in data && Array.isArray(data.data) && data.data[0]) {
     assertEnvelopeSuccess(data);
     return data.data[0];
@@ -66,13 +97,45 @@ export async function createJob(body: JobCreatePayload): Promise<Job> {
   return (data as ApiEnvelope<Job>).data;
 }
 
+export async function createJob(body: JobCreatePayload): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.list, body);
+  return parseJobCreateResponse(data);
+}
+
+/** Backend creates a job from a quotation. */
+export async function createJobFromQuotation(quotationId: number): Promise<Job> {
+  const body: JobCreateFromQuotationPayload = { quotation_id: quotationId };
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(JOB_PATHS.createFromQuotation, body);
+  return parseJobCreateResponse(data);
+}
+
 export async function updateJob(id: number, body: JobUpdatePayload): Promise<Job> {
   const { data } = await api.patch<ApiEnvelope<Job>>(JOB_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }
 
+export async function updateJobChecklists(
+  id: number,
+  checklists: JobChecklistUpdateItem[],
+): Promise<Job> {
+  return updateJob(id, { checklists });
+}
+
 export async function deleteJob(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<null>>(JOB_PATHS.detail(id));
   assertApiSuccess(data);
 }
+
+export type JobQualityAssurancePayload =
+  | { status: "approved"; pin_ids?: number[] }
+  | { status: "rejected"; remarks: string; pin_ids?: number[] };
+
+export async function submitJobQualityAssurance(
+  jobId: number,
+  body: JobQualityAssurancePayload,
+): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(JOB_PATHS.qualityAssurance(jobId), body);
+  assertApiSuccess(data);
+}
+

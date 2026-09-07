@@ -25,7 +25,10 @@ export type WorkflowColourStatusApiPaths = {
   detail: (id: number) => string;
 };
 
-export function createWorkflowColourStatusApi(paths: WorkflowColourStatusApiPaths) {
+export function createWorkflowColourStatusApi(
+  paths: WorkflowColourStatusApiPaths,
+  resolveUrl: (path: string) => string = (path) => path,
+) {
   async function fetchPage(
     page = 1,
     pageSize = 20,
@@ -35,13 +38,13 @@ export function createWorkflowColourStatusApi(paths: WorkflowColourStatusApiPath
     const q = filters?.search?.trim();
     if (q) params.search = q;
 
-    const { data } = await api.get<WorkflowColourStatusListResponse>(paths.list, { params });
+    const { data } = await api.get<WorkflowColourStatusListResponse>(resolveUrl(paths.list), { params });
     assertEnvelopeSuccess(data);
     return { items: data.data, pagination: data.pagination };
   }
 
   async function create(body: WorkflowColourStatusCreatePayload): Promise<WorkflowColourStatus> {
-    const { data } = await api.post<ApiEnvelope<WorkflowColourStatus>>(paths.list, body);
+    const { data } = await api.post<ApiEnvelope<WorkflowColourStatus>>(resolveUrl(paths.list), body);
     assertApiSuccess(data);
     return data.data;
   }
@@ -50,13 +53,13 @@ export function createWorkflowColourStatusApi(paths: WorkflowColourStatusApiPath
     id: number,
     body: WorkflowColourStatusUpdatePayload,
   ): Promise<WorkflowColourStatus> {
-    const { data } = await api.patch<ApiEnvelope<WorkflowColourStatus>>(paths.detail(id), body);
+    const { data } = await api.patch<ApiEnvelope<WorkflowColourStatus>>(resolveUrl(paths.detail(id)), body);
     assertApiSuccess(data);
     return data.data;
   }
 
   async function remove(id: number): Promise<void> {
-    const { data } = await api.delete<ApiEnvelope<unknown>>(paths.detail(id));
+    const { data } = await api.delete<ApiEnvelope<unknown>>(resolveUrl(paths.detail(id)));
     assertEnvelopeSuccess(data);
   }
 

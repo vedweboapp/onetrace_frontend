@@ -24,13 +24,18 @@
     "continue": "Continue",
     "sendOtp": "Send OTP",
     "otpRequired": "Enter the 6-digit OTP.",
+
     "otpSent": "OTP sent to {email}",
     "otpSendError": "Could not send OTP. Please try again.",
     "otpVerifyError": "Could not verify OTP. Check the code and try again.",
     "resendIn": "Resend code in",
     "resendNow": "Resend now",
+    "backToLogin": "Back to sign in",
+    "otpResent": "OTP resent successfully",
     "noAccount": "No account yet?",
     "signUpLink": "Create one",
+    "dontHaveAccount": "Dont have an account ?",
+    "signUp": "Sign up",
     "heroLiveSync": "Live Site Sync",
     "heroTitleLine1": "Next-Generation",
     "heroTitleLine2": "Construction Management",
@@ -38,15 +43,65 @@
     "errors": {
       "invalidCredentials": "Invalid email or password. Please try again."
     },
-    "register": {
-      "title": "Create account",
+    "signUpForm": {
+      "title": "Sign Up",
+      "firstName": "First Name",
+      "middleName": "Middle Name",
+      "optional": "(Optional)",
+      "email": "Email",
+      "phone": "Phone Number",
+      "password": "Password",
+      "lastName": "Last Name",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
       "body": "Registration will live here — wire your API next.",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Already have an account?",
+      "sendOtp": "Send OTP",
+      "sendingOtp": "Sending OTP…",
+      "verifyOtp": "Verify OTP",
+      "verifyingOtp": "Verifying OTP…",
+      "signingUp": "Signing Up...",
+      "login": "Login",
+      "placeholders": {
+        "firstName": "Enter your first name",
+        "middleName": "Enter your middle name",
+        "lastName": "Enter your last name",
+        "email": "Enter your email",
+        "password": "Enter a password"
+      },
+      "toast": {
+        "emailSent": "Emial sent successfully",
+        "emailFailed": "Failed to send email."
+      },
+      "signUp": "Sign up",
+      "errors": {
+        "passwordRequired": "Password is required.",
+        "passwordMinLength": "Password must be at least 8 characters.",
+        "firstNameRequired": "First name is required.",
+        "lastNameRequired": "Last name is required.",
+        "emailRequired": "Email address is required.",
+        "emailInvalid": "Enter a valid email address (e.g. you@example.com).",
+        "otpRequired": "Verification code is required.",
+        "otpLength": "Enter the full 6-digit code."
+      },
+      "toasts": {
+        "signedUp": "Successfully signed up",
+        "Sent": "Successfully sent OTP to your email. Please check your inbox.",
+        "verified": "Successfully verified email."
+      }
     },
     "forgotPassword": {
       "title": "Forgot Password?",
       "body": "Enter your email to reset your password",
-      "backToLogin": "Back to sign in"
+      "backToLogin": "Back to sign in",
+      "rememberThePassword": "Remember the password ?",
+      "resendIn": "Resend code in",
+      "resend": "Resend",
+      "newPassword": "New Password",
+      "otpInput": "Enter the 6-digit code sent to your email",
+      "newPasswordPlaceholder": "Enter new password",
+      "passwordResetSuccess": "Password reset successfully! Please sign in.",
+      "otpVerified": "Email verified successfully!"
     },
     "resetPassword": {
       "title": "Reset Password",
@@ -71,6 +126,7 @@
     "INVALID_CREDENTIALS": "Invalid email or password.",
     "NETWORK": "Network error. Check your connection and try again.",
     "fallback": "Something went wrong. Please try again.",
+    "HTTP_404": "Record not found",
     "HTTP_500": "The server had a problem. Please try again later."
   },
   "NotFound": {
@@ -78,7 +134,56 @@
     "description": "The page you are looking for does not exist.",
     "home": "Back to home"
   },
+  "Public": {
+    "quotation": {
+      "pageTitle": "Pin details",
+      "pageDescription": "Preview pin data and location for quotations.",
+      "eyebrow": "Pin details",
+      "title": "Pin details",
+      "loading": "Loading pin details…",
+      "notFound": "Could not load pin details. Please check the link and try again.",
+      "summary": "Summary",
+      "totalQuantity": "Total quantity",
+      "totalAmount": "Total amount",
+      "context": "Context",
+      "shared": "Shared",
+      "selectedPin": "Selected pin",
+      "product": "Product",
+      "quantity": "Quantity",
+      "unitPrice": "Unit price",
+      "lineTotal": "Line total",
+      "drawingHint": "Preview pin position on the drawing.",
+      "drawingPreviewAlt": "Pin drawing preview",
+      "pinMarker": "Pin marker",
+      "pinPreviewUnavailable": "Pin preview unavailable"
+    },
+    "qrCode": {
+      "pageTitle": "QR code",
+      "pageDescription": "Public QR code scan page.",
+      "eyebrow": "QR code",
+      "title": "QR code",
+      "noDataTitle": "No data found",
+      "noDataDescription": "This QR code is not assigned yet, so there is nothing to show."
+    }
+  },
   "Dashboard": {
+    "quickCreate": {
+      "add": {
+        "client": "Add new client",
+        "vendor": "Add new vendor",
+        "contact": "Add new contact",
+        "site": "Add new site",
+        "project": "Add new project",
+        "group": "Add new group",
+        "composite-item": "Add new composite item",
+        "item": "Add new item",
+        "vendorType": "Add vendor type",
+        "unitType": "Add unit type",
+        "installationType": "Add installation type",
+        "materialStatus": "Add material status",
+        "user": "Add new user"
+      }
+    },
     "common": {
       "back": "Back",
       "breadcrumbNav": "Breadcrumb",
@@ -116,8 +221,20 @@
       },
       "detail": {
         "systemMetadata": "System metadata",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
         "modifiedBy": "Modified by",
-        "notModifiedYet": "Not modified yet"
+        "notModifiedYet": "Not modified yet",
+        "requiredField": "This field is required.",
+        "recordNotFoundTitle": "Record not found",
+        "recordNotFoundDescription": "This record may have been deleted or the link is incorrect.",
+        "loadErrorTitle": "Something went wrong",
+        "backToList": "Back to list"
+      },
+      "lockedField": {
+        "aria": "Locked, read only",
+        "hint": "Read only field"
       }
     },
     "brand": {
@@ -127,9 +244,12 @@
       "eyebrowMain": "Workspace",
       "eyebrowSettings": "Settings",
       "closeSettings": "Close settings",
+      "closeSettingsShort": "Close",
       "toggleSidebar": "Expand or collapse sidebar",
       "notifications": "Notifications",
       "signOut": "Sign out",
+      "signingOut": "Signing out…",
+      "myProfile": "My profile",
       "openSettings": "Settings & appearance",
       "openProfileMenu": "Open profile menu",
       "profileMenuLabel": "Account"
@@ -137,12 +257,30 @@
     "sidebar": {
       "home": "Home",
       "clients": "Clients",
+      "vendors": "Vendors",
       "contacts": "Contacts",
+      "contactClient": "Client contacts",
+      "contactVendor": "Vendor contacts",
+      "flyoutClient": "Client",
+      "flyoutVendor": "Vendor",
       "sites": "Sites",
-      "quotations": "Quotations",
+      "quotations": "Quotes",
+      "quotationService": "Service Quotes",
+      "quotationProject": "Project Quotes",
+      "invoices": "Invoices",
+      "purchaseOrders": "Purchase orders",
       "jobs": "Jobs",
+      "serviceJob": "Service Jobs",
+      "projectJob": "Project Jobs",
+      "flyoutService": "Service",
+      "flyoutProject": "Project",
+      "scheduling": "Scheduling",
+      "qrCodes": "QR codes",
       "projects": "Projects",
       "groups": "Groups",
+      "materialRequests": "Material Requests",
+      "dispatches": "Dispatches",
+      "returnToStock": "Returns",
       "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
@@ -153,20 +291,477 @@
       "sidebarSubtitle": "Workspace preferences",
       "backToApp": "Projects",
       "appearance": "Appearance",
-      "pinStatus": "Pin statuses",
-      "jobStatus": "Job statuses",
+      "pinStatus": "Pin Statuses",
+      "projectStatus": "Project Statuses",
+      "jobStatus": "Job Statuses",
+      "materialStatus": "Material Statuses",
       "tags": "Tags",
+      "titles": "Titles",
+      "projectTypes": "Project Types",
+      "installationTypes": "Installation Types",
+      "vendorTypes": "Vendor Types",
+      "unitTypes": "Unit Types",
+      "rejectionReasons": "Rejection Reasons",
+      "checklistTypes": "Checklist Types",
       "users": "Users",
-      "hint": "Customize theme and accent for this workspace."
+      "roles": "Roles",
+      "profiles": "Profiles",
+      "personalProfile": "Personal Profile",
+      "companySettings": "Company Settings",
+      "documentation": "Documentation",
+      "formBuilder": "Form Builder",
+      "projectForms": "Project forms",
+      "modules": "Modules",
+      "integrations": "Integrations",
+      "hint": "Customize theme and accent for this workspace.",
+      "customization": {
+        "label": "Customization",
+        "hubTitle": "Customization",
+        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Rejection Reasons, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
+        "backToHub": "Back to customization",
+        "items": {
+          "projectTypes": {
+            "title": "Project Types",
+            "description": "Categories for projects with colored labels."
+          },
+          "installationTypes": {
+            "title": "Installation Types",
+            "description": "Classify installations with colored labels."
+          },
+          "vendorTypes": {
+            "title": "Vendor Types",
+            "description": "Categories for vendors with colored labels."
+          },
+          "unitTypes": {
+            "title": "Unit Types",
+            "description": "Units of measure such as Kg, box, or metre."
+          },
+          "rejectionReasons": {
+            "title": "Rejection Reasons",
+            "description": "Reasons used when rejecting quality checks, materials, or related work."
+          },
+          "checklistTypes": {
+            "title": "Checklist Types",
+            "description": "Checklists for job forms, linked to project types."
+          },
+          "projectStatus": {
+            "title": "Project Statuses",
+            "description": "Workflow statuses for projects."
+          },
+          "pinStatus": {
+            "title": "Pin Statuses",
+            "description": "Workflow statuses for drawing pins on project drawings."
+          },
+          "jobStatus": {
+            "title": "Job Statuses",
+            "description": "Workflow statuses for jobs."
+          },
+          "materialStatus": {
+            "title": "Material Statuses",
+            "description": "Workflow statuses for material requests."
+          },
+          "tags": {
+            "title": "Tags",
+            "description": "Tags for organizing pins and records."
+          },
+          "title": {
+            "title": "Titles",
+            "description": "Organize the title for the project."
+          }
+        }
+      }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "description": "Connect third-party services to sync data with OneTrace.",
+      "connect": "Connect",
+      "manage": "Manage",
+      "connectError": "Failed to start Zoho connection. Please try again.",
+      "zohoInventory": {
+        "name": "Zoho Inventory"
+      },
+      "zohoCallback": {
+        "title": "Integration Completed.",
+        "description": "Zoho Inventory is now linked with Red5,To Finish click on Finish integration",
+        "pullHistoricalData": "Pull historical data",
+        "pullHistoricalDataHint": "Import existing records from Zoho Inventory when the connection is created.",
+        "finish": "Finish integration",
+        "cancel": "Cancel",
+        "finishError": "Failed to complete Zoho integration. Please try again.",
+        "connectionFailed": "Connection failed. Please try again.",
+        "missingParams": "Missing authorization details. Please start the connection again from Integrations."
+      },
+      "zohoKeyMapping": {
+        "title": "Map Zoho Inventory fields",
+        "description": "Match Zoho fields to your SimHo fields before syncing data.",
+        "externalField": "Zoho field",
+        "internalField": "SimHo field",
+        "columnOnetrace": "SimHo",
+        "columnZoho": "Zoho",
+        "mapsTo": "Maps to",
+        "selectExternal": "Select Zoho field",
+        "selectExternalGroup": "Select Zoho group",
+        "selectExternalGroupFirst": "Select a Zoho group first",
+        "selectInternal": "Select SimHo field",
+        "addRow": "Add mapping",
+        "removeRow": "Remove mapping",
+        "requiredBadge": "Required",
+        "groupSelected": "Selected",
+        "groupSelect": "Select",
+        "groupMappedCount": "{mapped} of {total} mapped",
+        "pullHistoricalData": "Pull historical data",
+        "pullHistoricalDataHint": "Import existing Zoho records when saving this mapping.",
+        "pullHistoricalDataAction": "Pull historical data",
+        "pullHistoricalDataDescription": "Import existing Zoho records for this resource after your mappings are saved.",
+        "pullHistoricalDataSuccess": "Historical data pull started",
+        "pullHistoricalDataError": "Failed to start the historical data pull. Please try again.",
+        "pullFullSync": "Full sync",
+        "pullIncrementalSync": "Incremental sync",
+        "pullFullSyncHint": "Import all Zoho records for this resource.",
+        "pullIncrementalSyncHint": "Import only records changed since the last sync.",
+        "pullSaveMappingFirst": "Save mapping before pulling data.",
+        "pullFullSyncCount": "Total syncs: {count}",
+        "pullLastSynced": "Last synced: {datetime}",
+        "pullLastSyncedNever": "Last synced: Never",
+        "pullSyncInProgress": "Sync in progress…",
+        "pullSyncComplete": "Sync completed",
+        "pullSyncFailed": "Sync failed",
+        "pullSyncStatusQueued": "Queued",
+        "pullSyncStatusRunning": "Running",
+        "pullSyncStatusSucceeded": "Succeeded",
+        "pullSyncStatusFailed": "Failed",
+        "pullSyncProcessed": "Processed: {count}",
+        "pullSyncCreated": "Created: {count}",
+        "pullSyncUpdated": "Updated: {count}",
+        "pullSyncRestored": "Restored: {count}",
+        "pullSyncSkipped": "Skipped: {count}",
+        "pullSyncStatusError": "Failed to check sync status. Please try again.",
+        "saveMapping": "Save mapping",
+        "cancel": "Cancel",
+        "loadError": "Failed to load field mapping options. Please try again.",
+        "saveError": "Failed to save mapping. Please try again.",
+        "mappingRequired": "Add at least one field mapping before saving.",
+        "saved": "Mapping saved",
+        "savedWithSync": "{message}. {count, plural, one {# record synced} other {# records synced}}."
+      },
+      "zohoWebhookSetup": {
+        "title": "Zoho webhook setup",
+        "description": "Create a webhook in Zoho Inventory using the values below to keep data in sync.",
+        "guideTitle": "How to create the webhook in Zoho Inventory",
+        "step1": "Open Zoho Inventory → Settings → Automation → Webhooks.",
+        "step2": "Create a new webhook and use the URL, method, and header values shown below.",
+        "step3": "Set the action to match the resource action below and save the webhook.",
+        "method": "HTTP method",
+        "resourceAction": "Action",
+        "webhookUri": "Webhook URL",
+        "headerTitle": "Header",
+        "header": "Header: {name}",
+        "samplePayload": "Sample payload",
+        "samplePayloadHint": "Send this JSON body from Zoho. Required keys are listed below — do not include a required flag in the payload.",
+        "samplePayloadJson": "JSON to send",
+        "requiredHighlightLegend": "indicates required fields in the webhook payload.",
+        "mappingNoteTitle": "Need more fields?",
+        "mappingNoteBody": "Map additional Zoho fields under Configuration → {mappingTitle} first. Mapped fields then appear in this sample payload.",
+        "mappingNoteLink": "Open field mapping",
+        "copy": "Copy",
+        "copied": "Copied to clipboard",
+        "loadError": "Failed to load webhook setup details. Please try again.",
+        "backToConnection": "Back to connection",
+        "done": "Done"
+      },
+      "zohoConnection": {
+        "title": "Zoho Inventory",
+        "description": "Review your Zoho connection status and manage sync settings.",
+        "setupWebhook": "Setup custom webhook",
+        "configureMapping": "Configuration",
+        "connectionDetailsTitle": "Connection details",
+        "connectionDetailsSubtitle": "Status and sync overview for this integration.",
+        "reconnect": "Reconnect",
+        "connectAction": "Connect",
+        "webhookTitle": "Custom webhook setup",
+        "backToDetails": "Back to details",
+        "backToIntegrations": "Back to integrations",
+        "loadError": "Failed to load connection details. Please try again.",
+        "webhookLoadError": "Failed to load webhook setup details. Please try again.",
+        "connected": "Connected",
+        "status": "Status",
+        "provider": "Provider",
+        "connectionId": "Connection ID",
+        "zohoOrganizationId": "Zoho organization ID",
+        "mappingConfigured": "Mapping configured",
+        "importedRecords": "Historical records",
+        "webhookConfigured": "Webhook configured",
+        "webhookLastReceived": "Webhook last received",
+        "notAvailable": "—",
+        "yes": "Yes",
+        "no": "No",
+        "disconnected": "Disconnected"
+      },
+      "zohoResources": {
+        "mappingPageTitle": "Map Zoho Inventory fields",
+        "mappingPageDescription": "Match Zoho fields to your SimHo fields for each resource before syncing data.",
+        "webhookPageTitle": "Zoho webhook setup",
+        "webhookPageDescription": "Create webhooks in Zoho Inventory using the shared settings below. Each resource has its own URL and sample JSON.",
+        "resourceValuesTitle": "Webhook URL & sample payload",
+        "resourceValuesDescription": "These values differ per resource. Expand a section to copy the webhook URL and JSON payload for that resource.",
+        "items": {
+          "title": "Items and composite items",
+          "mappingDescription": "Match Zoho item fields to your SimHo item and composite item fields.",
+          "toggleSection": "Toggle items and composite items section"
+        },
+        "customers": {
+          "title": "Customers and contacts",
+          "mappingDescription": "Match Zoho customer fields to your SimHo client and contact fields.",
+          "toggleSection": "Toggle customers and contacts section"
+        },
+        "vendors": {
+          "title": "Vendors",
+          "mappingDescription": "Match Zoho vendor fields to your SimHo vendor fields.",
+          "toggleSection": "Toggle vendors section"
+        },
+        "purchase_orders": {
+          "title": "Purchase orders",
+          "mappingDescription": "Match Zoho purchase order fields to your SimHo purchase order fields.",
+          "toggleSection": "Toggle purchase orders section"
+        },
+        "invoices": {
+          "title": "Invoices",
+          "mappingDescription": "Match Zoho invoice fields to your SimHo invoice fields.",
+          "toggleSection": "Toggle invoices section"
+        }
+      },
+      "zohoIntegrationGuide": {
+        "title": "How to integrate Zoho Inventory with your SimHo account",
+        "intro": "Follow these steps to connect Zoho Inventory, authorize access, and configure field mapping so records can sync into SimHo.",
+        "stepLabel": "Step {number}",
+        "mappingNote": "Note — Field mapping facilitates data sync from Zoho Inventory to your SimHo account. No records can be synced if field mapping is not saved.",
+        "steps": {
+          "connect": {
+            "title": "Click Connect",
+            "body": "From Settings → Integrations, open Zoho Inventory and click Connect to start the integration.",
+            "imageAlt": "Zoho Inventory integration card with Connect button"
+          },
+          "authenticate": {
+            "title": "Authenticate with your Zoho Inventory account",
+            "body": "Sign in with the Zoho account that has access to the Zoho Inventory organization you want to connect.",
+            "imageAlt": "Zoho sign-in screen"
+          },
+          "allow": {
+            "title": "Allow platform access and click Accept",
+            "body": "Review the requested permissions, confirm access for the platform, and click Accept to continue.",
+            "imageAlt": "Zoho permission consent screen with Accept button"
+          },
+          "success": {
+            "title": "Integration successful — click Finish Setup",
+            "body": "When the integration completes, click Finish Setup to continue to the field mapping screen.",
+            "imageAlt": "Integration completed dialog with Finish integration button"
+          },
+          "mapping": {
+            "title": "Configure field mapping and save",
+            "body": "Select SimHo fields and the corresponding Zoho fields. Turn Pull Historical Records off if you do not want to sync all existing records from Zoho Inventory for the respective module. Then click Save Mapping.",
+            "imageAlt": "Field mapping screen with SimHo and Zoho field pairs"
+          }
+        },
+        "finish": {
+          "title": "Finish",
+          "body": "You have successfully integrated Zoho Inventory with your SimHo account. If you pulled historical data, check the respective module for synced records. Otherwise, only new records created after mapping is saved will appear."
+        }
+      }
+    },
+    "settingsPersonalProfile": {
+      "updatedToast": "Profile updated successfully",
+      "appearanceSavedToast": "Appearance settings saved",
+      "loadError": "Failed to load profile. Please try again.",
+      "mustSignIn": "You must be signed in to view your profile.",
+      "BasicInfo": "Basic Info",
+      "ContactDetails": "Contact Details",
+      "FirstName": "First Name",
+      "LastName": "Last Name",
+      "DateOfBirth": "Date of Birth",
+      "Gender": "Gender",
+      "Role": "Role",
+      "JoiningDate": "Joining Date",
+      "Emails": "Emails",
+      "Phones": "Phones",
+      "AddPhone": "Add Phone",
+      "AddEmail": "Add Email",
+      "AddAddress": "Add Address",
+      "RemoveAddress": "Remove",
+      "AddressN": "Address {n}",
+      "Addresses": "Addresses",
+      "Primary": "Primary",
+      "fields": {
+        "address1": "Address line 1",
+        "address2": "Address line 2",
+        "country": "Country",
+        "state": "State",
+        "city": "City",
+        "pincode": "Pin code"
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city"
+      }
+    },
+    "settingsDocumentation": {
+      "pageTitle": "Documentation",
+      "pageDescription": "A guided overview of user flows and settings behavior in the application.",
+      "profile": {
+        "title": "Personal profile flow",
+        "description": "This section explains how the personal profile screen loads, edits, and submits user details.",
+        "flow": {
+          "load": "Load the signed-in user profile from the API and render the profile form when data is ready.",
+          "edit": "Toggle edit mode to enable the personal profile form fields.",
+          "save": "Submit a PATCH request with top-level emails, phones, and addresses arrays plus nested user_detail fields.",
+          "addresses": "Addresses are collected as a top-level array, with each item using invite-style address field names and normalized country/state values."
+        }
+      },
+      "publicQuotation": {
+        "title": "Public quotation flow",
+        "description": "This section covers how the public quotation page resolves a token and loads quotation pin preview data.",
+        "flow": {
+          "token": "Read token or pinDetailsKey from URL search params to determine whether to fetch live pin details or load stored payload.",
+          "payload": "For numeric tokens, fetch public pin details from the API; for non-numeric tokens, load client-side stored quotation scope payload.",
+          "preview": "Render the quotation pin preview modal with plot and drawing data once the payload is available."
+        }
+      },
+      "settings": {
+        "title": "Relevant settings sections",
+        "description": "The main settings area includes profile, documentation, company settings, modules, project forms, customization, users, and integrations.",
+        "flow": {
+          "personalProfile": "Access the personal profile page through Settings → Personal Profile to update contact and address details.",
+          "integration": "Connect and configure Zoho integration under Settings → Integrations, then follow callback/connection/key mapping flows.",
+          "documentation": "Use this documentation page to review user flows and understand how core settings routes behave."
+        }
+      }
+    },
+    "settingsAppearance": {
+      "workPrefrence": "WORK PREFREFRENCE",
+      "branding": "BRANDING &  APPEARANCE",
+      "interfaceTheme": "INTERFACE THEME",
+      "defaultLangauge": "SYSTEM LANGUAGE",
+      "accent": "Accent Color Presets",
+      "customColor": "CUSTOM HEX COLOR",
+      "customColorMessage": "Enter a custom hex code to match your brand's identity exactly."
+    },
+    "settingsCompany": {
+      "organizationUpdatedToast": "Organization details updated successfully",
+      "currencyUpdatedToast": "Currency settings saved successfully",
+      "scheduleUpdatedToast": "Schedule settings saved successfully",
+      "noChangesToast": "No changes to save",
+      "orgSectionTitle": "Organization information",
+      "orgSectionSubtitle": "Update your company details and contact information.",
+      "addressSectionTitle": "Address information",
+      "logoLabel": "Company logo",
+      "logoHint": "512×512px recommended",
+      "currencySectionTitle": "Currency",
+      "currencySectionSubtitle": "Set the home currency, money format, and number format.",
+      "homeCurrency": "Home currency",
+      "homeCurrencyHint": "Your primary currency",
+      "currencyFormat": "Currency format",
+      "currencyFormatHint": "Current money format",
+      "currencyDigitFormat": "Money digit format",
+      "numberFormatHint": "Used for quantities and number-only fields",
+      "customize": "Customize",
+      "customizeCurrencySettings": "Customize currency settings",
+      "symbol": "Symbol",
+      "formatTypeCode": "Code",
+      "symbolPosition": "Symbol position",
+      "symbolBefore": "Before value",
+      "symbolAfter": "After value",
+      "decimalPlaces": "Decimal places",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "saving": "Saving…",
+      "fields": {
+        "name": "Organization name",
+        "size": "Company size",
+        "website": "Website URL",
+        "timezone": "Timezone",
+        "description": "Company description",
+        "address1": "Address 1",
+        "address2": "Address 2",
+        "zip": "Pincode / ZIP code",
+        "numberFormat": "Number format"
+      },
+      "placeholders": {
+        "name": "Company name",
+        "website": "https://example.com",
+        "address1": "123 Business Park Drive",
+        "address2": "Suite 100",
+        "zip": "94102"
+      }
+    },
+    "settingsFormBuilder": {
+      "layoutSavedToast": "Layout saved successfully",
+      "layoutCreatedToast": "Layout created successfully",
+      "layoutUpdatedToast": "Layout updated successfully",
+      "moduleCreatedToast": "Module created successfully",
+      "nameLabel": "Form name",
+      "namePlaceholder": "Enter form name",
+      "nameRequired": "Form name is required."
+    },
+    "settingsProjectForms": {
+      "createNewForm": "Create new form",
+      "headerLabel": "Project Forms",
+      "headerDescription": "Create and manage project in here.",
+      "searchPlaceholder": "Search project type forms",
+      "searchAria": "Search project type forms",
+      "loadError": "Failed to load forms. Please try again.",
+      "projectTypesLoadError": "Failed to load project types. Please try again.",
+      "empty": "No forms found. Create your first form to get started.",
+      "pageLabel": "{start}-{end} of {total}",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsPerPage": "Rows per page",
+      "table": {
+        "formName": "Form Name",
+        "apiName": "API Name",
+        "projectType": "Project Type",
+        "installationType": "Installation Type",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "modal": {
+        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeDescription": "Choose the project type this form belongs to.",
+        "cancel": "Cancel",
+        "next": "Next",
+        "projectTypesList": "Project types",
+        "selectProjectTypeAria": "Select project type",
+        "loadingProjectTypes": "Loading project types...",
+        "selectProjectType": "Select project type",
+        "searchProjectTypes": "Search project types",
+        "noProjectTypes": "No project types found.",
+        "loadingInstallationTypes": "Loading installation types...",
+        "searchInstallationTypes": "Search installation types",
+        "installationTypesList": "Installation Types",
+        "selectInstallationTypeAria": "Select installation type",
+        "selectInstallationType": "Select an installation type",
+        "noInstallationTypes": "No installation types found."
+      },
+      "installationTypesLoadError": "Failed to load installation types. Please try again.",
+      "statusUpdatedToast": "Form status updated successfully",
+      "statusUpdateErrorToast": "Failed to update form status. Please try again."
+    },
+    "settingsLayouts": {
+      "statusUpdatedToast": "Layout status updated successfully"
     },
     "appearance": {
       "metaTitle": "Appearance",
       "pageKicker": "Settings",
       "title": "Appearance",
-      "subtitle": "Control theme, language, and accent for the dashboard. Accent colors highlight navigation and key actions.",
-      "themeHeading": "Theme",
+      "subtitle": "Control theme, typography, dashboard layout, and form field display for this workspace.",
+      "themeHeading": "Theme & colors",
       "themeHint": "Switch between a bright interface and a dark interface.",
-      "themeSelectLabel": "Interface theme",
+      "themeSelectLabel": "Mode",
       "theme": {
         "light": "Light",
         "dark": "Dark"
@@ -179,13 +774,13 @@
         "es": "Español"
       },
       "accentHeading": "Accent color",
-      "accentPresetsLabel": "Presets",
+      "accentPresetsLabel": "Primary color",
       "accentCustomLabel": "Custom color",
       "accentCustom": "Custom",
       "customHexLabel": "Custom hex color",
       "customColorPicker": "Pick a color",
       "applyCustom": "Apply",
-      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Custom accents apply to the sidebar, mobile bar, and accent highlights.",
+      "customHint": "Use a 6-digit hex value (e.g. #2563eb). Accent colors apply to navigation and key actions.",
       "accents": {
         "black": "Black",
         "blue": "Blue",
@@ -200,15 +795,83 @@
         "fuchsia": "Fuchsia",
         "teal": "Teal",
         "orange": "Orange"
+      },
+      "typographyHeading": "Typography",
+      "fontFamilyLabel": "Font family",
+      "fontFamilyHint": "Applied across the dashboard for consistent reading.",
+      "fontSizeLabel": "Font size",
+      "fontSizeHint": "Adjust base text size for labels and body copy.",
+      "fontSizePreview": "Preview: The quick brown fox jumps over the lazy dog.",
+      "fonts": {
+        "inter": "Inter",
+        "roboto": "Roboto",
+        "sourceSans": "Source Sans 3",
+        "openSans": "Open Sans",
+        "dmSans": "DM Sans",
+        "system": "System default"
+      },
+      "fontSizes": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "layoutHeading": "Dashboard layout",
+      "sidebarLayoutLabel": "Navigation layout",
+      "sidebarLayoutHint": "Choose where primary navigation appears on desktop.",
+      "layouts": {
+        "lithium": {
+          "title": "Left sidebar (Lithium)",
+          "subtitle": "Classic vertical navigation on the left."
+        },
+        "hydrogen": {
+          "title": "Top navigation (Hydrogen)",
+          "subtitle": "Horizontal navigation along the top bar."
+        },
+        "boron": {
+          "title": "Right sidebar (Boron)",
+          "subtitle": "Vertical navigation on the right."
+        }
+      },
+      "formLayoutHeading": "Form layout",
+      "labelPlacementLabel": "Label placement",
+      "labelPlacementHint": "Position of field labels relative to inputs on forms and detail screens.",
+      "labelPlacements": {
+        "top": "Top",
+        "left": "Left",
+        "right": "Right"
+      },
+      "requiredIndicatorLabel": "Required field indicator",
+      "requiredIndicatorHint": "How mandatory fields are marked across the app.",
+      "requiredIndicators": {
+        "asterisk": "Asterisk (*)",
+        "redLine": "Red line"
+      },
+      "formPreviewHeading": "Live preview",
+      "formPreviewLabel": "Sample required field",
+      "formPreviewValue": "Sample value",
+      "storageHint": "Appearance is saved on this device for your signed-in account (not sent to the server yet). After you log in again on this browser, your last choices are restored.",
+      "detailRowLineWidthLabel": "Detail row line width",
+      "detailRowLineWidthHint": "Thickness of the divider under each field row on detail pages.",
+      "detailRowLineWidths": {
+        "none": "None"
+      },
+      "detailRowLineStyleLabel": "Detail row line type",
+      "detailRowLineStyleHint": "Solid, dashed, or dotted dividers between detail fields.",
+      "detailRowLineStyles": {
+        "solid": "Solid",
+        "dashed": "Dashed",
+        "dotted": "Dotted"
       }
     },
     "pinStatus": {
-      "metaTitle": "Pin statuses",
-      "title": "Pin statuses",
+      "metaTitle": "Pin Statuses",
+      "title": "Pin Statuses",
       "subtitle": "Create and manage workflow labels for pins. Colors are used when displaying status chips across the app.",
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "table": {
         "type": "Type",
         "kindPin": "Pin",
@@ -250,17 +913,93 @@
       "saved": "Status updated",
       "created": "Status created",
       "deleted": "Status deleted",
+      "activatedToast": "Pin status activated",
+      "deactivatedToast": "Pin status deactivated",
+      "toggleActiveError": "Could not update pin status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "projectStatus": {
+      "metaTitle": "Project Statuses",
+      "title": "Project Statuses",
+      "subtitle": "Create and manage workflow labels for projects. Colors are used when displaying status chips across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
+        "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "empty": "No project statuses yet. Add one to get started.",
+      "emptyTitle": "No project statuses yet",
+      "emptyDescription": "Create workflow labels for projects used across your workspace.",
+      "loadError": "Could not load project statuses. Try again.",
+      "modal": {
+        "createTitle": "New project status",
+        "editTitle": "Edit",
+        "statusName": "Status name",
+        "category": "Category",
+        "categoryPlaceholder": "Select category",
+        "categoryOptions": {
+          "open": "Open",
+          "closed": "Closed"
+        },
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Projects using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "activatedToast": "Project status activated",
+      "deactivatedToast": "Project status deactivated",
+      "toggleActiveError": "Could not update project status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
     },
     "jobStatus": {
-      "metaTitle": "Job statuses",
-      "title": "Job statuses",
+      "metaTitle": "Job Statuses",
+      "title": "Job Statuses",
       "subtitle": "Create and manage workflow labels for jobs. Colors are used when displaying status chips across the app.",
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "table": {
         "type": "Type",
         "kindPin": "Pin",
@@ -302,9 +1041,220 @@
       "saved": "Status updated",
       "created": "Status created",
       "deleted": "Status deleted",
+      "activatedToast": "Job status activated",
+      "deactivatedToast": "Job status deactivated",
+      "toggleActiveError": "Could not update job status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
       "hexPlaceholder": "#000000",
       "validationName": "Enter a status name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "materialStatus": {
+      "metaTitle": "Material Statuses",
+      "title": "Material Statuses",
+      "subtitle": "Create and manage workflow labels for material requests. Colors are used when displaying status chips across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "table": {
+        "type": "Type",
+        "kindPin": "Pin",
+        "kindJob": "Job",
+        "name": "Name",
+        "tag": "Tag",
+        "status": "Status",
+        "createdBy": "Created by",
+        "createdAt": "Created at",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "empty": "No material statuses yet. Add one to get started.",
+      "emptyTitle": "No material statuses yet",
+      "emptyDescription": "Create workflow labels for material requests used across your workspace.",
+      "loadError": "Could not load material statuses. Try again.",
+      "modal": {
+        "createTitle": "New material status",
+        "editTitle": "Edit",
+        "statusName": "Status name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this status?",
+      "deleteConfirmBody": "Material requests using this status may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} statuses",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Status updated",
+      "created": "Status created",
+      "deleted": "Status deleted",
+      "activatedToast": "Material status activated",
+      "deactivatedToast": "Material status deactivated",
+      "toggleActiveError": "Could not update material status. Try again.",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a status name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #E5E7EB)."
+    },
+    "unitTypes": {
+      "metaTitle": "Unit Types",
+      "title": "Unit Types",
+      "subtitle": "Manage units of measure used across items and quotations.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "name": "Unit",
+        "shortForm": "Short form",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "emptyTitle": "No unit types yet",
+      "emptyDescription": "Create your first unit type (e.g. Kg, box) for items and pricing.",
+      "loadError": "Could not load unit types. Try again.",
+      "modal": {
+        "createTitle": "New unit type",
+        "editTitle": "Edit unit type",
+        "unitName": "Name",
+        "unitNamePlaceholder": "e.g. Kg",
+        "unitShortForm": "Short form",
+        "unitShortFormPlaceholder": "e.g. kg",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this unit type?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} unit types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Unit type updated",
+      "created": "Unit type created",
+      "deleted": "Unit type deleted",
+      "activatedToast": "Unit type activated",
+      "deactivatedToast": "Unit type deactivated",
+      "toggleActiveError": "Could not update unit type status. Try again.",
+      "validationName": "Enter a unit name.",
+      "validationShortForm": "Enter a unit short form (e.g. kg)."
+    },
+    "rejectionReasons": {
+      "metaTitle": "Rejection Reasons",
+      "title": "Rejection Reasons",
+      "subtitle": "Manage reasons used when rejecting work or materials.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "name": "Reason",
+        "status": "Status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No rejection reasons yet",
+      "emptyDescription": "Create your first rejection reason (e.g. Damaged Product, Wrong Item).",
+      "loadError": "Could not load rejection reasons. Try again.",
+      "modal": {
+        "createTitle": "New rejection reason",
+        "editTitle": "Edit rejection reason",
+        "name": "Name",
+        "namePlaceholder": "e.g. Damaged Product",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this rejection reason?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} rejection reasons",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Rejection reason updated",
+      "created": "Rejection reason created",
+      "deleted": "Rejection reason deleted",
+      "activatedToast": "Rejection reason activated",
+      "deactivatedToast": "Rejection reason deactivated",
+      "toggleActiveError": "Could not update rejection reason status. Try again.",
+      "validationName": "Enter a rejection reason name."
+    },
+    "titleSettings": {
+      "metaTitle": "Titles",
+      "title": "Titles",
+      "subtitle": "Manage titles used across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "table": {
+        "title": "Title",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No titles yet",
+      "emptyDescription": "Create your first title to use across records.",
+      "loadError": "Could not load titles. Try again.",
+      "modal": {
+        "createTitle": "New title",
+        "editTitle": "Edit title",
+        "titleName": "Name",
+        "titleNamePlaceholder": "Enter title name",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this title?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} titles",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Title updated",
+      "created": "Title created",
+      "deleted": "Title deleted",
+      "validationName": "Enter a title name."
     },
     "tags": {
       "metaTitle": "Tags",
@@ -313,6 +1263,8 @@
       "add": "Add",
       "edit": "Edit",
       "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
       "filterState": "Active state",
       "filterAll": "All",
       "table": {
@@ -352,8 +1304,259 @@
       "saved": "Tag updated",
       "created": "Tag created",
       "deleted": "Tag deleted",
+      "activatedToast": "Tag activated",
+      "deactivatedToast": "Tag deactivated",
+      "toggleActiveError": "Could not update tag status. Try again.",
       "hexPlaceholder": "#000000",
       "validationName": "Enter a tag name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "projectTypes": {
+      "metaTitle": "Project Types",
+      "title": "Project Types",
+      "subtitle": "Define project categories with colored labels for use across projects.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Project type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No project types yet",
+      "emptyDescription": "Create your first project type to classify projects.",
+      "loadError": "Could not load project types. Try again.",
+      "modal": {
+        "createTitle": "New project type",
+        "editTitle": "Edit project type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this project type?",
+      "deleteConfirmBody": "Projects using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} project types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Project type updated",
+      "created": "Project type created",
+      "deleted": "Project type deleted",
+      "activatedToast": "Project type activated",
+      "deactivatedToast": "Project type deactivated",
+      "toggleActiveError": "Could not update project type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a project type name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "installationTypes": {
+      "metaTitle": "Installation Types",
+      "title": "Installation Types",
+      "subtitle": "Define installation categories with colored labels for use across the app.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Installation type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No installation types yet",
+      "emptyDescription": "Create your first installation type to classify work.",
+      "loadError": "Could not load installation types. Try again.",
+      "modal": {
+        "createTitle": "New installation type",
+        "editTitle": "Edit installation type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this installation type?",
+      "deleteConfirmBody": "Records using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} installation types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Installation type updated",
+      "created": "Installation type created",
+      "deleted": "Installation type deleted",
+      "activatedToast": "Installation type activated",
+      "deactivatedToast": "Installation type deactivated",
+      "toggleActiveError": "Could not update installation type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter an installation type name.",
+      "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "checklistTypes": {
+      "metaTitle": "Checklist Types",
+      "title": "Checklist Types",
+      "subtitle": "Define checklists for job forms, scoped by project type.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "filterProjectType": "Project type",
+      "filterProjectTypePlaceholder": "Select project type",
+      "searchPlaceholder": "Search by title or project type…",
+      "reorderHint": "Drag rows or cards to change sequence order.",
+      "sequenceUpdated": "Checklist order updated",
+      "sequenceUpdateError": "Could not update checklist order. Try again.",
+      "table": {
+        "title": "Title",
+        "projectType": "Project type",
+        "sequence": "Sequence",
+        "required": "Required",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "required": {
+        "yes": "Required",
+        "no": "Optional"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No checklist types yet",
+      "emptyDescription": "Create your first checklist type for job forms.",
+      "loadError": "Could not load checklist types. Try again.",
+      "modal": {
+        "createTitle": "New checklist type",
+        "editTitle": "Edit checklist type",
+        "title": "Title",
+        "projectType": "Project type",
+        "sequence": "Sequence",
+        "requiredLabel": "Required on job forms",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel",
+        "file": "File",
+        "filePlaceholder": "Select a file",
+        "fileRequired": "Please select a file.",
+        "chooseFile": "Choose file",
+        "replaceFile": "Replace file",
+        "removeFile": "Remove file",
+        "currentFile": "Current file",
+        "validationFile": "Please attach a file",
+        "concentricPoint": "Concentric Point"
+
+      },
+      "deleteConfirmTitle": "Delete this checklist type?",
+      "deleteConfirmBody": "Job forms using this checklist may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} checklist types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Checklist type updated",
+      "created": "Checklist type created",
+      "deleted": "Checklist type deleted",
+      "activatedToast": "Checklist type activated",
+      "deactivatedToast": "Checklist type deactivated",
+      "toggleActiveError": "Could not update checklist type status. Try again.",
+      "validationTitle": "Enter a checklist title.",
+      "validationProjectType": "Select a project type.",
+      "validationSequence": "Enter a valid sequence number (1 or greater)."
+    },
+    "vendorTypes": {
+      "metaTitle": "Vendor Types",
+      "title": "Vendor Types",
+      "subtitle": "Define vendor categories with colored labels for use across vendors.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "type": "Vendor type",
+        "status": "Record status",
+        "created": "Created",
+        "updated": "Last updated",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No vendor types yet",
+      "emptyDescription": "Create your first vendor type to classify vendors.",
+      "loadError": "Could not load vendor types. Try again.",
+      "modal": {
+        "createTitle": "New vendor type",
+        "editTitle": "Edit vendor type",
+        "typeName": "Name",
+        "bgColour": "Background color",
+        "textColour": "Text color",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this vendor type?",
+      "deleteConfirmBody": "Vendors using this type may need to be updated. This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} vendor types",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Vendor type updated",
+      "created": "Vendor type created",
+      "deleted": "Vendor type deleted",
+      "activatedToast": "Vendor type activated",
+      "deactivatedToast": "Vendor type deactivated",
+      "toggleActiveError": "Could not update vendor type status. Try again.",
+      "hexPlaceholder": "#000000",
+      "validationName": "Enter a vendor type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
     "users": {
@@ -361,6 +1564,11 @@
       "detailMetaTitle": "User details",
       "title": "Users",
       "subtitle": "Invite and manage users in your organization.",
+      "tabs": {
+        "users": "Users",
+        "groups": "Groups",
+        "aria": "Users sections"
+      },
       "invite": "Add",
       "edit": "Edit",
       "loadError": "Could not load users. Try again.",
@@ -389,6 +1597,14 @@
         "phone": "Phone number",
         "gender": "Gender",
         "role": "Role",
+        "basePay": "Base pay",
+        "basePayType": "Pay type",
+        "basePayTypeFixed": "Fixed pay",
+        "basePayTypeRate": "Pay per hr",
+        "addresses": "Addresses",
+        "addressType": "Address type",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
         "address1": "Address line 1",
         "address2": "Address line 2",
         "country": "Country",
@@ -396,7 +1612,35 @@
         "city": "City",
         "pincode": "Pincode",
         "inviteStatus": "Invite status",
-        "invitationSentAt": "Invitation sent at"
+        "invitationSentAt": "Invitation sent at",
+        "availableDays": "Available days",
+        "availableDaysHint": "Select the days and times this user is available to work."
+      },
+      "availability": {
+        "day": "Day",
+        "available": "Available",
+        "from": "From",
+        "to": "To",
+        "days": {
+          "monday": "Monday",
+          "tuesday": "Tuesday",
+          "wednesday": "Wednesday",
+          "thursday": "Thursday",
+          "friday": "Friday",
+          "saturday": "Saturday",
+          "sunday": "Sunday"
+        }
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove address",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
       },
       "genders": {
         "male": "Male",
@@ -406,6 +1650,7 @@
       "placeholders": {
         "gender": "Select gender",
         "role": "Select role",
+        "basePay": "Enter amount",
         "country": "Select country",
         "state": "Select state",
         "city": "Select city"
@@ -417,10 +1662,16 @@
         "phone": "Enter a valid phone number.",
         "gender": "Select gender.",
         "role": "Select role.",
+        "basePay": "Enter a valid base pay amount.",
+        "addressLine1": "Enter address line 1.",
+        "addressType": "Select address type.",
+        "addressesMin": "Add at least one address.",
         "country": "Select country.",
         "state": "Select state.",
         "city": "Select city.",
-        "pincode": "Enter pincode."
+        "pincode": "Enter pincode.",
+        "availabilityTime": "Enter start and end time for each available day.",
+        "availabilityRange": "End time must be after start time."
       },
       "modal": {
         "save": "Save",
@@ -431,13 +1682,207 @@
         "retry": "Retry",
         "backAria": "Back to users list",
         "editWithIcon": "Edit",
-        "sectionOverview": "Overview"
+        "sectionOverview": "Overview",
+        "addressUnavailable": "No addresses on file.",
+        "noAvailability": "No available days set.",
+        "tabsAria": "User detail sections",
+        "tabs": {
+          "overview": "Overview",
+          "scheduling": "Scheduling"
+        }
       },
       "page": {
         "createTitle": "Invite user",
         "createSubtitle": "Fill in user details and send invitation.",
         "editTitle": "Edit",
         "editSubtitle": "Update user details and save changes."
+      }
+    },
+    "userGroups": {
+      "metaTitle": "User groups",
+      "detailMetaTitle": "Group details",
+      "title": "Groups",
+      "subtitle": "Group users for scheduling and assignments.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "loadError": "Could not load user groups. Try again.",
+      "detailLoadError": "Could not load group details. Try again.",
+      "usersLoadError": "Could not load users. Try again.",
+      "createdToast": "Group created",
+      "updatedToast": "Group updated",
+      "deleted": "Group deleted",
+      "deleteError": "Could not delete the group. Try again.",
+      "emptyTitle": "No user groups yet",
+      "emptyDescription": "Create a group, then add users to it.",
+      "pageLabel": "Showing {start}-{end} of {total} groups",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "name": "Group name",
+        "members": "Users",
+        "noMembers": "No users",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "fields": {
+        "name": "Group name",
+        "users": "Users",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by"
+      },
+      "placeholders": {
+        "name": "e.g. Field technicians"
+      },
+      "picker": {
+        "available": "Available users",
+        "selected": "Selected users",
+        "emptyAvailable": "No more users to add",
+        "emptySelected": "Select users to add to this group"
+      },
+      "validation": {
+        "name": "Enter a group name.",
+        "users": "Select at least one user."
+      },
+      "modal": {
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmBody": "Users are not deleted. Only the group is removed.",
+      "detail": {
+        "backAria": "Back to groups list",
+        "sectionGroup": "Group",
+        "sectionUsers": "Users",
+        "userName": "Name",
+        "userEmail": "Email",
+        "createdAt": "Created",
+        "byUser": "By {user}"
+      },
+      "page": {
+        "createTitle": "New group",
+        "editTitle": "Edit group"
+      }
+    },
+    "roles": {
+      "metaTitle": "Roles",
+      "detailMetaTitle": "Role details",
+      "title": "Roles",
+      "subtitle": "Manage organization roles, hierarchy, and peer sharing settings.",
+      "add": "Add role",
+      "edit": "Edit role",
+      "loadError": "Could not load roles. Try again.",
+      "detailLoadError": "Could not load role details. Try again.",
+      "createdToast": "Role created successfully",
+      "updatedToast": "Role updated successfully",
+      "deletedToast": "Role deleted successfully",
+      "saveError": "Could not save role. Check the fields and try again.",
+      "emptyTitle": "No roles found",
+      "emptyDescription": "Create a role to manage user permissions and hierarchy.",
+      "fields": {
+        "roleName": "Role Name",
+        "parentRole": "Parent Role",
+        "description": "Description",
+        "sharedDataWithPeers": "Share Data With Peers"
+      },
+      "placeholders": {
+        "roleName": "Enter role name",
+        "parentRole": "Select parent role (optional)",
+        "description": "Enter description (optional)",
+        "none": "None (Top Level)"
+      },
+      "hints": {
+        "sharedDataWithPeers": "Allow users with this role to view and share data with peers at the same role level."
+      },
+      "validation": {
+        "roleName": "Role name is required."
+      },
+      "modal": {
+        "save": "Save",
+        "saveChanges": "Save Changes",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "backAria": "Back to roles list",
+        "sectionOverview": "Overview",
+        "retry": "Retry"
+      },
+      "page": {
+        "createTitle": "Create Role",
+        "createSubtitle": "Define a new organizational role and hierarchy.",
+        "editTitle": "Edit Role",
+        "editSubtitle": "Update role details and peer sharing settings."
+      }
+    },
+    "profiles": {
+      "metaTitle": "Profiles",
+      "detailMetaTitle": "Profile details",
+      "title": "Profiles",
+      "subtitle": "Manage organization profiles and their types.",
+      "add": "Add profile",
+      "edit": "Edit profile",
+      "view": "View profile",
+      "delete": "Delete",
+      "loadError": "Could not load profiles. Try again.",
+      "detailLoadError": "Could not load profile details. Try again.",
+      "createdToast": "Profile created successfully",
+      "updatedToast": "Profile updated successfully",
+      "deletedToast": "Profile deleted successfully",
+      "saveError": "Could not save profile. Check the fields and try again.",
+      "emptyTitle": "No profiles found",
+      "emptyDescription": "Create a profile to organize user types in your workspace.",
+      "deleteTitle": "Delete Profile",
+      "deleteBody": "Are you sure you want to delete this profile? This action cannot be undone.",
+      "fields": {
+        "profileName": "Profile Name",
+        "profileType": "Profile Type",
+        "description": "Description"
+      },
+      "placeholders": {
+        "profileName": "Enter profile name",
+        "profileType": "Enter profile type (optional)",
+        "description": "Enter description (optional)"
+      },
+      "validation": {
+        "profileName": "Profile name is required."
+      },
+      "modal": {
+        "save": "Save",
+        "saveChanges": "Save Changes",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "backAria": "Back to profiles list",
+        "sectionOverview": "Overview",
+        "retry": "Retry"
+      },
+      "page": {
+        "createTitle": "Create Profile",
+        "createSubtitle": "Define a new profile for your organization.",
+        "editTitle": "Edit Profile",
+        "editSubtitle": "Update profile details."
+      }
+    },
+    "modules": {
+      "title": "Modules",
+      "subtitle": "Create and manage custom modules for your organization.",
+      "add": "Create New Module",
+      "searchPlaceholder": "Search module...",
+      "searchAria": "Search module",
+      "loadError": "Could not load modules. Try again.",
+      "emptyTitle": "No modules found",
+      "emptyDescription": "Create a module to organize custom data in your workspace.",
+      "table": {
+        "displayName": "Displayed in tabs as",
+        "moduleName": "Module Name",
+        "createdBy": "Created By",
+        "lastModified": "Last Modified"
+      },
+      "pagination": {
+        "summary": "Showing {start}–{end} of {total}",
+        "prev": "Previous",
+        "next": "Next",
+        "rowsPerPage": "Rows per page"
       }
     },
     "clients": {
@@ -502,12 +1947,18 @@
         "tabs": {
           "details": "Overview",
           "contacts": "Contacts",
-          "sites": "Sites"
+          "sites": "Sites",
+          "projects": "Projects"
         },
         "contactsEmptyTitle": "No contacts for this client",
         "contactsEmptyDescription": "Contacts linked to this client will appear here.",
+        "addContact": "Add contact",
         "sitesEmptyTitle": "No sites for this client",
-        "sitesEmptyDescription": "Sites linked to this client will appear here."
+        "sitesEmptyDescription": "Sites linked to this client will appear here.",
+        "addSite": "Add site",
+        "projectsEmptyTitle": "No projects for this client",
+        "projectsEmptyDescription": "Projects linked to this client will appear here.",
+        "addProject": "Add project"
       },
       "detailLoadError": "Could not load client details. Try again.",
       "form": {
@@ -524,6 +1975,8 @@
         "name": "Client name",
         "email": "Email",
         "phone": "Phone",
+        "addresses": "Addresses",
+        "addressType": "Address type",
         "addressLine1": "Address line 1",
         "addressLine2": "Address line 2",
         "country": "Country",
@@ -547,6 +2000,17 @@
         "editTitle": "Edit",
         "editSubtitle": "Update client details and save changes."
       },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
       "validation": {
         "generic": "Check the form and try again.",
         "name": "Enter a client name.",
@@ -556,14 +2020,211 @@
         "country": "Select a country.",
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
-        "pincode": "Enter a postal or ZIP code."
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
+      }
+    },
+    "vendors": {
+      "metaTitle": "Vendors",
+      "detailMetaTitle": "Vendor details",
+      "title": "Vendors",
+      "subtitle": "Manage suppliers and their locations.",
+      "loadError": "Could not load vendors. Try again.",
+      "detailLoadError": "Could not load vendor details. Try again.",
+      "createdToast": "Vendor created successfully",
+      "updatedToast": "Vendor updated successfully",
+      "deletedToast": "Vendor deleted",
+      "filterState": "Active state",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activatedToast": "Vendor activated",
+      "deactivatedToast": "Vendor deactivated",
+      "toggleActiveError": "Could not update vendor status. Try again.",
+      "pageLabel": "Showing {start}-{end} of {total} vendors",
+      "prev": "Previous",
+      "next": "Next",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this vendor?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete vendor",
+      "emptyTitle": "No vendors yet",
+      "emptyDescription": "Create your first vendor to manage suppliers and addresses.",
+      "table": {
+        "name": "Vendor",
+        "type": "Type",
+        "email": "Email",
+        "phone": "Phone",
+        "location": "Primary location",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "type": "Vendor types",
+        "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "country": "Country",
+        "stateProvince": "State / province",
+        "city": "City",
+        "pincode": "Postal / ZIP code",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
+      },
+      "placeholders": {
+        "country": "Select country",
+        "state": "Select state",
+        "city": "Select city",
+        "type": "Select vendor types"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
+      "detail": {
+        "backAria": "Back to vendors",
+        "retry": "Retry",
+        "sectionOverview": "Overview",
+        "sectionMap": "Locations map",
+        "addressUnavailable": "No addresses on file.",
+        "notProvided": "Not provided",
+        "tabsAria": "Vendor detail sections",
+        "tabs": {
+          "details": "Details",
+          "contacts": "Contacts",
+          "items": "Items"
+        },
+        "contactsEmptyTitle": "No contacts for this vendor",
+        "contactsEmptyDescription": "Contacts linked to this vendor will appear here.",
+        "addContact": "Add contact",
+        "itemsEmptyTitle": "No items for this vendor",
+        "itemsEmptyDescription": "Items linked to this vendor will appear here."
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save",
+        "saveChanges": "Save changes"
+      },
+      "page": {
+        "createTitle": "Create vendor",
+        "createSubtitle": "Add vendor details and one or more addresses.",
+        "editTitle": "Edit vendor",
+        "editSubtitle": "Update vendor details and addresses."
+      },
+      "validation": {
+        "name": "Enter a vendor name.",
+        "email": "Enter a valid email address.",
+        "phoneInvalid": "Enter a valid phone number.",
+        "type": "Select at least one vendor type.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressesMin": "Add at least one address.",
+        "addressType": "Select an address type."
+      }
+    },
+    "qrCodes": {
+      "metaTitle": "QR codes",
+      "detailMetaTitle": "QR code details",
+      "loadError": "Could not load QR codes. Try again.",
+      "detailLoadError": "Could not load QR code details. Try again.",
+      "emptyTitle": "No QR codes yet",
+      "emptyDescription": "Generate QR codes to assign them to jobs and track scans.",
+      "searchPlaceholder": "Search by QR code ID…",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "pageLabel": "Showing {start}-{end} of {total} QR codes",
+      "prev": "Previous",
+      "next": "Next",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete this QR code?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete QR code",
+      "deletedToast": "QR code deleted",
+      "cardAssignedJob": "Assigned to job #{id}",
+      "cardNotAssigned": "Not assigned to a job",
+      "cardBatch": "Batch {batch}",
+      "cardScans": "{count, plural, one {# scan} other {# scans}}",
+      "status": {
+        "assigned": "Assigned",
+        "notAssigned": "Not assigned"
+      },
+      "table": {
+        "qrImage": "QR code",
+        "qrCodeId": "QR ID",
+        "batchNumber": "Batch no.",
+        "status": "Status",
+        "assignedJob": "Assigned job",
+        "scanCount": "Scans",
+        "lastScanned": "Last scanned",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "generate": {
+        "button": "Generate QR codes",
+        "title": "Generate QR codes",
+        "countLabel": "Number of QR codes",
+        "countHint": "Enter a value between {min} and {max}.",
+        "submit": "Generate",
+        "cancel": "Cancel",
+        "successToast": "QR codes generated successfully",
+        "validationCount": "Enter a valid number of QR codes.",
+        "result": {
+          "title": "Generated batch details",
+          "close": "Close",
+          "downloadCsv": "Download CSV",
+          "downloadSuccess": "CSV download started",
+          "downloadError": "Could not download QR code CSV. Try again.",
+          "batchNumber": "Batch number",
+          "quantity": "Quantity",
+          "createdAt": "Created",
+          "createdBy": "Created by",
+          "codesCount": "{count, plural, one {# QR code generated} other {# QR codes generated}}"
+        }
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to QR codes list",
+        "sectionQr": "QR code",
+        "sectionDetails": "Details",
+        "assignedJob": "Assigned job",
+        "notAssigned": "Not assigned",
+        "viewJob": "View assigned job",
+        "recordId": "Record ID"
+      },
+      "fields": {
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "createdBy": "Created by"
       }
     },
     "contacts": {
       "metaTitle": "Contacts",
       "detailMetaTitle": "Contact details",
       "title": "Contacts",
-      "subtitle": "People associated with clients. Use search and filters to find them quickly.",
+      "subtitle": "People associated with clients and vendors. Use tabs, search, and filters to find them quickly.",
       "add": "Add",
       "edit": "Edit",
       "activate": "Activate",
@@ -578,15 +2239,29 @@
       "createdToast": "Contact created successfully",
       "updatedToast": "Contact updated successfully",
       "noClientsHint": "Add at least one client before you can create a contact.",
+      "noVendorsHint": "Add at least one vendor before you can create a vendor contact.",
+      "locked": {
+        "contactType": "Contact type is set from the client or vendor you are adding this contact to.",
+        "client": "Client is set from the record you are adding this contact to.",
+        "vendor": "Vendor is set from the record you are adding this contact to."
+      },
+      "tabsAria": "Contact type",
+      "tabs": {
+        "client": "Client",
+        "vendor": "Vendor"
+      },
       "filterState": "Active state",
       "filterClient": "Client",
       "filterAllClients": "All clients",
+      "filterVendor": "Vendor",
+      "filterAllVendors": "All vendors",
       "pageLabel": "Showing {start}-{end} of {total} contacts",
       "prev": "Previous",
       "next": "Next",
       "table": {
         "name": "Contact",
         "client": "Client",
+        "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
@@ -610,7 +2285,9 @@
       "detailLoadError": "Could not load contact details. Try again.",
       "fields": {
         "name": "Name",
+        "contactType": "Contact type",
         "client": "Client",
+        "vendor": "Vendor",
         "email": "Email",
         "phone": "Phone",
         "addressLine1": "Address line 1",
@@ -633,11 +2310,13 @@
       "page": {
         "createTitle": "Create contact",
         "createSubtitle": "Fill in contact details and save.",
-        "editTitle": "Edi",
+        "editTitle": "Edit",
         "editSubtitle": "Update contact details and save changes."
       },
       "placeholders": {
+        "contactType": "Select contact type",
         "client": "Select client",
+        "vendor": "Select vendor",
         "country": "Select country",
         "state": "Select state / region",
         "city": "Select or type city"
@@ -645,8 +2324,10 @@
       "validation": {
         "name": "Enter a contact name.",
         "email": "Enter a valid email address.",
-        "phone": "Enter a phone number.",
+        "phoneInvalid": "Enter a valid phone number including country code.",
+        "contactType": "Select a contact type.",
         "client": "Select a client.",
+        "vendor": "Select a vendor.",
         "addressLine1": "Enter address line 1.",
         "country": "Select a country.",
         "state": "Select a state or region.",
@@ -727,6 +2408,8 @@
         "city": "City",
         "pincode": "Postal / ZIP code",
         "what3words": "What3words",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
         "status": "Status",
         "createdAt": "Created",
         "updatedAt": "Last updated",
@@ -745,6 +2428,24 @@
         "editTitle": "Edit",
         "editSubtitle": "Update site details and save changes."
       },
+      "contactPerson": {
+        "sectionTitle": "Contact persons",
+        "add": "Add contact person",
+        "remove": "Remove contact person",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Select title",
+        "contactLabel": "Contact person",
+        "contactPlaceholder": "Select contact",
+        "selectClientFirst": "Select a client first to add contact persons.",
+        "empty": "No contact persons added yet.",
+        "loadingContacts": "Loading contacts…",
+        "noContactsForClient": "No contacts for this client",
+        "titles": {
+          "site_contact": "Site contact",
+          "finance": "Finance",
+          "emergency": "Emergency"
+        }
+      },
       "validation": {
         "siteName": "Enter a site name.",
         "client": "Select a client.",
@@ -752,12 +2453,17 @@
         "country": "Select a country.",
         "state": "Select a state or region.",
         "city": "Enter or select a city.",
-        "pincode": "Enter a postal or ZIP code."
+        "pincode": "Enter a postal or ZIP code.",
+        "contactPersonTitle": "Select a title.",
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       },
       "location": {
         "searchPlaceholder": "Start typing street address…",
+        "googleSearchPlaceholder": "Search address...",
         "searchPlaceholderLine2": "Apartment, suite, building (optional)…",
         "searching": "Searching places…",
+        "resolvingPlace": "Loading address details…",
         "noResults": "No matches — you can still enter the address manually.",
         "mapTitle": "Pin location on map",
         "dragPinHint": "Drag the pin or click the map to set the exact location.",
@@ -792,6 +2498,8 @@
       "detailLoadError": "Could not load quotation details. Try again.",
       "createdToast": "Quotation created successfully",
       "updatedToast": "Quotation updated successfully",
+      "statusUpdatedToast": "Quotation status updated",
+      "statusUpdateError": "Could not update quotation status. Try again.",
       "saveError": "Could not save the quotation. Check the fields and try again.",
       "noClientsHint": "Add at least one client before you can create a quotation.",
       "filterState": "Active state",
@@ -803,14 +2511,27 @@
       "filterAllProjects": "All projects",
       "filterStatus": "Quote status",
       "filterAllStatuses": "All statuses",
+      "filterCategory": "Category",
+      "filterAllCategories": "All categories",
+      "category": {
+        "service": "Service",
+        "project": "Project"
+      },
       "pageLabel": "Showing {start}-{end} of {total} quotations",
       "prev": "Previous",
       "next": "Next",
       "quoteStatus": {
         "draft": "Draft",
         "sent": "Sent",
-        "accepted": "Accepted",
+        "approved": "Approved",
         "rejected": "Rejected"
+      },
+      "updateStatus": {
+        "action": "Update status",
+        "title": "Update quotation status",
+        "body": "Choose a new status for “{title}”.",
+        "confirm": "Update status",
+        "placeholder": "Select status"
       },
       "table": {
         "quote": "Quote",
@@ -831,6 +2552,10 @@
         "loadingTitle": "Loading…",
         "retry": "Retry",
         "backAria": "Back to quotations list",
+        "createJob": "Create job",
+        "createJobAria": "Create a job from this quotation",
+        "createJobToast": "Job created from quotation",
+        "createJobError": "Could not create a job from this quotation. Try again.",
         "sectionOverview": "Overview",
         "sectionPeople": "People & roles",
         "sectionProject": "Project & levels",
@@ -843,6 +2568,7 @@
         "allLevelsSelected": "All levels"
       },
       "selectedSiteMapTitle": "Site address & map",
+      "selectedSitesMapTitle": "Site addresses & map",
       "mapNoStructuredAddress": "No structured address on file for this site. The map still tries to locate it from available fields.",
       "placeholders": {
         "customer": "Select client",
@@ -854,6 +2580,7 @@
       },
       "hints": {
         "tags": "Enter tag IDs separated by commas or spaces (organization tags).",
+        "sitesMultiSelect": "Select one or more sites for this quotation.",
         "noLevels": "No levels returned for this project. Confirm the project levels API path if you need floor selection.",
         "noUsers": "No users were returned from the users API. Technician and role fields stay optional."
       },
@@ -863,7 +2590,7 @@
         "createSection": "Add section",
         "newSectionPlaceholder": "Section name",
         "selectProjectHint": "Select a project to load levels.",
-        "sectionsTitle": "Project sections & pricing",
+        "sectionsTitle": "Scope & pricing",
         "selectAllSections": "Select all sections in this project",
         "includedViaSelectAll": "Included because all sections are selected",
         "plotSubtotal": "Plot subtotal",
@@ -872,7 +2599,7 @@
         "colItem": "Composite item",
         "colQty": "Qty",
         "colUnit": "Unit price",
-        "colLine": "Line total",
+        "colLine": "total",
         "plotEmptyPins": "No priced pins in this plot.",
         "noPlotsInSection": "No plots in this section.",
         "selectedCount": "{count} selected",
@@ -901,7 +2628,7 @@
         "duplicateLine": "Duplicate",
         "rowActions": "Actions",
         "emptyPlots": "No plots in this section yet.",
-        "emptySections": "No sections loaded. Pick a project with levels or add sections manually.",
+        "emptySections": "No sections yet. Add a section, then select groups and items with quantity.",
         "includeSection": "Include",
         "quoteOnlySection": "Quote-only (not linked to a project level)",
         "sectionTotal": "Section total",
@@ -911,6 +2638,9 @@
         "saveComposite": "Save",
         "pickCompositeTitle": "Add composite item",
         "pickCompositePlaceholder": "Select composite item",
+        "chooseItem": "Choose item",
+        "selectItem": "Select item",
+        "noItems": "No items found.",
         "noComposites": "No composite items found.",
         "emptyLines": "No line items. Add composites or ensure pins exist on plots.",
         "qty": "Qty",
@@ -923,9 +2653,8 @@
         "duplicateCountTitle": "Duplicate",
         "duplicateCountDescription": "Choose how many copies to add right after the original.",
         "duplicateCountLabel": "Number of copies",
-        "duplicateCountHint": "Whole number from 1 to 50.",
         "duplicateCountConfirm": "Duplicate",
-        "duplicateCountInvalid": "Enter a whole number between 1 and 50.",
+        "duplicateCountInvalid": "Enter a  number between 1 and 50.",
         "copySection": "Copy section",
         "deleteSection": "Delete",
         "cancel": "Cancel",
@@ -956,26 +2685,28 @@
         "loadError": "Could not load this composite item.",
         "backAria": "Back to quote scope",
         "repeatBadge": "Included ×{count}",
-        "sectionQuoteLine": "On this quote",
         "includedTimes": "Times on quote",
         "packagePrice": "Package price",
         "scopeLineTotal": "Line total on quote",
         "openCatalogItem": "Open in composite items catalog",
         "sectionComponents": "Package contents",
         "colQtyPerPackage": "Qty / package",
-        "colQtyInScope": "Qty on quote",
+        "colQtyInScope": "Qty",
+        "colProductName": "Product Name",
         "colUnitPrice": "Unit price",
-        "colLineTotal": "Line total",
+        "colLineTotal": "total",
         "noComponents": "No component items defined for this package."
       },
       "fields": {
         "quoteName": "Quote name",
         "customer": "Client",
         "site": "Site",
+        "sites": "Sites",
         "what3words": "What3words",
         "project": "Project",
         "primaryContact": "Primary contact",
         "additionalContact": "Additional contact",
+        "additionalContacts": "Additional contacts",
         "siteContact": "Site contact",
         "orderNumber": "Order number",
         "dueDate": "Due date",
@@ -989,7 +2720,15 @@
         "status": "Active state",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "clientResponse": "Client response"
+      },
+      "additionalContacts": {
+        "add": "Add additional contact",
+        "remove": "Remove additional contact",
+        "empty": "No additional contacts added yet.",
+        "selectClientFirst": "Select a client first to add additional contacts.",
+        "rowLabel": "Additional contact {number}"
       },
       "modal": {
         "createTitle": "New quotation",
@@ -1009,13 +2748,883 @@
       "formTabs": {
         "aria": "Quotation sections",
         "project": "Project & details",
-        "pricing": "Scope & pricing"
+        "details": "Details",
+        "pricing": "Scope & pricing",
+        "prevToProject": "Previous: Project & details",
+        "prevToDetails": "Previous: Details",
+        "nextToPricing": "Next: Scope & pricing"
       },
       "validation": {
         "quoteName": "Enter a quotation name.",
         "customer": "Select a client.",
         "site": "Select a site.",
+        "sites": "Select at least one site.",
         "project": "Select a project."
+      }
+    },
+    "invoices": {
+      "metaTitle": "Invoices",
+      "detailMetaTitle": "Invoice details",
+      "title": "Invoice History",
+      "subtitle": "Generate and track client billing across all active projects.",
+      "createInvoice": "Create Invoice",
+      "edit": "Edit",
+      "searchPlaceholder": "Search invoices…",
+      "searchAria": "Search invoices",
+      "emptyTitle": "No invoices yet",
+      "emptyDescription": "Create your first invoice to bill clients for completed work.",
+      "loadError": "Could not load invoices. Try again.",
+      "detailLoadError": "Could not load invoice details. Try again.",
+      "createdToast": "Invoice created successfully",
+      "updatedToast": "Invoice updated successfully",
+      "createError": "Could not create the invoice. Try again.",
+      "updateError": "Could not update the invoice. Try again.",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterClient": "Client",
+      "filterAllClients": "All clients",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      },
+      "table": {
+        "invoiceNumber": "Invoice #",
+        "clientName": "Client name",
+        "projectName": "Project name",
+        "jobName": "Job name",
+        "amount": "Amount",
+        "issueDate": "Issue date",
+        "status": "Status"
+      },
+      "card": {
+        "issueDate": "Issue date",
+        "amount": "Amount"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "lineItems": "Line items"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to invoices list",
+        "sectionInvoiceDetails": "Invoice details",
+        "sectionLineItems": "Invoice line items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "actions": {
+        "preview": "Preview invoice",
+        "downloadPdf": "Download PDF",
+        "send": "Send invoice"
+      },
+      "export": {
+        "button": "Export",
+        "buttonAria": "Export invoice",
+        "menuAria": "Choose export format",
+        "exporting": "Exporting…",
+        "pdf": "PDF",
+        "success": "Invoice downloaded",
+        "failed": "Could not download the invoice. Try again."
+      },
+      "send": {
+        "success": "Invoice sent",
+        "failed": "Could not send the invoice. Try again."
+      },
+      "fields": {
+        "clientName": "Client name",
+        "contactPerson": "Contact person",
+        "invoiceNumber": "Invoice number",
+        "projectName": "Project name",
+        "issueDate": "Issue date",
+        "dueDate": "Due date",
+        "paymentTerms": "Payment terms",
+        "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
+        "billTo": "Bill to",
+        "shipTo": "Ship to",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "zipCode": "Zip code",
+        "country": "Country",
+        "notesAndTerms": "Notes & terms",
+        "clientNotes": "Client notes",
+        "internalNotes": "Internal notes (private)",
+        "totalBalance": "Total balance",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "client": "Select client",
+        "contact": "Select contact",
+        "project": "Select project",
+        "group": "Select group",
+        "item": "Select item",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city",
+        "paymentTerms": "Select payment terms",
+        "status": "Select status"
+      },
+      "paymentTerms": {
+        "net7": "Net 7 days",
+        "net15": "Net 15 days",
+        "net30": "Net 30 days",
+        "net45": "Net 45 days",
+        "dueOnReceipt": "Due on receipt"
+      },
+      "sections": {
+        "basic": "Basic information",
+        "addresses": "Addresses",
+        "metadata": "Invoice metadata",
+        "lineItems": "Line items",
+        "notes": "Notes & terms"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
+      "lineItems": {
+        "productName": "Product name",
+        "group": "Group",
+        "description": "Description",
+        "qty": "Qty",
+        "unit": "Unit",
+        "rate": "Rate",
+        "amount": "Amount",
+        "discount": "Discount",
+        "tax": "Tax",
+        "total": "Total",
+        "listPrice": "List price",
+        "addItem": "Add item",
+        "remove": "Remove line",
+        "selectProduct": "Select product…",
+        "empty": "No line items on this invoice."
+      },
+      "totals": {
+        "subtotal": "Subtotal",
+        "tax": "Tax",
+        "taxWithPercent": "Tax ({percent}%)",
+        "adjustment": "Adjustment",
+        "totalAmount": "Total amount"
+      },
+      "page": {
+        "createTitle": "Create invoice",
+        "editTitle": "Edit invoice"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "validation": {
+        "client": "Select a client.",
+        "issueDate": "Enter an issue date.",
+        "lineDescription": "Enter a description or select a product for each line.",
+        "lineQuantity": "Enter a valid quantity.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
+      }
+    },
+    "purchaseOrders": {
+      "metaTitle": "Purchase orders",
+      "detailMetaTitle": "Purchase order details",
+      "title": "Purchase orders",
+      "subtitle": "Create and track purchase orders for vendors and projects.",
+      "createPurchaseOrder": "Create purchase order",
+      "edit": "Edit",
+      "searchPlaceholder": "Search purchase orders…",
+      "searchAria": "Search purchase orders",
+      "emptyTitle": "No purchase orders yet",
+      "emptyDescription": "Create your first purchase order to track vendor procurement.",
+      "loadError": "Could not load purchase orders. Try again.",
+      "detailLoadError": "Could not load purchase order details. Try again.",
+      "createdToast": "Purchase order created successfully",
+      "updatedToast": "Purchase order updated successfully",
+      "createError": "Could not create the purchase order. Try again.",
+      "updateError": "Could not update the purchase order. Try again.",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterVendor": "Vendor",
+      "filterAllVendors": "All vendors",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "approved": "Approved",
+        "received": "Received",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "purchaseOrderNumber": "PO #",
+        "vendorName": "Vendor",
+        "projectName": "Project",
+        "amount": "Amount",
+        "issueDate": "Issue date",
+        "status": "Status"
+      },
+      "card": {
+        "issueDate": "Issue date",
+        "amount": "Amount"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "lineItems": "Line items"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to purchase orders list",
+        "sectionOrderDetails": "Purchase order details",
+        "sectionLineItems": "Line items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "fields": {
+        "vendorName": "Vendor",
+        "contactPerson": "Contact",
+        "purchaseOrderNumber": "PO number",
+        "projectName": "Project",
+        "issueDate": "Issue date",
+        "dueDate": "Due date",
+        "paymentTerms": "Payment terms",
+        "status": "Status",
+        "addresses": "Addresses",
+        "addressType": "Address type",
+        "billTo": "Bill to",
+        "shipTo": "Ship to",
+        "addressLine1": "Address line 1",
+        "addressLine2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "zipCode": "Zip code",
+        "country": "Country",
+        "vendorNotes": "Vendor notes",
+        "internalNotes": "Internal notes (private)",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "vendor": "Select vendor",
+        "contact": "Select contact",
+        "project": "Select project",
+        "group": "Select group",
+        "country": "Select country",
+        "state": "Select state / region",
+        "city": "Select or type city",
+        "paymentTerms": "Select payment terms"
+      },
+      "paymentTerms": {
+        "net7": "Net 7 days",
+        "net15": "Net 15 days",
+        "net30": "Net 30 days",
+        "net45": "Net 45 days",
+        "dueOnReceipt": "Due on receipt"
+      },
+      "sections": {
+        "basic": "Basic information",
+        "addresses": "Addresses",
+        "metadata": "Order metadata",
+        "lineItems": "Line items",
+        "notes": "Notes"
+      },
+      "addresses": {
+        "add": "Add address",
+        "remove": "Remove",
+        "primary": "Primary",
+        "rowLabel": "Address {index}"
+      },
+      "addressType": {
+        "billing": "Billing",
+        "shipping": "Shipping",
+        "other": "Other"
+      },
+      "lineItems": {
+        "productName": "Product name",
+        "group": "Group",
+        "qty": "Qty",
+        "rate": "Unit price",
+        "amount": "Amount",
+        "listPrice": "Unit price",
+        "addItem": "Add item",
+        "remove": "Remove line",
+        "selectProduct": "Select product…",
+        "empty": "No line items on this purchase order."
+      },
+      "totals": {
+        "totalAmount": "Total amount"
+      },
+      "page": {
+        "createTitle": "Create purchase order",
+        "editTitle": "Edit purchase order"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "validation": {
+        "vendor": "Select a vendor.",
+        "lineDescription": "Select a product for each line.",
+        "lineQuantity": "Enter a valid quantity.",
+        "addressLine1": "Enter address line 1.",
+        "country": "Select a country.",
+        "state": "Select a state or region.",
+        "city": "Enter or select a city.",
+        "pincode": "Enter a postal or ZIP code.",
+        "addressType": "Select an address type.",
+        "addressesMin": "Add at least one address."
+      }
+    },
+    "materialRequests": {
+      "metaTitle": "Material requests",
+      "detailMetaTitle": "Material request details",
+      "title": "Material requests",
+      "subtitle": "Manage and monitor material procurement and distribution across job sites.",
+      "createRequest": "Create material request",
+      "edit": "Edit",
+      "searchPlaceholder": "Search material requests…",
+      "searchAria": "Search material requests",
+      "emptyTitle": "No material requests yet",
+      "emptyDescription": "Material requests from the field will appear here for dispatch and return.",
+      "loadError": "Could not load material requests. Try again.",
+      "detailLoadError": "Could not load material request details. Try again.",
+      "createdToast": "Material request created successfully",
+      "updatedToast": "Material request updated successfully",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterWorker": "Worker",
+      "filterAllWorkers": "All workers",
+      "filterRequestedDate": "Requested date",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "pending": "Pending",
+        "partiallyDispatched": "Partially dispatched",
+        "dispatched": "Dispatched"
+      },
+      "table": {
+        "requestNumber": "Request",
+        "jobName": "Job",
+        "workerName": "Worker name",
+        "requestDate": "Request date",
+        "items": "Items",
+        "status": "Status"
+      },
+      "card": {
+        "requestDate": "Request date",
+        "items": "{count} items"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "dispatch": "Dispatch",
+        "timeline": "Timeline"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to material requests list",
+        "tabsAria": "Material request detail sections",
+        "tabOverview": "Overview",
+        "tabTimeline": "Timeline",
+        "tabLogs": "Logs",
+        "tabActivityTimeline": "Activity timeline",
+        "sectionLogs": "Activity logs",
+        "sectionActivityTimeline": "Activity timeline",
+        "sectionDispatches": "Dispatches",
+        "dispatchLink": "View dispatch",
+        "sectionOverview": "Overview",
+        "sectionJobs": "Jobs",
+        "sectionItems": "Items",
+        "sectionDispatch": "Dispatch",
+        "sectionTimeline": "Dispatch timeline",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "actions": {
+        "dispatch": "Dispatch"
+      },
+      "fields": {
+        "workerName": "Worker name",
+        "requestedDate": "Requested date",
+        "status": "Status",
+        "projectName": "Project name",
+        "clientName": "Client name",
+        "notes": "Notes",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "worker": "Select worker",
+        "job": "Select job",
+        "item": "Select item",
+        "status": "Select status"
+      },
+      "sections": {
+        "general": "General information",
+        "jobs": "Jobs",
+        "items": "Items",
+        "toggle": "Expand or collapse section"
+      },
+      "jobs": {
+        "add": "Add jobs",
+        "remove": "Remove job",
+        "details": "Job details",
+        "empty": "No jobs linked to this request.",
+        "addModalTitle": "Select jobs",
+        "addModalSubmit": "Add selected jobs",
+        "selectWorkerFirst": "Select a worker first.",
+        "loading": "Loading jobs…",
+        "loadError": "Could not load jobs for this worker.",
+        "noJobsForWorker": "No active jobs assigned to this worker.",
+        "pickerLabel": "Jobs",
+        "pickerPlaceholder": "Search jobs…",
+        "selectedCount": "{count, plural, =0 {No jobs selected} one {# job selected} other {# jobs selected}}",
+        "noSearchResults": "No jobs match your search.",
+        "emptyHint": "Click Add jobs to link work from this technician."
+      },
+      "items": {
+        "emptyNoJobs": "Add jobs above to load line items from each job's work scope.",
+        "emptyNoMeta": "Selected jobs have no composite items in their work scope.",
+        "derivedOnSubmit": "Line items are calculated on the server when you submit. View them on the material request detail page after saving."
+      },
+      "lineItems": {
+        "itemName": "Item name",
+        "itemDetails": "Item details",
+        "jobName": "Job name",
+        "requestQty": "Request qty",
+        "requestQtyHint": "Quantity comes from each job's work scope and cannot be edited here.",
+        "units": "Units",
+        "addItem": "Add item",
+        "remove": "Remove item",
+        "empty": "No items on this request."
+      },
+      "dispatch": {
+        "materialItem": "Material item",
+        "requested": "Requested",
+        "dispatched": "Dispatched",
+        "pending": "Pending",
+        "empty": "No dispatch data for this request.",
+        "modalTitle": "Dispatch materials",
+        "modalHint": "Enter quantities to dispatch now. You can also add extra items not on the original request.",
+        "pageTitle": "Dispatch materials",
+        "pageSubtitle": "Dispatch quantities for {requestNumber}",
+        "pageSubtitleGeneric": "Record material dispatch for this request",
+        "pageHint": "Enter quantities to dispatch now. You may dispatch more than requested; surplus will show as +qty. You can also add extra items not on the original request.",
+        "backAria": "Back to material request",
+        "confirm": "Confirm dispatch",
+        "successToast": "Dispatch recorded",
+        "sectionLines": "Requested items",
+        "sectionExtra": "Add extra items",
+        "sectionExtraSent": "Extra items dispatched",
+        "dispatchNow": "Dispatch qty",
+        "extraItem": "Extra item",
+        "extraQty": "Qty",
+        "addExtra": "Add",
+        "removeExtra": "Remove extra item",
+        "sectionNotes": "Dispatch notes",
+        "notesPlaceholder": "Enter dispatch notes (optional)"
+      },
+      "timeline": {
+        "empty": "No timeline events yet.",
+        "event": "Event"
+      },
+      "logs": {
+        "viewDispatch": "View dispatch record"
+      },
+      "restock": {
+        "column": "Restocked",
+        "sectionTitle": "Restock unused items",
+        "hint": "Return unused dispatched quantities back to inventory.",
+        "alreadyRestocked": "Already restocked",
+        "returnQty": "Return qty",
+        "confirm": "Restock to inventory",
+        "successToast": "Items restocked to inventory"
+      },
+      "page": {
+        "createTitle": "Material request form",
+        "editTitle": "Edit material request",
+        "formSubtitle": "Please fill out the details below to request project materials."
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "submit": "Submit request",
+        "saveChanges": "Save changes"
+      },
+      "validation": {
+        "worker": "Select a worker.",
+        "requestedDate": "Enter a requested date.",
+        "job": "Select a job.",
+        "item": "Select an item.",
+        "quantity": "Enter a valid quantity.",
+        "atLeastOneJob": "Add at least one job.",
+        "atLeastOneItem": "Add at least one item."
+      }
+    },
+    "dispatches": {
+      "metaTitle": "Dispatches",
+      "detailMetaTitle": "Dispatch details",
+      "loadingTitle": "Loading...",
+      "pageTitle": "Dispatches",
+      "pageSubtitle": "Track material dispatches created from material requests.",
+      "searchPlaceholder": "Search dispatches…",
+      "loadError": "Could not load dispatches. Try again.",
+      "detailLoadError": "Could not load dispatch details. Try again.",
+      "emptyTitle": "No dispatches yet",
+      "emptyDescription": "Dispatch materials from a material request to create dispatch records here.",
+      "emptyAction": "Go to material requests",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "units": "Units",
+      "actions": {
+        "view": "View details"
+      },
+      "table": {
+        "dispatchId": "Dispatch number",
+        "jobName": "Job name",
+        "dispatchDate": "Dispatch date",
+        "status": "Status",
+        "workerName": "Worker name",
+        "qty": "Qty",
+        "materialItem": "Material item",
+        "requested": "Requested",
+        "pending": "Pending",
+        "dispatched": "Dispatched",
+        "extra": "Extra",
+        "restocked": "Restocked",
+        "sku": "SKU",
+        "isExtra": "Is Extra",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "restock": {
+        "action": "Restock",
+        "hint": "Return unused quantity from this dispatch back to inventory.",
+        "returnQty": "Return qty",
+        "confirm": "Restock to inventory",
+        "close": "Close",
+        "successToast": "Items restocked to inventory"
+      },
+      "return": {
+        "action": "Return to stock",
+        "hubAction": "Return to stock",
+        "hubMetaTitle": "Return to stock",
+        "hubTitle": "Return to stock",
+        "hubSubtitle": "View return requests from all workers, filter by date or status, and return items to inventory.",
+        "backToListAria": "Back to return to stock list",
+        "backAria": "Back to return to stock list",
+        "source": "Source",
+        "sourceExtra": "Extra item",
+        "alreadyReturned": "Already returned",
+        "operatorHint": "Select a worker and date range. Only extra items and surplus quantities (dispatched above request) are listed for return.",
+        "surplusQty": "+{qty} surplus",
+        "selectWorker": "Select worker",
+        "selectMaterialRequest": "Select material request",
+        "workerRequired": "Select a worker first.",
+        "materialRequestRequired": "Select a material request.",
+        "dateFilter": "Date filter",
+        "dateToday": "Today",
+        "dateYesterday": "Yesterday",
+        "dateTillToday": "Till today",
+        "dateTillYesterday": "Till yesterday",
+        "dateTillThisWeek": "This week (till today)",
+        "massActionReturnToStock": "Return to stock",
+        "dateThisWeek": "This week",
+        "dateCustom": "Custom range",
+        "dateByMaterialRequest": "By material request",
+        "dateFrom": "From date",
+        "dateTo": "To date",
+        "filterAllDates": "All dates",
+        "filterAllStatuses": "All statuses",
+        "filterAllWorkers": "All workers",
+        "searchPlaceholder": "Search return requests…",
+        "loadMaterials": "Load materials",
+        "selectWorkerHint": "Select a worker, then load materials.",
+        "filteredByDispatch": "Showing materials for dispatch #{id} only.",
+        "reason": "Reason",
+        "reasonPlaceholder": "Why is this being returned?",
+        "submitRequest": "Submit return request",
+        "requestSubmittedToast": "Return request submitted",
+        "completeToStock": "Return to stock",
+        "completeSuccessToast": "Items returned to stock successfully",
+        "massCompleteSuccessToast": "Selected items returned to stock successfully",
+        "massSelected": "{count} selected",
+        "massSelectAll": "Select all return requests on this page",
+        "massSelectRow": "Select return request",
+        "loadListError": "Could not load return requests. Try again.",
+        "loadError": "Could not load returnable items. Try again.",
+        "empty": "No extra or surplus materials to return for the selected filters.",
+        "emptyListTitle": "No return requests yet",
+        "emptyListDescription": "Create a return request when workers have extra or surplus materials to send back to inventory.",
+        "newRequest": "New return request",
+        "newRequestTitle": "New return request",
+        "newRequestSubtitle": "Select a worker and materials to return to stock.",
+        "cancel": "Cancel",
+        "statusReturnRequest": "Pending",
+        "statusReturnedToStock": "Completed",
+        "statusRejected": "Rejected",
+        "returnable": "Returnable",
+        "returnQty": "Return qty",
+        "returnType": "Return type",
+        "typeUnused": "Unused (return to stock)",
+        "typeFaulty": "Faulty item",
+        "list": {
+          "items": "Items"
+        },
+        "card": {
+          "requestedAt": "Requested",
+          "items": "{count} items · {qty} units"
+        },
+        "filterStatus": "Status",
+        "filterWorker": "Worker",
+        "detail": {
+          "metaTitle": "Return request details",
+          "backAria": "Back to return to stock list",
+          "requestNumber": "Request number",
+          "requestedAt": "Requested",
+          "returnedAt": "Returned to stock",
+          "sectionOverview": "Overview",
+          "sectionItems": "Return items"
+        }
+      },
+      "status": {
+        "dispatched": "Dispatched",
+        "delivered": "Delivered",
+        "inTransit": "In transit",
+        "processing": "Processing",
+        "draft": "Draft",
+        "delayed": "Delayed"
+      },
+      "fields": {
+        "dispatchId": "Dispatch number",
+        "dispatchTo": "Dispatch to",
+        "dispatchedBy": "Dispatched by",
+        "dispatchDate": "Dispatch date",
+        "materialRequest": "Material request",
+        "jobName": "Job name",
+        "createdAt": "Created at",
+        "updatedAt": "Last modified",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "detail": {
+        "backAria": "Back to dispatches list",
+        "retry": "Retry",
+        "sectionOverview": "Overview",
+        "sectionItems": "Material items",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet",
+        "noItems": "No items on this dispatch.",
+        "extraItem": "Extra item (not on original request)",
+        "viewLine": "Details",
+        "actions": "Actions",
+        "restockHistory": "Restock history",
+        "lineMetaTitle": "Dispatch item details",
+        "lineTitle": "Dispatch item",
+        "lineSubtitle": "From dispatch {dispatch}",
+        "lineBackAria": "Back to dispatch"
+      }
+    },
+    "scheduling": {
+      "metaTitle": "Scheduling",
+      "title": "Scheduling",
+      "subtitle": "Plan worker schedules on the calendar.",
+      "technicians": "Technicians",
+      "searchTechnicians": "Search technicians…",
+      "searchUsers": "Search users…",
+      "closeSearch": "Close search",
+      "backToUsers": "Back to all users",
+      "workerColumn": "Worker",
+      "usersColumn": "Users",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "today": "Today",
+      "viewMonth": "Month",
+      "viewWeek": "Week",
+      "viewDay": "Day",
+      "monthMoreSchedules": "+{count} more",
+      "allClients": "All clients",
+      "allJobs": "All jobs",
+      "allProjects": "All projects",
+      "allWorkers": "All workers",
+      "allUsers": "All users",
+      "allUserGroups": "All groups",
+      "createSchedule": "Create Schedule",
+      "dragToSchedule": "Drag to schedule",
+      "creatingSchedule": "Creating schedule…",
+      "removeSchedule": "Remove schedule",
+      "emptyTechnicians": "No technicians found.",
+      "emptyUsers": "No users found.",
+      "emptyUsersHint": "Try another group or clear the search to see users.",
+      "clearPeopleFilters": "Clear filters",
+      "legendAvailable": "Available",
+      "legendUnavailable": "Unavailable",
+      "legendScheduled": "Scheduled",
+      "legendTimeOff": "Time off",
+      "legendHint": "Green hours are when the user is available.",
+      "legendHintDrag": "Drag across the timeline to book a job.",
+      "legendHintTimeOff": "Drag across the timeline to mark time off.",
+      "bookJob": "Book job",
+      "markTimeOff": "Time off",
+      "offDuty": "Off",
+      "availableHoursNote": "Available {hours}",
+      "monthJobCount": "{count} jobs",
+      "monthTimeOffCount": "{count} time off",
+      "conflict": {
+        "booked": "That time is already scheduled.",
+        "unavailable": "That time is outside the user’s available hours.",
+        "noAvailability": "This user has no available hours on that day.",
+        "jobAlreadyScheduled": "This job is already scheduled and can only be assigned to one worker.",
+        "timeOff": "That time is marked as time off.",
+        "invalidRange": "Choose an end time after the start time."
+      },
+      "agenda": {
+        "title": "Day schedule",
+        "subtitle": "{jobs} jobs · {timeOff} time off",
+        "openDay": "Day view",
+        "emptyJobs": "No jobs scheduled on this day.",
+        "emptyTimeOff": "No time off on this day.",
+        "jobsTab": "Jobs",
+        "timeOffTab": "Time off",
+        "tabsAria": "Day schedule sections",
+        "searchPlaceholder": "Search jobs or users…",
+        "clientLine": "Client – {name}",
+        "assignToLine": "Assign to – {name}"
+      },
+      "loadError": "Could not load schedules. Try again.",
+      "jobScheduledOnlyWorker": "This job is already scheduled. Only the assigned worker is shown.",
+      "copy": {
+        "action": "Copy schedule",
+        "paste": "Paste",
+        "pasteHere": "Paste schedule",
+        "banner": "Copied “{job}”. Paste onto another worker.",
+        "clear": "Clear",
+        "copiedToast": "Schedule copied",
+        "pastedToast": "Schedule pasted to worker",
+        "pasteError": "Could not paste the schedule. Try again.",
+        "sameWorker": "Choose a different worker to paste this schedule."
+      },
+      "modal": {
+        "title": "Create Schedule",
+        "rescheduleTitle": "Reschedule",
+        "currentTitle": "Current title — {title}",
+        "technicianFallbackTitle": "Technician",
+        "cancel": "Cancel",
+        "save": "Create Schedule",
+        "saveReschedule": "Save schedule",
+        "saving": "Creating…",
+        "savingReschedule": "Saving…",
+        "successToast": "Schedule created",
+        "successRescheduleToast": "Schedule updated",
+        "errorToast": "Could not create the schedule. Try again.",
+        "errorRescheduleToast": "Could not update the schedule. Try again.",
+        "noUnassignedJobs": "No unassigned jobs for this client.",
+        "loadingJobs": "Loading jobs…"
+      },
+      "timeOff": {
+        "title": "Mark unavailable",
+        "subtitle": "Block this time so jobs are not booked here.",
+        "reason": "Reason",
+        "reasonPlaceholder": "e.g. Leave, training, travel…",
+        "save": "Save time off",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "blocked": "Time off",
+        "remove": "Remove time off",
+        "successToast": "Time off saved",
+        "errorToast": "Could not save time off. Try again.",
+        "deletedToast": "Time off removed",
+        "deleteError": "Could not remove time off. Try again.",
+        "deleteConfirmTitle": "Remove time off?",
+        "deleteConfirmBody": "This blocked time will be available again on the calendar."
+      },
+      "detail": {
+        "title": "Schedule on {date}",
+        "close": "Close",
+        "moreOptions": "More options",
+        "edit": "Edit",
+        "createTimesheet": "Create Timesheet",
+        "findReplacement": "Find Replacement",
+        "delete": "Delete",
+        "allDay": "All day",
+        "recurrenceDaily": "Repeats Daily",
+        "recurrenceWeekly": "Repeats Weekly",
+        "recurrenceEnds": "Repeat ends on {date}",
+        "deletedToast": "Schedule deleted",
+        "deleteError": "Could not delete the schedule. Try again.",
+        "deleteConfirmTitle": "Delete schedule?",
+        "deleteConfirmBody": "This schedule will be removed from the calendar.",
+        "timesheetSoon": "Create timesheet will be available when the API is connected.",
+        "replacementSoon": "Find replacement will be available when the API is connected.",
+        "editSoon": "Edit schedule will be available when the API is connected."
+      },
+      "fields": {
+        "worker": "Worker",
+        "assignedWorker": "Assigned worker",
+        "client": "Client name",
+        "job": "Job name",
+        "jobId": "Job ID",
+        "project": "Project name",
+        "date": "Date",
+        "time": "Time",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "startTime": "Start time",
+        "endTime": "End time",
+        "allDay": "All day",
+        "notes": "Notes",
+        "recurrence": "Recurrence",
+        "recurrenceNone": "Does not repeat",
+        "recurrenceDaily": "Daily",
+        "recurrenceWeekly": "Weekly",
+        "recurrenceEnd": "Repeat ends",
+        "to": "to"
+      },
+      "placeholders": {
+        "client": "Select client",
+        "job": "Select job",
+        "worker": "Select worker",
+        "notes": "Add notes (optional)"
+      },
+      "validation": {
+        "worker": "Select a worker",
+        "client": "Select a client",
+        "job": "Select a job",
+        "startDate": "Start date is required",
+        "endDate": "End date is required",
+        "startTime": "Start time is required",
+        "endTime": "End time is required",
+        "recurrenceEnd": "Repeat end date is required"
       }
     },
     "jobs": {
@@ -1025,6 +3634,8 @@
       "subtitle": "Schedule and track field work. Assign technicians and update job status as work progresses.",
       "add": "Add",
       "edit": "Edit",
+      "createSchedule": "Create Schedule",
+      "reschedule": "Reschedule",
       "emptyTitle": "No jobs yet",
       "emptyDescription": "Create your first job to assign work to technicians and track status.",
       "loadError": "Could not load jobs. Try again.",
@@ -1042,6 +3653,24 @@
       "filterAllStatuses": "All statuses",
       "filterAssignedWorker": "Assigned worker",
       "filterAllWorkers": "All technicians",
+      "filterJobCategory": "Job category",
+      "filterAllCategories": "All categories",
+      "category": {
+        "service": "Services",
+        "project": "Projects"
+      },
+      "massAssign": {
+        "assignTo": "Assign to",
+        "apply": "Apply",
+        "selectRow": "Select job",
+        "selectAll": "Select all jobs",
+        "selectAllError": "Could not select all jobs. Try again.",
+        "selectedCount": "{count} selected",
+        "success": "Assigned {count} jobs",
+        "error": "Could not assign jobs. Try again.",
+        "pickWorker": "Select a technician"
+      },
+      "massAssignWorker": "Assign worker",
       "activate": "Activate",
       "deactivate": "Deactivate",
       "activatedToast": "Job activated",
@@ -1057,8 +3686,10 @@
       "table": {
         "title": "Job",
         "jobStatus": "Job status",
-        "assignedWorker": "Assigned worker",
+        "assignedWorker": "Assigned workers",
+        "projectCategory": "Category",
         "start": "Start",
+        "serialNo": "Job",
         "end": "End",
         "recordStatus": "Record",
         "actions": "Actions"
@@ -1072,10 +3703,41 @@
         "retry": "Retry",
         "backAria": "Back to jobs list",
         "editWithIcon": "Edit",
+        "sectionRelations": "Client & links",
+        "sectionWorkScope": "Work scope",
+        "sectionQrCode": "QR code",
         "sectionSchedule": "Schedule",
         "sectionDescription": "Description",
         "statusUnknown": "Not set",
-        "notCompleted": "Not completed"
+        "notCompleted": "Not completed",
+        "qrCodeId": "QR code ID",
+        "colCompositeItem": "Composite item",
+        "colUnitPrice": "Unit price",
+        "colLineTotal": "Line total",
+        "tabsAria": "Job detail sections",
+        "tabs": {
+          "overview": "Overview",
+          "scheduling": "Scheduling",
+          "materials": "Materials",
+          "dispatch": "Dispatch",
+          "returns": "Returns"
+        },
+        "schedulingTitle": "Scheduling",
+        "schedulingEmpty": "This job is not scheduled yet.",
+        "schedulingHasSchedule": "Current schedule for this job.",
+        "schedulingLoading": "Loading schedule…",
+        "schedulingLoadError": "Could not load the schedule. Try again.",
+        "schedulingHistory": "Schedule history",
+        "openScheduling": "Schedule",
+        "openSchedulingHint": "View workers and calendar",
+        "materialsTitle": "Materials",
+        "materialsEmpty": "No materials are linked to this job.",
+        "dispatchesTitle": "Dispatches",
+        "dispatchesEmpty": "No dispatches have been made for this job.",
+        "dispatchesLoadError": "Failed to load dispatches.",
+        "returnsTitle": "Returns",
+        "returnsEmpty": "No return requests have been made for this job.",
+        "returnsLoadError": "Failed to load returns."
       },
       "updateStatus": {
         "action": "Update status",
@@ -1085,6 +3747,84 @@
         "placeholder": "Select status",
         "loading": "Loading statuses…"
       },
+      "qualityAssurance": {
+        "label": "Quality assurance",
+        "approve": "Approve",
+        "reject": "Reject",
+        "yes": "Approve",
+        "no": "Reject",
+        "rejectTitle": "Reject quality assurance",
+        "rejectBody": "Add a short note explaining why this work is rejected.",
+        "remarks": "Remarks",
+        "remarksPlaceholder": "e.g. Work not completed properly.",
+        "remarksRequired": "Remarks are required to reject.",
+        "cancel": "Cancel",
+        "rejectConfirm": "Reject",
+        "approvedToast": "Quality assurance approved",
+        "rejectedToast": "Quality assurance rejected",
+        "error": "Could not submit quality assurance. Try again.",
+        "sectionTitle": "Quality assurance",
+        "status": "Status",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "statusPending": "Pending",
+        "approvedAt": "Approved at",
+        "approvedBy": "Approved by",
+        "column": "QA",
+        "selectAll": "Select all",
+        "selectedCount": "{count} selected",
+        "bulkApprove": "Approve",
+        "bulkReject": "Reject"
+      },
+      "forms": {
+        "sectionTitle": "Forms",
+        "pageTitle": "Job form",
+        "fillSubtitle": "Fill out the form and submit when complete.",
+        "viewSubtitle": "Submitted form details.",
+        "editSubtitle": "Update submitted values and save.",
+        "backAria": "Back to job",
+        "submit": "Submit form",
+        "saveChanges": "Save changes",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "retry": "Retry",
+        "remarks": "Remarks",
+        "remarksPlaceholder": "Optional notes about this submission",
+        "submittedAt": "Submitted",
+        "statusSubmitted": "Submitted",
+        "statusPending": "Not submitted",
+        "submittedToast": "Form submitted successfully",
+        "updatedToast": "Form updated successfully",
+        "submitError": "Could not submit the form. Try again.",
+        "loadError": "Could not load the form. Try again.",
+        "validationEmpty": "Fill at least one field before submitting.",
+        "emptySchema": "This form has no fields yet.",
+        "untitledForm": "Form",
+        "layoutDesktop": "Desktop",
+        "layoutPhone": "Phone",
+        "checklistSaveError": "Could not save checklist. Try again."
+        
+      },
+      "checklists": {
+        "sectionTitle": "Checklists",
+        "toggle": "Show or hide checklists",
+        "completeChecks": "Complete Checks",
+        "verifyHint": "Verify and complete all checklists and requirements.",
+        "viewFile": "View File",
+        "required": "Required",
+        "sequence": "Seq. {n}",
+        "checkedAt": "Checked {when}",
+        "saveError": "Could not update checklist. Try again.",
+        "gateTitle": "Complete checklist first",
+        "gateBody": "Mark the required items before opening “{form}”.",
+        "gateRequiredHint": "All required checklist items must be checked to continue.",
+        "concentricPoint": "Concentric Point",
+        "continueToForm": "Continue to form",
+        "cancel": "Cancel",
+        "blockedTitle": "Checklist required",
+        "blockedBody": "Complete all required checklist items on the job before filling this form.",
+        "backToJob": "Back to job"
+      },
       "page": {
         "createTitle": "New job",
         "createSubtitle": "Define the work, schedule, and assigned technician.",
@@ -1092,15 +3832,67 @@
         "editSubtitle": "Update job details and save."
       },
       "placeholders": {
-        "assignedWorker": "Select technician"
+        "assignedWorker": "Select technician",
+        "client": "Select client",
+        "project": "Select project",
+        "site": "Select site",
+        "form": "Select form",
+        "formsEmpty": "No forms available",
+        "addForm": "Manage forms",
+        "jobStatus": "Select job status",
+        "sectionName": "e.g. Level 0",
+        "plotName": "e.g. Room A",
+        "plotGroup": "Select group",
+        "compositeItem": "Select composite item"
+      },
+      "sections": {
+        "basic": "Details",
+        "relations": "Links",
+        "levels": "Levels",
+        "schedule": "Schedule",
+        "jobMeta": "Task List",
+        "jobMetaHint": "Optional group, composite items, and scope total sent in job_meta."
+      },
+      "levelsHierarchy": {
+        "loadError": "Could not load levels. Try again.",
+        "loadingMore": "Loading more levels…",
+        "noPlotsInLevel": "No plots in this level.",
+        "emptyLoaded": "No levels returned for this project yet.",
+        "noPinsAvailable": "No pins available."
+      },
+      "lineItems": {
+        "qty": "Qty",
+        "rate": "Unit price",
+        "amount": "Amount",
+        "addItem": "Add item",
+        "remove": "Remove line",
+        "empty": "No task items yet. Add items to define this job's work scope."
       },
       "fields": {
         "title": "Title",
         "description": "Description",
+        "client": "Client",
+        "project": "Project",
+        "site": "Site",
+        "form": "Form",
+        "forms": "Forms",
         "assignedWorker": "Assigned worker",
+        "assignedWorkers": "Assigned workers",
+        "workerName": "Name",
+        "workerEmail": "Email",
+        "workerPhone": "Phone",
+        "workerRole": "Role",
         "startDate": "Start date & time",
+        "jobTime": "Job time",
         "endDate": "End date & time",
         "jobStatus": "Job status",
+        "sectionName": "Section name",
+        "plotName": "Plot name",
+        "plotGroup": "Group",
+        "compositeItem": "Composite item",
+        "compositeQuantity": "Quantity",
+        "plotTotal": "Plot total",
+        "scopeTotal": "Scope total",
         "recordStatus": "Record status",
         "isActive": "Active",
         "jobId": "Job ID",
@@ -1108,7 +3900,9 @@
         "completedAt": "Completed",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "checklists": "Check List",
+        "selectCheckList": "Select Check List"
       },
       "modal": {
         "cancel": "Cancel",
@@ -1120,27 +3914,68 @@
         "assignedWorker": "Select an assigned worker.",
         "startDate": "Enter a start date and time.",
         "endDate": "Enter an end date and time.",
-        "endBeforeStart": "End must be on or after the start."
+        "endBeforeStart": "End must be on or after the start.",
+        "optionalId": "Choose a valid option.",
+        "compositeQuantity": "Enter a quantity greater than zero when a composite item is selected.",
+        "requiredChecklist": "Please select at least one checklist item."
       }
     },
     "home": {
       "title": "Working on this page",
       "body": "This section is under development. Check back soon for updates."
     },
+    "massActions": {
+      "bulkBarAria": "Bulk actions for selected rows",
+      "selectedCount": "{count} selected",
+      "actionLabel": "Action",
+      "pickAction": "Choose action",
+      "fieldLabel": "Field",
+      "pickField": "Choose field",
+      "valueLabel": "Value",
+      "pickValue": "Choose value",
+      "valuePlaceholder": "Enter value",
+      "exportFormatLabel": "Format",
+      "pickExportFormat": "Choose format",
+      "exportFormatXlsx": "Excel (.xlsx)",
+      "exportFormatCsv": "CSV (.csv)",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "selectAll": "Select all matching rows",
+      "selectRow": "Select row",
+      "selectAllError": "Could not select all rows. Try again.",
+      "success": "Bulk action completed",
+      "deleteConfirmTitle": "Delete selected records?",
+      "deleteConfirmBody": "You are about to delete {count} records. This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "actions": {
+        "massUpdate": "Mass update",
+        "massDelete": "Mass delete",
+        "massExport": "Mass export"
+      }
+    },
     "list": {
       "searchPlaceholder": "Search…",
       "searchAria": "Search this list",
       "rowsPerPage": "Rows per page",
-      "tableView": "Card view",
+      "tableView": "Table view",
       "listView": "Table view",
+      "cardView": "Card view",
       "openRowActions": "Open row actions",
       "noResultsTitle": "No results found",
       "noResultsDescription": "Nothing matches your current search or filters. Adjust them or clear filters to see more items.",
+      "noActiveResultsTitle": "No active records",
+      "noActiveResultsDescription": "Everything here is inactive. Switch to Inactive to view those records, or create a new one.",
+      "viewInactive": "View inactive",
       "clearFilters": "Clear filters",
       "clearFilter": "Remove this filter",
       "filterMenu": "Filters",
       "filterMenuAria": "Open search and filters",
-      "cardCreated": "Created {date}"
+      "cardCreated": "Created {date}",
+      "textModeAria": "Cell text display",
+      "textModeClip": "Clip",
+      "textModeWrap": "Wrap",
+      "textModeClipHint": "Keep text on one line; truncate with … (scroll table sideways for more columns)",
+      "textModeWrapHint": "Wrap long text onto multiple lines inside the column"
     },
     "projects": {
       "metaTitle": "Projects",
@@ -1152,12 +3987,34 @@
       "emptyTitle": "No projects yet",
       "emptyDescription": "Create your first project to begin planning and tracking work.",
       "loadError": "Could not load projects. Try again.",
+      "pins": {
+        "pageTitle": "Pin details",
+        "backAria": "Back",
+        "loadError": "Could not load this pin. Try again.",
+        "pinDetails": "Pin details",
+        "assignedForm": "Assigned form",
+        "product": "Product",
+        "quantity": "Quantity",
+        "status": "Status",
+        "variation": "Variation",
+        "location": "Location",
+        "coordinates": "Coordinates",
+        "form": "Form",
+        "description": "Description",
+        "yes": "Yes",
+        "no": "No",
+        "noFormAssigned": "No form assigned to this pin.",
+        "formSubmitted": "Submitted",
+        "formNotSubmitted": "Not submitted",
+        "formImages": "Form images"
+      },
       "missingOrganization": "No workspace organization on this session. Sign out and sign in again, or contact support.",
       "createdToast": "Project created successfully",
       "updatedToast": "Project updated successfully",
       "deletedToast": "Project deleted",
       "deleteError": "Could not delete this project. Try again.",
       "noClientsHint": "Add at least one client before you can create a project.",
+      "noProjectTypesHint": "Add at least one project type in Settings → Customization → Project types before creating a project.",
       "filterState": "Active state",
       "filterAll": "All",
       "activate": "Activate",
@@ -1175,6 +4032,7 @@
       "table": {
         "name": "Project",
         "client": "Client",
+        "projectType": "Project type",
         "start": "Start date",
         "end": "End date",
         "description": "Description",
@@ -1218,9 +4076,57 @@
           "drawings": "Drawings",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
+          "location": "Locations",
+          "quotations": "Quotes",
           "docs": "Docs",
-          "approvals": "Approvals"
+          "approvals": "Approvals",
+          "pins": "Pins"
+        },
+        "pinsTableHeaders": {
+          "location": "Location",
+          "drawing": "Drawing",
+          "plot": "Plot",
+          "Product": "Product",
+          "status": "Status",
+          "createdAt": "Created at"
         }
+      },
+      "location": {
+        "title": "Locations",
+        "subtitle": "Manage and view all locations for this project.",
+        "searchPlaceholder": "Search locations…",
+        "searchAria": "Search locations",
+        "filterJobSource": "Job source",
+        "filterLevel": "Level",
+        "filterAllLevels": "All levels",
+        "filterPlot": "Plot",
+        "filterAllPlots": "All plots",
+        "createJob": "Create job",
+        "createJobPlaceHolder": "Enter Job Name",
+        "site": "Site",
+        "selectSite": "Select site",
+        "requiredJob": "Job title is required.",
+        "Start": "Start Date",
+        "assignedWorker": "Assign Worker",
+        "selectWorker": "Select Worker",
+        "requiredSite": "Site is required.",
+        "requiredDate": "Date is required.",
+        "requiredWorker": "Worker is required.",
+        "requiredChecklist": "Please select at least one checklist item.",
+        "requiredJobStatus": "Job status is required.",
+        "checkList": "Check List",
+        "selectChecklist": "Select Checklist",
+        "pinsStatus": "Pin Status",
+        "quoteStatus": "Quote Status",
+        "massUpdate": "Mass Update",
+        "massAction": "Action",
+        "selectAction": "Select action",
+        "actionField": "Field",
+        "selectField": "Select field",
+        "actionFieldForm": "Form",
+        "actionFieldVariation": "Variation",
+        "actionFieldQuantity": "Quantity"
+        
       },
       "drawings": {
         "title": "Drawings",
@@ -1317,24 +4223,129 @@
           "saveAll": "Save",
           "savedAll": "All changes saved.",
           "saveAllError": "Could not save all changes.",
-          "loading": "Loading editor..."
+          "loading": "Loading editor...",
+          "noFormWithInstallationType": "No form with the installation type found in the project. Assign form or create a new form.",
+          "productAttachments": "Installation Manual",
+          "installationManual": "Installation Manual"
         }
+      },
+      "formsTab": {
+        "title": "Forms",
+        "subtitle": "Manage project forms and open the form builder to edit layouts.",
+        "assign": "Assign forms",
+        "assignModalTitle": "Assign forms",
+        "assignModalDescription": "Select the forms available for this project's type.",
+        "assignPlaceholder": "Select forms...",
+        "assignListLabel": "Forms",
+        "assignEmpty": "No forms found for this project type.",
+        "assignLoadError": "Could not load available forms. Try again.",
+        "assignSaveError": "Could not assign forms. Try again.",
+        "assignedToast": "Forms assigned",
+        "projectTypeMissingError": "This project does not have a project type.",
+        "saveAssigned": "Save forms",
+        "searchPlaceholder": "Search forms…",
+        "searchAria": "Search forms",
+        "filterState": "Active state",
+        "filterAll": "All",
+        "empty": "No forms found.",
+        "loadError": "Could not load forms. Try again.",
+        "toggleActiveError": "Could not update form status. Try again.",
+        "activatedToast": "Form activated",
+        "deactivatedToast": "Form deactivated",
+        "edit": "Edit",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "prev": "Previous",
+        "next": "Next",
+        "pageLabel": "Showing {start}-{end} of {total} forms",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "projectTypes": "Project types",
+        "projectTypePlaceholder": "Select project type",
+        "projectTypeSearch": "Search project types",
+        "loadingProjectTypes": "Loading project types…",
+        "projectTypesLoadError": "Could not load project types. Try again.",
+        "selectProjectTypeTitle": "Select project type",
+        "selectProjectTypeDescription": "Choose a project type before creating a form.",
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "table": {
+          "name": "Form name",
+          "projectType": "Project type",
+          "installationType": "Installation type",
+          "status": "Status",
+          "created": "Created",
+          "actions": "Actions"
+        }
+      },
+      "jobsTab": {
+        "title": "Jobs",
+        "subtitle": "Auto jobs are grouped by level and plot. Switch to Manual to view jobs created directly on this project.",
+        "searchPlaceholder": "Search jobs…",
+        "searchAria": "Search project jobs",
+        "loadError": "Could not load project jobs. Try again.",
+        "emptyTitle": "No jobs on this project",
+        "emptyDescription": "Quotation jobs appear under levels and plots. Switch job source to Manual to view manually created jobs.",
+        "emptyManualTitle": "No manual jobs",
+        "emptyManualDescription": "Manually created jobs for this project will appear here.",
+        "emptyQuotationTitle": "No auto jobs",
+        "emptyQuotationDescription": "Auto jobs will appear under each level and plot when available.",
+        "pageLabel": "Showing {start}-{end} of {total} jobs",
+        "filterJobSource": "Job source",
+        "filterAllSources": "All sources",
+        "filterManualSource": "Manual",
+        "filterQuotationSource": "Auto",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "filterLevel": "Level",
+        "filterAllLevels": "All levels",
+        "filterPlot": "Plot",
+        "filterAllPlots": "All plots",
+        "manualJobLocation": "Manual / unassigned",
+        "manualJobsSection": "Manual jobs",
+        "selectPlot": "Select all jobs in {plot}",
+        "selectManualJobs": "Select all manual jobs",
+        "jobCount": "{count, plural, one {# job} other {# jobs}}",
+        "plotJobCount": "{count, plural, one {# job} other {# jobs}}",
+        "table": {
+          "location": "Location"
+        }
+      },
+      "quotationsTab": {
+        "title": "Quotations",
+        "subtitle": "All quotations associated with this project.",
+        "searchPlaceholder": "Search quotations…",
+        "searchAria": "Search project quotations",
+        "loadError": "Could not load project quotations. Try again.",
+        "emptyTitle": "No quotations on this project",
+        "emptyDescription": "Quotations linked to this project will appear here.",
+        "pageLabel": "Showing {start}-{end} of {total} quotations",
+        "prev": "Previous",
+        "next": "Next"
       },
       "detailLoadError": "Could not load project details. Try again.",
       "placeholders": {
         "client": "Select client",
-        "site": "Select site"
+        "site": "Select site",
+        "projectType": "Select project type",
+        "projectStatus": "Select project status"
       },
       "fields": {
         "name": "Project name",
         "client": "Client",
+        "projectType": "Project type",
+        "site": "Site",
         "sites": "Sites",
         "description": "Description",
         "startDate": "Start date",
         "endDate": "End date",
         "createdAt": "Created",
         "updatedAt": "Last updated",
-        "createdBy": "Created by"
+        "createdBy": "Created by",
+        "projectStatus": "Project Status",
+        "manager":"Managers"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."
@@ -1355,6 +4366,7 @@
       "validation": {
         "name": "Enter a project name.",
         "client": "Select a client.",
+        "projectType": "Select a project type.",
         "description": "Enter a description.",
         "startDate": "Choose a start date.",
         "endDate": "Choose an end date.",
@@ -1422,6 +4434,9 @@
         "addCompositeItem": "Add row",
         "removeCompositeItem": "Remove",
         "atLeastOneCompositeItemError": "Select at least one composite item.",
+        "compositeItemRequired": "Select a composite item.",
+        "abbreviationRequired": "Enter an abbreviation.",
+        "abbreviationMaxLength": "Abbreviation can be at most 50 characters.",
         "duplicateCompositeItemError": "Each composite item can only be added once.",
         "createdToast": "Group created",
         "updatedToast": "Group updated"
@@ -1488,6 +4503,7 @@
       },
       "table": {
         "name": "Name",
+        "installationType": "Installation type",
         "group": "Group",
         "componentCount": "Components",
         "organization": "Organization",
@@ -1531,6 +4547,33 @@
         "groupPlaceholder": "Select group",
         "groupError": "Select a group.",
         "noGroupsHint": "No groups found. Create at least one group before adding composite items.",
+        "installationType": "Installation type",
+        "installationTypePlaceholder": "Select installation type",
+        "installationTypesLoadError": "Could not load installation types.",
+        "unitType": "Unit",
+        "unitTypePlaceholder": "Select unit",
+        "unitTypesLoadError": "Could not load unit types.",
+        "installationCost": "Installation cost",
+        "installationCostPlaceholder": "Enter price",
+        "installationCostType": "Pricing",
+        "installationCostTypeFixed": "Fixed amount",
+        "installationCostTypeRate": "Rate / hr",
+        "installationHours": "Install hours",
+        "installationHoursPlaceholder": "e.g. 2.5",
+        "fulfilmentDetails": "Fulfilment details",
+        "dimensions": "Dimensions",
+        "dimensionsPlaceholder": "L*W*H",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsLength": "Length",
+        "dimensionsWidth": "Width",
+        "dimensionsHeight": "Height",
+        "dimensionsUnit": "Dimensions unit",
+        "weight": "Weight",
+        "weightUnit": "Weight unit",
+        "attachments": "Attachments",
+        "attachmentsHint": "Attach one or more files (documents, images, specs).",
+        "addAttachments": "Add files",
+        "removeAttachment": "Remove",
         "createdToast": "Composite item created",
         "updatedToast": "Composite item updated"
       },
@@ -1580,6 +4623,16 @@
         "backAria": "Back to items list",
         "sectionOverview": "Overview",
         "group": "Group",
+        "installationType": "Installation type",
+        "unitType": "Unit",
+        "installationCost": "Installation cost",
+        "installationCostFixed": "Fixed amount",
+        "installationCostRate": "Rate / hr",
+        "installationHours": "Install hours",
+        "dimensions": "Dimensions",
+        "weight": "Weight",
+        "sectionAttachments": "Attachments",
+        "noAttachments": "No attachments.",
         "sectionComponents": "Components",
         "sectionRecord": "Record",
         "sku": "SKU",
@@ -1587,6 +4640,7 @@
         "reorder": "Reorder quantity",
         "cost": "Cost price",
         "sell": "Selling price",
+        "vendors": "Vendors",
         "itemType": "Item type",
         "compositeYes": "Composite item",
         "compositeNo": "Standard item",
@@ -1615,8 +4669,29 @@
         "skuPlaceholder": "e.g. HNG001",
         "skuError": "Enter a SKU.",
         "quantity": "Quantity",
+        "unitType": "Unit",
+        "unitTypePlaceholder": "Select unit",
+        "unitTypesLoadError": "Could not load unit types.",
+        "vendors": "Vendors",
+        "vendorsPlaceholder": "Select vendors...",
+        "vendorsLoadError": "Could not load vendors.",
         "costPrice": "Cost price",
+        "costPriceError": "Enter a cost price.",
         "sellingPrice": "Selling price",
+        "sellingPriceError": "Enter a selling price.",
+        "fulfilmentDetails": "Fulfilment details",
+        "dimensions": "Dimensions",
+        "dimensionsPlaceholder": "L*W*H",
+        "dimensionsHint": "(Length X Width X Height)",
+        "dimensionsLength": "Length",
+        "dimensionsWidth": "Width",
+        "dimensionsHeight": "Height",
+        "dimensionsUnit": "Dimensions unit",
+        "weight": "Weight",
+        "weightUnit": "Weight unit",
+        "attachments": "Attachments",
+        "addAttachments": "Add files",
+        "removeAttachment": "Remove",
         "createdToast": "Item created",
         "updatedToast": "Item updated"
       },

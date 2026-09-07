@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
 import { useSnackbarStore } from "@/shared/feedback/snackbar-store";
 
+export {
+  toastApiError,
+  markApiErrorToasted,
+  wasApiErrorToasted,
+  getApiErrorDisplayMessage,
+} from "@/core/errors/api-error-toast.util";
+
 export type AppToastOptions = {
   /** Defaults: success 4000ms, error 5500ms */
   duration?: number;

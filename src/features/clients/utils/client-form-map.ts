@@ -1,54 +1,62 @@
-import { City, Country, State } from "country-state-city";
-import type { Client } from "@/features/clients/types/client.types";
+import type { Client, ClientUpsertPayload } from "@/features/clients/types/client.types";
 import type { ClientFormValues } from "@/features/clients/schemas/client-form-schema";
-import type { ClientUpsertPayload } from "@/features/clients/types/client.types";
+import {
+  emptyEntityAddressFormRow,
+  mapEntityAddressApiToFormRow,
+  mapEntityAddressFormRowToPayload,
+  normalizePrimaryEntityAddresses,
+} from "@/shared/form/entity-address-form.util";
+import type { EntityAddress } from "@/shared/types/entity-address.types";
+import { normalizePhoneForPhoneInput } from "@/shared/utils/phone-input.util";
 
-function normalizePhoneForPhoneInput(raw: string | null | undefined): string {
-  const value = (raw ?? "").trim();
-  if (!value) return "";
-  if (value.startsWith("+")) return value;
+/** Prefer API `addresses[]`; fall back to legacy flat / single-line address. */
+export function resolveClientAddresses(client: Client): EntityAddress[] {
+  if (Array.isArray(client.addresses) && client.addresses.length > 0) {
+    return client.addresses;
+  }
 
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
+  const line1 = client.address_line_1?.trim() ?? "";
+  const line2 = client.address_line_2?.trim() ?? "";
+  const legacy = typeof client.address === "string" ? client.address.trim() : "";
+  let resolvedLine1 = line1;
+  let resolvedLine2 = line2;
+  if (!resolvedLine1 && legacy) {
+    const parts = legacy.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    resolvedLine1 = parts[0] ?? "";
+    resolvedLine2 = parts.slice(1).join("\n");
+  }
 
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length === 11 && digits.startsWith("0")) return `+91${digits.slice(1)}`;
+  if (!resolvedLine1 && !client.city && !client.country && !client.pincode) {
+    return [];
+  }
 
-  return `+${digits}`;
+  return [
+    {
+      address_type: "billing",
+      address_line_1: resolvedLine1,
+      address_line_2: resolvedLine2 || null,
+      city: client.city?.trim() ?? "",
+      state: client.state?.trim() ?? "",
+      country: client.country?.trim() ?? "",
+      pincode: client.pincode?.trim() ?? "",
+      is_primary: true,
+    },
+  ];
 }
 
-export function mapClientFormToPayload(values: ClientFormValues, organizationId: number): ClientUpsertPayload {
-  const country = Country.getCountryByCode(values.country_iso);
-  const subdivisions = State.getStatesOfCountry(values.country_iso);
-  const stateTrimmed = values.state_iso.trim();
-
-  let statePayload = "";
-  if (subdivisions.length > 0) {
-    statePayload =
-      subdivisions.find((s) => s.isoCode === stateTrimmed)?.name ?? stateTrimmed;
-  }
-
-  const cities =
-    subdivisions.length > 0 && stateTrimmed ? City.getCitiesOfState(values.country_iso, stateTrimmed) : [];
-
-  let cityPayload = "";
-  if (cities.length > 0) {
-    cityPayload = values.city.trim();
-  }
-
-  const line2 = values.address_line_2.trim();
+export function mapClientFormToPayload(values: ClientFormValues): ClientUpsertPayload {
+  const addresses = normalizePrimaryEntityAddresses(values.addresses).map((row) => {
+    const payload = mapEntityAddressFormRowToPayload(row);
+    // Clients don't need lat/lon in payload.
+    const { latitude: _lat, longitude: _lon, ...rest } = payload;
+    return rest;
+  });
 
   return {
-    organization: organizationId,
     name: values.name.trim(),
     email: values.email.trim(),
     phone: values.phone,
-    address_line_1: values.address_line_1.trim(),
-    address_line_2: line2,
-    city: cityPayload,
-    state: statePayload,
-    country: country?.name ?? values.country_iso,
-    pincode: values.pincode.trim(),
+    addresses,
   };
 }
 
@@ -57,46 +65,19 @@ export function emptyClientFormDefaults(): ClientFormValues {
     name: "",
     email: "",
     phone: "",
-    address_line_1: "",
-    address_line_2: "",
-    country_iso: "IN",
-    state_iso: "",
-    city: "",
-    pincode: "",
+    addresses: [emptyEntityAddressFormRow({ address_type: "billing", is_primary: true })],
   };
 }
 
 export function clientToFormDefaults(client: Client): ClientFormValues {
-  const inferredIso =
-    Country.getAllCountries().find(
-      (c) => c.name.toLowerCase() === (client.country ?? "").trim().toLowerCase(),
-    )?.isoCode ?? "";
-
-  const countryIso = (inferredIso || "IN").toUpperCase();
-
-  const states = State.getStatesOfCountry(countryIso);
-  const stateIso =
-    states.find((s) => s.name.toLowerCase() === (client.state ?? "").trim().toLowerCase())?.isoCode ?? "";
-
-  let line1 = client.address_line_1?.trim() ?? "";
-  let line2 = client.address_line_2?.trim() ?? "";
-
-  const legacyAddress = typeof client.address === "string" ? client.address.trim() : "";
-  if (!line1 && legacyAddress) {
-    const parts = legacyAddress.split(/\n+/).map((p) => p.trim()).filter(Boolean);
-    line1 = parts[0] ?? "";
-    line2 = parts.slice(1).join("\n");
-  }
-
+  const addresses = resolveClientAddresses(client);
   return {
     name: client.name ?? "",
     email: client.email ?? "",
     phone: normalizePhoneForPhoneInput(client.phone),
-    address_line_1: line1,
-    address_line_2: line2,
-    country_iso: countryIso,
-    state_iso: stateIso,
-    city: client.city?.trim() ?? "",
-    pincode: client.pincode?.trim() ?? "",
+    addresses:
+      addresses.length > 0
+        ? addresses.map((addr) => mapEntityAddressApiToFormRow(addr))
+        : [emptyEntityAddressFormRow({ address_type: "billing", is_primary: true })],
   };
 }

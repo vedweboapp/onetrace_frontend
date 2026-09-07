@@ -4,6 +4,8 @@ export type ContactUserRef = {
   username: string;
 };
 
+export type ContactType = "client" | "vendor";
+
 export type ContactClientRef = {
   id: number;
   name: string;
@@ -12,12 +14,21 @@ export type ContactClientRef = {
   phone?: string | null;
 };
 
+export type ContactVendorRef = {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+};
+
 export type ContactUpsertPayload = {
-  organization: number;
+  organization?: number;
   name: string;
   email: string;
   phone: string;
-  client: number;
+  contact_type: ContactType;
+  client?: number;
+  vendor?: number;
   address_line_1: string;
   address_line_2: string;
   city: string;
@@ -38,7 +49,9 @@ export type Contact = {
   name: string;
   email: string;
   phone?: string | null;
-  client: number | ContactClientRef;
+  contact_type?: ContactType;
+  client?: number | ContactClientRef | null;
+  vendor?: number | ContactVendorRef | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

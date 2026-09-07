@@ -1,5 +1,6 @@
 import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { GROUP_PATHS } from "./group.paths";
@@ -33,6 +34,10 @@ export async function fetchGroupsPage(
   const { data } = await api.get<GroupListResponse>(GROUP_PATHS.list, { params });
   assertEnvelopeSuccess(data);
   return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllGroupIds(filters?: GroupListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchGroupsPage(page, pageSize, filters));
 }
 
 export async function fetchGroup(id: number): Promise<Group> {

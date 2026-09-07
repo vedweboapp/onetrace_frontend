@@ -1,6 +1,26 @@
 @import "tailwindcss";
-
 @import "react-phone-number-input/style.css";
+
+/* Number fields: type to enter only — no spinner arrows. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+}
 
 .surface-phone-root .PhoneInput {
   --PhoneInput-countryFlag-heightEm: 0.875em;
@@ -30,7 +50,7 @@
   height: 2.75rem;
   border: 0;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--dash-body-size, 0.875rem);
   line-height: 1.25rem;
   color: rgb(15 23 42);
   outline: none;
@@ -52,7 +72,7 @@
   border-radius: 0.5rem;
   border: 0;
   background: rgb(248 250 252);
-  font-size: 0.875rem;
+  font-size: var(--dash-body-size, 0.875rem);
 }
 .dark .surface-phone-root .PhoneInputCountrySelect {
   background: rgb(15 23 42);
@@ -65,6 +85,13 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Tie Tailwind text-* utilities to Appearance font size (Small/Medium/Large). */
+  --text-xs: var(--dash-text-xs);
+  --text-sm: var(--dash-text-sm);
+  --text-base: var(--dash-text-base);
+  --text-lg: var(--dash-text-lg);
+  --text-xl: var(--dash-text-xl);
+  --text-2xl: var(--dash-text-2xl);
 }
 
 html {
@@ -75,6 +102,17 @@ html {
 :root {
   --dash-accent: #111111;
   --dash-on-accent: #ffffff;
+  --dash-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --dash-font-size: 15px;
+  --dash-type-scale: 1;
+  --dash-label-size: calc(var(--dash-font-size) * 0.933);
+  --dash-body-size: var(--dash-font-size);
+  --dash-text-xs: calc(var(--dash-font-size) * 0.8);
+  --dash-text-sm: calc(var(--dash-font-size) * 0.933);
+  --dash-text-base: var(--dash-font-size);
+  --dash-text-lg: calc(var(--dash-font-size) * 1.125);
+  --dash-text-xl: calc(var(--dash-font-size) * 1.25);
+  --dash-text-2xl: calc(var(--dash-font-size) * 1.5);
 }
 
 html.dark {
@@ -84,7 +122,520 @@ html.dark {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--dash-font-family, var(--font-sans));
+  font-size: var(--dash-font-size, 15px);
+}
+
+/*
+ * Appearance → Font size: force text-* utilities to the dash scale.
+ * Complements @theme --text-* so portaled menus and any late utilities stay in sync.
+ */
+.dash-appearance-scope[data-font-size] :is(.text-xs),
+html[data-font-size] :is(.text-xs) {
+  font-size: var(--dash-text-xs) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-sm),
+html[data-font-size] :is(.text-sm) {
+  font-size: var(--dash-text-sm) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-base),
+html[data-font-size] :is(.text-base) {
+  font-size: var(--dash-text-base) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-lg),
+html[data-font-size] :is(.text-lg) {
+  font-size: var(--dash-text-lg) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-xl),
+html[data-font-size] :is(.text-xl) {
+  font-size: var(--dash-text-xl) !important;
+}
+.dash-appearance-scope[data-font-size] :is(.text-2xl),
+html[data-font-size] :is(.text-2xl) {
+  font-size: var(--dash-text-2xl) !important;
+}
+
+.dash-appearance-scope {
+  font-family: var(--dash-font-family);
+  font-size: var(--dash-font-size);
+}
+
+/*
+ * Forms: compact side label column — labels right-aligned so short names
+ * sit next to the control; inputs share one start edge per field.
+ */
+.dash-appearance-scope {
+  --form-label-col: 8.5rem;
+}
+
+/* Optional host: narrow panes stack; opt into top labels with data-labels="top". */
+.settings-aligned-fields {
+  container-type: inline-size;
+  container-name: settings-fields;
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * Settings (company / personal profile): top labels — wide 2-col panes look
+ * sparse with side labels of uneven length; stack label above control instead.
+ */
+.settings-aligned-fields[data-labels="top"] .field-group,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-group {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+  grid-template-columns: none !important;
+}
+
+.settings-aligned-fields[data-labels="top"] .field-label,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-label {
+  order: 0 !important;
+  width: 100%;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: left !important;
+  white-space: normal;
+  justify-self: stretch;
+}
+
+.settings-aligned-fields[data-labels="top"] .field-control-wrap,
+.dash-appearance-scope[data-form-label="top"] .settings-aligned-fields .field-control-wrap {
+  order: 0 !important;
+  width: 100%;
+}
+
+@container settings-fields (max-width: 42rem) {
+  .settings-aligned-fields .form-field-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label]) .settings-aligned-fields:not([data-labels="top"]) .field-group,
+  .dash-appearance-scope[data-form-label="left"] .settings-aligned-fields:not([data-labels="top"]) .field-group,
+  .dash-appearance-scope[data-form-label="right"] .settings-aligned-fields:not([data-labels="top"]) .field-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    grid-template-columns: none;
+  }
+
+  .dash-appearance-scope .settings-aligned-fields:not([data-labels="top"]) .field-label {
+    order: 0;
+    width: 100%;
+    margin-bottom: 0;
+    padding-top: 0;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .dash-appearance-scope[data-form-label="right"] .settings-aligned-fields:not([data-labels="top"]) .field-control-wrap {
+    order: 0;
+    width: 100%;
+  }
+
+  .settings-aligned-fields .form-field-row > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+.dash-appearance-scope .field-group {
+  width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: form-field;
+}
+
+/* Default + left: fixed label column, control fills the rest. */
+.dash-appearance-scope:not([data-form-label]) .field-group,
+.dash-appearance-scope[data-form-label="left"] .field-group {
+  display: grid;
+  grid-template-columns: var(--form-label-col, 6.75rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.375rem;
+  row-gap: 0.25rem;
+}
+
+/* Right: mirror of left — wide control first, then fixed label column. */
+.dash-appearance-scope[data-form-label="right"] .field-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--form-label-col, 6.75rem);
+  align-items: center;
+  column-gap: 0.375rem;
+  row-gap: 0.25rem;
+}
+
+.dash-appearance-scope[data-form-label="top"] .field-group {
+  display: block;
+}
+.dash-appearance-scope[data-form-label="top"] .field-label {
+  margin-bottom: 0.375rem;
+}
+
+.dash-appearance-scope:not([data-form-label]) .field-label,
+.dash-appearance-scope[data-form-label="left"] .field-label {
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-right: 0.125rem;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  justify-self: start;
+}
+
+.dash-appearance-scope[data-form-label="right"] .field-label {
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-left: 0.125rem;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  order: 2;
+  justify-self: stretch;
+}
+
+/* Extremely narrow field (e.g. half of a tight 2-col row): stack label above input. */
+@container form-field (max-width: 18rem) {
+  .field-label {
+    grid-column: 1 / -1;
+    order: 0 !important;
+    margin-bottom: 0.25rem;
+    padding-top: 0 !important;
+    white-space: normal;
+  }
+
+  .field-control-wrap {
+    grid-column: 1 / -1;
+    order: 0 !important;
+  }
+}
+
+.dash-appearance-scope[data-form-label="right"] .field-control-wrap {
+  order: 1;
+  min-width: 0;
+}
+
+/* Tall controls: keep label top-aligned with the first line of the field. */
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root),
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) {
+  align-items: start;
+}
+
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(textarea) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.signature-pad-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.video-recorder-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.image-upload-root) .field-label,
+.dash-appearance-scope:not([data-form-label="top"]) .field-group:has(.file-uploader-root) .field-label {
+  padding-top: 0.625rem;
+}
+
+/*
+ * Detail pages: same Appearance label placement as forms (left / right / top).
+ * Left/right keep a fixed label column so values line up in a section.
+ */
+.dash-appearance-scope .detail-field.field-group {
+  container-type: inline-size;
+  container-name: detail-field;
+  row-gap: 0;
+}
+
+.dash-appearance-scope:not([data-form-label]) .detail-field.field-group,
+.dash-appearance-scope[data-form-label="left"] .detail-field.field-group {
+  display: grid;
+  grid-template-columns: var(--detail-label-col, 6.75rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.25rem;
+}
+
+.dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
+  display: grid;
+  /* Mirror left: value flexes, fixed label column on the right. */
+  grid-template-columns: minmax(0, 1fr) var(--detail-label-col, 6.75rem);
+  align-items: center;
+  column-gap: 0.25rem;
+}
+
+.dash-appearance-scope[data-form-label="top"] .detail-field.field-group {
+  display: block;
+}
+
+.dash-appearance-scope[data-form-label="top"] .detail-field .field-label {
+  margin-bottom: 0.125rem;
+  padding-top: 0;
+  white-space: normal;
+}
+
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
+  order: 2;
+  text-align: left;
+  justify-self: start;
+}
+
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-control-wrap {
+  order: 1;
+  min-width: 0;
+}
+
+.dash-appearance-scope .detail-field .field-label {
+  margin-bottom: 0;
+  padding-top: 0;
+  align-self: center;
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.dash-appearance-scope:not([data-form-label]) .detail-field .field-label,
+.dash-appearance-scope[data-form-label="left"] .detail-field .field-label,
+.dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
+  white-space: normal;
+}
+
+.dash-appearance-scope .detail-field .field-control-wrap {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+/* Description / notes: keep the label at the top of a tall value. */
+.dash-appearance-scope .detail-field.field-group:has(textarea),
+.dash-appearance-scope .detail-field--block {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-label,
+.dash-appearance-scope .detail-field--block .field-label {
+  padding-top: 0.2rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-field.field-group:has(textarea) .field-control-wrap,
+.dash-appearance-scope .detail-field--block .field-control-wrap {
+  align-items: stretch;
+}
+
+/* When a detail field is extremely narrow, stack label above value. */
+@container detail-field (max-width: 14rem) {
+  .field-label {
+    grid-column: 1 / -1;
+    padding-top: 0 !important;
+    margin-bottom: 0.25rem;
+    white-space: normal;
+    order: 0 !important;
+  }
+
+  .field-control-wrap {
+    grid-column: 1 / -1;
+    order: 0 !important;
+  }
+}
+
+.detail-metrics-host {
+  container-type: inline-size;
+  container-name: detail-metrics;
+  width: 100%;
+  min-width: 0;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+  align-items: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+  padding-top: 0.15rem;
+  align-self: start;
+}
+
+.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+  align-self: start;
+}
+
+/*
+ * Very light CRM-style row rules between detail fields.
+ * Column gap is padding so borders read as one continuous line across both columns.
+ */
+.dash-appearance-scope .detail-metrics-grid > .detail-field {
+  border-bottom-width: var(--dash-detail-row-line-width, 1px);
+  border-bottom-style: var(--dash-detail-row-line-style, solid);
+  border-bottom-color: rgb(241 245 249); /* slate-100 */
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.dash-appearance-scope.dark .detail-metrics-grid > .detail-field,
+:is(.dark) .dash-appearance-scope .detail-metrics-grid > .detail-field {
+  border-bottom-color: rgb(30 41 59 / 0.9); /* slate-800 */
+}
+
+@media (min-width: 640px) {
+  .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 0.75rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.sm\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 0.75rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.md\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 0.75rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.lg\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 0.75rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(odd) {
+    padding-right: 0.75rem;
+  }
+  .dash-appearance-scope .detail-metrics-grid.xl\:grid-cols-2 > .detail-field:not(.col-span-full):nth-child(even) {
+    padding-left: 0.75rem;
+  }
+}
+
+/* Beside a map / narrow pane: one field per row until the pane is wide enough. */
+@container detail-metrics (max-width: 36rem) {
+  .detail-metrics-grid.form-field-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .dash-appearance-scope .detail-metrics-grid > .detail-field {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .dash-appearance-scope:not([data-form-label]) .field-group,
+  .dash-appearance-scope[data-form-label="left"] .field-group,
+  .dash-appearance-scope[data-form-label="right"] .field-group {
+    grid-template-columns: 1fr;
+  }
+  .dash-appearance-scope:not([data-form-label]) .field-label,
+  .dash-appearance-scope[data-form-label="left"] .field-label,
+  .dash-appearance-scope[data-form-label="right"] .field-label {
+    padding-top: 0;
+    margin-bottom: 0.375rem;
+    text-align: left;
+    order: 0;
+    white-space: normal;
+  }
+  .dash-appearance-scope[data-form-label="right"] .field-control-wrap {
+    order: 0;
+  }
+
+  /* Phone: stack detail label above value for readability */
+  .dash-appearance-scope:not([data-form-label]) .detail-field.field-group,
+  .dash-appearance-scope[data-form-label="left"] .detail-field.field-group,
+  .dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dash-appearance-scope .detail-field .field-label {
+    padding-top: 0;
+    margin-bottom: 0.125rem;
+  }
+}
+
+/* Required: asterisk (default) vs red line on the control */
+.dash-appearance-scope[data-required-indicator="redLine"] .field-required-asterisk {
+  display: none;
+}
+
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .field-control,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > input:not([type="hidden"]),
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > textarea,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > select,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .surface-phone-root
+  .PhoneInput,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > button,
+.dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  [data-field-control] {
+  border-left-width: 3px;
+  border-left-color: rgb(220 38 38);
+}
+
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .field-control,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > input:not([type="hidden"]),
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > textarea,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > select,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  .surface-phone-root
+  .PhoneInput,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  > button,
+.dark .dash-appearance-scope[data-required-indicator="redLine"]
+  .field-group--required
+  .field-control-wrap
+  [data-field-control] {
+  border-left-color: rgb(248 113 113);
+}
+
+/* Number inputs: hide browser increment/decrement spinners; keep type=number validation. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 @keyframes snackbar-enter {

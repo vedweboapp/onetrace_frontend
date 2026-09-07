@@ -24,22 +24,27 @@ export function ListPageSearchField({
   inputId,
   debounceMs = 400,
 }: Props) {
-  const [local, setLocal] = React.useState(value);
+  const [local, setLocal] = React.useState(value ?? "");
 
   React.useEffect(() => {
-    setLocal(value);
+    setLocal(value ?? "");
   }, [value]);
+
+  const onCommitRef = React.useRef(onCommit);
+  React.useEffect(() => {
+    onCommitRef.current = onCommit;
+  }, [onCommit]);
 
   React.useEffect(() => {
     const t = window.setTimeout(() => {
       const trimmed = local.trim();
-      const urlTrimmed = value.trim();
+      const urlTrimmed = (value ?? "").trim();
       if (trimmed !== urlTrimmed) {
-        onCommit(local);
+        onCommitRef.current(local);
       }
     }, debounceMs);
     return () => window.clearTimeout(t);
-  }, [debounceMs, local, onCommit, value]);
+  }, [debounceMs, local, value]);
 
   return (
     <div className={cn("relative min-w-0 flex-1 sm:max-w-sm", className)}>
@@ -51,7 +56,7 @@ export function ListPageSearchField({
       <input
         id={inputId}
         type="search"
-        value={local}
+        value={local ?? ""}
         onChange={(e) => setLocal(e.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel}

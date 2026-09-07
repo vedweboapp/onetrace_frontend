@@ -60,24 +60,20 @@ export function DetailPanel({
           "transition-[transform,opacity] duration-200 motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-950",
         )}
       >
-        <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 dark:border-slate-800">
-          <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">{title}</h2>
-            {subtitle ? (
-              <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{subtitle}</p>
-            ) : null}
-          </div>
-          {action ? (
-            <div className="shrink-0 flex items-center h-9">
-              {action}
+        <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-5 dark:border-slate-800">
+          <div className="min-w-0 flex-1">
+            <div className="min-w-0 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              {title}
             </div>
-          ) : null}
+            {subtitle ? <div className="mt-1 min-w-0 leading-snug">{subtitle}</div> : null}
+          </div>
+          {action ? <div className="flex h-9 shrink-0 items-center">{action}</div> : null}
           {showCloseButton ? (
             <AppButton
               type="button"
               variant="ghost"
               size="sm"
-              className="size-9 shrink-0 p-0 text-slate-500"
+              className="size-8 shrink-0 p-0 text-slate-500"
               aria-label="Close panel"
               disabled={isBusy}
               onClick={onClose}
@@ -86,9 +82,9 @@ export function DetailPanel({
             </AppButton>
           ) : null}
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-5 sm:px-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-5">{children}</div>
         {footer ? (
-          <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50/90 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70 sm:px-6">
+          <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70 sm:px-5">
             {footer}
           </footer>
         ) : null}

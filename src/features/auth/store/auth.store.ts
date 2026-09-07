@@ -11,7 +11,8 @@ type AuthState = {
     user: AuthUser;
     organizations?: AuthOrganizationMembership[];
   }) => void;
-
+  /** Merge profile fields (name, role) into the signed-in user without resetting the session. */
+  patchUser: (partial: Partial<AuthUser>) => void;
   setAccessToken: (token: string | null) => void;
   clearAuth: () => void;
 };
@@ -28,6 +29,10 @@ export const useAuthStore = create<AuthState>()(
           user,
           organizations: organizations ?? [],
         }),
+      patchUser: (partial) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...partial } : state.user,
+        })),
       setAccessToken: (token) => set({ accessToken: token }),
       clearAuth: () =>
         set({ accessToken: null, user: null, organizations: [] }),

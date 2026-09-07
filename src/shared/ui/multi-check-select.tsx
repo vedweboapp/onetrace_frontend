@@ -2,11 +2,70 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { CheckmarkSelectOption } from "./checkmark-select";
 
+const DROPDOWN_GAP = 4;
+const DROPDOWN_MIN_SPACE = 120;
+const DROPDOWN_PREFERRED_MAX = 320;
+
+type DropdownPlacement = {
+  top: number;
+  left: number;
+  width: number;
+  transform: string;
+  maxHeight: number;
+  openUp: boolean;
+};
+
+function measureDropdownPlacement(
+  anchor: HTMLElement,
+  side: "top" | "bottom" | "auto" = "auto",
+): DropdownPlacement {
+  const r = anchor.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const spaceBelow = vh - r.bottom - DROPDOWN_GAP;
+  const spaceAbove = r.top - DROPDOWN_GAP;
+
+  let openUp = false;
+  if (side === "top") openUp = true;
+  else if (side === "bottom") openUp = false;
+  else openUp = spaceBelow < DROPDOWN_MIN_SPACE && spaceAbove > spaceBelow;
+
+  const maxHeight = Math.max(
+    DROPDOWN_MIN_SPACE,
+    Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
+  );
+
+  if (openUp) {
+    return {
+      top: r.top - DROPDOWN_GAP,
+      left: r.left,
+      width: r.width,
+      transform: "translateY(-100%)",
+      maxHeight,
+      openUp: true,
+    };
+  }
+
+  return {
+    top: r.bottom + DROPDOWN_GAP,
+    left: r.left,
+    width: r.width,
+    transform: "none",
+    maxHeight,
+    openUp: false,
+  };
+}
+
 type Props = {
+  // Existing props...
+  // ...
+  // Optional external search handler to control the query value externally.
+  onSearchChange?: (next: string) => void;
+  // Existing props continuation
+
   id?: string;
   options: CheckmarkSelectOption[];
   values: string[];
@@ -20,6 +79,15 @@ type Props = {
   searchable?: boolean;
   searchPlaceholder?: string;
   portaled?: boolean;
+  /** Opening direction; `"auto"` flips based on viewport space. */
+  side?: "top" | "bottom" | "auto";
+  onAdd?: () => void;
+  addAriaLabel?: string;
+  addLabel?: string;
+  /** Labels for selected values missing from `options` (e.g. after async reload). */
+  fallbackLabels?: Record<string, string>;
+  /** Close the panel after the user checks an option (adds a value). */
+  closeOnSelect?: boolean;
 };
 
 export function MultiCheckSelect({
@@ -36,42 +104,70 @@ export function MultiCheckSelect({
   searchable = true,
   searchPlaceholder = "Search...",
   portaled = true,
+  side = "auto",
+  onAdd,
+  addAriaLabel,
+  addLabel,
+  fallbackLabels,
+  closeOnSelect = false,
+  onSearchChange,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const [panelRect, setPanelRect] = React.useState({ top: 0, left: 0, width: 0 });
+  const [placement, setPlacement] = React.useState<DropdownPlacement>({
+    top: 0,
+    left: 0,
+    width: 0,
+    transform: "none",
+    maxHeight: DROPDOWN_PREFERRED_MAX,
+    openUp: false,
+  });
 
   const selectedMap = React.useMemo(() => new Set(values), [values]);
+  const resolvedOptions = React.useMemo(() => {
+    const byValue = new Map(options.map((opt) => [opt.value, opt]));
+    for (const raw of values) {
+      const id = raw.trim();
+      if (!id || byValue.has(id)) continue;
+      const label = fallbackLabels?.[id]?.trim() || `#${id}`;
+      byValue.set(id, { value: id, label });
+    }
+    return Array.from(byValue.values());
+  }, [options, values, fallbackLabels]);
   const selectedOptions = React.useMemo(
-    () => options.filter((o) => selectedMap.has(o.value)),
-    [options, selectedMap],
+    () => resolvedOptions.filter((o) => selectedMap.has(o.value)),
+    [resolvedOptions, selectedMap],
   );
   const filteredOptions = React.useMemo(() => {
+    if (onSearchChange && query.trim()) {
+      const q = query.trim().toLowerCase();
+      return options.filter((o) => o.label.toLowerCase().includes(q));
+    }
+    if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, query]);
+    if (!q) return resolvedOptions;
+    return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
+  }, [resolvedOptions, options, query, onSearchChange]);
 
-  const updateRect = React.useCallback(() => {
+  const updatePlacement = React.useCallback(() => {
     const el = triggerRef.current;
     if (!el || !open || !portaled) return;
-    const r = el.getBoundingClientRect();
-    setPanelRect({ top: r.bottom + 4, left: r.left, width: r.width });
-  }, [open, portaled]);
+    setPlacement(measureDropdownPlacement(el, side));
+  }, [open, portaled, side]);
 
   React.useLayoutEffect(() => {
-    updateRect();
+    updatePlacement();
     if (!open || !portaled) return;
-    window.addEventListener("resize", updateRect);
-    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
     return () => {
-      window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
     };
-  }, [open, portaled, updateRect]);
+  }, [open, portaled, updatePlacement]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -80,21 +176,36 @@ export function MultiCheckSelect({
       if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    // Defer so the opening click does not immediately close the panel.
+    const timerId = window.setTimeout(() => {
+      document.addEventListener("click", handler);
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+      document.removeEventListener("click", handler);
+    };
   }, [open]);
 
   React.useEffect(() => {
     if (open) setQuery("");
   }, [open]);
 
+  React.useEffect(() => {
+    if (open) {
+      onSearchChange?.(query);
+    }
+  }, [query, open, onSearchChange]);
+
   function toggleOne(value: string) {
-    if (selectedMap.has(value)) onChange(values.filter((v) => v !== value));
-    else onChange([...values, value]);
+    const isAdding = !selectedMap.has(value);
+    if (isAdding) onChange([...values, value]);
+    else onChange(values.filter((v) => v !== value));
+    if (closeOnSelect && isAdding) setOpen(false);
   }
 
   const triggerClass = cn(
-    "min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm text-slate-900 outline-none transition",
+    "field-control flex min-h-11 w-full min-w-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
+    "text-[length:var(--dash-body-size,0.875rem)]",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
     "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800/90",
@@ -102,33 +213,44 @@ export function MultiCheckSelect({
     invalid && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20 dark:border-red-500",
   );
 
+  const panelMaxHeight = open ? placement.maxHeight : DROPDOWN_PREFERRED_MAX;
+
   const panel = (
     <div
       ref={panelRef}
       data-ot-checkmark-portal=""
-      className="z-[200] max-h-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
+      className={cn(
+        "z-[200] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+        !portaled && "absolute left-0 top-full z-10 mt-1 w-full",
+      )}
       style={
         portaled
           ? {
               position: "fixed",
-              top: panelRect.top,
-              left: panelRect.left,
-              width: Math.max(panelRect.width, 220),
+              top: placement.top,
+              left: placement.left,
+              width: Math.max(placement.width, 280),
+              transform: placement.transform,
+              maxHeight: panelMaxHeight,
             }
-          : undefined
+          : { maxHeight: panelMaxHeight }
       }
     >
       {searchable ? (
         <div className="border-b border-slate-100 p-2 dark:border-slate-800">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuery(val);
+              if (onSearchChange) onSearchChange(val);
+            }}
             placeholder={searchPlaceholder}
             className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
         </div>
       ) : null}
-      <ul role="listbox" aria-label={listLabel} className="max-h-64 overflow-auto py-1">
+      <ul role="listbox" aria-label={listLabel} className="min-h-0 flex-1 overflow-auto py-1">
         {filteredOptions.map((opt) => {
           const checked = selectedMap.has(opt.value);
           return (
@@ -163,6 +285,22 @@ export function MultiCheckSelect({
           <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
         ) : null}
       </ul>
+      {onAdd && !disabled ? (
+        <div className="shrink-0 border-t border-slate-200 p-2 dark:border-slate-600">
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-[color:var(--dash-accent,#111111)] transition hover:bg-slate-50 dark:hover:bg-slate-800"
+            aria-label={addAriaLabel ?? "Add new"}
+            onClick={() => {
+              setOpen(false);
+              onAdd();
+            }}
+          >
+            <Plus className="size-4" strokeWidth={2.5} aria-hidden />
+            <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -179,17 +317,17 @@ export function MultiCheckSelect({
         onClick={() => !disabled && setOpen((v) => !v)}
         className={triggerClass}
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex w-full items-center justify-between gap-2">
           {selectedOptions.length === 0 ? (
             <span className="truncate text-slate-400 dark:text-slate-500">{placeholder}</span>
           ) : (
-            <div className="flex min-h-6 flex-1 flex-wrap gap-1.5">
+            <div className="flex min-h-6 flex-1 flex-wrap content-center gap-1">
               {selectedOptions.map((opt) => (
                 <span
                   key={opt.value}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] leading-tight text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  {opt.label}
+                  <span className="truncate">{opt.label}</span>
                   <span
                     role="button"
                     tabIndex={0}

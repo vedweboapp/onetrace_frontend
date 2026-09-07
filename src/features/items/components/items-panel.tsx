@@ -5,19 +5,22 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchItemsPage } from "@/features/items/api/item.api";
+import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  AddButton, AppButton,
+  AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -26,29 +29,25 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { deleteItem } from "@/features/items/api/item.api";
-
-function asNumberMaybe(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim()) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-
-function moneyDisplay(v: unknown): string {
-  const n = asNumberMaybe(v);
-  if (n == null) return "—";
-  return n.toFixed(2);
-}
+import {
+  MassActionBar,
+  buildItemMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+import { useOrgCurrency } from "@/shared/money/use-org-currency";
+import { useOrgNumber } from "@/shared/number/use-org-number";
 
 export function ItemsPanel() {
   const t = useTranslations("Dashboard.items");
+  const tComposite = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
+  const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
+  const { formatQuantity } = useOrgNumber();
   const dateFmt = useDashboardDateFormat();
   const router = useRouter();
   const pathname = usePathname();
@@ -89,6 +88,40 @@ export function ItemsPanel() {
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const pageRange = getListPageRange(pagination);
 
+  const listFilters = React.useMemo(
+    () => ({ search: search || undefined, isComposite: false as const }),
+    [search],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildItemMassUpdateFields({
+        name: t("modal.name"),
+        sku: t("modal.sku"),
+        quantity: t("modal.quantity"),
+        costPrice: t("modal.costPrice"),
+        sellingPrice: t("modal.sellingPrice"),
+        isActive: tComposite("table.status"),
+        activeLabel: tComposite("statusActive"),
+        inactiveLabel: tComposite("statusInactive"),
+      }),
+    [t, tComposite],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllItemIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "items",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
+
   const commitSearch = React.useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -111,10 +144,10 @@ export function ItemsPanel() {
           setItems(next);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setItems([]);
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -126,14 +159,19 @@ export function ItemsPanel() {
   }, [page, pageSize, refreshNonce, search, t]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Item) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function confirmDelete() {
@@ -144,8 +182,8 @@ export function ItemsPanel() {
       toastSuccess(t("deletedToast"));
       setDeleteTarget(null);
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("deleteError"));
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -154,9 +192,10 @@ export function ItemsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Item>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.mono("sku", t("table.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
-      c.tabular("qty", t("table.quantity"), (r) => r.quantity ?? "—", {
+      c.tabular("qty", t("table.quantity"), (r) => formatQuantity(r.quantity), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
       c.tabular("cost", t("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
@@ -169,31 +208,31 @@ export function ItemsPanel() {
         responsive: "lg",
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeleteTarget(row);
-              },
-            },
-          ]}
-        />
-      )),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeleteTarget(row);
+      //         },
+      //       },
+      //     ]}
+      //   />
+      // )),
     ];
-  }, [t, tList, dateFmt]);
+  }, [t, tList, dateFmt, massSel.tableColumn, formatQuantity, moneyDisplay]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -215,10 +254,19 @@ export function ItemsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -235,32 +283,16 @@ export function ItemsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="items"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "items",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
@@ -269,9 +301,10 @@ export function ItemsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={row.sku ? <span className="font-mono text-xs">{row.sku}</span> : undefined}
-                  description={`Qty: ${row.quantity ?? "—"} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
+                  description={`Qty: ${formatQuantity(row.quantity)} · Cost: ${moneyDisplay(row.cost_price)} · Sell: ${moneyDisplay(row.selling_price)}`}
                   footer={
                     <div className="flex w-full justify-end">
                       <span className="text-xs text-slate-500 dark:text-slate-400">
