@@ -25,16 +25,12 @@ export type Schedule = {
 
 export type CreateSchedulePayload = {
   job_id: number;
-  worker_id: number;
+  /** One id for a single worker, or many for bulk/group. */
   worker_ids: number[];
   client_id: number;
   project_id?: number | null;
   start_at: string;
   end_at: string;
-  notes?: string | null;
-  recurrence?: ScheduleRecurrence;
-  recurrence_end_at?: string | null;
-  all_day?: boolean;
   /** Optional group context when scheduling a whole user group. */
   group_id?: number | null;
 };

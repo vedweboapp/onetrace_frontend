@@ -30,6 +30,8 @@ import {
   type OccupiedRange,
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
+import { SCHEDULING_PEOPLE_CHECKBOX_GUTTER_CLASS } from "@/features/scheduling/components/scheduling-people-header";
+import type { SchedulingGroupRow } from "@/features/scheduling/utils/scheduling-people-row.util";
 import {
   buildDayHourLabels,
   clipMinutesRange,
@@ -77,8 +79,15 @@ export type TimelineRangeSelect = {
   endTime: string;
 };
 
+export type TimelineGroupRangeSelect = {
+  group: SchedulingGroupRow;
+  day: Date;
+  startTime: string;
+  endTime: string;
+};
+
 type DragState = {
-  techId: number;
+  rowKey: string;
   startMin: number;
   endMin: number;
   valid: boolean;
@@ -87,6 +96,8 @@ type DragState = {
 type Props = {
   day: Date;
   technicians: SchedulingTechnician[];
+  /** When set, render group rows instead of user rows. */
+  groupRows?: SchedulingGroupRow[] | null;
   schedules: Schedule[];
   timeOffs?: WorkerTimeOff[];
   hideWorkerColumn?: boolean;
@@ -113,6 +124,7 @@ type Props = {
   createBusy?: boolean;
   onCreateSchedule: (tech: SchedulingTechnician, day: Date) => void;
   onRangeSelect?: (range: TimelineRangeSelect) => void;
+  onGroupRangeSelect?: (range: TimelineGroupRangeSelect) => void;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
   onCopySchedule?: (schedule: Schedule) => void;
@@ -122,11 +134,14 @@ type Props = {
   /** Multi-select workers for bulk schedule. */
   selectedWorkerIds?: Set<number>;
   onToggleWorkerSelected?: (tech: SchedulingTechnician) => void;
+  selectedGroupIds?: Set<number>;
+  onToggleGroupSelected?: (group: SchedulingGroupRow) => void;
 };
 
 export function SchedulingDayTimeline({
   day,
   technicians,
+  groupRows = null,
   schedules,
   timeOffs = [],
   hideWorkerColumn = false,
@@ -143,6 +158,7 @@ export function SchedulingDayTimeline({
   createBusy = false,
   onCreateSchedule: _onCreateSchedule,
   onRangeSelect,
+  onGroupRangeSelect,
   onScheduleClick,
   onRemoveSchedule,
   onCopySchedule,
@@ -151,13 +167,17 @@ export function SchedulingDayTimeline({
   onWorkerClick,
   selectedWorkerIds,
   onToggleWorkerSelected,
+  selectedGroupIds,
+  onToggleGroupSelected,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
   const dayKey = toDateKey(day);
   const hours = buildDayHourLabels();
   const timelineWidth = hours.length * HOUR_WIDTH_PX;
-  const singleWorker = technicians.length === 1;
+  const isGroupsMode = Array.isArray(groupRows);
+  const rowCount = isGroupsMode ? groupRows.length : technicians.length;
+  const singleWorker = !isGroupsMode && technicians.length === 1;
   const [drag, setDrag] = React.useState<DragState | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const workerRowRefs = React.useRef(new Map<number, HTMLDivElement>());
@@ -212,6 +232,22 @@ export function SchedulingDayTimeline({
     return out;
   }
 
+  function rowsFromGroupMap<T extends { id: number }>(
+    map: Map<number, T[]>,
+    group: SchedulingGroupRow,
+  ): T[] {
+    const seen = new Set<number>();
+    const out: T[] = [];
+    for (const member of group.members) {
+      for (const row of rowsFromWorkerMap(map, member)) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        out.push(row);
+      }
+    }
+    return out;
+  }
+
   function scheduleOccupiedFor(tech: SchedulingTechnician): OccupiedRange[] {
     return occupiedRangesForDay(rowsFromWorkerMap(schedulesByWorker, tech), dayKey);
   }
@@ -221,6 +257,20 @@ export function SchedulingDayTimeline({
       ...scheduleOccupiedFor(tech),
       ...occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
     ];
+  }
+
+  function occupiedForGroup(group: SchedulingGroupRow): OccupiedRange[] {
+    const seen = new Set<string>();
+    const out: OccupiedRange[] = [];
+    for (const member of group.members) {
+      for (const range of occupiedFor(member)) {
+        const key = `${range.startMinutes}:${range.endMinutes}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(range);
+      }
+    }
+    return out;
   }
 
   function canPasteOntoWorker(tech: SchedulingTechnician): boolean {
@@ -247,6 +297,14 @@ export function SchedulingDayTimeline({
     const occupied = occupiedFor(tech);
     if (!isRangeWithinAvailability(start, end, window, known)) return false;
     return isRangeFree(start, end, occupied);
+  }
+
+  function rangeIsValidForGroup(group: SchedulingGroupRow, startMin: number, endMin: number): boolean {
+    const start = Math.min(startMin, endMin);
+    const end = Math.max(startMin, endMin);
+    if (end - start < 15) return false;
+    if (group.members.length === 0) return false;
+    return group.members.some((member) => rangeIsValid(member, start, end));
   }
 
   function commitDrag(tech: SchedulingTechnician, startMin: number, endMin: number) {
@@ -277,16 +335,47 @@ export function SchedulingDayTimeline({
     });
   }
 
+  function commitGroupDrag(group: SchedulingGroupRow, startMin: number, endMin: number) {
+    const start = Math.min(startMin, endMin);
+    const end = Math.max(startMin, endMin);
+    if (end - start < 15 || !onGroupRangeSelect) return;
+    if (group.members.length === 0) {
+      toastError(t("bulk.groupEmpty"));
+      return;
+    }
+    if (!rangeIsValidForGroup(group, start, end)) {
+      toastError(t("conflict.unavailable"));
+      return;
+    }
+    onGroupRangeSelect({
+      group,
+      day,
+      startTime: minutesToTime(start),
+      endTime: minutesToTime(end),
+    });
+  }
+
   const headerTones = hours.map((hour) =>
     mergeTones(
-      technicians.map((tech) =>
-        hourTone(
-          hour,
-          getDayAvailabilityWindow(tech.availableDays, day),
-          hasAvailabilityData(tech.availableDays),
-          occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
-        ),
-      ),
+      isGroupsMode
+        ? (groupRows ?? []).flatMap((group) =>
+            group.members.map((tech) =>
+              hourTone(
+                hour,
+                getDayAvailabilityWindow(tech.availableDays, day),
+                hasAvailabilityData(tech.availableDays),
+                occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
+              ),
+            ),
+          )
+        : technicians.map((tech) =>
+            hourTone(
+              hour,
+              getDayAvailabilityWindow(tech.availableDays, day),
+              hasAvailabilityData(tech.availableDays),
+              occupiedRangesForDay(rowsFromWorkerMap(timeOffByWorker, tech), dayKey),
+            ),
+          ),
     ),
   );
 
@@ -322,7 +411,7 @@ export function SchedulingDayTimeline({
     onScrollTargetApplied,
   ]);
 
-  if (technicians.length === 0) {
+  if (rowCount === 0) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {peopleHeader ? (
@@ -344,11 +433,13 @@ export function SchedulingDayTimeline({
         >
           {hideWorkerColumn ? null : (
             <div
-              className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950"
+              className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-white px-3 py-1.5 dark:border-slate-800 dark:bg-slate-950"
               style={{ width: WORKER_COL_PX }}
             >
               {peopleHeader ?? (
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("usersColumn")}</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  {isGroupsMode ? t("groupsColumn") : t("usersColumn")}
+                </span>
               )}
             </div>
           )}
@@ -385,7 +476,219 @@ export function SchedulingDayTimeline({
           </div>
         </div>
 
-        {technicians.map((tech, techIndex) => {
+        {isGroupsMode
+          ? (groupRows ?? []).map((group, groupIndex) => {
+              const rowKey = `g:${group.id}`;
+              const primary =
+                group.members.find((m) => hasAvailabilityData(m.availableDays)) ?? group.members[0] ?? null;
+              const window = primary ? getDayAvailabilityWindow(primary.availableDays, day) : null;
+              const knownAvailability = group.members.some((m) => hasAvailabilityData(m.availableDays));
+              const cellSchedules = rowsFromGroupMap(schedulesByWorker, group);
+              const cellTimeOffs = rowsFromGroupMap(timeOffByWorker, group);
+              const occupied = occupiedForGroup(group);
+              const hasBlocks = cellSchedules.length > 0 || cellTimeOffs.length > 0;
+              const rowHeight = hasBlocks ? SCHEDULED_ROW_HEIGHT_PX : EMPTY_ROW_HEIGHT_PX;
+              const activeDrag = drag?.rowKey === rowKey ? drag : null;
+              const canBook =
+                allowCreate &&
+                !createBusy &&
+                dragMode === "book" &&
+                knownAvailability &&
+                group.members.length > 0;
+              const availabilityBands = primary
+                ? buildDayTimeSegments({
+                    dayKey,
+                    window,
+                    knownAvailability,
+                    schedules: cellSchedules,
+                    timeOffs: cellTimeOffs,
+                    spanStartMinutes: SCHEDULE_DAY_START_HOUR * 60,
+                    spanEndMinutes: SCHEDULE_DAY_END_HOUR * 60,
+                  }).filter(
+                    (segment) =>
+                      segment.kind === "available" ||
+                      segment.kind === "unavailable" ||
+                      segment.kind === "free",
+                  )
+                : [];
+
+              return (
+                <div
+                  key={group.id}
+                  className="group/row flex"
+                  style={{
+                    minHeight: rowHeight,
+                    gap: WORKER_TIMELINE_GAP_PX,
+                    marginBottom: groupIndex < (groupRows?.length ?? 0) - 1 ? WORKER_ROW_GAP_PX : 0,
+                  }}
+                >
+                  {hideWorkerColumn ? null : (
+                    <div
+                      className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
+                      style={{ width: WORKER_COL_PX }}
+                    >
+                      {onToggleGroupSelected ? (
+                        <span className={SCHEDULING_PEOPLE_CHECKBOX_GUTTER_CLASS}>
+                          <input
+                            type="checkbox"
+                            className="size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                            checked={selectedGroupIds?.has(group.id) ?? false}
+                            onChange={() => onToggleGroupSelected(group)}
+                            aria-label={t("bulk.selectGroup", { name: group.name })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </span>
+                      ) : null}
+                      <div
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
+                        aria-hidden
+                      >
+                        {group.initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {group.name}
+                        </p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {t("groupMemberCount", { count: group.memberCount })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(
+                      "group/cell relative shrink-0 select-none overflow-hidden",
+                      onGroupRangeSelect && canBook ? "cursor-crosshair" : null,
+                    )}
+                    style={{ width: timelineWidth, minHeight: rowHeight, touchAction: "none" }}
+                    onPointerDown={(e) => {
+                      if (createBusy || !onGroupRangeSelect || e.button !== 0 || !canBook) return;
+                      const target = e.target as HTMLElement;
+                      if (target.closest("[data-schedule-chip],[data-timeoff-chip],button")) return;
+                      const startMin = pointerToMinutes(e.clientX, e.currentTarget);
+                      if (!minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
+                      const endMin = startMin + 15;
+                      setDrag({
+                        rowKey,
+                        startMin,
+                        endMin,
+                        valid: rangeIsValidForGroup(group, startMin, endMin),
+                      });
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                    }}
+                    onPointerMove={(e) => {
+                      if (!drag || drag.rowKey !== rowKey) return;
+                      let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                      if (window) {
+                        endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                      }
+                      setDrag({
+                        ...drag,
+                        endMin,
+                        valid: rangeIsValidForGroup(group, drag.startMin, endMin),
+                      });
+                    }}
+                    onPointerUp={(e) => {
+                      if (!drag || drag.rowKey !== rowKey) return;
+                      const startMin = drag.startMin;
+                      let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                      if (window) {
+                        endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                      }
+                      setDrag(null);
+                      commitGroupDrag(group, startMin, endMin);
+                    }}
+                    onPointerCancel={() => setDrag(null)}
+                  >
+                    <div className="absolute inset-0">
+                      {availabilityBands.map((segment) => {
+                        const { leftPct, widthPct } = minutesBandPct(segment.startMinutes, segment.endMinutes);
+                        return (
+                          <div
+                            key={`${segment.kind}-${segment.startMinutes}`}
+                            className={cn(
+                              "pointer-events-none absolute inset-y-0",
+                              segment.kind === "available"
+                                ? "bg-emerald-100/90 dark:bg-emerald-950/45"
+                                : segment.kind === "unavailable"
+                                  ? "bg-slate-200/80 dark:bg-slate-800/80"
+                                  : "bg-white dark:bg-slate-950",
+                            )}
+                            style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                          />
+                        );
+                      })}
+                      <div className="pointer-events-none absolute inset-0 flex">
+                        {hours.map((hour) => (
+                          <div
+                            key={hour}
+                            className="shrink-0 border-r border-slate-100/80 dark:border-slate-800/60"
+                            style={{ width: HOUR_WIDTH_PX }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {activeDrag ? (
+                      <div
+                        className={cn(
+                          "pointer-events-none absolute inset-y-0 z-[2] border border-dashed",
+                          activeDrag.valid
+                            ? "border-sky-400 bg-sky-200/60 dark:bg-sky-900/50"
+                            : "border-red-400 bg-red-200/50 dark:bg-red-900/40",
+                        )}
+                        style={{
+                          left: `${minutesBandPct(activeDrag.startMin, activeDrag.endMin).leftPct}%`,
+                          width: `${minutesBandPct(activeDrag.startMin, activeDrag.endMin).widthPct}%`,
+                        }}
+                      />
+                    ) : null}
+
+                    {cellTimeOffs.map((row) => {
+                      const { leftPct, widthPct } = scheduleTimelineSpan(
+                        row.start_at,
+                        row.end_at,
+                        SCHEDULE_DAY_START_HOUR,
+                        SCHEDULE_DAY_END_HOUR,
+                      );
+                      return (
+                        <TimeOffChip
+                          key={row.id}
+                          timeOff={row}
+                          compact
+                          className="absolute inset-y-0.5 z-[1] min-h-0 rounded-md"
+                          style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
+                          onRemove={onRemoveTimeOff ? () => onRemoveTimeOff(row) : undefined}
+                        />
+                      );
+                    })}
+
+                    {cellSchedules.map((schedule) => {
+                      const { leftPct, widthPct } = scheduleTimelineSpan(
+                        schedule.start_at,
+                        schedule.end_at,
+                        SCHEDULE_DAY_START_HOUR,
+                        SCHEDULE_DAY_END_HOUR,
+                      );
+                      return (
+                        <ScheduleEventChip
+                          key={schedule.id}
+                          schedule={schedule}
+                          compact
+                          className="absolute inset-y-0.5 z-[1] min-h-0 rounded-md"
+                          style={dayTimelineChipStyle(leftPct, widthPct, TIMELINE_CHIP_INSET_PX, TIMELINE_CHIP_GUTTER_PX)}
+                          onOpen={() => onScheduleClick(schedule)}
+                          onCopy={onCopySchedule ? () => onCopySchedule(schedule) : undefined}
+                          onRemove={onRemoveSchedule ? () => onRemoveSchedule(schedule) : undefined}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          : technicians.map((tech, techIndex) => {
           const cellSchedules = rowsFromWorkerMap(schedulesByWorker, tech);
           const cellTimeOffs = rowsFromWorkerMap(timeOffByWorker, tech);
           const window = getDayAvailabilityWindow(tech.availableDays, day);
@@ -397,7 +700,8 @@ export function SchedulingDayTimeline({
             : hasBlocks
               ? SCHEDULED_ROW_HEIGHT_PX
               : EMPTY_ROW_HEIGHT_PX;
-          const activeDrag = drag?.techId === tech.id ? drag : null;
+          const rowKey = `u:${tech.id}`;
+          const activeDrag = drag?.rowKey === rowKey ? drag : null;
           const canBook = allowCreate && !createBusy && dragMode === "book" && window != null && knownAvailability;
           const canMarkTimeOff = !createBusy && dragMode === "timeoff" && window != null && knownAvailability;
           const pendingForRow =
@@ -440,21 +744,23 @@ export function SchedulingDayTimeline({
             >
               {hideWorkerColumn ? null : (
                 <div
-                  className="sticky left-0 z-10 flex shrink-0 items-start gap-2 border-r border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
+                  className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
                   style={{ width: WORKER_COL_PX }}
                 >
                   {onToggleWorkerSelected ? (
-                    <input
-                      type="checkbox"
-                      className="mt-2 size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                      checked={selectedWorkerIds?.has(tech.id) ?? false}
-                      onChange={() => onToggleWorkerSelected(tech)}
-                      aria-label={t("bulk.selectWorker", { name: tech.name })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <span className={SCHEDULING_PEOPLE_CHECKBOX_GUTTER_CLASS}>
+                      <input
+                        type="checkbox"
+                        className="size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        checked={selectedWorkerIds?.has(tech.id) ?? false}
+                        onChange={() => onToggleWorkerSelected(tech)}
+                        aria-label={t("bulk.selectWorker", { name: tech.name })}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </span>
                   ) : null}
                   <div
-                    className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
                     aria-hidden
                   >
                     {tech.initials}
@@ -512,7 +818,7 @@ export function SchedulingDayTimeline({
                   if (dragMode === "timeoff" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
                   const endMin = startMin + 15;
                   setDrag({
-                    techId: tech.id,
+                    rowKey,
                     startMin,
                     endMin,
                     valid: rangeIsValid(tech, startMin, endMin),
@@ -520,7 +826,7 @@ export function SchedulingDayTimeline({
                   e.currentTarget.setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
-                  if (!drag || drag.techId !== tech.id) return;
+                  if (!drag || drag.rowKey !== rowKey) return;
                   let endMin = pointerToMinutes(e.clientX, e.currentTarget);
                   if ((dragMode === "book" || dragMode === "timeoff") && window) {
                     endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
@@ -532,7 +838,7 @@ export function SchedulingDayTimeline({
                   });
                 }}
                 onPointerUp={(e) => {
-                  if (!drag || drag.techId !== tech.id) return;
+                  if (!drag || drag.rowKey !== rowKey) return;
                   const startMin = drag.startMin;
                   let endMin = pointerToMinutes(e.clientX, e.currentTarget);
                   if ((dragMode === "book" || dragMode === "timeoff") && window) {

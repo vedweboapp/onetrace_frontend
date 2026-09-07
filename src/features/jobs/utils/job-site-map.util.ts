@@ -22,6 +22,20 @@ function sitePostalCode(site: JobSiteRef): string {
   return (site.pincode ?? site.zip_code ?? "").trim();
 }
 
+export function formatJobSiteAddress(site: JobSiteRef | null | undefined): string {
+  if (!site) return "";
+  return [
+    site.address_line_1?.trim(),
+    site.address_line_2?.trim(),
+    site.city?.trim(),
+    site.state?.trim(),
+    sitePostalCode(site) || null,
+    site.country?.trim(),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** True when the job's nested site has coords or enough address text to geocode. */
 export function jobHasMapableSite(job: Pick<Job, "site">): boolean {
   const site = asJobSiteRef(job.site);
@@ -39,11 +53,18 @@ export function jobHasMapableSite(job: Pick<Job, "site">): boolean {
   });
 }
 
+export type JobMapPin = AddressMapPoint & {
+  jobId: number;
+  jobLabel: string;
+  addressText: string;
+  siteName: string | null;
+};
+
 /**
  * Build a map pin from the job's site address.
  * Uses job id as the point id so multiple jobs at the same site stay distinct.
  */
-export function jobToSiteAddressMapPoint(job: Job): AddressMapPoint | null {
+export function jobToSiteAddressMapPoint(job: Job): JobMapPin | null {
   const site = asJobSiteRef(job.site);
   if (!site || !jobHasMapableSite(job)) return null;
 
@@ -51,11 +72,17 @@ export function jobToSiteAddressMapPoint(job: Job): AddressMapPoint | null {
   const lon = parseCoord(site.longitude);
   const serial = job.job_serial_number?.trim();
   const title = job.title?.trim();
-  const siteName = site.site_name?.trim();
-  const label = [serial || title || `Job #${job.id}`, siteName].filter(Boolean).join(" · ");
+  const jobLabel = serial || title || `Job #${job.id}`;
+  const siteName = site.site_name?.trim() || null;
+  const addressText = formatJobSiteAddress(site);
+  const label = [jobLabel, siteName].filter(Boolean).join(" · ");
 
   return {
     id: job.id,
+    jobId: job.id,
+    jobLabel,
+    addressText,
+    siteName,
     label,
     addressParts: {
       line1: site.address_line_1,

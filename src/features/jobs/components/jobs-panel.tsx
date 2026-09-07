@@ -595,9 +595,7 @@ export function JobsPanel() {
               </ListPageCardGrid>
             </div>
           ) : listViewMode === "map" ? (
-            <div className="p-4 sm:p-6">
-              <div className="h-[min(70vh,560px)] min-h-[320px] w-full animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            </div>
+            <div className="min-h-[min(72vh,640px)] w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
           ) : (
             <div className="space-y-2 p-6">
               <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

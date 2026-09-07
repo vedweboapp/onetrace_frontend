@@ -56,6 +56,8 @@ type Props = {
   technician: CreateScheduleTechnician | null;
   /** When scheduling several workers at once (bulk / group). */
   technicians?: CreateScheduleTechnician[] | null;
+  /** Optional group context when scheduling a whole user group. */
+  groupId?: number | null;
   defaultDateKey: string;
   prefill?: CreateSchedulePrefill | null;
   existingSchedule?: Schedule | null;
@@ -106,6 +108,7 @@ export function CreateScheduleModal({
   onClose,
   technician,
   technicians,
+  groupId = null,
   defaultDateKey,
   prefill,
   existingSchedule,
@@ -311,16 +314,12 @@ export function CreateScheduleModal({
 
       const payload = {
         job_id: jobNum,
-        worker_id: workerIds[0] ?? selectedWorker.id,
         worker_ids: workerIds.length > 0 ? workerIds : [selectedWorker.id],
         client_id: clientNum,
         project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
+        group_id: groupId ?? null,
         start_at: startIso,
         end_at: endIso,
-        notes: null,
-        recurrence: "none" as const,
-        recurrence_end_at: null,
-        all_day: false,
       };
 
       if (existingSchedule) {
