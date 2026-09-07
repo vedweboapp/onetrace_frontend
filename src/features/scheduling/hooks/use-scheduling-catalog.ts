@@ -41,12 +41,15 @@ export type SchedulingCatalog = {
 
 type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
 
-const CATALOG_VERSION = 4;
-let catalogCacheVersion = 0;
+/** Bump when filter/technician shape changes so in-memory caches reset. */
+const CATALOG_VERSION = 6;
+let techniciansCacheVersion = 0;
+let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
 let techniciansPromise: Promise<SchedulingTechnician[]> | null = null;
 let filterCache: FilterCatalog | null = null;
 let filterPromise: Promise<FilterCatalog> | null = null;
+const filterSubscribers = new Set<(next: FilterCatalog) => void>();
 const jobsByClientCache = new Map<number, Job[]>();
 
 const EMPTY_FILTERS: FilterCatalog = {
@@ -56,12 +59,19 @@ const EMPTY_FILTERS: FilterCatalog = {
   userGroups: [],
 };
 
+function publishFilterCatalog(next: FilterCatalog) {
+  filterCache = next;
+  filterCacheVersion = CATALOG_VERSION;
+  filterSubscribers.forEach((fn) => fn(next));
+}
+
 export function invalidateSchedulingCatalog(): void {
   techniciansCache = null;
   techniciansPromise = null;
   filterCache = null;
   filterPromise = null;
-  catalogCacheVersion = 0;
+  techniciansCacheVersion = 0;
+  filterCacheVersion = 0;
   jobsByClientCache.clear();
 }
 
@@ -73,12 +83,12 @@ export function jobSelectLabel(job: Job): string {
 }
 
 async function loadTechnicians(fallbackTechnicianTitle: string): Promise<SchedulingTechnician[]> {
-  if (techniciansCache && catalogCacheVersion === CATALOG_VERSION) return techniciansCache;
+  if (techniciansCache && techniciansCacheVersion === CATALOG_VERSION) return techniciansCache;
   if (!techniciansPromise) {
     techniciansPromise = loadSchedulingTechnicians(fallbackTechnicianTitle)
       .then((rows) => {
         techniciansCache = rows;
-        catalogCacheVersion = CATALOG_VERSION;
+        techniciansCacheVersion = CATALOG_VERSION;
         return rows;
       })
       .finally(() => {
@@ -88,40 +98,83 @@ async function loadTechnicians(fallbackTechnicianTitle: string): Promise<Schedul
   return techniciansPromise;
 }
 
-async function loadFilterCatalog(): Promise<FilterCatalog> {
-  if (filterCache && catalogCacheVersion === CATALOG_VERSION) return filterCache;
-  if (!filterPromise) {
-    filterPromise = Promise.all([
-      fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-      fetchJobsPage(1, 500, { is_active: true }, { silent: true }),
-      fetchProjectsPage(1, 500, { is_active: true }).catch(() => ({ items: [] })),
-      fetchUserGroupsPage(1, 500).catch(() => ({ items: [] as UserGroup[] })),
-    ])
-      .then(([clientsRes, jobsRes, projectsRes, groupsRes]) => {
-        const next: FilterCatalog = {
-          clients: clientsRes.items.map((c) => ({ id: c.id, name: c.name })),
-          jobs: jobsRes.items.map((job) => ({
-            id: job.id,
-            label: jobSelectLabel(job),
-            clientId: getJobClientId(job.client),
-            projectId: getJobProjectId(job.project),
-          })),
-          projects: projectsRes.items.map((p) => ({
-            id: p.id,
-            name: p.name,
-            clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
-          })),
-          userGroups: groupsRes.items,
-        };
-        filterCache = next;
-        catalogCacheVersion = CATALOG_VERSION;
-        return next;
-      })
-      .finally(() => {
-        filterPromise = null;
-      });
+/**
+ * Loads filter catalogs in parallel and publishes each resource as soon as it
+ * resolves so clients/groups/projects appear without waiting on the slowest call.
+ */
+async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterCatalog> {
+  if (!options?.force && filterCache && filterCacheVersion === CATALOG_VERSION) {
+    return filterCache;
   }
-  return filterPromise;
+  // Always join an in-flight load (even when force) to avoid duplicate Promise.all work.
+  if (filterPromise) return filterPromise;
+
+  let partial: FilterCatalog =
+    filterCache && filterCacheVersion === CATALOG_VERSION
+      ? { ...filterCache }
+      : { ...EMPTY_FILTERS };
+
+  const publish = (patch: Partial<FilterCatalog>) => {
+    partial = { ...partial, ...patch };
+    publishFilterCatalog(partial);
+  };
+
+  const run = (async () => {
+    await Promise.all([
+      fetchClientsPage(1, 500, { is_active: true }, { silent: true })
+        .then((res) => {
+          publish({
+            clients: res.items.map((c) => ({ id: c.id, name: c.name })),
+          });
+        })
+        .catch(() => {
+          if (partial.clients.length === 0) publish({ clients: [] });
+        }),
+      fetchJobsPage(1, 500, { is_active: true }, { silent: true })
+        .then((res) => {
+          publish({
+            jobs: res.items.map((job) => ({
+              id: job.id,
+              label: jobSelectLabel(job),
+              clientId: getJobClientId(job.client),
+              projectId: getJobProjectId(job.project),
+            })),
+          });
+        })
+        .catch(() => {
+          if (partial.jobs.length === 0) publish({ jobs: [] });
+        }),
+      fetchProjectsPage(1, 500, { is_active: true })
+        .then((res) => {
+          publish({
+            projects: res.items.map((p) => ({
+              id: p.id,
+              name: p.name,
+              clientId: typeof p.client === "number" ? p.client : (p.client?.id ?? null),
+            })),
+          });
+        })
+        .catch(() => {
+          if (partial.projects.length === 0) publish({ projects: [] });
+        }),
+      fetchUserGroupsPage(1, 100)
+        .then((groupsRes) => {
+          publish({
+            userGroups: Array.isArray(groupsRes.items) ? groupsRes.items : [],
+          });
+        })
+        .catch(() => {
+          // Keep prior groups on transient failure — do not wipe a good cache.
+        }),
+    ]);
+    return partial;
+  })();
+
+  filterPromise = run;
+  void run.finally(() => {
+    if (filterPromise === run) filterPromise = null;
+  });
+  return run;
 }
 
 export function useSchedulingCatalog(
@@ -130,19 +183,22 @@ export function useSchedulingCatalog(
 ) {
   const includeFilters = Boolean(options?.includeFilters);
   const [technicians, setTechnicians] = React.useState<SchedulingTechnician[]>(
-    techniciansCache && catalogCacheVersion === CATALOG_VERSION ? techniciansCache : [],
+    techniciansCache && techniciansCacheVersion === CATALOG_VERSION ? techniciansCache : [],
   );
   const [filters, setFilters] = React.useState<FilterCatalog>(
-    filterCache && catalogCacheVersion === CATALOG_VERSION ? filterCache : EMPTY_FILTERS,
+    filterCache && filterCacheVersion === CATALOG_VERSION ? filterCache : EMPTY_FILTERS,
   );
   const [loading, setLoading] = React.useState(
-    !(techniciansCache && catalogCacheVersion === CATALOG_VERSION),
+    !(techniciansCache && techniciansCacheVersion === CATALOG_VERSION),
+  );
+  const [filtersLoading, setFiltersLoading] = React.useState(
+    includeFilters && !(filterCache && filterCacheVersion === CATALOG_VERSION),
   );
   const [error, setError] = React.useState<unknown>(null);
 
   React.useEffect(() => {
     let cancelled = false;
-    setLoading(!(techniciansCache && catalogCacheVersion === CATALOG_VERSION));
+    setLoading(!(techniciansCache && techniciansCacheVersion === CATALOG_VERSION));
     loadTechnicians(fallbackTechnicianTitle)
       .then((rows) => {
         if (!cancelled) {
@@ -165,21 +221,45 @@ export function useSchedulingCatalog(
   }, [fallbackTechnicianTitle]);
 
   React.useEffect(() => {
-    if (!includeFilters) return;
-    if (filterCache && catalogCacheVersion === CATALOG_VERSION) {
-      setFilters(filterCache);
+    if (!includeFilters) {
+      setFiltersLoading(false);
       return;
     }
+
     let cancelled = false;
+    const onUpdate = (next: FilterCatalog) => {
+      if (!cancelled) setFilters(next);
+    };
+    filterSubscribers.add(onUpdate);
+
+    const cached = filterCache && filterCacheVersion === CATALOG_VERSION ? filterCache : null;
+    if (cached) {
+      setFilters(cached);
+      setFiltersLoading(false);
+    } else {
+      setFiltersLoading(true);
+    }
+
     void loadFilterCatalog()
       .then((next) => {
         if (!cancelled) setFilters(next);
       })
       .catch(() => {
-        if (!cancelled) setFilters(EMPTY_FILTERS);
+        if (!cancelled) {
+          setFilters((prev) =>
+            prev.clients.length > 0 || prev.projects.length > 0 || prev.userGroups.length > 0
+              ? prev
+              : EMPTY_FILTERS,
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFiltersLoading(false);
       });
+
     return () => {
       cancelled = true;
+      filterSubscribers.delete(onUpdate);
     };
   }, [includeFilters]);
 
@@ -194,7 +274,7 @@ export function useSchedulingCatalog(
     [technicians, filters],
   );
 
-  return { catalog, loading, error };
+  return { catalog, loading, filtersLoading, error };
 }
 
 export async function loadUnassignedJobsForClient(clientId: number): Promise<Job[]> {

@@ -1,5 +1,5 @@
-/** Allowed page sizes for list APIs (`page_size` query). */
-export const LIST_PAGE_SIZE_CHOICES = [10, 20, 50, 100] as const;
+/** Allowed page sizes for list APIs (`page_size` query). Minimum is 20. */
+export const LIST_PAGE_SIZE_CHOICES = [20, 50, 100] as const;
 
 export type ListPageSizeChoice = (typeof LIST_PAGE_SIZE_CHOICES)[number];
 

@@ -2759,7 +2759,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 uppercase">Plot name</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase">Plot Name</label>
                     <input
                       value={plotDetailDraftName}
                       onChange={(e) => setPlotDetailDraftName(e.target.value)}

@@ -1,4 +1,5 @@
 import type { InvoiceClientRef, InvoiceContactRef, InvoiceDetail, InvoiceListItem } from "@/features/invoices/types/invoice.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 
 export function nestedId(value: number | { id: number } | null | undefined): number | undefined {
   if (value == null) return undefined;
@@ -33,7 +34,7 @@ export function invoiceContactLabel(
   if (contact && typeof contact === "object") {
     const person = contact.contact_person?.trim();
     if (person) return person;
-    const name = contact.name?.trim();
+    const name = formatContactName(contact);
     if (name) return name;
   }
   if (fallbackName?.trim()) return fallbackName.trim();

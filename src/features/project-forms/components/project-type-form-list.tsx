@@ -86,7 +86,7 @@ const ProjectTypeFormList = () => {
     const dateFmt = useDashboardDateFormat();
 
     const { page, pageSize, search, setUrl, setPage, setPageSize } =
-        useListUrlState({ defaultPageSize: 10 });
+        useListUrlState({ defaultPageSize: 20 });
     const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
     const commitSearch = React.useCallback(

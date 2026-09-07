@@ -23,6 +23,20 @@ export function parseQuoteCategoryParam(raw: string | null | undefined): QuoteCa
   return undefined;
 }
 
+/** Read `quote_category` embedded in a Scope & Pricing `back` query param. */
+export function parseQuoteCategoryFromBackParam(raw: string | null | undefined): QuoteCategoryApi | undefined {
+  if (!raw?.trim()) return undefined;
+  let decoded = raw.trim();
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    decoded = raw.trim();
+  }
+  const qIdx = decoded.indexOf("?");
+  if (qIdx < 0) return undefined;
+  return parseQuoteCategoryParam(new URLSearchParams(decoded.slice(qIdx + 1)).get("quote_category"));
+}
+
 /** Infer service vs project quote from API detail when the URL lacks `quote_category`. */
 export function resolveQuotationQuoteCategory(detail: {
   quote_category?: string | null;

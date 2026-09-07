@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchPurchaseOrder } from "@/features/purchase-orders/api/purchase-order.api";
 import { PurchaseOrderDetailBody } from "@/features/purchase-orders/components/purchase-order-detail-body";
 import type { PurchaseOrderContactRef, PurchaseOrderDetail } from "@/features/purchase-orders/types/purchase-order.types";
@@ -60,7 +61,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of contacts) {
-            const label = row.name?.trim() || row.email?.trim();
+            const label = formatContactName(row);
             if (label) mapped[row.id] = label;
           }
           setContactNames(mapped);

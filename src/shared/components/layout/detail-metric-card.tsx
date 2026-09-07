@@ -35,14 +35,14 @@ export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
 
 /** Shared flat section chrome (title row + body padding). */
 export const detailFlatSectionHeaderClassName =
-  "flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3";
+  "flex flex-row items-center justify-between gap-2 px-4 py-2.5 sm:px-5 sm:py-3";
 export const detailFlatSectionBodyClassName = "px-4 pt-2.5 pb-4 sm:px-5 sm:pt-3 sm:pb-4";
 export const detailFlatSectionTitleClassName =
   "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
 
 /** Inline sub-heading inside a section (e.g. Contact information). */
 export const detailSubsectionTitleClassName =
-  "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  "mb-3 text-xs font-semibold tracking-normal text-slate-500 dark:text-slate-400";
 
 export function activeStatusSelectOptions(
   activeLabel: string,
@@ -113,7 +113,7 @@ export function DetailMetricsGrid({
         className={cn(
           "detail-metrics-grid",
           !wide && detailFieldsLayoutClassName,
-          "gap-x-0 gap-y-0",
+          "gap-x-6 gap-y-0",
           className,
         )}
       >
@@ -135,13 +135,8 @@ export function DetailMetricCard({
   return (
     <div className={cn("field-group detail-field min-w-0", className)}>
       <p className={detailFieldLabelClassName}>{label}</p>
-      <div
-        className={cn(
-          "field-control-wrap min-w-0 flex-1",
-          detailValueSurfaceClassName,
-        )}
-      >
-        {children}
+      <div className="field-control-wrap min-w-0 flex-1">
+        <div className={cn(detailValueSurfaceClassName, "flex-wrap gap-x-2 gap-y-1")}>{children}</div>
       </div>
     </div>
   );

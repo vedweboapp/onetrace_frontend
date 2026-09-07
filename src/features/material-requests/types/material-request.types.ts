@@ -76,6 +76,8 @@ export type MaterialRequestTimelineEntry = {
   occurred_at?: string | null;
   tag?: string | null;
   dispatch_id?: number | null;
+  actor_name?: string | null;
+  actor_role?: string | null;
 };
 
 export type MaterialRequestLogEntry = MaterialRequestTimelineEntry;
@@ -133,7 +135,7 @@ export type MaterialRequestItemPayload = {
 export type MaterialRequestCreatePayload = {
   worker_name: number;
   requested_date: string;
-  status?: string;
+  status?: number;
   jobs: MaterialRequestJobPayload[];
   /** Omitted on create — backend derives items from selected jobs. */
   items?: MaterialRequestItemPayload[];

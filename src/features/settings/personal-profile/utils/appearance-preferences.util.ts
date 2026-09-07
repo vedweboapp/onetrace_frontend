@@ -9,6 +9,12 @@ import type {
   FormLabelPlacement,
   RequiredFieldIndicator,
 } from "../store/dashboard-appearance.store";
+import {
+  clampFontSizePx,
+  DEFAULT_FONT_SIZE_PX,
+  DETAIL_ROW_LINE_STYLE_ORDER,
+  DETAIL_ROW_LINE_WIDTH_ORDER,
+} from "../store/dashboard-appearance.store";
 
 /** API `appearance_settings.preferences` shape from user-profile. */
 export type ApiAppearancePreferences = {
@@ -30,6 +36,53 @@ export type ApiAppearancePreferences = {
   dashboard_layout?: string;
   page_label_position?: string;
   mandatory_field_display?: string;
+  /** Detail-page field row divider (Appearance → Form layout). */
+  detail_row_line?: {
+    width?: string;
+    style?: string;
+  };
+};
+
+/**
+ * Full default preferences for new users (backend login / profile create).
+ * Keep in sync with `useDashboardAppearanceStore` initial state + Appearance panel.
+ */
+export const DEFAULT_API_APPEARANCE_PREFERENCES: Required<
+  Pick<
+    ApiAppearancePreferences,
+    | "theme_mode"
+    | "language"
+    | "dashboard_layout"
+    | "page_label_position"
+    | "mandatory_field_display"
+    | "font"
+    | "accent"
+    | "error_message"
+    | "detail_row_line"
+  >
+> = {
+  theme_mode: "light",
+  language: "en",
+  dashboard_layout: "lithium",
+  page_label_position: "left",
+  mandatory_field_display: "asterisk",
+  font: {
+    family: "inter",
+    size: "16px",
+  },
+  accent: {
+    type: "preset",
+    preset_id: "black",
+    custom_hex: "#111111",
+  },
+  error_message: {
+    color_mode: "default",
+    custom_hex: "#DC2626",
+  },
+  detail_row_line: {
+    width: "1",
+    style: "solid",
+  },
 };
 
 export type AppearanceStoreSlice = {
@@ -45,18 +98,13 @@ export type AppearanceStoreSlice = {
   detailRowLineStyle: DetailRowLineStyle;
 };
 
-const API_FONT_SIZE_TO_STORE: Record<string, DashboardFontSize> = {
-  small: "small",
-  default: "medium",
-  large: "large",
-  xlarge: "large",
-};
+function fontSizeFromApi(raw: string | undefined): DashboardFontSize {
+  return clampFontSizePx(raw, DEFAULT_FONT_SIZE_PX);
+}
 
-const STORE_FONT_SIZE_TO_API: Record<DashboardFontSize, string> = {
-  small: "small",
-  medium: "default",
-  large: "large",
-};
+function fontSizeToApi(size: DashboardFontSize): string {
+  return `${clampFontSizePx(size)}px`;
+}
 
 const API_FONT_FAMILY_TO_STORE: Record<string, DashboardFontFamily> = {
   inter: "inter",
@@ -109,6 +157,18 @@ function pickAccentId(raw: string | undefined): DashboardAccentId {
   return allowed.has(raw ?? "") ? (raw as DashboardAccentId) : "black";
 }
 
+function pickDetailRowWidth(raw: string | undefined): DetailRowLineWidth {
+  return DETAIL_ROW_LINE_WIDTH_ORDER.includes(raw as DetailRowLineWidth)
+    ? (raw as DetailRowLineWidth)
+    : "1";
+}
+
+function pickDetailRowStyle(raw: string | undefined): DetailRowLineStyle {
+  return DETAIL_ROW_LINE_STYLE_ORDER.includes(raw as DetailRowLineStyle)
+    ? (raw as DetailRowLineStyle)
+    : "solid";
+}
+
 /** Map API preferences into dashboard appearance store fields. */
 export function appearanceStoreFromApiPreferences(
   prefs: ApiAppearancePreferences | null | undefined,
@@ -121,7 +181,7 @@ export function appearanceStoreFromApiPreferences(
     out.fontFamily = API_FONT_FAMILY_TO_STORE[prefs.font.family] ?? "inter";
   }
   if (prefs.font?.size) {
-    out.fontSize = API_FONT_SIZE_TO_STORE[prefs.font.size] ?? "medium";
+    out.fontSize = fontSizeFromApi(prefs.font.size);
   }
 
   if (prefs.accent?.type === "custom" && prefs.accent.custom_hex) {
@@ -144,6 +204,13 @@ export function appearanceStoreFromApiPreferences(
       API_REQUIRED_TO_STORE[prefs.mandatory_field_display] ?? "asterisk";
   }
 
+  if (prefs.detail_row_line?.width != null) {
+    out.detailRowLineWidth = pickDetailRowWidth(prefs.detail_row_line.width);
+  }
+  if (prefs.detail_row_line?.style != null) {
+    out.detailRowLineStyle = pickDetailRowStyle(prefs.detail_row_line.style);
+  }
+
   return out;
 }
 
@@ -158,7 +225,7 @@ export function buildApiAppearancePreferences(input: {
 
   return {
     font: {
-      size: STORE_FONT_SIZE_TO_API[store.fontSize],
+      size: fontSizeToApi(store.fontSize),
       family: STORE_FONT_FAMILY_TO_API[store.fontFamily],
     },
     accent: {
@@ -169,13 +236,16 @@ export function buildApiAppearancePreferences(input: {
     language,
     theme_mode: themeMode,
     error_message: errorMessage ?? {
-      color_mode: "default",
-      custom_hex: "#DC2626",
+      ...DEFAULT_API_APPEARANCE_PREFERENCES.error_message,
     },
     dashboard_layout: store.sidebarLayout,
     page_label_position: store.formLabelPlacement,
     mandatory_field_display:
       store.requiredIndicator === "redLine" ? "red_line" : "asterisk",
+    detail_row_line: {
+      width: store.detailRowLineWidth,
+      style: store.detailRowLineStyle,
+    },
   };
 }
 

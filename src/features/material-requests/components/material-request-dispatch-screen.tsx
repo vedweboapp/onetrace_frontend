@@ -17,7 +17,6 @@ import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-t
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
-import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { DispatchedQuantityCell } from "@/shared/components/quantity/dispatched-quantity-cell";
 import {
   quantityTableCellClass,
@@ -25,6 +24,7 @@ import {
   quantityTableInputCellClass,
 } from "@/shared/components/quantity/quantity-table-columns";
 import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { playFlyToNavCelebration } from "@/shared/ui/fly-to-nav-celebration";
 import { FIELD_MAX_LENGTH, sanitizeDescriptionInput } from "@/shared/form";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -89,6 +89,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const [extraDraft, setExtraDraft] = React.useState<ExtraDraft>({ id: "new", item: "", quantity: "" });
   const [extraRows, setExtraRows] = React.useState<ExtraDraft[]>([]);
   const [notes, setNotes] = React.useState<string>("");
+  const confirmOriginRef = React.useRef<HTMLElement | null>(null);
 
   const itemQuickCreate = useQuickCreate({ kind: "item" });
   const reloadItemOptions = React.useCallback(async () => {
@@ -285,8 +286,14 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
     setSaving(true);
     try {
       await dispatchMaterialRequest(detail.id, detail, payload, itemLabelById);
+      await playFlyToNavCelebration({
+        targetSelector: '[data-nav="dispatches"]',
+        fromEl: confirmOriginRef.current,
+        label: dispatchT("flyCardLabel"),
+        sound: true,
+      });
       toastSuccess(dispatchT("successToast"));
-      router.replace(buildPathWithStoredBack(detailHref, listHref));
+      router.replace(routes.dashboard.dispatches);
     } finally {
       setSaving(false);
     }
@@ -340,7 +347,10 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
               size="sm"
               loading={saving}
               disabled={!canSubmit || saving || loading || !detail}
-              onClick={() => void handleSubmit()}
+              onClick={(e) => {
+                confirmOriginRef.current = e.currentTarget as HTMLElement;
+                void handleSubmit();
+              }}
             >
               {dispatchT("confirm")}
             </AppButton>

@@ -28,6 +28,7 @@ import {
   type CheckmarkSelectOption,
   FieldGroup,
   FieldErrorText,
+  FormFieldRow,
   RequiredMark,
   fieldErrorTextClassName,
   surfaceInputClassName,
@@ -66,7 +67,9 @@ function compositeAbbreviationCellClassName(rowIndex: number) {
 
 function compositeActionsCellClassName(rowIndex: number) {
   return cn(
-    "flex gap-2 px-3 py-2 sm:justify-end",
+    // Start-align so Remove sits next to Abbreviation; column width follows the
+    // widest row (Remove + Add row) and justify-end would leave a large gap.
+    "flex flex-wrap items-center gap-2 px-3 py-2",
     rowIndex > 0 && "sm:border-t sm:border-slate-100 dark:sm:border-slate-800",
   );
 }
@@ -228,20 +231,22 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       }
     >
       <form id="group-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <FieldGroup label={t("name")} htmlFor={nameId} required>
-          <input
-            id={nameId}
-            type="text"
-            autoComplete="off"
-            value={name}
-            onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
-            onBlur={() => setNameTouched(true)}
-            disabled={submitting}
-            placeholder={t("namePlaceholder")}
-            className={surfaceInputClassName}
-          />
-          {nameInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
-        </FieldGroup>
+        <FormFieldRow cols="2" from="md" labelTop>
+          <FieldGroup label={t("name")} htmlFor={nameId} required>
+            <input
+              id={nameId}
+              type="text"
+              autoComplete="off"
+              value={name}
+              onChange={(e) => setName(sanitizeTitleInput(e.target.value))}
+              onBlur={() => setNameTouched(true)}
+              disabled={submitting}
+              placeholder={t("namePlaceholder")}
+              className={surfaceInputClassName}
+            />
+            {nameInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
+          </FieldGroup>
+        </FormFieldRow>
 
         <div>
           {compositeLoadError ? (

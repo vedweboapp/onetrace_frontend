@@ -34,6 +34,8 @@ export type EntityDetailScreenContext<T> = {
   error: string | null;
   notFound: boolean;
   retry: () => void;
+  /** Refetch without clearing UI (e.g. after schedule create updates assigned workers). */
+  reloadQuiet: () => Promise<void>;
   dateFmt: Intl.DateTimeFormat;
   listBack: string;
 };
@@ -47,7 +49,12 @@ export type EntityDetailScreenProps<T> = {
   fetch: (id: number) => Promise<T>;
   getTitle: (detail: T) => string;
   subtitle?: (detail: T) => ReactNode;
-  actions?: (ctx: { detail: T; listBack: string; retry: () => void }) => ReactNode;
+  actions?: (ctx: {
+    detail: T;
+    listBack: string;
+    retry: () => void;
+    reloadQuiet: () => Promise<void>;
+  }) => ReactNode;
   headerExtension?: ReactNode;
   children?: (ctx: { detail: T; dateFmt: Intl.DateTimeFormat; retry: () => void }) => ReactNode;
   renderSurface?: (ctx: EntityDetailScreenContext<T>) => ReactNode;
@@ -83,7 +90,7 @@ export function EntityDetailScreen<T>({
   wrapSurface = true,
 }: EntityDetailScreenProps<T>) {
   const listBack = useEntityDetailBack(listSection, listRoute);
-  const { detail, loading, error, notFound, retry, dateFmt } = useEntityDetailScreen({
+  const { detail, loading, error, notFound, retry, reloadQuiet, dateFmt } = useEntityDetailScreen({
     entityId,
     fetch,
     loadError,
@@ -101,6 +108,7 @@ export function EntityDetailScreen<T>({
     error,
     notFound,
     retry,
+    reloadQuiet,
     dateFmt,
     listBack,
   };
@@ -133,7 +141,11 @@ export function EntityDetailScreen<T>({
         backAriaLabel={labels.backAria}
         subtitle={detail && subtitle ? subtitle(detail) : undefined}
         extension={headerExtension}
-        actions={!loading && !error && !notFound && detail && actions ? actions({ detail, listBack, retry }) : null}
+        actions={
+          !loading && !error && !notFound && detail && actions
+            ? actions({ detail, listBack, retry, reloadQuiet })
+            : null
+        }
       />
 
       {wrapSurface ? (

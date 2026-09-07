@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useUrlParams } from "@/shared/hooks/use-url-params";
+import { dashboardFillPageFrameClassName } from "@/shared/config/dashboard-shell";
+import { useSettingsPageTab } from "@/shared/hooks/use-settings-page-tab";
+import { cn } from "@/core/utils/http.util";
 import { fetchPersonalProfile } from "../api/personal-profile.api";
 import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
@@ -12,12 +14,16 @@ import PersonalProfileForm, { PersonalProfileFormHandle } from "./personal-profi
 import { AppearancePanel, type AppearancePanelHandle } from "./appearance-panel";
 import { hydrateAppearanceFromProfile } from "../utils/hydrate-appearance-from-profile";
 
+const PROFILE_TABS = [
+  { id: "profile", label: "PERSONAL PROFILE" },
+  { id: "appearance", label: "APPEARANCE" },
+] as const;
+
 const PersonalProfileDetails = () => {
   const t = useTranslations("Dashboard.settingsPersonalProfile");
   const userId = useAuthStore((s) => s.user?.id);
   const { setTheme } = useTheme();
-  const [params] = useUrlParams({ tab: "profile" });
-  const activeTab = String(params.tab || "profile");
+  const { activeTab, setTab } = useSettingsPageTab("profile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<PersonalProfileResponse | null>(null);
@@ -26,6 +32,8 @@ const PersonalProfileDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const formRef = useRef<PersonalProfileFormHandle>(null);
   const appearanceRef = useRef<AppearancePanelHandle>(null);
+  /** Tab we are leaving — used so cancel restores the correct panel. */
+  const previousTabRef = useRef(activeTab);
 
   const loadProfile = useCallback(async () => {
     if (!userId) {
@@ -74,21 +82,22 @@ const PersonalProfileDetails = () => {
   }, [userId, t, setTheme]);
 
   useEffect(() => {
-    loadProfile();
+    void loadProfile();
   }, [loadProfile]);
 
   useEffect(() => {
     setIsEditing(false);
     setIsSaving(false);
+    previousTabRef.current = activeTab;
   }, [activeTab]);
 
   const handleSuccess = () => {
-    loadProfile();
+    void loadProfile();
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    if (activeTab === "appearance") {
+    if (previousTabRef.current === "appearance" || activeTab === "appearance") {
       appearanceRef.current?.cancel();
     }
   };
@@ -101,9 +110,18 @@ const PersonalProfileDetails = () => {
     formRef.current?.submit();
   };
 
+  const handleTabChange = (next: string) => {
+    if (next === activeTab) return;
+    previousTabRef.current = activeTab;
+    setTab(next);
+  };
+
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className={cn(dashboardFillPageFrameClassName, "w-full")}>
       <PersonalProfileHeader
+        tabs={[...PROFILE_TABS]}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         isEditing={isEditing}
         setIsEditing={setIsEditing}
         showEdit={activeTab === "profile" || activeTab === "appearance"}
@@ -112,38 +130,40 @@ const PersonalProfileDetails = () => {
         isSaving={isSaving}
       />
 
-      {activeTab === "appearance" ? (
-        isLoading ? (
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4 pt-1 sm:pb-5">
+        {activeTab === "appearance" ? (
+          isLoading ? (
+            <div className="flex w-full items-center justify-center p-20">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+            </div>
+          ) : (
+            <AppearancePanel
+              ref={appearanceRef}
+              isEditing={isEditing}
+              isSaving={isSaving}
+              setIsSaving={setIsSaving}
+              onSaved={() => setIsEditing(false)}
+              initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
+            />
+          )
+        ) : isLoading ? (
           <div className="flex w-full items-center justify-center p-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-sm font-medium text-red-500">{error}</p>
         ) : (
-          <AppearancePanel
-            ref={appearanceRef}
+          <PersonalProfileForm
+            ref={formRef}
             isEditing={isEditing}
+            initialData={profile}
+            isLoading={isLoading}
+            onSuccess={handleSuccess}
             isSaving={isSaving}
             setIsSaving={setIsSaving}
-            onSaved={() => setIsEditing(false)}
-            initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
           />
-        )
-      ) : isLoading ? (
-        <div className="flex w-full items-center justify-center p-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-        </div>
-      ) : error ? (
-        <p className="text-sm font-medium text-red-500">{error}</p>
-      ) : (
-        <PersonalProfileForm
-          ref={formRef}
-          isEditing={isEditing}
-          initialData={profile}
-          isLoading={isLoading}
-          onSuccess={handleSuccess}
-          isSaving={isSaving}
-          setIsSaving={setIsSaving}
-        />
-      )}
+        )}
+      </div>
     </div>
   );
 };

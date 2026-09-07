@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchAllQuotationIds, fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
@@ -193,7 +194,6 @@ export function QuotationsPanel() {
       try {
         const { items } = await fetchSitesPage(1, 500, {
           client: customerFilter,
-          is_active: true,
         });
         if (!cancelled) setSiteRows(items);
       } catch {
@@ -230,10 +230,10 @@ export function QuotationsPanel() {
           fetchContactsPage(1, 500, { is_active: true }),
           fetchTagsPage(1, 500, { is_active: true }),
           fetchUsersForAppRoles(["technician", "manager", "sales"]),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
         ]);
         if (!cancelled) {
-          setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
+          setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
           const tagLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
           setMassTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: tagLabel(row) })));
           const mergedUsers = [

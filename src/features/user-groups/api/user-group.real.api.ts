@@ -94,8 +94,16 @@ export async function fetchUserGroupsPage(
 
   const { data } = await api.get<UserGroupListResponse>(USER_GROUP_PATHS.list, { params });
   assertEnvelopeSuccess(data);
+  const payload = data.data as unknown;
+  const rows: UserGroup[] = Array.isArray(payload)
+    ? payload
+    : payload &&
+        typeof payload === "object" &&
+        Array.isArray((payload as { results?: unknown }).results)
+      ? ((payload as { results: UserGroup[] }).results)
+      : [];
   return {
-    items: data.data.map((row) => normalizeUserGroup(row)),
+    items: rows.map((row) => normalizeUserGroup(row)),
     pagination: data.pagination,
   };
 }

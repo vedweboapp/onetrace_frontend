@@ -3,6 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type { Job, JobListResponse } from "@/features/jobs/types/job.types";
 import { QUOTATION_PATHS } from "./quotation.paths";
 import { QUOTE_CATEGORY } from "../constants/quotation-category";
 import type {
@@ -270,4 +271,19 @@ export async function exportQuotation(
 export async function sendQuotation(id: number): Promise<void> {
   const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id));
   assertApiSuccess(data);
+}
+
+function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
+  if ("pagination" in data && Array.isArray(data.data) && data.data[0]) {
+    assertEnvelopeSuccess(data);
+    return data.data[0];
+  }
+  assertApiSuccess(data as ApiEnvelope<Job>);
+  return (data as ApiEnvelope<Job>).data;
+}
+
+/** POST `quotations/:id/create-job/` — creates a service job from an approved quotation. */
+export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
+  return parseJobCreateResponse(data);
 }

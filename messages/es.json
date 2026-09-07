@@ -120,7 +120,79 @@
     "NETWORK": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
     "fallback": "Algo salió mal. Inténtalo de nuevo.",
     "HTTP_404": "Registro no encontrado",
-    "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde."
+    "HTTP_500": "El servidor tuvo un problema. Inténtalo más tarde.",
+    "entities": {
+      "client": "Cliente",
+      "vendor": "Proveedor",
+      "contact": "Contacto",
+      "user": "Usuario",
+      "site": "Sitio",
+      "project": "Proyecto",
+      "item": "Artículo",
+      "job": "Trabajo",
+      "invoice": "Factura",
+      "quotation": "Cotización",
+      "group": "Grupo",
+      "projectType": "Tipo de proyecto",
+      "installationType": "Tipo de instalación",
+      "vendorType": "Tipo de proveedor",
+      "unitType": "Tipo de unidad",
+      "rejectionReason": "Motivo de rechazo",
+      "checklistType": "Tipo de checklist",
+      "projectStatus": "Estado de proyecto",
+      "pinStatus": "Estado de pin",
+      "jobStatus": "Estado de trabajo",
+      "materialStatus": "Estado de material",
+      "status": "Estado",
+      "tag": "Etiqueta",
+      "title": "Título",
+      "role": "Rol",
+      "profile": "Perfil"
+    },
+    "fields": {
+      "email": "correo",
+      "phone": "teléfono",
+      "name": "nombre",
+      "username": "nombre de usuario",
+      "code": "código",
+      "sku": "SKU"
+    },
+    "messages": {
+      "clientEmailExists": "Ya existe un cliente con este correo.",
+      "vendorEmailExists": "Ya existe un proveedor con este correo.",
+      "contactEmailExists": "Ya existe un contacto con este correo.",
+      "userEmailExists": "Ya existe un usuario con este correo.",
+      "emailAlreadyExists": "Este correo ya existe.",
+      "entityFieldExists": "Ya existe un {entity} con este {field}.",
+      "entityExists": "Ya existe {entity}.",
+      "entityExistsInOrganization": "Ya existe {entity} en tu organización.",
+      "projectTypeExistsInOrganization": "Ya existe un tipo de proyecto en tu organización.",
+      "installationTypeExistsInOrganization": "Ya existe un tipo de instalación en tu organización.",
+      "vendorTypeExistsInOrganization": "Ya existe un tipo de proveedor en tu organización.",
+      "unitTypeExistsInOrganization": "Ya existe un tipo de unidad en tu organización.",
+      "rejectionReasonExistsInOrganization": "Ya existe un motivo de rechazo en tu organización.",
+      "checklistTypeExistsInOrganization": "Ya existe un tipo de checklist en tu organización.",
+      "projectStatusExistsInOrganization": "Ya existe un estado de proyecto en tu organización.",
+      "pinStatusExistsInOrganization": "Ya existe un estado de pin en tu organización.",
+      "jobStatusExistsInOrganization": "Ya existe un estado de trabajo en tu organización.",
+      "materialStatusExistsInOrganization": "Ya existe un estado de material en tu organización.",
+      "tagExistsInOrganization": "Ya existe una etiqueta en tu organización.",
+      "titleExistsInOrganization": "Ya existe un título en tu organización.",
+      "fieldRequired": "Este campo es obligatorio.",
+      "invalidEmail": "Ingresa un correo válido.",
+      "invalidPhone": "Ingresa un teléfono válido.",
+      "invalidInteger": "Se requiere un número entero válido.",
+      "invalidNumber": "Se requiere un número válido.",
+      "invalidCredentials": "Correo o contraseña no válidos.",
+      "authRequired": "Inicia sesión para continuar.",
+      "permissionDenied": "No tienes permiso para realizar esta acción.",
+      "notFound": "Registro no encontrado.",
+      "network": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "requestFailed": "La solicitud falló.",
+      "validationFailed": "La validación falló.",
+      "badRequest": "Solicitud incorrecta.",
+      "fallback": "Algo salió mal. Inténtalo de nuevo."
+    }
   },
   "NotFound": {
     "title": "Página no encontrada",
@@ -268,6 +340,7 @@
       "flyoutProject": "Proyecto",
       "scheduling": "Programación",
       "qrCodes": "Códigos QR",
+      "forms": "Formularios",
       "projects": "Proyectos",
       "groups": "Grupos",
       "materialRequests": "Solicitudes de Material",
@@ -652,7 +725,7 @@
       "homeCurrency": "Moneda principal",
       "homeCurrencyHint": "Tu moneda principal",
       "currencyFormat": "Formato de moneda",
-      "currencyFormatHint": "Formato de moneda actual",
+      "currencyFormatHint": "Refleja moneda principal, símbolo/código, posición, decimales y formato de dígitos monetarios",
       "currencyDigitFormat": "Formato de dígitos monetarios",
       "numberFormatHint": "Se usa para cantidades y campos solo numéricos",
       "customize": "Personalizar",
@@ -675,6 +748,9 @@
         "description": "Descripción de la empresa",
         "address1": "Dirección 1",
         "address2": "Dirección 2",
+        "country": "País",
+        "state": "Estado / provincia",
+        "city": "Ciudad",
         "zip": "Código postal",
         "numberFormat": "Formato numérico"
       },
@@ -683,6 +759,9 @@
         "website": "https://ejemplo.com",
         "address1": "Calle Principal 123",
         "address2": "Oficina 100",
+        "country": "Seleccionar país",
+        "state": "Seleccionar estado / región",
+        "city": "Seleccionar o escribir ciudad",
         "zip": "94102"
       }
     },
@@ -792,8 +871,8 @@
       "fontFamilyLabel": "Familia tipográfica",
       "fontFamilyHint": "Se aplica en todo el panel para una lectura uniforme.",
       "fontSizeLabel": "Tamaño de fuente",
-      "fontSizeHint": "Ajusta el tamaño base de etiquetas y texto.",
-      "fontSizePreview": "Vista previa: El veloz murciélago hindú comía feliz cardillo y kiwi.",
+      "fontSizeHint": "Elige un tamaño base de 6px a 40px. Tablas, formularios, detalles y modales usan este tamaño.",
+      "fontSizeOption": "{px}px",
       "fonts": {
         "inter": "Inter",
         "roboto": "Roboto",
@@ -801,11 +880,6 @@
         "openSans": "Open Sans",
         "dmSans": "DM Sans",
         "system": "Sistema"
-      },
-      "fontSizes": {
-        "small": "Pequeño",
-        "medium": "Mediano",
-        "large": "Grande"
       },
       "layoutHeading": "Diseño del panel",
       "sidebarLayoutLabel": "Diseño de navegación",
@@ -826,7 +900,7 @@
       },
       "formLayoutHeading": "Diseño de formularios",
       "labelPlacementLabel": "Posición de etiquetas",
-      "labelPlacementHint": "Posición de las etiquetas respecto a los campos en formularios.",
+      "labelPlacementHint": "Izquierda o derecha coloca la etiqueta junto al campo. Arriba la coloca sobre el campo.",
       "labelPlacements": {
         "top": "Arriba",
         "left": "Izquierda",
@@ -839,7 +913,7 @@
         "redLine": "Línea roja"
       },
       "formPreviewHeading": "Vista previa",
-      "formPreviewLabel": "Campo obligatorio de ejemplo",
+      "formPreviewLabel": "Campo de ejemplo",
       "formPreviewValue": "Valor de ejemplo",
       "storageHint": "La apariencia se guarda en este dispositivo para tu cuenta (aún no se envía al servidor). Al volver a iniciar sesión en este navegador, se restauran tus últimas opciones.",
       "detailRowLineWidthLabel": "Grosor de línea en detalle",
@@ -1477,7 +1551,6 @@
         "currentFile": "Archivo actual",
         "validationFile": "Por favor adjunta un archivo",
         "concentricPoint": "Punto concéntrico"
-
       },
       "deleteConfirmTitle": "¿Eliminar este tipo de lista de verificación?",
       "deleteConfirmBody": "Los formularios de trabajo que usen esta lista pueden verse afectados. Esta acción no se puede deshacer.",
@@ -1627,7 +1700,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar dirección",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -1676,6 +1749,7 @@
         "editWithIcon": "Editar",
         "sectionOverview": "Resumen",
         "addressUnavailable": "No hay direcciones registradas.",
+        "addressLine2Empty": "Sin dirección secundaria",
         "noAvailability": "No hay días disponibles configurados.",
         "tabsAria": "Secciones del detalle del usuario",
         "tabs": {
@@ -1912,7 +1986,8 @@
         "phone": "Teléfono",
         "status": "Estado",
         "created": "Creado",
-        "actions": "Acciones"
+        "actions": "Acciones",
+        "createdBy": "Creado por"
       },
       "status": {
         "active": "Activo",
@@ -1977,7 +2052,8 @@
         "pincode": "Código postal",
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
-        "createdBy": "Creado por"
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
       },
       "modal": {
         "createTitle": "Nuevo cliente",
@@ -1996,7 +2072,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -2085,7 +2161,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -2167,7 +2243,8 @@
         "qrCodeId": "ID QR",
         "batchNumber": "N.º de lote",
         "status": "Estado",
-        "assignedJob": "Trabajo asignado",
+        "assignedJob": "ID asignado",
+        "assignedId": "ID asignado",
         "scanCount": "Escaneos",
         "lastScanned": "Último escaneo",
         "created": "Creado",
@@ -2201,15 +2278,37 @@
         "backAria": "Volver a la lista de códigos QR",
         "sectionQr": "Código QR",
         "sectionDetails": "Detalles",
-        "assignedJob": "Trabajo asignado",
+        "assignedJob": "ID asignado",
+        "assignedId": "ID asignado",
         "notAssigned": "Sin asignar",
-        "viewJob": "Ver trabajo asignado",
+        "viewJob": "Ver pin asignado",
+        "assignedPinHint": "Trabajo #{jobId} · Pin #{pinId}",
         "recordId": "ID de registro"
       },
       "fields": {
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por"
+      }
+    },
+    "workerForms": {
+      "metaTitle": "Formularios",
+      "title": "Formularios",
+      "subtitle": "Formularios enviados de todos los trabajos.",
+      "searchPlaceholder": "Buscar formularios, trabajadores o trabajos…",
+      "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay formularios",
+      "emptyDescription": "Los formularios enviados de trabajos aparecerán aquí.",
+      "missingJob": "Este envío no tiene referencia de trabajo, por lo que no se puede abrir.",
+      "pageLabel": "Mostrando {start}-{end} de {total} formularios",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "columns": {
+        "id": "ID",
+        "job": "Trabajo",
+        "workerName": "Trabajador",
+        "projectFormName": "Formulario",
+        "submittedAt": "Enviado"
       }
     },
     "contacts": {
@@ -2269,19 +2368,23 @@
         "retry": "Reintentar",
         "backAria": "Volver a la lista de contactos",
         "sectionOverview": "Resumen",
-        "sectionAddress": "Dirección",
+        "sectionAddress": "Direcciones",
         "sectionRecord": "Registro",
-        "addressUnavailable": "Aún no hay dirección guardada para este contacto.",
+        "addressUnavailable": "Aún no hay direcciones guardadas para este contacto.",
         "addressLine2Empty": "No hay segunda línea de dirección"
       },
       "detailLoadError": "No se pudieron cargar los detalles del contacto. Inténtalo de nuevo.",
       "fields": {
         "name": "Nombre",
+        "firstName": "Nombre",
+        "lastName": "Apellido",
         "contactType": "Tipo de contacto",
         "client": "Cliente",
         "vendor": "Proveedor",
         "email": "Correo",
         "phone": "Teléfono",
+        "addresses": "Direcciones",
+        "addressType": "Tipo de dirección",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "status": "Estado",
@@ -2301,9 +2404,20 @@
       },
       "page": {
         "createTitle": "Crear contacto",
-        "createSubtitle": "Completa los datos del contacto y guarda.",
+        "createSubtitle": "Completa los datos del contacto y una o más direcciones.",
         "editTitle": "Editar",
-        "editSubtitle": "Actualiza los datos del contacto y guarda los cambios."
+        "editSubtitle": "Actualiza los datos del contacto y las direcciones."
+      },
+      "addresses": {
+        "add": "Añadir dirección",
+        "remove": "Eliminar",
+        "primary": "Principal",
+        "rowLabel": "Dirección {number}"
+      },
+      "addressType": {
+        "billing": "Facturación",
+        "shipping": "Envío",
+        "other": "Otro"
       },
       "placeholders": {
         "contactType": "Seleccionar tipo de contacto",
@@ -2315,6 +2429,8 @@
       },
       "validation": {
         "name": "Introduce un nombre de contacto.",
+        "firstName": "Introduce el nombre.",
+        "lastName": "Introduce el apellido.",
         "email": "Introduce un correo válido.",
         "phoneInvalid": "Introduce un número válido con prefijo internacional.",
         "contactType": "Selecciona un tipo de contacto.",
@@ -2324,7 +2440,9 @@
         "country": "Selecciona un país.",
         "state": "Selecciona un estado o provincia.",
         "city": "Selecciona o escribe una ciudad.",
-        "pincode": "Introduce un código postal."
+        "pincode": "Introduce un código postal.",
+        "addressType": "Selecciona un tipo de dirección.",
+        "addressesMin": "Añade al menos una dirección."
       }
     },
     "sites": {
@@ -2886,7 +3004,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -3049,7 +3167,7 @@
         "add": "Añadir dirección",
         "remove": "Eliminar",
         "primary": "Principal",
-        "rowLabel": "Dirección {index}"
+        "rowLabel": "Dirección {number}"
       },
       "addressType": {
         "billing": "Facturación",
@@ -3234,6 +3352,7 @@
         "backAria": "Volver a la solicitud",
         "confirm": "Confirmar envío",
         "successToast": "Envío registrado",
+        "flyCardLabel": "Enviado",
         "sectionLines": "Ítems solicitados",
         "sectionExtra": "Añadir ítems extra",
         "sectionExtraSent": "Ítems extra enviados",
@@ -3247,7 +3366,9 @@
       },
       "timeline": {
         "empty": "Aún no hay eventos.",
-        "event": "Evento"
+        "event": "Evento",
+        "byActor": "Por {name}",
+        "byActorRole": "Por {name} · {role}"
       },
       "logs": {
         "viewDispatch": "Ver registro de envío"
@@ -3300,12 +3421,16 @@
       "actions": {
         "view": "Ver detalle"
       },
+      "card": {
+        "items": "{count} Ítems · {qty} Unidades"
+      },
       "table": {
         "dispatchId": "Número de envío",
         "jobName": "Trabajo",
         "dispatchDate": "Fecha",
         "status": "Estado",
         "workerName": "Trabajador",
+        "items": "Ítems",
         "qty": "Cant.",
         "materialItem": "Material",
         "requested": "Solicitado",
@@ -3453,10 +3578,14 @@
       "technicians": "Técnicos",
       "searchTechnicians": "Buscar técnicos…",
       "searchUsers": "Buscar usuarios…",
+      "searchGroups": "Buscar grupos…",
       "closeSearch": "Cerrar búsqueda",
       "backToUsers": "Volver a todos los usuarios",
       "workerColumn": "Trabajador",
       "usersColumn": "Usuarios",
+      "groupsColumn": "Grupos",
+      "peopleListModeAria": "Mostrar usuarios o grupos",
+      "groupMemberCount": "{count, plural, one {# miembro} other {# miembros}}",
       "thisWeek": "Esta semana",
       "thisMonth": "Este mes",
       "today": "Hoy",
@@ -3470,6 +3599,7 @@
       "allWorkers": "Todos los trabajadores",
       "allUsers": "Todos los usuarios",
       "allUserGroups": "Todos los grupos",
+      "filtersLoading": "Cargando…",
       "createSchedule": "Crear programación",
       "dragToSchedule": "Arrastra para programar",
       "creatingSchedule": "Creando programación…",
@@ -3478,6 +3608,28 @@
       "emptyUsers": "No se encontraron usuarios.",
       "emptyUsersHint": "Prueba otro grupo o borra la búsqueda para ver usuarios.",
       "clearPeopleFilters": "Borrar filtros",
+      "bulk": {
+        "selectAll": "Seleccionar todos los usuarios visibles",
+        "selectAllGroups": "Seleccionar todos los grupos visibles",
+        "selectWorker": "Seleccionar {name}",
+        "selectGroup": "Seleccionar {name}",
+        "scheduleSelected": "Programar ({count})",
+        "scheduleSelectedGroups": "Programar grupos ({count})",
+        "scheduleGroup": "Programar grupo",
+        "groupSelectAria": "Filtrar o programar por grupo",
+        "noneSelected": "Selecciona uno o más usuarios o grupos primero.",
+        "pickGroup": "Elige un grupo primero.",
+        "groupEmpty": "No hay usuarios en ese grupo.",
+        "groupTimeOffUnsupported": "Marca tiempo libre para usuarios individuales, no para grupos.",
+        "workersSelected": "{count} usuarios seleccionados",
+        "partialSuccessToast": "Se programaron {count} usuarios",
+        "resultTitle": "Resultado de programación masiva",
+        "scheduledCount": "{count, plural, one {Se programó # usuario.} other {Se programaron # usuarios.}}",
+        "noneScheduled": "No se programó ningún usuario.",
+        "notScheduledHeading": "No programados",
+        "unknownWorker": "Trabajador #{id}",
+        "close": "Cerrar"
+      },
       "legendAvailable": "Disponible",
       "legendUnavailable": "No disponible",
       "legendScheduled": "Programado",
@@ -3489,7 +3641,7 @@
       "markTimeOff": "Tiempo libre",
       "offDuty": "Libre",
       "availableHoursNote": "Disponible {hours}",
-      "monthJobCount": "{count} trabajos",
+      "monthJobCount": "{count, plural, one {# programación} other {# programaciones}}",
       "monthTimeOffCount": "{count} tiempo libre",
       "conflict": {
         "booked": "Ese horario ya está programado.",
@@ -3501,14 +3653,14 @@
       },
       "agenda": {
         "title": "Programación del día",
-        "subtitle": "{jobs} trabajos · {timeOff} tiempo libre",
+        "subtitle": "{jobs, plural, one {# programación} other {# programaciones}} · {timeOff, plural, one {# tiempo libre} other {# tiempos libres}}",
         "openDay": "Vista diaria",
-        "emptyJobs": "No hay trabajos programados este día.",
+        "emptyJobs": "No hay programaciones este día.",
         "emptyTimeOff": "No hay tiempo libre este día.",
-        "jobsTab": "Trabajos",
+        "jobsTab": "Programaciones",
         "timeOffTab": "Tiempo libre",
         "tabsAria": "Secciones del día",
-        "searchPlaceholder": "Buscar trabajos o usuarios…",
+        "searchPlaceholder": "Buscar programaciones o usuarios…",
         "clientLine": "Cliente – {name}",
         "assignToLine": "Asignar a – {name}"
       },
@@ -3540,7 +3692,9 @@
         "errorToast": "No se pudo crear la programación. Inténtalo de nuevo.",
         "errorRescheduleToast": "No se pudo actualizar la programación. Inténtalo de nuevo.",
         "noUnassignedJobs": "No hay trabajos sin asignar para este cliente.",
-        "loadingJobs": "Cargando trabajos…"
+        "loadingJobs": "Cargando trabajos…",
+        "loadingClients": "Cargando clientes…",
+        "noClients": "No se encontraron clientes."
       },
       "timeOff": {
         "title": "Marcar no disponible",
@@ -3670,6 +3824,21 @@
       "pageLabel": "Mostrando {start}-{end} de {total} trabajos",
       "prev": "Anterior",
       "next": "Siguiente",
+      "mapView": {
+        "emptyTitle": "Sin sitios de trabajo en el mapa",
+        "emptyDescription": "Los trabajos de esta página no tienen una dirección de sitio que se pueda ubicar en el mapa. Añade detalles de dirección o cambia de página.",
+        "skippedCount": "{count, plural, one {# trabajo de esta página no tiene dirección de sitio y está oculto en el mapa.} other {# trabajos de esta página no tienen dirección de sitio y están ocultos en el mapa.}}",
+        "ariaMap": "Mapa de trabajos",
+        "jobId": "ID del trabajo",
+        "address": "Dirección",
+        "site": "Sitio",
+        "client": "Cliente",
+        "status": "Estado",
+        "viewDetails": "Detalles",
+        "openJob": "Abrir trabajo",
+        "panelTitle": "Ubicación del trabajo",
+        "closePanel": "Cerrar panel del trabajo"
+      },
       "delete": "Eliminar",
       "deleteConfirmTitle": "¿Eliminar este trabajo?",
       "deleteConfirmBody": "Esta acción no se puede deshacer.",
@@ -3710,7 +3879,8 @@
           "scheduling": "Programación",
           "materials": "Materiales",
           "dispatch": "Envío",
-          "returns": "Devoluciones"
+          "returns": "Devoluciones",
+          "forms": "Formularios"
         },
         "schedulingTitle": "Programación",
         "schedulingEmpty": "Este trabajo aún no está programado.",
@@ -3727,7 +3897,16 @@
         "dispatchesLoadError": "Error al cargar los envíos.",
         "returnsTitle": "Devoluciones",
         "returnsEmpty": "No se han realizado solicitudes de devolución para este trabajo.",
-        "returnsLoadError": "Error al cargar las devoluciones."
+        "returnsLoadError": "Error al cargar las devoluciones.",
+        "formsTitle": "Formularios",
+        "formsEmpty": "Aún no hay envíos de formularios de trabajadores para este trabajo.",
+        "formsLoadError": "No se pudieron cargar los envíos de formularios. Inténtalo de nuevo.",
+        "formsTable": {
+          "id": "ID",
+          "workerName": "Trabajador",
+          "projectFormName": "Formulario del proyecto",
+          "submittedAt": "Enviado el"
+        }
       },
       "updateStatus": {
         "action": "Actualizar estado",
@@ -3889,7 +4068,7 @@
         "createdAt": "Creado",
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
-        "checklists":"lista de verificación",
+        "checklists": "lista de verificación",
         "selectCheckList": "Seleccionar lista de verificación"
       },
       "modal": {
@@ -3899,6 +4078,7 @@
       },
       "validation": {
         "title": "Introduce un título.",
+        "client": "Selecciona un cliente.",
         "assignedWorker": "Selecciona un técnico asignado.",
         "startDate": "Introduce fecha y hora de inicio.",
         "endDate": "Introduce fecha y hora de fin.",
@@ -3948,6 +4128,7 @@
       "tableView": "Vista de tabla",
       "listView": "Vista de tabla",
       "cardView": "Vista de tarjetas",
+      "mapView": "Vista de mapa",
       "openRowActions": "Abrir acciones de la fila",
       "noResultsTitle": "No hay resultados",
       "noResultsDescription": "Nada coincide con tu búsqueda o filtros. Ajústalos o borra los filtros para ver más elementos.",
@@ -4123,6 +4304,8 @@
         "upload": "Subir",
         "open": "Abrir",
         "empty": "Aún no hay planos. Sube un PDF o una imagen para empezar.",
+        "emptyTitle": "Aún no hay planos",
+        "emptyDescription": "Sube un PDF o una imagen del plano para empezar a colocar pins y parcelas en este proyecto.",
         "loadError": "No se pudieron cargar los planos. Inténtalo de nuevo.",
         "pageLabel": "Mostrando {start}-{end} de {total} planos",
         "prev": "Anterior",
@@ -4131,6 +4314,12 @@
         "cardByUser": "Por {user}",
         "cardOpenAria": "Abrir plano",
         "cardPinCount": "{count} pins",
+        "rename": "Renombrar",
+        "renameAria": "Renombrar plano",
+        "renameSaveAria": "Guardar nombre del plano",
+        "renameCancelAria": "Cancelar renombrado",
+        "renamedToast": "Nombre del plano actualizado",
+        "renameError": "No se pudo renombrar el plano. Inténtalo de nuevo.",
         "table": {
           "drawing": "Plano",
           "block": "Bloque",
@@ -4516,6 +4705,7 @@
         "quantity": "Cantidad",
         "costPrice": "Precio de coste",
         "sellingPrice": "Precio de venta",
+        "pricesFromComponentsHint": "El precio de coste y el de venta se calculan a partir de los ítems componentes seleccionados (y sus cantidades).",
         "components": "Componentes",
         "componentsHint": "Añade uno o más ítems componentes y sus cantidades.",
         "itemsLoadError": "No se pudieron cargar los ítems para componentes.",

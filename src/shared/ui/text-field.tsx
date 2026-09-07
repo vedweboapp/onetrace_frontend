@@ -7,7 +7,7 @@ import { cn } from "@/core/utils/http.util";
 
 
 export const textFieldInputClassName = cn(
-  "h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 antialiased shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition",
+  "field-control h-[var(--form-control-height,2.5rem)] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 antialiased shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition",
   "border-slate-200/90 placeholder:text-slate-400",
   "hover:border-slate-300",
   "focus-visible:border-slate-400 focus-visible:ring-[3px] focus-visible:ring-slate-900/10",
@@ -19,7 +19,7 @@ export const textFieldInputClassName = cn(
 );
 
 export const textFieldInputClassNameLight = cn(
-  "h-11 w-full rounded-xl border px-3.5 py-2.5 text-sm antialiased shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition",
+  "field-control h-[var(--form-control-height,2.5rem)] w-full rounded-xl border px-3.5 py-2.5 text-sm antialiased shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition",
   "border-slate-200 bg-white text-slate-900",
   "placeholder:text-slate-400",
   "hover:border-slate-300",

@@ -44,7 +44,6 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
@@ -576,9 +575,15 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
             />
             {errors.status_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.status_name}</p> : null}
           </FieldGroup>
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.bgColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.bgColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor={`${formTitleId}-bg`}
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeHex(bgColour).slice(0, 7)}
@@ -587,6 +592,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                 aria-label={t("modal.bgColour")}
               />
               <input
+                id={`${formTitleId}-bg`}
                 value={bgColour}
                 onChange={(e) => {
                   setBgColour(e.target.value);
@@ -598,7 +604,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               />
             </div>
             {errors.bg_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_colour}</p> : null}
-          </div>
+          </FieldGroup>
           {showCategory ? (
             <FieldGroup
               label={
@@ -625,9 +631,15 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               {errors.category ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p> : null}
             </FieldGroup>
           ) : null}
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.textColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.textColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor={`${formTitleId}-text`}
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeHex(textColour).slice(0, 7)}
@@ -636,6 +648,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                 aria-label={t("modal.textColour")}
               />
               <input
+                id={`${formTitleId}-text`}
                 value={textColour}
                 onChange={(e) => {
                   setTextColour(e.target.value);
@@ -647,7 +660,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               />
             </div>
             {errors.text_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_colour}</p> : null}
-          </div>
+          </FieldGroup>
         </div>
       </AppModal>
 

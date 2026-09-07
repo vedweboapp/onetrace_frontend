@@ -60,7 +60,11 @@ export type DataTablePaginationBarProps = {
   className?: string;
 };
 
-/** Compact paginated table footer (single row, pinned under the scroll body). */
+/**
+ * Compact table footer pinned under the scroll body.
+ * Hidden when there is only one page (no page nav / page-size needed).
+ * Page number controls render only when `total_pages > 1`.
+ */
 export function DataTablePaginationBar({
   pagination,
   summary,
@@ -72,9 +76,19 @@ export function DataTablePaginationBar({
   pageSizeControl,
   className,
 }: DataTablePaginationBarProps) {
-  const { current_page, total_pages } = pagination;
-  const showNumberButtons = total_pages > 1;
-  const pages = showNumberButtons ? buildPageList(current_page, total_pages) : [];
+  const { current_page, total_pages, total_records } = pagination;
+  const pageSize = pageSizeControl?.value;
+  const needsPagination =
+    total_pages > 1 ||
+    (Number.isFinite(total_records) &&
+      Number.isFinite(pageSize) &&
+      (pageSize as number) > 0 &&
+      total_records > (pageSize as number));
+
+  if (!needsPagination) return null;
+
+  const showPageNav = total_pages > 1;
+  const pages = showPageNav ? buildPageList(current_page, total_pages) : [];
 
   const btnBase = cn(
     "inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-md border px-2 text-xs font-medium transition outline-none",
@@ -91,15 +105,15 @@ export function DataTablePaginationBar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center border-t border-slate-200 bg-slate-50/80 px-3 py-2.5 sm:px-4 sm:py-3",
-        "dark:border-slate-800 dark:bg-slate-900/40",
+        // Pin via flex (sibling of flex-1 scroll body) — avoid sticky, which can leave
+        // an empty strip under the bar when the sidebar width reflows.
+        "z-20 flex shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3",
+        "dark:border-slate-800 dark:bg-slate-950",
         className,
       )}
     >
       <div className="flex w-full min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="min-w-0 text-xs leading-normal text-slate-600 dark:text-slate-400">
-          {summary}
-        </p>
+        <p className="min-w-0 text-xs leading-normal text-slate-600 dark:text-slate-400">{summary}</p>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {pageSizeControl ? (
             <CheckmarkSelect
@@ -125,7 +139,7 @@ export function DataTablePaginationBar({
               }}
             />
           ) : null}
-          {showNumberButtons ? (
+          {showPageNav ? (
             <>
               <button
                 type="button"

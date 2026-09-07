@@ -13,10 +13,7 @@ import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailAddressLine1EditableField } from "@/shared/components/layout/detail-address-line1-field";
 import { DetailAddressLocationFields } from "@/shared/components/layout/detail-address-location-fields";
-import {
-  DetailFieldSpanFull,
-  DetailMetricsGrid,
-} from "@/shared/components/layout/detail-metric-card";
+import { DetailMetricsGrid, DetailFieldSpanFull } from "@/shared/components/layout/detail-metric-card";
 import { cn } from "@/core/utils/http.util";
 
 export type DetailEntityAddressFieldLabels = {
@@ -27,7 +24,6 @@ export type DetailEntityAddressFieldLabels = {
   country: React.ReactNode;
   state: React.ReactNode;
   city: React.ReactNode;
-  primary?: React.ReactNode;
 };
 
 export type DetailEntityAddressRequiredMessages = {
@@ -51,10 +47,10 @@ type Props = {
   allAddresses: EntityAddress[];
   addressIndex: number;
   blockHeading?: React.ReactNode;
-  blockPrimaryLabel?: React.ReactNode;
-  blockIsPrimary?: boolean;
   /** Adds a divider above this address (Address 2, 3, …). */
   separated?: boolean;
+  /** When 2-col field grid kicks in (default `xl` for detail pages with a side column). */
+  gridFrom?: "sm" | "md" | "lg" | "xl";
 };
 
 function DetailEntityAddressLine1Field({
@@ -64,6 +60,7 @@ function DetailEntityAddressLine1Field({
   required,
   requiredMessage,
   onSave,
+  className,
 }: {
   address: EntityAddress;
   label: React.ReactNode;
@@ -71,6 +68,7 @@ function DetailEntityAddressLine1Field({
   required?: boolean;
   requiredMessage?: string;
   onSave: (updater: (row: EntityAddressFormRow) => EntityAddressFormRow) => Promise<void>;
+  className?: string;
 }) {
   return (
     <DetailAddressLine1EditableField
@@ -84,6 +82,7 @@ function DetailEntityAddressLine1Field({
       editAriaLabel={editAriaLabel}
       required={required}
       requiredMessage={requiredMessage}
+      className={className}
       onSaveLine={(next) => onSave((r) => ({ ...r, address_line_1: next }))}
       onSavePlace={(place) =>
         onSave((r) => ({
@@ -105,8 +104,8 @@ function DetailEntityAddressLine1Field({
 }
 
 /**
- * One address in a detail section — flat CRM rows (same grid as overview fields):
- * Address N header, then type + line 1, line 2, country/state, city/pincode.
+ * One address in a detail section — 2-column Zoho-style rows:
+ * type | line 1, line 2 (single column), country | state, city | pincode.
  */
 export function DetailEntityAddressFields({
   address,
@@ -120,9 +119,8 @@ export function DetailEntityAddressFields({
   allAddresses,
   addressIndex,
   blockHeading,
-  blockPrimaryLabel,
-  blockIsPrimary = false,
   separated = false,
+  gridFrom = "xl",
 }: Props) {
   async function patchRow(updater: (row: EntityAddressFormRow) => EntityAddressFormRow) {
     const rows = allAddresses.map(mapEntityAddressApiToFormRow);
@@ -141,17 +139,12 @@ export function DetailEntityAddressFields({
       )}
     >
       {blockHeading ? (
-        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{blockHeading}</span>
-          {blockIsPrimary && blockPrimaryLabel ? (
-            <span className="rounded-md bg-slate-900/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-100 dark:text-slate-900">
-              {blockPrimaryLabel}
-            </span>
-          ) : null}
         </div>
       ) : null}
 
-      <DetailMetricsGrid className="!gap-y-0">
+      <DetailMetricsGrid from={gridFrom} className="!gap-y-0">
         <DetailEditableField
           label={labels.addressType}
           value={address.address_type ?? "other"}
@@ -179,18 +172,16 @@ export function DetailEntityAddressFields({
           onSave={patchRow}
         />
 
-        <DetailFieldSpanFull>
-          <DetailEditableField
-            label={labels.addressLine2}
-            value={address.address_line_2 ?? ""}
-            kind="text"
-            editAriaLabel={editAriaLabel}
-            empty={line2Empty}
-            onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
-          >
-            {address.address_line_2?.trim() ? address.address_line_2 : null}
-          </DetailEditableField>
-        </DetailFieldSpanFull>
+        <DetailEditableField
+          label={labels.addressLine2}
+          value={address.address_line_2 ?? ""}
+          kind="text"
+          editAriaLabel={editAriaLabel}
+          empty={line2Empty}
+          onSave={(next) => patchRow((r) => ({ ...r, address_line_2: next }))}
+        >
+          {address.address_line_2?.trim() ? address.address_line_2 : null}
+        </DetailEditableField>
 
         <DetailAddressLocationFields
           country={address.country}
@@ -227,17 +218,19 @@ export function DetailEntityAddressFields({
           }}
         />
 
-        <DetailEditableField
-          label={labels.pincode}
-          value={address.pincode ?? ""}
-          kind="text"
-          editAriaLabel={editAriaLabel}
-          required={Boolean(requiredMessages?.pincode)}
-          requiredMessage={requiredMessages?.pincode}
-          onSave={(next) => patchRow((r) => ({ ...r, pincode: next }))}
-        >
-          {address.pincode?.trim() ? address.pincode : null}
-        </DetailEditableField>
+        <DetailFieldSpanFull>
+          <DetailEditableField
+            label={labels.pincode}
+            value={address.pincode ?? ""}
+            kind="text"
+            editAriaLabel={editAriaLabel}
+            required={Boolean(requiredMessages?.pincode)}
+            requiredMessage={requiredMessages?.pincode}
+            onSave={(next) => patchRow((r) => ({ ...r, pincode: next }))}
+          >
+            {address.pincode?.trim() ? address.pincode : null}
+          </DetailEditableField>
+        </DetailFieldSpanFull>
       </DetailMetricsGrid>
     </div>
   );

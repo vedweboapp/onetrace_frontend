@@ -37,9 +37,8 @@ export function ScheduleEventChip({
     <div
       data-schedule-chip
       className={cn(
-        "group/chip relative overflow-hidden border border-sky-300 bg-sky-50 text-left shadow-sm",
+        "group/chip relative overflow-hidden rounded-md border border-sky-300 bg-sky-50 text-left shadow-sm",
         "hover:border-sky-400 dark:border-sky-800 dark:bg-sky-950/40",
-        compact ? "rounded-none" : "rounded-md",
         className,
       )}
       style={style}

@@ -7,6 +7,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
@@ -25,8 +26,7 @@ import {
 } from "@/features/quotations/utils/quotation-form-map";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
-import type { Site } from "@/features/sites/types/site.types";
+import { fetchQuotationSiteRows, type QuotationSiteOptionRow } from "@/features/quotations/utils/quotation-site-options.util";
 import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
@@ -74,7 +74,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (open) setFormTab("project");
   }, [open]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
-  const [siteRows, setSiteRows] = React.useState<Site[]>([]);
+  const [siteRows, setSiteRows] = React.useState<QuotationSiteOptionRow[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
@@ -140,7 +140,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const filters: { is_active: true; client?: number } = { is_active: true };
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
         const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
@@ -183,10 +183,13 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       setSiteRows([]);
       return;
     }
-    (async () => {
+    void (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
-        if (!cancelled) setSiteRows(items);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation: false,
+          projectId,
+        });
+        if (!cancelled) setSiteRows(rows);
       } catch {
         if (!cancelled) setSiteRows([]);
       }
@@ -204,9 +207,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
-          setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
       } catch {
         if (!cancelled) setContactOptions([]);

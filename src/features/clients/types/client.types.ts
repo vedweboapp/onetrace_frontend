@@ -24,8 +24,8 @@ export type Client = {
   id: number;
   created_by: ClientUserRef | null;
   modified_by: ClientUserRef | null;
-  created_at: string;
-  modified_at: string;
+  created_at?: string | null;
+  modified_at?: string | null;
   deleted_at: string | null;
   is_deleted: boolean;
   name: string;

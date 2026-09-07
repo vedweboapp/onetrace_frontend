@@ -24,8 +24,10 @@ import {
   AppModal,
   CheckmarkSelect,
   type CheckmarkSelectOption,
-  FieldLabel,
-  fieldErrorTextClassName,
+  FieldErrorText,
+  FieldGroup,
+  FormFieldRow,
+  FormSubsection,
   MoneyInput,
   NumericInput,
   surfaceInputClassName,
@@ -461,11 +463,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       }
     >
       <form id="composite-item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel htmlFor={nameId} required>
-              {t("name")}
-            </FieldLabel>
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
               type="text"
@@ -477,13 +476,10 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               placeholder={t("namePlaceholder")}
               className={surfaceInputClassName}
             />
-            {nameInvalid ? <p className={fieldErrorTextClassName}>{t("nameError")}</p> : null}
-          </div>
+            {nameInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
+          </FieldGroup>
 
-          <div>
-            <FieldLabel htmlFor={skuId} required>
-              {t("sku")}
-            </FieldLabel>
+          <FieldGroup label={t("sku")} htmlFor={skuId} required>
             <input
               id={skuId}
               type="text"
@@ -495,29 +491,24 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               placeholder={t("skuPlaceholder")}
               className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
             />
-            {skuInvalid ? <p className={fieldErrorTextClassName}>{t("skuError")}</p> : null}
-          </div>
-        </div>
+            {skuInvalid ? <FieldErrorText>{t("skuError")}</FieldErrorText> : null}
+          </FieldGroup>
+        </FormFieldRow>
 
-        <div>
-          <FieldLabel htmlFor={qtyId} required>
-            {t("quantity")}
-          </FieldLabel>
-          <NumericInput
-            id={qtyId}
-            integer
-            value={qty}
-            onChange={setQty}
-            disabled={submitting}
-          />
-        </div>
-
-        <div>
-          <FieldLabel>{t("installationType")}</FieldLabel>
-          {installationTypesError ? (
-            <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
-          ) : null}
-          <div className="mt-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("quantity")} htmlFor={qtyId} required>
+            <NumericInput
+              id={qtyId}
+              integer
+              value={qty}
+              onChange={setQty}
+              disabled={submitting}
+            />
+          </FieldGroup>
+          <FieldGroup label={t("installationType")}>
+            {installationTypesError ? (
+              <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{installationTypesError}</p>
+            ) : null}
             <CheckmarkSelect
               listLabel={t("installationType")}
               buttonAriaLabel={t("installationType")}
@@ -531,54 +522,14 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               clearable
               className="w-full"
             />
-          </div>
-        </div>
+          </FieldGroup>
+        </FormFieldRow>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel htmlFor={costId} required>
-              {t("costPrice")}
-            </FieldLabel>
-            <MoneyInput
-              id={costId}
-              type="number"
-              inputMode="decimal"
-              value={cost}
-              onChange={(e) => {
-                costManualRef.current = true;
-                setCost(e.target.value);
-              }}
-              disabled={submitting}
-              min={0}
-              step="0.01"
-            />
-          </div>
-          <div>
-            <FieldLabel htmlFor={sellId} required>
-              {t("sellingPrice")}
-            </FieldLabel>
-            <MoneyInput
-              id={sellId}
-              type="number"
-              inputMode="decimal"
-              value={sell}
-              onChange={(e) => {
-                sellManualRef.current = true;
-                setSell(e.target.value);
-              }}
-              disabled={submitting}
-              min={0}
-              step="0.01"
-            />
-          </div>
-        </div>
-
-        <div>
-          <FieldLabel>{t("components")}</FieldLabel>
+        <FormSubsection title={t("components")}>
           {itemsError ? (
-            <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p>
+            <p className="mb-1.5 text-sm text-amber-700 dark:text-amber-300">{itemsError}</p>
           ) : null}
-          <div className="mt-2 space-y-2">
+          <div className="space-y-2">
             {rows.map((r, idx) => (
               <div key={r.id} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 w-full sm:max-w-[22rem] sm:flex-1">
@@ -649,7 +600,45 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               </div>
             ))}
           </div>
-          {componentsInvalid ? <p className={fieldErrorTextClassName}>{t("atLeastOneComponentError")}</p> : null}
+          {componentsInvalid ? <FieldErrorText>{t("atLeastOneComponentError")}</FieldErrorText> : null}
+        </FormSubsection>
+
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {t("pricesFromComponentsHint")}
+          </p>
+          <FormFieldRow cols="2" from="md" className="gap-4">
+            <FieldGroup label={t("costPrice")} htmlFor={costId} required>
+              <MoneyInput
+                id={costId}
+                type="number"
+                inputMode="decimal"
+                value={cost}
+                onChange={(e) => {
+                  costManualRef.current = true;
+                  setCost(e.target.value);
+                }}
+                disabled={submitting}
+                min={0}
+                step="0.01"
+              />
+            </FieldGroup>
+            <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
+              <MoneyInput
+                id={sellId}
+                type="number"
+                inputMode="decimal"
+                value={sell}
+                onChange={(e) => {
+                  sellManualRef.current = true;
+                  setSell(e.target.value);
+                }}
+                disabled={submitting}
+                min={0}
+                step="0.01"
+              />
+            </FieldGroup>
+          </FormFieldRow>
         </div>
       </form>
     </AppModal>

@@ -5,13 +5,16 @@ export const fieldRequiredMarkClassName = "ml-0.5 text-red-600 dark:text-red-400
 
 export const fieldErrorTextClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
+/** Reserves one line below controls so paired fields stay aligned when only one shows an error. */
+export const fieldErrorSlotClassName = "field-error-slot min-h-[1.625rem]";
+
 export const fieldLabelClassName = cn(
-  "field-label block font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide",
+  "field-label block font-semibold text-gray-600 dark:text-gray-300 tracking-normal",
   "text-[length:var(--dash-label-size,0.875rem)]",
 );
 
 export const surfaceInputClassName = cn(
-  "field-control h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900 outline-none transition",
+  "field-control min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900 outline-none transition",
   "text-[length:var(--dash-body-size,0.875rem)]",
   "placeholder:text-slate-400 focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
   "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
@@ -19,6 +22,9 @@ export const surfaceInputClassName = cn(
 
 /** Apply on custom controls (select triggers, phone roots) so required red-line works when nested. */
 export const fieldControlClassName = "field-control";
+
+/** Multi-value / wrapping triggers (chips) — must not use fixed control height. */
+export const fieldControlGrowClassName = "field-control field-control--grow";
 
 /** Multiline fields: no fixed height; caret and text start at the top. */
 export const surfaceTextareaClassName = cn(
@@ -101,5 +107,14 @@ export function FieldErrorText({ id, children }: { id?: string; children?: React
     <p id={id} className={fieldErrorTextClassName} role="alert">
       {children}
     </p>
+  );
+}
+
+/** Wrap {@link FieldErrorText} so side-by-side fields keep inputs aligned when one field errors. */
+export function FieldErrorSlot({ id, children }: { id?: string; children?: ReactNode }) {
+  return (
+    <div className={fieldErrorSlotClassName}>
+      <FieldErrorText id={id}>{children}</FieldErrorText>
+    </div>
   );
 }

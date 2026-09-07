@@ -26,13 +26,15 @@ type Props = {
   points: AddressMapPoint[];
   className?: string;
   mapClassName?: string;
+  /** Called when a resolved pin is clicked (e.g. open job detail). */
+  onPointClick?: (point: AddressMapPoint) => void;
 };
 
 function googleMapsTabUrl(lat: number, lon: number): string {
   return `https://www.google.com/maps?q=${lat},${lon}`;
 }
 
-export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: Props) {
+export function GoogleAddressMultiMiniMap({ points, className, mapClassName, onPointClick }: Props) {
   const t = useTranslations("Dashboard.common.map");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
@@ -155,15 +157,21 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     for (const m of markersRef.current) clearAdvancedMarker(m);
     markersRef.current = [];
 
+    const listeners: Array<() => void> = [];
+
     for (const point of resolved) {
-      markersRef.current.push(
-        createAdvancedMarker({
-          map,
-          lat: point.lat,
-          lng: point.lon,
-          title: point.label,
-        }),
-      );
+      const marker = createAdvancedMarker({
+        map,
+        lat: point.lat,
+        lng: point.lon,
+        title: point.label,
+      });
+      markersRef.current.push(marker);
+      if (onPointClick) {
+        const onClick = () => onPointClick(point);
+        marker.addEventListener("gmp-click", onClick);
+        listeners.push(() => marker.removeEventListener("gmp-click", onClick));
+      }
     }
 
     const frame = window.requestAnimationFrame(() => {
@@ -173,8 +181,9 @@ export function GoogleAddressMultiMiniMap({ points, className, mapClassName }: P
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(tid);
+      for (const remove of listeners) remove();
     };
-  }, [status, resolved, fitMapToResolved]);
+  }, [status, resolved, fitMapToResolved, onPointClick]);
 
   React.useEffect(() => {
     const el = containerRef.current;

@@ -19,12 +19,31 @@ export function nestedId(value: number | { id: number } | null | undefined): num
   return undefined;
 }
 
-export function normalizeMaterialRequestStatus(raw: string | { name?: string; status_name?: string } | null | undefined): string {
+/** Prefer nested/object id; also accept numeric strings from selects. */
+export function getMaterialRequestStatusId(
+  raw: string | number | { id?: number; name?: string; status_name?: string } | null | undefined,
+): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const n = Number.parseInt(trimmed, 10);
+      return n > 0 ? n : null;
+    }
+  }
+  if (raw && typeof raw === "object" && typeof raw.id === "number" && raw.id > 0) return raw.id;
+  return null;
+}
+
+export function normalizeMaterialRequestStatus(
+  raw: string | number | { id?: number; name?: string; status_name?: string } | null | undefined,
+): string {
+  if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
   if (typeof raw === "object" && raw) {
     const statusName = raw.name || raw.status_name || "";
     return statusName.trim().toLowerCase().replace(/\s+/g, "_");
   }
-  return (raw ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  return (raw ?? "").toString().trim().toLowerCase().replace(/\s+/g, "_");
 }
 
 export function materialRequestWorkerLabel(

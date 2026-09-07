@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { EntityDataTable, EntityDetailTabLoadingState, entityCol } from "@/shared/components/entity";
 import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
 import { detailTabToolbarClassName } from "@/shared/components/layout/detail-tab-layout";
@@ -58,7 +59,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
   const columns = React.useMemo(() => {
     const c = entityCol<Contact>();
     return [
-      c.primary("name", tContacts("table.name"), (r) => r.name),
+      c.primary("name", tContacts("table.name"), (r) => formatContactName(r)),
       c.truncate("email", tContacts("table.email"), (r) => r.email),
       c.phone("phone", tContacts("table.phone"), (r) => r.phone),
       c.status(

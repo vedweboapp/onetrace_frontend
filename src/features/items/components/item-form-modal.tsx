@@ -23,7 +23,8 @@ import {
   DimensionsLwhInput,
   FieldErrorText,
   FieldGroup,
-  FieldLabel,
+  FormFieldRow,
+  FormSubsection,
   InputWithEndSelect,
   MoneyInput,
   MultiCheckSelect,
@@ -315,7 +316,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       }
     >
       <form id="item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
@@ -351,11 +352,10 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             />
             <FieldErrorText>{skuError}</FieldErrorText>
           </FieldGroup>
-        </div>
+        </FormFieldRow>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <FieldLabel htmlFor={unitId}>{t("unitType")}</FieldLabel>
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("unitType")} htmlFor={unitId}>
             <CheckmarkSelect
               id={unitId}
               listLabel={t("unitType")}
@@ -371,9 +371,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={setUnitType}
             />
             {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
-          </div>
-          <div>
-            <FieldLabel htmlFor={qtyId}>{t("quantity")}</FieldLabel>
+          </FieldGroup>
+          <FieldGroup label={t("quantity")} htmlFor={qtyId}>
             <NumericInput
               id={qtyId}
               integer
@@ -381,9 +380,11 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={setQty}
               disabled={submitting}
             />
-          </div>
-          <div>
-            <FieldLabel htmlFor={costId}>{t("costPrice")}</FieldLabel>
+          </FieldGroup>
+        </FormFieldRow>
+
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("costPrice")} htmlFor={costId} required>
             <MoneyInput
               id={costId}
               type="number"
@@ -394,9 +395,8 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={(e) => setCost(e.target.value)}
               disabled={submitting}
             />
-          </div>
-          <div>
-            <FieldLabel htmlFor={sellId}>{t("sellingPrice")}</FieldLabel>
+          </FieldGroup>
+          <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
             <MoneyInput
               id={sellId}
               type="number"
@@ -407,55 +407,52 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               onChange={(e) => setSell(e.target.value)}
               disabled={submitting}
             />
-          </div>
-        </div>
+          </FieldGroup>
+        </FormFieldRow>
 
-        <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
-          <MultiCheckSelect
-            id="modal-item-vendors"
-            options={vendorOptions}
-            values={vendorIds}
-            onChange={setVendorIds}
-            disabled={submitting}
-            placeholder={t("vendorsPlaceholder")}
-            listLabel={t("vendors")}
-            searchable
-            fallbackLabels={vendorFallbackLabels}
-          />
-          {vendorsError ? (
-            <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-          ) : null}
-        </FieldGroup>
+        <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
+            <MultiCheckSelect
+              id="modal-item-vendors"
+              options={vendorOptions}
+              values={vendorIds}
+              onChange={setVendorIds}
+              disabled={submitting}
+              placeholder={t("vendorsPlaceholder")}
+              listLabel={t("vendors")}
+              searchable
+              fallbackLabels={vendorFallbackLabels}
+            />
+            {vendorsError ? (
+              <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+            ) : null}
+          </FieldGroup>
+        </FormFieldRow>
 
-        <div className="space-y-4 pt-1">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("fulfilmentDetails")}</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
-            <div className="min-w-0">
-              <FieldLabel htmlFor="modal-item-dimensions">{t("dimensions")}</FieldLabel>
-              <div className="mt-1.5">
-                <DimensionsLwhInput
-                  id="modal-item-dimensions"
-                  length={length}
-                  width={width}
-                  height={height}
-                  onChange={(next) => {
-                    setLength(next.length);
-                    setWidth(next.width);
-                    setHeight(next.height);
-                  }}
-                  unit={dimensionsUnit}
-                  onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                  unitAriaLabel={t("dimensionsUnit")}
-                  lengthAriaLabel={t("dimensionsLength")}
-                  widthAriaLabel={t("dimensionsWidth")}
-                  heightAriaLabel={t("dimensionsHeight")}
-                  disabled={submitting}
-                />
-              </div>
+        <FormSubsection title={t("fulfilmentDetails")}>
+          <FormFieldRow cols="2" from="md" className="gap-4">
+            <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
+              <DimensionsLwhInput
+                id="modal-item-dimensions"
+                length={length}
+                width={width}
+                height={height}
+                onChange={(next) => {
+                  setLength(next.length);
+                  setWidth(next.width);
+                  setHeight(next.height);
+                }}
+                unit={dimensionsUnit}
+                onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                unitAriaLabel={t("dimensionsUnit")}
+                lengthAriaLabel={t("dimensionsLength")}
+                widthAriaLabel={t("dimensionsWidth")}
+                heightAriaLabel={t("dimensionsHeight")}
+                disabled={submitting}
+              />
               <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
-            </div>
-            <div className="min-w-0">
-              <FieldLabel htmlFor="modal-item-weight">{t("weight")}</FieldLabel>
+            </FieldGroup>
+            <FieldGroup label={t("weight")} htmlFor="modal-item-weight">
               <InputWithEndSelect
                 inputId="modal-item-weight"
                 inputType="number"
@@ -474,9 +471,9 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
                 ]}
                 selectAriaLabel={t("weightUnit")}
               />
-            </div>
-          </div>
-        </div>
+            </FieldGroup>
+          </FormFieldRow>
+        </FormSubsection>
       </form>
     </AppModal>
   );

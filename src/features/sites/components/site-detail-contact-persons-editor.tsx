@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
@@ -14,9 +15,11 @@ import {
   normalizeSiteContactPersonsFromApi,
 } from "@/features/sites/utils/site-contact-person.util";
 import { DetailEntityLink } from "@/shared/components/entity";
+import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
 import { AppButton, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import type { ReactNode } from "react";
 
 type DraftRow = {
   key: string;
@@ -25,35 +28,46 @@ type DraftRow = {
 };
 
 type Props = {
+  title: ReactNode;
   detail: Site;
   contactNameById?: Record<number, string>;
   titleNameById?: Record<string, string>;
   onSaveContacts: (contacts: SiteContactPersonPayload[]) => Promise<void>;
 };
 
-function rowsFromDetail(
-  detail: Site,
-  contactNameById: Record<number, string>,
-): DraftRow[] {
+function emptyDraftRow(): DraftRow {
+  return {
+    key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: "",
+    contact: "",
+  };
+}
+
+/** Prefer title id (matches CheckmarkSelect options); fall back to name/string. */
+function resolveDraftTitleValue(rawTitle: unknown): string {
+  if (rawTitle && typeof rawTitle === "object") {
+    const obj = rawTitle as Record<string, unknown>;
+    if (obj.id != null && String(obj.id).trim()) return String(obj.id);
+    const name = obj.title ?? obj.name;
+    return name != null ? String(name) : "";
+  }
+  return rawTitle != null ? String(rawTitle) : "";
+}
+
+function rowsFromDetail(detail: Site): DraftRow[] {
   return normalizeSiteContactPersonsFromApi(detail).map((row, index) => {
     const contactId = getSiteContactPersonContactId(row.contact);
-    const rawTitle =
-      row.title && typeof row.title === "object"
-        ? String(
-            (row.title as Record<string, unknown>).title ??
-              (row.title as Record<string, unknown>).name ??
-              "",
-          )
-        : String(row.title ?? "");
+    const title = resolveDraftTitleValue(row.title);
     return {
-      key: String(row.id ?? `${rawTitle}-${contactId ?? index}`),
-      title: rawTitle,
+      key: String(row.id ?? `${title}-${contactId ?? index}`),
+      title,
       contact: contactId ? String(contactId) : "",
     };
   });
 }
 
 export function SiteDetailContactPersonsEditor({
+  title,
   detail,
   contactNameById = {},
   titleNameById = {},
@@ -104,7 +118,7 @@ export function SiteDetailContactPersonsEditor({
           setContactOptions(
             items.map((c) => ({
               value: String(c.id),
-              label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+              label: formatContactOptionLabel(c),
             })),
           );
         }
@@ -117,8 +131,16 @@ export function SiteDetailContactPersonsEditor({
     };
   }, [clientId]);
 
-  function startEdit() {
-    setDraftRows(rowsFromDetail(detail, contactNameById));
+  function startEdit(options?: { withNewRow?: boolean }) {
+    const existing = rowsFromDetail(detail);
+    if (options?.withNewRow) {
+      setDraftRows([...existing, emptyDraftRow()]);
+    } else if (existing.length === 0) {
+      // First add: show title/contact fields immediately (not another Add button only).
+      setDraftRows([emptyDraftRow()]);
+    } else {
+      setDraftRows(existing);
+    }
     setEditing(true);
   }
 
@@ -178,15 +200,19 @@ export function SiteDetailContactPersonsEditor({
   }
 
   function resolveTitleLabel(rawTitle: unknown): string {
-    const titleKey =
+    const titleKey = resolveDraftTitleValue(rawTitle);
+    const fromObjectName =
       rawTitle && typeof rawTitle === "object"
         ? String(
             (rawTitle as Record<string, unknown>).title ??
               (rawTitle as Record<string, unknown>).name ??
               "",
           )
-        : String(rawTitle ?? "");
-    const resolved = titleNameById[titleKey] || titleKey;
+        : "";
+    const resolved =
+      titleNameById[titleKey] ||
+      fromObjectName ||
+      titleKey;
     const isLegacy = ["site_contact", "finance", "emergency"].includes(resolved);
     if (isLegacy) {
       return t(`contactPerson.titles.${resolved}`, { defaultValue: resolved });
@@ -194,23 +220,54 @@ export function SiteDetailContactPersonsEditor({
     return resolved || "—";
   }
 
+  const headerAddEdit = !editing ? (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        className="text-sm font-semibold text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
+        onClick={() => startEdit(displayRows.length > 0 ? { withNewRow: true } : undefined)}
+      >
+        {tActions("add")}
+      </button>
+      {displayRows.length > 0 ? (
+        <button
+          type="button"
+          className="text-sm font-semibold text-slate-600 underline-offset-2 hover:underline dark:text-slate-300"
+          onClick={() => startEdit()}
+        >
+          {tActions("edit")}
+        </button>
+      ) : null}
+    </div>
+  ) : (
+    <div className="flex flex-wrap items-center gap-2">
+      <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
+        {tActions("cancel")}
+      </AppButton>
+      <AppButton
+        type="button"
+        size="sm"
+        loading={saving}
+        disabled={saving || !clientId}
+        onClick={() => void save()}
+      >
+        {tActions("save")}
+      </AppButton>
+    </div>
+  );
+
   if (!editing) {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-end">
-          <AppButton type="button" variant="secondary" size="sm" onClick={startEdit}>
-            {displayRows.length === 0 ? t("contactPerson.add") : tActions("edit")}
-          </AppButton>
-        </div>
+      <DetailPanelCard title={title} headerRight={headerAddEdit}>
         {displayRows.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">{t("contactPerson.empty")}</p>
         ) : (
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
-              <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+              <span className="text-xs font-semibold tracking-normal text-slate-400 dark:text-slate-500">
                 {t("contactPerson.titleLabel")}
               </span>
-              <span className="text-xs font-bold uppercase tracking-[0.05em] text-slate-400 dark:text-slate-500">
+              <span className="text-xs font-semibold tracking-normal text-slate-400 dark:text-slate-500">
                 {t("contactPerson.contactLabel")}
               </span>
             </div>
@@ -242,91 +299,76 @@ export function SiteDetailContactPersonsEditor({
             </ul>
           </div>
         )}
-      </div>
+      </DetailPanelCard>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {!clientId ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{t("validation.client")}</p>
-      ) : null}
-      <ul className="space-y-3">
-        {draftRows.map((row, index) => (
-          <li
-            key={row.key}
-            className="grid gap-2 rounded-lg border border-slate-100 p-3 sm:grid-cols-[1fr_1fr_auto] dark:border-slate-800"
-          >
-            <CheckmarkSelect
-              listLabel={t("contactPerson.titleLabel")}
-              options={titleOptionsFor(row.title)}
-              value={row.title}
-              disabled={saving || !clientId}
-              size="sm"
-              portaled
-              searchable
-              className="w-full min-w-0"
-              onChange={(v) => {
-                setDraftRows((prev) =>
-                  prev.map((r, i) => (i === index ? { ...r, title: v } : r)),
-                );
-              }}
-            />
-            <CheckmarkSelect
-              listLabel={t("contactPerson.contactLabel")}
-              options={contactSelectOptions}
-              value={row.contact}
-              disabled={saving || !clientId}
-              size="sm"
-              portaled
-              searchable
-              className="w-full min-w-0"
-              onChange={(v) => {
-                setDraftRows((prev) =>
-                  prev.map((r, i) => (i === index ? { ...r, contact: v } : r)),
-                );
-              }}
-            />
-            <button
-              type="button"
-              disabled={saving}
-              className={cn(
-                "inline-flex size-9 items-center justify-center rounded-md text-slate-500",
-                "hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800",
-              )}
-              aria-label={tActions("delete")}
-              onClick={() => setDraftRows((prev) => prev.filter((_, i) => i !== index))}
+    <DetailPanelCard title={title} headerRight={headerAddEdit}>
+      <div className="space-y-3">
+        {!clientId ? (
+          <p className="text-sm text-amber-700 dark:text-amber-400">{t("validation.client")}</p>
+        ) : null}
+        <ul className="space-y-3">
+          {draftRows.map((row, index) => (
+            <li
+              key={row.key}
+              className="grid gap-2 rounded-lg border border-slate-100 p-3 sm:grid-cols-[1fr_1fr_auto] dark:border-slate-800"
             >
-              <Trash2 className="size-4" strokeWidth={1.75} />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap items-center gap-2">
-        <AppButton
+              <CheckmarkSelect
+                listLabel={t("contactPerson.titleLabel")}
+                options={titleOptionsFor(row.title)}
+                value={row.title}
+                disabled={saving || !clientId}
+                size="sm"
+                portaled
+                searchable
+                className="w-full min-w-0"
+                onChange={(v) => {
+                  setDraftRows((prev) =>
+                    prev.map((r, i) => (i === index ? { ...r, title: v } : r)),
+                  );
+                }}
+              />
+              <CheckmarkSelect
+                listLabel={t("contactPerson.contactLabel")}
+                options={contactSelectOptions}
+                value={row.contact}
+                disabled={saving || !clientId}
+                size="sm"
+                portaled
+                searchable
+                className="w-full min-w-0"
+                onChange={(v) => {
+                  setDraftRows((prev) =>
+                    prev.map((r, i) => (i === index ? { ...r, contact: v } : r)),
+                  );
+                }}
+              />
+              <button
+                type="button"
+                disabled={saving}
+                className={cn(
+                  "inline-flex size-9 items-center justify-center rounded-md text-slate-500",
+                  "hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800",
+                )}
+                aria-label={tActions("delete")}
+                onClick={() => setDraftRows((prev) => prev.filter((_, i) => i !== index))}
+              >
+                <Trash2 className="size-4" strokeWidth={1.75} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
           type="button"
-          variant="secondary"
-          size="sm"
           disabled={saving || !clientId}
-          onClick={() =>
-            setDraftRows((prev) => [
-              ...prev,
-              { key: `new-${Date.now()}`, title: "", contact: "" },
-            ])
-          }
+          className="text-sm font-semibold text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => setDraftRows((prev) => [...prev, emptyDraftRow()])}
         >
-          <Plus className="mr-1 size-3.5" aria-hidden />
-          {t("contactPerson.add")}
-        </AppButton>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
-            {tActions("cancel")}
-          </AppButton>
-          <AppButton type="button" size="sm" loading={saving} disabled={saving || !clientId} onClick={() => void save()}>
-            {tActions("save")}
-          </AppButton>
-        </div>
+          {tActions("add")}
+        </button>
       </div>
-    </div>
+    </DetailPanelCard>
   );
 }

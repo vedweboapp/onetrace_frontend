@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   fetchJobFormSchema,
+  fetchJobSubmittedForm,
   loadJobFormSubmission,
   submitJobForm,
   updateJobFormSubmission,
@@ -20,6 +21,8 @@ import type { JobFormSubmission } from "@/features/job-forms/types/job-form-subm
 import {
   applyReadOnlyToSections,
   buildFieldMaps,
+  enrichSectionsWithSubmissionFiles,
+  synthesizeFormSectionsFromSubmission,
 } from "@/features/job-forms/utils/job-form-schema.util";
 import {
   buildJobFormSubmissionFormData,
@@ -39,8 +42,9 @@ type UiMode = "fill" | "view" | "edit";
 
 type Props = {
   jobId: number;
-  formId: number;
-  jobFormId: number;
+  /** Project form id — optional when opening a worker submission by submission_id only. */
+  formId?: number;
+  jobFormId?: number;
   formNameHint?: string | null;
 };
 
@@ -50,6 +54,10 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const resolvedFormId = formId != null && formId > 0 ? formId : undefined;
+  const resolvedJobFormId =
+    jobFormId != null && jobFormId > 0 ? jobFormId : resolvedFormId;
 
   const jobDetailHref = `${routes.dashboard.jobs}/${jobId}`;
   const safeBack = resolveFormBackUrl(searchParams.get("back"), "jobs", jobDetailHref);
@@ -65,6 +73,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
   const [fieldMaps, setFieldMaps] = React.useState(() => buildFieldMaps([]));
   const [checklistBlocked, setChecklistBlocked] = React.useState(false);
+  const [submissionOnlyView, setSubmissionOnlyView] = React.useState(false);
 
   const modeParam = searchParams.get("mode");
   const submissionIdParam = searchParams.get("submissionId") ?? searchParams.get("submission_id");
@@ -86,25 +95,28 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   }, [dynamicFormIdParam]);
 
   const uiMode: UiMode = React.useMemo(() => {
+    if (submissionOnlyView) return "view";
     if (submission && modeParam !== "edit") return "view";
     if (submission && modeParam === "edit") return "edit";
     return "fill";
-  }, [submission, modeParam]);
+  }, [submission, modeParam, submissionOnlyView]);
 
   const readOnly = uiMode === "view";
   const rendererKey = `${uiMode}-${submission?.id ?? "new"}-${Object.keys(defaultValues).length}`;
 
   function formPageQuery(extra?: { mode?: string | null; submissionId?: number }) {
     const params = new URLSearchParams();
-    params.set("formId", String(formId));
-    if (Number.isFinite(jobFormId) && jobFormId > 0) {
-      params.set("job_form_id", String(jobFormId));
+    if (resolvedFormId != null) {
+      params.set("formId", String(resolvedFormId));
+    }
+    if (resolvedJobFormId != null) {
+      params.set("job_form_id", String(resolvedJobFormId));
     }
     params.set("back", safeBack);
     if (formNameHint?.trim()) params.set("name", formNameHint.trim());
     if (jobPinIdHint != null) params.set("job_pin_id", String(jobPinIdHint));
     if (dynamicFormIdHint != null) params.set("dynamic_form_id", String(dynamicFormIdHint));
-    const sid = extra?.submissionId ?? submission?.id;
+    const sid = extra?.submissionId ?? submission?.id ?? submissionIdHint;
     if (sid != null && sid > 0) params.set("submission_id", String(sid));
     if (extra?.mode) params.set("mode", extra.mode);
     return `${pathname}?${params.toString()}`;
@@ -114,7 +126,39 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     setLoading(true);
     setLoadError(null);
     setChecklistBlocked(false);
+    setSubmissionOnlyView(false);
     try {
+      // Worker Forms tab: detail payload has values/files but no project_form_id.
+      if (resolvedFormId == null) {
+        if (submissionIdHint == null) {
+          throw new Error(t("loadError"));
+        }
+        const existing = await fetchJobSubmittedForm(jobId, submissionIdHint);
+        setSubmission(existing);
+        setSubmissionOnlyView(true);
+        setFormTitle(
+          existing.form_name?.trim() || formNameHint?.trim() || t("untitledForm"),
+        );
+        setRules([]);
+        const sectionsForRender = synthesizeFormSectionsFromSubmission({
+          values: existing.values,
+          files: existing.files,
+        });
+        const maps = buildFieldMaps(sectionsForRender);
+        setFieldMaps(maps);
+        setSchemaSections(sectionsForRender);
+        setDefaultValues(
+          mapSubmissionValuesToFormDefaults(
+            existing.values,
+            sectionsForRender,
+            maps.apiNameByFieldId,
+            maps.fieldTypeByFieldId,
+            existing.files,
+          ),
+        );
+        return;
+      }
+
       if (!submissionIdHint) {
         const job = await fetchJob(jobId, { silent: true });
         const checklists = jobChecklistEntries(job);
@@ -127,20 +171,29 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         }
       }
 
-      const schema = await fetchJobFormSchema(formId, jobId);
-      const maps = buildFieldMaps(schema.sections);
-      setFieldMaps(maps);
+      const schema = await fetchJobFormSchema(resolvedFormId, jobId);
       setFormTitle(schema.name?.trim() || formNameHint?.trim() || t("untitledForm"));
-      setSchemaSections(schema.sections);
       setRules(normalizeRules(schema.rules));
 
-      const existing = await loadJobFormSubmission(jobId, jobFormId, formId, submissionIdHint);
+      const existing = await loadJobFormSubmission(
+        jobId,
+        resolvedJobFormId ?? resolvedFormId,
+        resolvedFormId,
+        submissionIdHint,
+      );
       setSubmission(existing);
+
+      const sectionsForRender = existing?.files?.length
+        ? enrichSectionsWithSubmissionFiles(schema.sections, existing.files)
+        : schema.sections;
+      const maps = buildFieldMaps(sectionsForRender);
+      setFieldMaps(maps);
+      setSchemaSections(sectionsForRender);
 
       const defaults = existing
         ? mapSubmissionValuesToFormDefaults(
           existing.values,
-          schema.sections,
+          sectionsForRender,
           maps.apiNameByFieldId,
           maps.fieldTypeByFieldId,
           existing.files,
@@ -153,10 +206,11 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       setRules([]);
       setSubmission(null);
       setDefaultValues({});
+      setSubmissionOnlyView(false);
     } finally {
       setLoading(false);
     }
-  }, [formId, formNameHint, jobFormId, jobId, submissionIdHint, t]);
+  }, [formNameHint, jobId, resolvedFormId, resolvedJobFormId, submissionIdHint, t]);
 
   React.useEffect(() => {
     void load();
@@ -166,8 +220,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     isLoading: submitting,
     handleSubmit: handleFormSubmit,
   } = useFormHandler<Record<string, unknown>, FormRendererRef>(async (data) => {
+    if (resolvedFormId == null || resolvedJobFormId == null) {
+      toastError(t("loadError"));
+      return;
+    }
     const fd = buildJobFormSubmissionFormData(
-      jobFormId,
+      resolvedJobFormId,
       data,
       schemaSections,
       // dynamic_form_id: dynamicFormIdHint
@@ -189,10 +247,10 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       uiMode === "edit" && typeof submissionId === "number" && submissionId > 0;
     try {
       if (isEditingExisting) {
-        await updateJobFormSubmission(jobId, submissionId, fd, formId);
+        await updateJobFormSubmission(jobId, submissionId, fd, resolvedFormId);
         toastSuccess(t("updatedToast"));
       } else {
-        await submitJobForm(jobId, fd, formId);
+        await submitJobForm(jobId, fd, resolvedFormId);
         toastSuccess(t("submittedToast"));
       }
       router.replace(safeBack);
@@ -224,7 +282,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
 
   const displaySections = readOnly ? applyReadOnlyToSections(schemaSections, true) : schemaSections;
 
-  const headerActions = checklistBlocked ? null : uiMode === "view" ? (
+  const headerActions = checklistBlocked || submissionOnlyView ? null : uiMode === "view" ? (
     <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
       {t("edit")}
     </AppButton>

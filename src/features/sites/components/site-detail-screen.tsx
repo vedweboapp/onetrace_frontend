@@ -4,8 +4,9 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
-import { fetchSite, patchSite } from "@/features/sites/api/site.api";
+import { fetchSite } from "@/features/sites/api/site.api";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
@@ -16,8 +17,6 @@ import {
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
   if (typeof site.client === "number" && Number.isFinite(site.client) && site.client > 0) return site.client;
@@ -70,8 +69,9 @@ function SiteDetailBodyWithContacts({
     if (!needsFetch) {
       const fromRows: Record<number, string> = {};
       for (const row of rows) {
-        if (row.contact && typeof row.contact === "object" && row.contact.name?.trim()) {
-          fromRows[row.contact.id] = row.contact.name.trim();
+        if (row.contact && typeof row.contact === "object") {
+          const label = formatContactName(row.contact);
+          if (label) fromRows[row.contact.id] = label;
         }
       }
       const timer = window.setTimeout(() => {
@@ -86,7 +86,7 @@ function SiteDetailBodyWithContacts({
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const c of items) {
-            mapped[c.id] = c.name?.trim() || c.email?.trim() || "—";
+            mapped[c.id] = formatContactName(c) || "—";
           }
           setContactNameById(mapped);
         }
@@ -137,7 +137,6 @@ export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const [clientNameById, setClientNameById] = React.useState<Record<number, string>>({});
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [togglingActive, setTogglingActive] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -179,36 +178,12 @@ export function SiteDetailScreen({ siteId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
-      actions={({ detail, listBack, retry }) => (
-        <div className="flex flex-wrap items-center gap-2">
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={togglingActive}
-            disabled={togglingActive}
-            onClick={async () => {
-              const next = !detail.is_active;
-              setTogglingActive(true);
-              try {
-                await patchSite(detail.id, { is_active: next });
-                toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
-                retry();
-              } catch (error) {
-                toastApiError(error, t("toggleActiveError"));
-              } finally {
-                setTogglingActive(false);
-              }
-            }}
-          >
-            {detail.is_active ? t("deactivate") : t("activate")}
-          </AppButton>
-          <EntityDetailEditButton
-            label={t("detail.editWithIcon")}
-            listBack={listBack}
-            fallbackRoute={routes.dashboard.sites}
-          />
-        </div>
+      actions={({ listBack }) => (
+        <EntityDetailEditButton
+          label={t("detail.editWithIcon")}
+          listBack={listBack}
+          fallbackRoute={routes.dashboard.sites}
+        />
       )}
       renderSurface={({ detail, loading, error, retry, dateFmt }) => {
         if (loading) return <EntityDetailLoadingSkeleton />;

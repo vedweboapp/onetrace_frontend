@@ -69,7 +69,7 @@ export function PageHeadingWithBack({
         </nav>
       ) : null}
       {kicker ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
           {kicker}
         </p>
       ) : null}

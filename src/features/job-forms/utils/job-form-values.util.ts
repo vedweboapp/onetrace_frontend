@@ -105,19 +105,26 @@ function resolveFileFieldValue(
   const urls = files.map((f) => f.file_url).filter(Boolean);
   if (urls.length === 0) return "";
   const norm = (fieldType ?? files[0]?.field_type ?? "").toLowerCase();
+  // Signature / video are single-value controls.
+  if (norm === "signature" || norm === "video_recorder") {
+    return urls[urls.length - 1];
+  }
   if (
     norm === "multi_image_upload" ||
     norm === "multiple_images" ||
     norm === "multi_images" ||
     norm === "multiple_image" ||
-    norm === "multiimageupload"
+    norm === "multiimageupload" ||
+    norm === "file_upload" ||
+    norm === "file"
   ) {
-    return urls;
+    return urls.length === 1 ? urls[0] : urls;
   }
   if (norm === "image_upload" && urls.length > 1) {
     return urls;
   }
-  return urls[urls.length - 1];
+  // Prefer all URLs when the API returned multiple for one field.
+  return urls.length === 1 ? urls[0] : urls;
 }
 
 function coerceFieldId(raw: unknown): number | null {

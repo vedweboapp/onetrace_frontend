@@ -18,11 +18,12 @@ export type JobFormSubmissionFile = {
 
 export type JobFormSubmission = {
   id: number;
-  job_id: number;
-  job_form_id: number;
-  form_id: number;
+  job_id?: number;
+  job_form_id?: number;
+  form_id?: number;
   project_form_id?: number;
   form_name?: string | null;
+  worker_name?: string | null;
   status: string;
   remarks?: string | null;
   values: JobFormSubmissionValue[];
@@ -38,6 +39,40 @@ export type SubmitJobFormSummary = {
   project_form_id: number;
   total_fields?: number;
 };
+
+/** GET /jobs/{id}/worker-form-submissions/ (or /jobs/worker-form-submissions/) list row. */
+export type WorkerFormSubmissionListItem = {
+  id: number;
+  worker_id: number;
+  worker_name: string;
+  project_form_name: string;
+  project_form_id?: number | null;
+  job_form_id?: number | null;
+  /** Present on the all-jobs list; required to open submission detail. */
+  job_id?: number | null;
+  job_serial_number?: string | null;
+  job_name?: string | null;
+  status: string;
+  submitted_at?: string | null;
+};
+
+/** @deprecated Prefer WorkerFormSubmissionListItem — API returns a flat list. */
+export type WorkerFormSubmissionSummary = {
+  id: number;
+  project_form_name: string;
+  status: string;
+  submitted_at?: string | null;
+};
+
+/** @deprecated Prefer WorkerFormSubmissionListItem — API returns a flat list. */
+export type WorkerFormSubmissionsGroup = {
+  id: number;
+  worker_name: string;
+  total_forms: number;
+  submissions: WorkerFormSubmissionSummary[];
+};
+
+export type WorkerFormSubmissionTableRow = WorkerFormSubmissionListItem;
 
 export type SubmitJobFormPayload = {
   job_form_id: number;

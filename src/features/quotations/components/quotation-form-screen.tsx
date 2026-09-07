@@ -9,6 +9,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import {
   createQuotation,
   fetchProjectLevelRowsForQuotation,
@@ -43,17 +44,21 @@ import {
   getQuotationNestedSite,
   getQuotationProjectId,
   getQuotationSiteId,
-  getQuotationSiteIds,
   quotationNestedSiteToSite,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import {
   QUOTATION_STATUS_OPTIONS,
 } from "@/features/quotations/utils/quotation-status.util";
+import {
+  fetchQuotationSiteRows,
+  mergeQuotationSiteOptionRows,
+  type QuotationSiteOptionRow,
+} from "@/features/quotations/utils/quotation-site-options.util";
 import { siteHasMapableLocation, siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
-import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
@@ -170,7 +175,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const [saving, setSaving] = React.useState(false);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
-  const [siteRows, setSiteRows] = React.useState<Site[]>([]);
+  const [siteRows, setSiteRows] = React.useState<QuotationSiteOptionRow[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [tagOptions, setTagOptions] = React.useState<Option[]>([]);
@@ -403,7 +408,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const filters: { is_active: true; client?: number } = { is_active: true };
+        const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
         const { items: projects } = await fetchProjectsPage(1, 500, filters);
         if (!cancelled) setProjectRows(projects);
@@ -441,33 +446,25 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   React.useEffect(() => {
     let cancelled = false;
-    if (isServiceQuotation) {
-      if (!customerId || customerId <= 0) {
-        setSiteRows([]);
-        return;
-      }
-      (async () => {
-        try {
-          const { items } = await fetchSitesPage(1, 500, { client: customerId, is_active: true });
-          if (!cancelled) setSiteRows(items);
-        } catch {
-          if (!cancelled) setSiteRows([]);
-        }
-      })();
-    } else {
-      if (!projectId || projectId <= 0) {
-        setSiteRows([]);
-        return;
-      }
-      (async () => {
-        try {
-          const { items } = await fetchSitesPage(1, 500, { project: projectId, is_active: true });
-          if (!cancelled) setSiteRows(items);
-        } catch {
-          if (!cancelled) setSiteRows([]);
-        }
-      })();
+    const sitesSourceReady = isServiceQuotation
+      ? customerId != null && customerId > 0
+      : projectId != null && projectId > 0;
+    if (!sitesSourceReady) {
+      setSiteRows([]);
+      return;
     }
+    void (async () => {
+      try {
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation,
+          clientId: customerId,
+          projectId,
+        });
+        if (!cancelled) setSiteRows(rows);
+      } catch {
+        if (!cancelled) setSiteRows([]);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -481,9 +478,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 500, { client: customerId });
         if (!cancelled) {
-          setContactOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+          setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
       } catch {
         if (!cancelled) setContactOptions([]);
@@ -542,21 +539,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [isEdit, projectId, setValue, getValues]);
 
   const siteOptions = React.useMemo<Option[]>(() => {
-    const base = siteRows.map((s) => ({ value: String(s.id), label: s.site_name }));
-    if (!isEdit || !existingDetail) return base;
-    const extraIds = getQuotationSiteIds(existingDetail);
-    const merged = [...base];
-    for (const sid of extraIds) {
-      if (merged.some((o) => o.value === String(sid))) continue;
-      const fromList = existingDetail.sites?.find((row) => row.id === sid);
-      const nested =
-        getQuotationSiteId(existingDetail.site) === sid
-          ? getQuotationNestedSite(existingDetail.site)
-          : null;
-      const label = fromList?.site_name?.trim() || nested?.site_name?.trim() || `Site #${sid}`;
-      merged.unshift({ value: String(sid), label });
-    }
-    return merged;
+    const rows = isEdit && existingDetail ? mergeQuotationSiteOptionRows(siteRows, existingDetail) : siteRows;
+    return rows.map((s) => ({ value: String(s.id), label: s.site_name }));
   }, [siteRows, isEdit, existingDetail]);
 
   const selectedSiteIdsKey = React.useMemo(() => {
@@ -588,9 +572,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     void (async () => {
       const rows = await Promise.all(
         ids.map(async (id) => {
-          const fromRows = siteRows.find((s) => s.id === id) ?? null;
-          if (fromRows && siteHasMapableLocation(fromRows)) return fromRows;
-
           if (isEdit && existingDetail && getQuotationSiteId(existingDetail.site) === id && clientIdForSnapshot > 0) {
             const nested = getQuotationNestedSite(existingDetail.site);
             if (nested && siteHasMapableLocation(nested)) {
@@ -610,7 +591,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           try {
             return await fetchSite(id);
           } catch {
-            return fromRows;
+            return null;
           }
         }),
       );
@@ -710,18 +691,24 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       if (reloadCustomerId) {
         const [projects, contacts] = await Promise.all([
-          fetchProjectsPage(1, 500, { client: reloadCustomerId, is_active: true }),
-          fetchContactsPage(1, 500, { client: reloadCustomerId, is_active: true }),
+          fetchProjectsPage(1, 500, { client: reloadCustomerId }),
+          fetchContactsPage(1, 500, { client: reloadCustomerId }),
         ]);
         setProjectRows(projects.items);
-        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: c.name })));
+        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
       }
       if (isServiceQuotation && reloadCustomerId) {
-        const { items } = await fetchSitesPage(1, 500, { client: reloadCustomerId, is_active: true });
-        setSiteRows(items);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation: true,
+          clientId: reloadCustomerId,
+        });
+        setSiteRows(rows);
       } else if (reloadProjectId) {
-        const { items } = await fetchSitesPage(1, 500, { project: reloadProjectId, is_active: true });
-        setSiteRows(items);
+        const rows = await fetchQuotationSiteRows({
+          isServiceQuotation: false,
+          projectId: reloadProjectId,
+        });
+        setSiteRows(rows);
       }
     },
     onApplySelect: ({ selectTarget, selectId }) => {
@@ -878,7 +865,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               showMap
               mapFillHeight
               gridClassName={detailMapFormGridClassName}
-              mapTitle={t("detail.sectionMap")}
               map={
                 <AddressMultiMiniMap
                   points={selectedSiteMapPoints}

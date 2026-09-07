@@ -12,20 +12,40 @@ export type QrCodeBatchDetail = {
   batch_number: string;
 };
 
-/** Nested job when QR is assigned (`assigned_to_id` / `assigned_to_detail`). */
+/** Pin nested under `assigned_to_detail` when a QR is assigned. */
+export type QrCodeAssignedPinRef = {
+  id: number;
+  name?: string | null;
+  plot_id?: number | null;
+};
+
+/** Job nested under `assigned_to_detail` when a QR is assigned. */
 export type QrCodeAssignedJobRef = {
   id: number;
   title?: string | null;
   job_serial_number?: string | null;
   name?: string | null;
+  status?: string | null;
+};
+
+/**
+ * Assignment payload from API.
+ * `assigned_to_id` is the pin id (not the job id).
+ * Job + pin live under `assigned_to_detail`.
+ */
+export type QrCodeAssignedToDetail = {
+  pin?: QrCodeAssignedPinRef | null;
+  job?: QrCodeAssignedJobRef | null;
 };
 
 export type QrCode = {
   id: number;
   qr_code_id: string;
-  qr_image: string;
+  public_uuid?: string | null;
+  qr_image: string | null;
   status: QrCodeStatus;
   is_assigned: boolean;
+  /** Assigned pin id (API name); not the job id. */
   assigned_to_id: number | null;
   last_scanned_at: string | null;
   scan_count: number;
@@ -33,7 +53,7 @@ export type QrCode = {
   modified_at: string | null;
   created_by?: QrCodeUserRef | null;
   modified_by?: QrCodeUserRef | null;
-  assigned_to_detail?: QrCodeAssignedJobRef | null;
+  assigned_to_detail?: QrCodeAssignedToDetail | null;
   batch_detail?: QrCodeBatchDetail | null;
   /** Scan landing URL, e.g. `http://host:5001/org1/{uuid}`. */
   public_url?: string | null;

@@ -26,10 +26,12 @@ export type { DetailPanelProps } from "./detail-panel";
 export { DetailActionMenuDropdown } from "./detail-action-menu-dropdown";
 export type { DetailActionMenuDropdownProps, DetailActionMenuItem } from "./detail-action-menu-dropdown";
 export {
+  FieldErrorSlot,
   FieldErrorText,
   FieldGroup,
   FieldLabel,
   RequiredMark,
+  fieldErrorSlotClassName,
   fieldErrorTextClassName,
   fieldLabelClassName,
   fieldRequiredMarkClassName,
@@ -37,6 +39,7 @@ export {
   surfaceSelectClassName,
   surfaceTextareaClassName,
   fieldControlClassName,
+  fieldControlGrowClassName,
 } from "./field-primitives";
 export {
   SurfaceDateInput,
@@ -59,6 +62,7 @@ export type {
   AddressLocationFieldsProps,
 } from "./address-form-fields";
 export { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
+export { FormSubsection } from "./form-subsection";
 export { SurfacePhoneField, DEFAULT_PHONE_COUNTRY } from "./surface-phone-field";
 export type { SurfacePhoneFieldProps } from "./surface-phone-field";
 export { SurfaceTextField } from "./surface-text-field";
@@ -104,6 +108,7 @@ export { SubmitButton } from "./submit-button";
 export type { SubmitButtonProps } from "./submit-button";
 export { ListPageSearchField } from "./list-page-search-field";
 export { ListPageHeader } from "./list-page-header";
+export { ListViewModeToggle } from "./list-view-mode-toggle";
 export { ActiveStatusBadge } from "./active-status-badge";
 export type { ActiveStatusBadgeProps } from "./active-status-badge";
 export { ListPageCard, ListPageCardFooter, ListPageCardGrid, ListPageCardMetaLine, ListPageCardSkeleton } from "./list-page-card";

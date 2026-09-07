@@ -275,7 +275,7 @@ const SubForm: React.FC<SubFormProps> = ({
     <div className="w-full">
       {label && (
         <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-[13px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+          <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
             {label}
           </span>
           {required && <span className="text-red-500 font-bold">*</span>}
@@ -289,7 +289,7 @@ const SubForm: React.FC<SubFormProps> = ({
               {activeFields.map((f) => (
                 <th
                   key={f.api_name}
-                  className="px-4 py-3 text-left text-[12px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap"
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-slate-700 whitespace-nowrap"
                 >
                   <span>{f.field_label}</span>
                   {(f.required === true || f.required === "true") && (

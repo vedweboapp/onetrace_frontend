@@ -1594,6 +1594,8 @@ export default function FormBuilderLayout({
           router.back();
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
           router.push(`${routes.dashboard.settingsModules}/${targetModule}/layout`);
+        } else if (BackUrl) {
+          router.push(BackUrl);
         } else {
           router.back();
         }

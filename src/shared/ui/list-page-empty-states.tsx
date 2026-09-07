@@ -28,9 +28,11 @@ export type ListPageEmptyStatesProps = {
 
 export function listPageSurfaceShellClassName(hideListChrome: boolean): string {
   return cn(
-    // Single scroll: shell fills remaining height; only table body scrolls.
-    "flex min-h-0 flex-1 flex-col overflow-hidden",
-    hideListChrome ? "rounded-none border-dashed" : "rounded-none border border-slate-200 dark:border-slate-800",
+    // Fill remaining viewport: table body scrolls; pagination stays pinned at the foot.
+    "flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-slate-950",
+    hideListChrome
+      ? "rounded-none border-dashed"
+      : "rounded-none border border-slate-200 shadow-none ring-0 dark:border-slate-800",
   );
 }
 

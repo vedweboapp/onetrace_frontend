@@ -35,9 +35,11 @@ type Props = {
   points: AddressMapPoint[];
   className?: string;
   mapClassName?: string;
+  /** Called when a resolved pin is clicked (e.g. open job detail). */
+  onPointClick?: (point: AddressMapPoint) => void;
 };
 
-export function LeafletAddressMultiMiniMap({ points, className, mapClassName }: Props) {
+export function LeafletAddressMultiMiniMap({ points, className, mapClassName, onPointClick }: Props) {
   const t = useTranslations("Dashboard.common.map");
   ensureLeafletDefaultIcons();
 
@@ -151,6 +153,14 @@ export function LeafletAddressMultiMiniMap({ points, className, mapClassName }: 
       const marker = L.marker([point.lat, point.lon], {
         title: point.label,
       }).addTo(map);
+      if (point.label) {
+        marker.bindPopup(point.label);
+      }
+      if (onPointClick) {
+        marker.on("click", () => {
+          onPointClick(point);
+        });
+      }
       markersRef.current.push(marker);
       bounds.extend([point.lat, point.lon]);
     }
@@ -162,7 +172,7 @@ export function LeafletAddressMultiMiniMap({ points, className, mapClassName }: 
     }
 
     requestAnimationFrame(() => map.invalidateSize());
-  }, [status, resolved]);
+  }, [status, resolved, onPointClick]);
 
   React.useEffect(() => {
     const el = containerRef.current;

@@ -54,6 +54,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
   technician: CreateScheduleTechnician | null;
+  /** When scheduling several workers at once (bulk / group). */
+  technicians?: CreateScheduleTechnician[] | null;
+  /** Optional group context when scheduling a whole user group. */
+  groupId?: number | null;
   defaultDateKey: string;
   prefill?: CreateSchedulePrefill | null;
   existingSchedule?: Schedule | null;
@@ -64,6 +68,11 @@ type Props = {
     ignoreScheduleId?: number;
   }) => string | null;
   onCreated?: (schedule: Schedule) => void;
+  onBulkResult?: (result: {
+    schedule: Schedule;
+    scheduledCount: number;
+    skipped: Array<{ workerId: number; workerName: string; reason: string }>;
+  }) => void;
 };
 
 function isUnassignedJob(job: Job): boolean {
@@ -98,23 +107,34 @@ export function CreateScheduleModal({
   open,
   onClose,
   technician,
+  technicians,
+  groupId = null,
   defaultDateKey,
   prefill,
   existingSchedule,
   getBookingConflict,
   onCreated,
+  onBulkResult,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const isReschedule = Boolean(existingSchedule);
-  const { catalog, loading: catalogLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
-    includeFilters: open,
-  });
+  const bulkWorkers = React.useMemo(() => {
+    if (Array.isArray(technicians) && technicians.length > 0) return technicians;
+    return technician ? [technician] : [];
+  }, [technician, technicians]);
+  const isBulk = bulkWorkers.length > 1;
+  const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(
+    t("modal.technicianFallbackTitle"),
+    {
+      // Keep filters warm while closed so opening Create Schedule has options ready.
+      includeFilters: true,
+    },
+  );
 
   const [jobOptions, setJobOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [jobsById, setJobsById] = React.useState<Record<number, Job>>({});
   const [loadingJobs, setLoadingJobs] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-
   const [workerId, setWorkerId] = React.useState("");
   const [clientId, setClientId] = React.useState("");
   const [jobId, setJobId] = React.useState("");
@@ -122,7 +142,6 @@ export function CreateScheduleModal({
   const [endDate, setEndDate] = React.useState(defaultDateKey);
   const [startTime, setStartTime] = React.useState("09:00");
   const [endTime, setEndTime] = React.useState("17:00");
-  const [allDay, setAllDay] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
   const lockClientJob = Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) || isReschedule;
@@ -139,13 +158,13 @@ export function CreateScheduleModal({
   }, [catalog]);
 
   const selectedWorker = React.useMemo(() => {
-    if (technician) return technician;
+    if (bulkWorkers.length > 0) return bulkWorkers[0] ?? null;
     const id = Number(workerId);
     if (!Number.isFinite(id) || id <= 0 || !catalog) return null;
     const row = catalog.technicians.find((w) => w.id === id);
     if (!row) return null;
     return { id: row.id, name: row.name, title: row.title, initials: row.initials };
-  }, [technician, workerId, catalog]);
+  }, [bulkWorkers, workerId, catalog]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -159,7 +178,6 @@ export function CreateScheduleModal({
       setEndDate(end.date || start.date || defaultDateKey);
       setStartTime(start.time || "09:00");
       setEndTime(end.time || "17:00");
-      setAllDay(Boolean(existingSchedule.all_day));
       setErrors({});
       return;
     }
@@ -171,7 +189,6 @@ export function CreateScheduleModal({
     setEndDate(dateKey);
     setStartTime(prefill?.startTime || "09:00");
     setEndTime(prefill?.endTime || "17:00");
-    setAllDay(false);
     setErrors({});
   }, [open, defaultDateKey, prefill, technician?.id, existingSchedule]);
 
@@ -234,7 +251,7 @@ export function CreateScheduleModal({
     if (!job) return;
     const durationMinutes = parseJobDurationMinutes(job.job_time);
     const keepCalendarStart = Boolean(prefill?.dateKey || prefill?.startTime || startDate || startTime);
-    if (!allDay && durationMinutes && durationMinutes > 0 && keepCalendarStart) {
+    if (durationMinutes && durationMinutes > 0 && keepCalendarStart) {
       const baseDate = startDate || prefill?.dateKey || defaultDateKey;
       const baseTime = startTime || prefill?.startTime || "09:00";
       const next = addMinutesToDateTime(baseDate, baseTime, durationMinutes);
@@ -262,11 +279,9 @@ export function CreateScheduleModal({
     if (!jobId) next.job = t("validation.job");
     if (!startDate.trim()) next.startDate = t("validation.startDate");
     if (!endDate.trim()) next.endDate = t("validation.endDate");
-    if (!allDay) {
-      if (!startTime.trim()) next.startTime = t("validation.startTime");
-      if (!endTime.trim()) next.endTime = t("validation.endTime");
-    }
-    if (!next.startTime && !next.endTime && !allDay && selectedWorker && getBookingConflict) {
+    if (!startTime.trim()) next.startTime = t("validation.startTime");
+    if (!endTime.trim()) next.endTime = t("validation.endTime");
+    if (!next.startTime && !next.endTime && selectedWorker && getBookingConflict) {
       const startIso = combineDateAndTimeToIso(startDate, startTime, false);
       const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
       const conflict = getBookingConflict({
@@ -288,31 +303,51 @@ export function CreateScheduleModal({
     if (!Number.isFinite(jobNum) || jobNum <= 0 || !Number.isFinite(clientNum)) return;
 
     const job = jobsById[jobNum];
+    const workerIds = (isBulk ? bulkWorkers : [selectedWorker])
+      .map((w) => w.id)
+      .filter((id) => Number.isFinite(id) && id > 0);
 
     setSaving(true);
     try {
-      const startIso = combineDateAndTimeToIso(startDate, startTime, allDay);
-      const endIso = combineDateAndTimeEndToIso(endDate, endTime, allDay);
+      const startIso = combineDateAndTimeToIso(startDate, startTime, false);
+      const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
 
       const payload = {
         job_id: jobNum,
-        worker_id: selectedWorker.id,
-        worker_ids: [selectedWorker.id],
+        worker_ids: workerIds.length > 0 ? workerIds : [selectedWorker.id],
         client_id: clientNum,
         project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
+        group_id: groupId ?? null,
         start_at: startIso,
         end_at: endIso,
-        notes: null,
-        recurrence: "none" as const,
-        recurrence_end_at: null,
-        all_day: allDay,
       };
 
-      const row = existingSchedule
-        ? await updateSchedule(existingSchedule.id, payload)
-        : await createSchedule(payload);
-      toastSuccess(isReschedule ? t("modal.successRescheduleToast") : t("modal.successToast"));
-      onCreated?.(row);
+      if (existingSchedule) {
+        const row = await updateSchedule(existingSchedule.id, payload);
+        toastSuccess(t("modal.successRescheduleToast"));
+        onCreated?.(row);
+        onClose();
+        return;
+      }
+
+      const result = await createSchedule(payload);
+      if (isBulk || result.skipped.length > 0) {
+        onBulkResult?.({
+          schedule: result.schedule,
+          scheduledCount: result.scheduledWorkerIds.length,
+          skipped: result.skipped,
+        });
+        if (result.scheduledWorkerIds.length > 0) {
+          toastSuccess(t("bulk.partialSuccessToast", { count: result.scheduledWorkerIds.length }));
+          onCreated?.(result.schedule);
+        } else if (result.skipped.length === 0) {
+          toastSuccess(t("modal.successToast"));
+          onCreated?.(result.schedule);
+        }
+      } else {
+        toastSuccess(t("modal.successToast"));
+        onCreated?.(result.schedule);
+      }
       onClose();
     } catch (error) {
       toastApiError(error, isReschedule ? t("modal.errorRescheduleToast") : t("modal.errorToast"));
@@ -352,20 +387,25 @@ export function CreateScheduleModal({
         </div>
       }
     >
-      {selectedWorker && technician ? (
+      {selectedWorker && (technician || isBulk || bulkWorkers.length > 0) ? (
         <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold uppercase text-white"
             aria-hidden
           >
-            {selectedWorker.initials}
+            {isBulk ? bulkWorkers.length : selectedWorker.initials}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {selectedWorker.name}
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+              {isBulk ? t("bulk.workersSelected", { count: bulkWorkers.length }) : selectedWorker.name}
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {t("modal.currentTitle", { title: techTitle })}
+              {isBulk
+                ? bulkWorkers
+                    .slice(0, 4)
+                    .map((w) => w.name)
+                    .join(", ") + (bulkWorkers.length > 4 ? ` +${bulkWorkers.length - 4}` : "")
+                : t("modal.currentTitle", { title: techTitle })}
             </p>
           </div>
         </div>
@@ -401,11 +441,16 @@ export function CreateScheduleModal({
               listLabel={t("fields.client")}
               options={clientOptions}
               value={clientId}
-              disabled={saving || catalogLoading}
+              disabled={saving || catalogLoading || (filtersLoading && clientOptions.length === 0)}
               locked={lockClientJob}
               searchable
               portaled
               emptyLabel={t("placeholders.client")}
+              listEmptyLabel={
+                filtersLoading && clientOptions.length === 0
+                  ? t("modal.loadingClients")
+                  : t("modal.noClients")
+              }
               invalid={Boolean(errors.client)}
               onChange={(v) => {
                 setClientId(v);
@@ -484,47 +529,35 @@ export function CreateScheduleModal({
               className={cn(surfaceInputClassName, "min-w-[9.5rem] flex-1")}
               onChange={(e) => setEndDate(e.target.value)}
             />
-            <label className="ml-1 inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-              <input
-                type="checkbox"
-                checked={allDay}
-                disabled={saving}
-                className="size-4 rounded border-slate-300"
-                onChange={(e) => setAllDay(e.target.checked)}
-              />
-              {t("fields.allDay")}
-            </label>
           </div>
           <FieldErrorText>{errors.startDate || errors.endDate}</FieldErrorText>
         </div>
 
-        {!allDay ? (
-          <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
-              {t("fields.time")} <span className="text-red-500">*</span>
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <SurfaceDateInput
-                type="time"
-                value={startTime}
-                disabled={saving}
-                aria-label={t("fields.startTime")}
-                className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-              <span className="text-sm text-slate-500">{t("fields.to")}</span>
-              <SurfaceDateInput
-                type="time"
-                value={endTime}
-                disabled={saving}
-                aria-label={t("fields.endTime")}
-                className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
-            </div>
-            <FieldErrorText>{errors.startTime || errors.endTime || errors.time}</FieldErrorText>
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t("fields.time")} <span className="text-red-500">*</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <SurfaceDateInput
+              type="time"
+              value={startTime}
+              disabled={saving}
+              aria-label={t("fields.startTime")}
+              className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+            <span className="text-sm text-slate-500">{t("fields.to")}</span>
+            <SurfaceDateInput
+              type="time"
+              value={endTime}
+              disabled={saving}
+              aria-label={t("fields.endTime")}
+              className={cn(surfaceInputClassName, "min-w-[8rem] flex-1")}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
           </div>
-        ) : null}
+          <FieldErrorText>{errors.startTime || errors.endTime || errors.time}</FieldErrorText>
+        </div>
       </div>
     </AppModal>
   );

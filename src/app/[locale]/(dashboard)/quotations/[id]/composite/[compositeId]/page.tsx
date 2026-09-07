@@ -18,6 +18,7 @@ export default async function QuotationDetailCompositeScopePage({ params }: Page
   return (
     <QuotationCompositeScopeDetailScreen
       compositeItemId={numericCompositeId}
+      quotationId={quotationId}
       defaultBackHref={`${routes.dashboard.quotations}/${quotationId}?tab=pricing`}
     />
   );

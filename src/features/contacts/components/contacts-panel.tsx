@@ -9,6 +9,7 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchAllContactIds, fetchContactsPage, updateContact } from "@/features/contacts/api/contact.api";
 import type { Contact, ContactType } from "@/features/contacts/types/contact.types";
 import { contactParentName, getContactClientId, getContactType, getContactVendorId } from "@/features/contacts/utils/contact-nested-fields.util";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -143,7 +144,8 @@ export function ContactsPanel() {
   const massUpdateFields = React.useMemo(
     () =>
       buildContactMassUpdateFields(clientOptions, {
-        name: t("fields.name"),
+        firstName: t("fields.firstName"),
+        lastName: t("fields.lastName"),
         email: t("fields.email"),
         phone: t("fields.phone"),
         client: t("fields.client"),
@@ -297,7 +299,7 @@ export function ContactsPanel() {
         ),
         { narrow: true },
       ),
-      c.primary("name", t("table.name"), (r) => r.name),
+      c.primary("name", t("table.name"), (r) => formatContactName(r)),
       c.link(
         "parent",
         parentColumnLabel,
@@ -475,7 +477,7 @@ export function ContactsPanel() {
                       onChange={() => mass.selection.toggleRowSelected(row.id)}
                     />
                   }
-                  title={<span className={entityNameLinkClassName}>{row.name}</span>}
+                  title={<span className={entityNameLinkClassName}>{formatContactName(row)}</span>}
                   subtitle={
                     parentHref ? (
                       <DetailEntityLink

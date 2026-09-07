@@ -168,7 +168,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
       try {
         const [clientsRes, sitesRes, tagsRes] = await Promise.all([
           fetchClientsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
           fetchTagsPage(1, 500, { is_active: true }),
         ]);
         if (!cancelled) {

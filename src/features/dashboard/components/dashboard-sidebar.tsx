@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookOpen, BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -18,6 +18,7 @@ import {
 import {
   isProjectQuoteCategory,
   isServiceQuoteCategory,
+  parseQuoteCategoryFromBackParam,
   parseQuoteCategoryParam,
 } from "@/features/quotations/constants/quotation-category";
 import { routes } from "@/shared/config/routes";
@@ -48,14 +49,16 @@ export function DashboardSidebar() {
   const isHydrogen = sidebarLayout === "hydrogen";
 
   const shell = cn(
-    "hidden h-full min-h-0 shrink-0 flex-col overflow-hidden bg-slate-50/80 dark:bg-slate-950",
+    // self-stretch + max-h-full: do not use h-full % height — it can inflate the
+    // flex row past the viewport when width animates (extra page scroll + gap).
+    "hidden max-h-full min-h-0 shrink-0 flex-col self-stretch overflow-hidden bg-slate-50/80 dark:bg-slate-950",
     isBoron
       ? "border-l border-slate-200/90 dark:border-slate-800"
       : "border-r border-slate-200/90 dark:border-slate-800",
     // Hydrogen = top nav: keep sidebar for mobile only
     isHydrogen ? "md:hidden" : "md:flex",
     "transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
-    sidebarExpanded ? "md:w-56" : "md:w-14",
+    sidebarExpanded ? "md:w-56 md:min-w-56" : "md:w-14 md:min-w-14",
   );
 
   if (isSettingsArea(pathname)) {
@@ -75,7 +78,7 @@ export function DashboardSidebar() {
 
 function navInactive() {
   return cn(
-    "text-slate-700 hover:bg-slate-200/70 hover:text-slate-950",
+    "text-slate-700 hover:bg-slate-200/80 hover:text-slate-950",
     "dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
   );
 }
@@ -83,7 +86,7 @@ function navInactive() {
 /** Soft section/parent active — used when a nested child is selected (no solid filled block). */
 function navParentActive() {
   return cn(
-    "bg-[color:var(--dash-accent,#0f766e)]/[0.08] font-semibold text-[color:var(--dash-accent,#0f766e)]",
+    "bg-[color:var(--dash-accent,#0f766e)]/[0.08] text-[color:var(--dash-accent,#0f766e)]",
     "dark:bg-[color:var(--dash-accent,#2dd4bf)]/12 dark:text-[color:var(--dash-accent,#5eead4)]",
   );
 }
@@ -91,8 +94,21 @@ function navParentActive() {
 /** Leaf / submenu item active — quiet accent tint (not a solid color block). */
 function navLeafActive() {
   return cn(
-    "bg-[color:var(--dash-accent,#0f766e)]/[0.14] font-semibold text-[color:var(--dash-accent,#0f766e)]",
+    "bg-[color:var(--dash-accent,#0f766e)]/[0.14] text-[color:var(--dash-accent,#0f766e)]",
     "dark:bg-[color:var(--dash-accent,#2dd4bf)]/20 dark:text-[color:var(--dash-accent,#5eead4)]",
+  );
+}
+
+/** Color-only hover — avoids row scale “wave” when moving through the menu. */
+function navItemMotion() {
+  return "transition-colors duration-150 ease-out";
+}
+
+/** Icon: brief press → settle (~0.4s). Class animation lives in globals.css. */
+function navIconMotion(active: boolean) {
+  return cn(
+    "dash-sidebar-nav-icon size-[18px] shrink-0",
+    active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
   );
 }
 
@@ -102,24 +118,20 @@ function SidebarNavLink({
   label,
   icon: Icon,
   expanded,
+  dataNav,
 }: {
   href: string;
   active: boolean;
   label: string;
   icon: LucideIcon;
   expanded: boolean;
+  /** Stable hook for fly-to celebrations (e.g. `dispatches`). */
+  dataNav?: string;
   /** Kept for call-site consistency; leaf items use soft active styles. */
   resolved?: ReturnType<typeof resolveDashboardAccent>;
 }) {
   const iconEl = (
-    <Icon
-      className={cn(
-        "size-[18px] shrink-0",
-        active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
-      )}
-      strokeWidth={1.75}
-      aria-hidden
-    />
+    <Icon className={navIconMotion(active)} strokeWidth={1.75} aria-hidden />
   );
 
   if (!expanded) {
@@ -127,11 +139,13 @@ function SidebarNavLink({
       <Link
         href={href}
         title={label}
-        className="flex w-full shrink-0 justify-center py-0.5"
+        data-nav={dataNav}
+        className="group dash-sidebar-nav-item flex w-full shrink-0 justify-center py-0.5"
       >
         <span
           className={cn(
-            "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
+            "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium",
+            navItemMotion(),
             active ? navLeafActive() : navInactive(),
           )}
         >
@@ -145,8 +159,10 @@ function SidebarNavLink({
   return (
     <Link
       href={href}
+      data-nav={dataNav}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+        "group dash-sidebar-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+        navItemMotion(),
         active ? navLeafActive() : navInactive(),
       )}
     >
@@ -204,22 +220,16 @@ function SidebarNestedNav({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition",
+          "group dash-sidebar-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium",
+          navItemMotion(),
           active ? navParentActive() : navInactive(),
         )}
       >
-        <Icon
-          className={cn(
-            "size-[18px] shrink-0",
-            active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
-          )}
-          strokeWidth={1.75}
-          aria-hidden
-        />
+        <Icon className={navIconMotion(active)} strokeWidth={1.75} aria-hidden />
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <ChevronRight
           className={cn(
-            "size-3.5 shrink-0 text-slate-400 transition-transform duration-200",
+            "size-3.5 shrink-0 text-slate-400 transition-transform duration-200 ease-out",
             open && "rotate-90",
             active && "text-[color:var(--dash-accent,#0f766e)]/70",
           )}
@@ -245,7 +255,8 @@ function SidebarNestedNav({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                  "dash-sidebar-nav-item rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight",
+                  navItemMotion(),
                   item.active
                     ? navLeafActive()
                     : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white",
@@ -325,7 +336,7 @@ function SidebarCollapsedFlyout({
   return (
     <div
       ref={triggerRef}
-      className="relative flex w-full shrink-0 justify-center py-0.5"
+      className="group dash-sidebar-nav-item relative flex w-full shrink-0 justify-center py-0.5"
       onMouseEnter={openMenu}
       onMouseLeave={scheduleClose}
     >
@@ -335,18 +346,12 @@ function SidebarCollapsedFlyout({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium transition",
+          "inline-flex size-9 items-center justify-center rounded-lg text-sm font-medium",
+          navItemMotion(),
           active ? navParentActive() : navInactive(),
         )}
       >
-        <Icon
-          className={cn(
-            "size-[18px] shrink-0",
-            active ? "opacity-100" : "text-slate-500 dark:text-slate-400",
-          )}
-          strokeWidth={1.75}
-          aria-hidden
-        />
+        <Icon className={navIconMotion(active)} strokeWidth={1.75} aria-hidden />
         <span className="sr-only">{label}</span>
       </button>
       {open && typeof document !== "undefined"
@@ -357,6 +362,7 @@ function SidebarCollapsedFlyout({
             className={cn(
               "fixed z-[80] w-[10rem] rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg",
               "ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
+              "dash-sidebar-flyout",
             )}
             style={{ top: pos.top, left: pos.left }}
             onMouseEnter={openMenu}
@@ -373,7 +379,8 @@ function SidebarCollapsedFlyout({
                   role="menuitem"
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight transition",
+                    "rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-tight",
+                    navItemMotion(),
                     item.active
                       ? navLeafActive()
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
@@ -415,6 +422,7 @@ function DashboardMainSidebar({
   const jobsHref = routes.dashboard.jobs;
   const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
+  const formsHref = routes.dashboard.forms;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -441,7 +449,10 @@ function DashboardMainSidebar({
     pathname === quotationsHref || pathname.startsWith(`${quotationsHref}/`);
   const quoteCategory = React.useMemo(() => {
     if (!quotationsActive) return undefined;
-    return parseQuoteCategoryParam(searchParams.get("quote_category"));
+    return (
+      parseQuoteCategoryParam(searchParams.get("quote_category")) ??
+      parseQuoteCategoryFromBackParam(searchParams.get("back"))
+    );
   }, [quotationsActive, searchParams]);
   const quotationServiceActive =
     quotationsActive &&
@@ -458,6 +469,7 @@ function DashboardMainSidebar({
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
+  const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -618,6 +630,14 @@ function DashboardMainSidebar({
           resolved={resolved}
         />
         <SidebarNavLink
+          href={formsHref}
+          active={formsActive}
+          label={t("forms")}
+          icon={ClipboardPen}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
           href={projectsHref}
           active={projectsActive}
           label={t("projects")}
@@ -648,6 +668,7 @@ function DashboardMainSidebar({
           icon={Truck}
           expanded={expanded}
           resolved={resolved}
+          dataNav="dispatches"
         />
         <SidebarNavLink
           href={returnToStockHref}

@@ -43,7 +43,6 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
 
@@ -495,22 +494,34 @@ export function TagSettingsPanel() {
             <input id="tag-name" value={tagName} onChange={(e) => { setTagName(sanitizeTitleInput(e.target.value)); if (errors.tag_name) setErrors((prev) => ({ ...prev, tag_name: undefined })); }} className={cn(surfaceInputClassName, errors.tag_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} autoComplete="off" />
             {errors.tag_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.tag_name}</p> : null}
           </FieldGroup>
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.bgColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.bgColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="tag-bg"
+          >
+            <div className="flex items-center gap-2">
               <input type="color" value={normalizeHex(bgColour, DEFAULT_BG).slice(0, 7)} onChange={(e) => setBgColour(e.target.value)} className="size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 dark:border-slate-600" aria-label={t("modal.bgColour")} />
-              <input value={bgColour} onChange={(e) => { setBgColour(e.target.value); if (errors.bg_colour) setErrors((prev) => ({ ...prev, bg_colour: undefined })); }} className={cn(surfaceInputClassName, "px-3 font-mono", errors.bg_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} placeholder={t("hexPlaceholder")} spellCheck={false} />
+              <input id="tag-bg" value={bgColour} onChange={(e) => { setBgColour(e.target.value); if (errors.bg_colour) setErrors((prev) => ({ ...prev, bg_colour: undefined })); }} className={cn(surfaceInputClassName, "px-3 font-mono", errors.bg_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} placeholder={t("hexPlaceholder")} spellCheck={false} />
             </div>
             {errors.bg_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_colour}</p> : null}
-          </div>
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.textColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          </FieldGroup>
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.textColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor="tag-text"
+          >
+            <div className="flex items-center gap-2">
               <input type="color" value={normalizeHex(textColour, DEFAULT_TEXT).slice(0, 7)} onChange={(e) => setTextColour(e.target.value)} className="size-11 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 dark:border-slate-600" aria-label={t("modal.textColour")} />
-              <input value={textColour} onChange={(e) => { setTextColour(e.target.value); if (errors.text_colour) setErrors((prev) => ({ ...prev, text_colour: undefined })); }} className={cn(surfaceInputClassName, "px-3 font-mono", errors.text_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} placeholder={t("hexPlaceholder")} spellCheck={false} />
+              <input id="tag-text" value={textColour} onChange={(e) => { setTextColour(e.target.value); if (errors.text_colour) setErrors((prev) => ({ ...prev, text_colour: undefined })); }} className={cn(surfaceInputClassName, "px-3 font-mono", errors.text_colour && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} placeholder={t("hexPlaceholder")} spellCheck={false} />
             </div>
             {errors.text_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_colour}</p> : null}
-          </div>
+          </FieldGroup>
         </div>
       </AppModal>
 

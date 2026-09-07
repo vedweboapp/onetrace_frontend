@@ -1,5 +1,5 @@
 import { toastError } from "@/shared/feedback/app-toast";
-import { parseApiFailurePayload, resolveApiErrorUserText } from "./api-error-text";
+import { parseApiFailurePayload, resolveApiErrorUserText, isHtmlOrDebugDump, sanitizeApiErrorLine } from "./api-error-text";
 
 const TOASTED = Symbol("apiErrorToastShown");
 
@@ -14,9 +14,9 @@ export function wasApiErrorToasted(error: unknown): boolean {
 }
 
 export function getApiErrorDisplayMessage(error: unknown, fallback?: string): string {
-  const text = resolveApiErrorUserText(parseApiFailurePayload(error));
-  if (text !== "Request failed") return text;
-  return fallback?.trim() || text;
+  const text = resolveApiErrorUserText(parseApiFailurePayload(error)).trim();
+  if (text && text !== "Request failed" && !isHtmlOrDebugDump(text)) return text;
+  return fallback?.trim() || "Something went wrong. Please try again.";
 }
 
 /**
@@ -28,8 +28,13 @@ export function toastApiError(error: unknown, fallback?: string): void {
 
   const payload = parseApiFailurePayload(error);
   const fromApi = resolveApiErrorUserText(payload);
-  const hasApiDetails = Boolean(payload.message?.trim() || (payload.errors?.length ?? 0) > 0);
-  const text = hasApiDetails ? fromApi : (fallback?.trim() || fromApi);
+  const hasApiDetails =
+    Boolean(sanitizeApiErrorLine(payload.message)) ||
+    (payload.errors?.some((e) => sanitizeApiErrorLine(e)) ?? false);
+  const text =
+    hasApiDetails && !isHtmlOrDebugDump(fromApi)
+      ? fromApi
+      : fallback?.trim() || fromApi;
 
   toastError(text);
   markApiErrorToasted(error);

@@ -185,7 +185,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true });
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);
@@ -435,7 +435,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   {t("noProjectTypesHint")}
                 </p>
               ) : null}
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
                   <input
                     id="project-name"
@@ -532,28 +532,46 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   <FieldErrorText>{errors.project_status?.message}</FieldErrorText>
                 </FieldGroup>
               </FormFieldRow>
-              <FieldGroup label="Forms" htmlFor="project-form-ids">
-                <Controller
-                  control={control}
-                  name="form_ids"
-                  render={({ field }) => (
-                    <MultiCheckSelect
-                      id="project-form-ids"
-                      options={formOptions}
-                      values={field.value ?? []}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      disabled={saving || !selectedProjectType || formOptions.length === 0}
-                      placeholder="Select forms..."
-                      listLabel="Forms"
-                    />
-                  )}
-                />
-                {selectedProjectType && formOptions.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
-                )}
-              </FieldGroup>
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label="Forms" htmlFor="project-form-ids">
+                  <Controller
+                    control={control}
+                    name="form_ids"
+                    render={({ field }) => (
+                      <MultiCheckSelect
+                        id="project-form-ids"
+                        options={formOptions}
+                        values={field.value ?? []}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving || !selectedProjectType || formOptions.length === 0}
+                        placeholder="Select forms..."
+                        listLabel="Forms"
+                      />
+                    )}
+                  />
+                  {selectedProjectType && formOptions.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
+                  ) : null}
+                </FieldGroup>
+                <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+                  <textarea
+                    id="project-description"
+                    rows={4}
+                    aria-invalid={errors.description ? true : undefined}
+                    aria-describedby={errors.description ? "project-desc-err" : undefined}
+                    className={cn(
+                      surfaceInputClassName,
+                      "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                      errors.description && "border-red-500 dark:border-red-500",
+                    )}
+                    {...register("description", rhfRegisterOptions("description"))}
+                    maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+                  />
+                  <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
                   <Controller
                     control={control}
@@ -574,7 +592,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                       />
                     )}
                   />
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.sitesMultiSelect")}</p>
                 </FieldGroup>
                 <FieldGroup label="Managers" htmlFor="project-managers">
                   <Controller
@@ -597,23 +614,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   />
                 </FieldGroup>
               </FormFieldRow>
-              <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-                <textarea
-                  id="project-description"
-                  rows={4}
-                  aria-invalid={errors.description ? true : undefined}
-                  aria-describedby={errors.description ? "project-desc-err" : undefined}
-                  className={cn(
-                    surfaceInputClassName,
-                    "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
-                    errors.description && "border-red-500 dark:border-red-500",
-                  )}
-                  {...register("description", rhfRegisterOptions("description"))}
-                  maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
-                />
-                <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-              </FieldGroup>
-              <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+              <FormFieldRow cols="2" from="md">
                 <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
                   <SurfaceDateInput
                     id="project-start"

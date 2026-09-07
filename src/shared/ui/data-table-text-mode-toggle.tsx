@@ -83,7 +83,7 @@ export function DataTableTextModeToggle({
           aria-pressed={selected}
           onClick={() => setMode(value)}
           className={cn(
-            "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold transition",
+            "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition",
             selected
               ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100"
               : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200",

@@ -145,7 +145,7 @@ export default function DynamicFieldPreview({
             items={[
               {
                 id: "edit",
-                label: "Edit properties",
+                label: "Edit Properties",
                 onSelect: () =>
                   modalsetter({
                     type: field.field_type,
@@ -198,7 +198,7 @@ export default function DynamicFieldPreview({
         items={[
           {
             id: "edit",
-            label: "Edit properties",
+            label: "Edit Properties",
             onSelect: () =>
               modalsetter({
                 type: field.field_type,

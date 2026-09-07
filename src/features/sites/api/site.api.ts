@@ -20,7 +20,6 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 export type SiteListFilters = {
   search?: string;
-  is_active?: boolean;
   client?: number;
   project?: number;
 };
@@ -33,7 +32,6 @@ export async function fetchSitesPage(
   const params: Record<string, string | number> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
-  if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
   if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
     params.client = filters.client;
   }
@@ -62,12 +60,6 @@ export async function createSite(body: SiteCreatePayload): Promise<Site> {
 }
 
 export async function updateSite(id: number, body: SiteUpdatePayload): Promise<Site> {
-  const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
-  assertApiSuccess(data);
-  return data.data;
-}
-
-export async function patchSite(id: number, body: { is_active: boolean }): Promise<Site> {
   const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;

@@ -9,6 +9,7 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import {
   createPurchaseOrder,
@@ -189,7 +190,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
         setContactOptions(
           contacts.items.map((c) => ({
             value: String(c.id),
-            label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+            label: formatContactOptionLabel(c),
           })),
         );
         setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
@@ -307,7 +308,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
           setContactOptions(
             items.map((c) => ({
               value: String(c.id),
-              label: c.name?.trim() || c.email?.trim() || `#${c.id}`,
+              label: formatContactOptionLabel(c),
             })),
           );
         }
@@ -542,8 +543,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                   sectionTitle: t("fields.addresses"),
                   add: t("addresses.add"),
                   remove: t("addresses.remove"),
-                  primary: t("addresses.primary"),
-                  rowLabel: (index) => t("addresses.rowLabel", { index }),
+                  rowLabel: (index) => t("addresses.rowLabel", { number: index  }),
                   addressType: t("fields.addressType"),
                   addressLine1: t("fields.addressLine1"),
                   addressLine2: t("fields.addressLine2"),

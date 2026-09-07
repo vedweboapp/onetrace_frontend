@@ -21,6 +21,8 @@ export type SiteContactPersonPayload = {
 
 export type SiteContactPersonContactRef = {
   id: number;
+  first_name?: string | null;
+  last_name?: string | null;
   name?: string | null;
   email?: string | null;
   phone?: string | null;

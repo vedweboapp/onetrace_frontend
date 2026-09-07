@@ -60,6 +60,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack, storeBackHrefFo
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { JobsMapView } from "@/features/jobs/components/jobs-map-view";
 
 export function JobsPanel() {
   const t = useTranslations("Dashboard.jobs");
@@ -85,7 +86,7 @@ export function JobsPanel() {
     setPage,
     setPageSize,
     setListViewMode,
-  } = useListUrlState({ defaultPageSize: 10 });
+  } = useListUrlState({ defaultPageSize: 20 });
 
   const jobStatusParam = searchParams.get("job_status");
   const assignedWorkerParam = searchParams.get("assigned_worker");
@@ -116,7 +117,7 @@ export function JobsPanel() {
     total_records: 0,
     total_pages: 1,
     current_page: 1,
-    page_size: 10,
+    page_size: 20,
     next: null as string | null,
     previous: null as string | null,
   });
@@ -292,7 +293,7 @@ export function JobsPanel() {
         const [clients, projects, sites] = await Promise.all([
           fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
           fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500, { is_active: true }),
+          fetchSitesPage(1, 500),
         ]);
         if (!cancelled) {
           setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
@@ -523,8 +524,10 @@ export function JobsPanel() {
           filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
-          tableViewLabel={tList("tableView")}
+          tableViewLabel={tList("cardView")}
           listViewLabel={tList("listView")}
+          mapViewLabel={tList("mapView")}
+          showMapView
           action={<AddButton type="button" onClick={openCreate} />}
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -591,6 +594,8 @@ export function JobsPanel() {
                 ))}
               </ListPageCardGrid>
             </div>
+          ) : listViewMode === "map" ? (
+            <div className="min-h-[min(72vh,640px)] w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
           ) : (
             <div className="space-y-2 p-6">
               <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -706,6 +711,8 @@ export function JobsPanel() {
               })}
             </ListPageCardGrid>
           </div>
+        ) : listViewMode === "map" ? (
+          <JobsMapView jobs={items} onJobClick={openJobDetail} />
         ) : (
           <EntityDataTable
             columns={tableColumns}

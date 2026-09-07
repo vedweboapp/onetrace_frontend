@@ -163,7 +163,6 @@ export function InvoiceDetailBody({
       country: t("fields.country"),
       state: t("fields.state"),
       city: t("fields.city"),
-      primary: t("addresses.primary"),
     }),
     [t],
   );
@@ -207,7 +206,7 @@ export function InvoiceDetailBody({
               <DetailEditableField
                 label={t("fields.issueDate")}
                 value={formatApiDateForHtmlDateInput(detail.issue_date)}
-                kind="text"
+                kind="date"
                 editAriaLabel={tActions("edit")}
                 empty="—"
                 onSave={(next) => patchField({ issue_date: next || undefined })}
@@ -219,7 +218,7 @@ export function InvoiceDetailBody({
               <DetailEditableField
                 label={t("fields.dueDate")}
                 value={formatApiDateForHtmlDateInput(detail.due_date)}
-                kind="text"
+                kind="date"
                 editAriaLabel={tActions("edit")}
                 empty="—"
                 onSave={(next) => patchField({ due_date: next || undefined })}
@@ -284,9 +283,7 @@ export function InvoiceDetailBody({
                   <DetailEntityAddressFields
                     key={addr.id ?? `${addr.address_type}-${originalIndex}`}
                     separated={displayIndex > 0}
-                    blockHeading={t("addresses.rowLabel", { index: displayIndex + 1 })}
-                    blockPrimaryLabel={t("addresses.primary")}
-                    blockIsPrimary={Boolean(addr.is_primary)}
+                    blockHeading={t("addresses.rowLabel", { number: displayIndex + 1   })}
                     address={addr}
                     addressIndex={originalIndex}
                     allAddresses={addresses}

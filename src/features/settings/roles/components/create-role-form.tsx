@@ -242,29 +242,18 @@ export function RoleFormScreen({ mode = "create", roleId }: RoleFormProps) {
                 disabled={saving}
               />
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  {t("fields.sharedDataWithPeers")}
-                </label>
-                <div className="flex min-h-[7.25rem] items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-colors dark:border-slate-800 dark:bg-slate-950">
-                  <div className="space-y-1 min-w-0 pr-4">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 block">
-                      {t("fields.sharedDataWithPeers")}
-                    </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {t("hints.sharedDataWithPeers")}
-                    </p>
-                  </div>
-
-                  <Controller
-                    control={control}
-                    name="shared_data_with_peers"
-                    render={({ field }) => (
+              <FieldGroup label={t("fields.sharedDataWithPeers")} htmlFor="role-shared-peers">
+                <Controller
+                  control={control}
+                  name="shared_data_with_peers"
+                  render={({ field }) => (
+                    <div className="flex h-[var(--form-control-height,2.5rem)] items-center">
                       <button
                         id="role-shared-peers"
                         type="button"
                         role="switch"
                         aria-checked={field.value}
+                        aria-label={t("fields.sharedDataWithPeers")}
                         disabled={saving}
                         onClick={() => field.onChange(!field.value)}
                         className={cn(
@@ -279,10 +268,10 @@ export function RoleFormScreen({ mode = "create", roleId }: RoleFormProps) {
                           )}
                         />
                       </button>
-                    )}
-                  />
-                </div>
-              </div>
+                    </div>
+                  )}
+                />
+              </FieldGroup>
             </FormFieldRow>
           </form>
         )}

@@ -20,7 +20,7 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
-import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FieldLabel, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FormFieldRow, FormSubsection, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
@@ -402,7 +402,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           </div>
         ) : (
           <form id="item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input
                   id={nameId}
@@ -437,10 +437,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 />
                 <FieldErrorText>{skuError}</FieldErrorText>
               </FieldGroup>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <FieldLabel htmlFor={unitId}>{tModal("unitType")}</FieldLabel>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={tModal("unitType")} htmlFor={unitId}>
                 <CheckmarkSelect
                   id={unitId}
                   listLabel={tModal("unitType")}
@@ -459,9 +458,8 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   addLabel={unitTypeQuickAdd.addLabel}
                 />
                 {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
-              </div>
-              <div>
-                <FieldLabel htmlFor={qtyId}>{tModal("quantity")}</FieldLabel>
+              </FieldGroup>
+              <FieldGroup label={tModal("quantity")} htmlFor={qtyId}>
                 <NumericInput
                   id={qtyId}
                   integer
@@ -469,7 +467,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   onChange={setQty}
                   disabled={submitting}
                 />
-              </div>
+              </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
                   id={costId}
@@ -500,57 +500,54 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 />
                 <FieldErrorText>{sellError}</FieldErrorText>
               </FieldGroup>
-            </div>
+            </FormFieldRow>
 
-            <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
-              <MultiCheckSelect
-                id="item-vendors"
-                options={vendorOptions}
-                values={vendorIds}
-                onChange={setVendorIds}
-                disabled={submitting}
-                placeholder={tModal("vendorsPlaceholder")}
-                listLabel={tModal("vendors")}
-                searchable
-                fallbackLabels={vendorFallbackLabels}
-                onAdd={vendorQuickCreate.onAdd}
-                addAriaLabel={vendorQuickCreate.addAriaLabel}
-                addLabel={vendorQuickCreate.addLabel}
-              />
-              {vendorsError ? (
-                <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-              ) : null}
-            </FieldGroup>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
+                <MultiCheckSelect
+                  id="item-vendors"
+                  options={vendorOptions}
+                  values={vendorIds}
+                  onChange={setVendorIds}
+                  disabled={submitting}
+                  placeholder={tModal("vendorsPlaceholder")}
+                  listLabel={tModal("vendors")}
+                  searchable
+                  fallbackLabels={vendorFallbackLabels}
+                  onAdd={vendorQuickCreate.onAdd}
+                  addAriaLabel={vendorQuickCreate.addAriaLabel}
+                  addLabel={vendorQuickCreate.addLabel}
+                />
+                {vendorsError ? (
+                  <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+                ) : null}
+              </FieldGroup>
+            </FormFieldRow>
 
-            <div className="space-y-4 pt-1">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tModal("fulfilmentDetails")}</h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
-                <div className="min-w-0">
-                  <FieldLabel htmlFor="item-dimensions">{tModal("dimensions")}</FieldLabel>
-                  <div className="mt-1.5">
-                    <DimensionsLwhInput
-                      id="item-dimensions"
-                      length={length}
-                      width={width}
-                      height={height}
-                      onChange={(next) => {
-                        setLength(next.length);
-                        setWidth(next.width);
-                        setHeight(next.height);
-                      }}
-                      unit={dimensionsUnit}
-                      onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                      unitAriaLabel={tModal("dimensionsUnit")}
-                      lengthAriaLabel={tModal("dimensionsLength")}
-                      widthAriaLabel={tModal("dimensionsWidth")}
-                      heightAriaLabel={tModal("dimensionsHeight")}
-                      disabled={submitting}
-                    />
-                  </div>
+            <FormSubsection title={tModal("fulfilmentDetails")}>
+              <FormFieldRow cols="2" from="md" className="gap-4">
+                <FieldGroup label={tModal("dimensions")} htmlFor="item-dimensions">
+                  <DimensionsLwhInput
+                    id="item-dimensions"
+                    length={length}
+                    width={width}
+                    height={height}
+                    onChange={(next) => {
+                      setLength(next.length);
+                      setWidth(next.width);
+                      setHeight(next.height);
+                    }}
+                    unit={dimensionsUnit}
+                    onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                    unitAriaLabel={tModal("dimensionsUnit")}
+                    lengthAriaLabel={tModal("dimensionsLength")}
+                    widthAriaLabel={tModal("dimensionsWidth")}
+                    heightAriaLabel={tModal("dimensionsHeight")}
+                    disabled={submitting}
+                  />
                   <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
-                </div>
-                <div className="min-w-0">
-                  <FieldLabel htmlFor="item-weight">{tModal("weight")}</FieldLabel>
+                </FieldGroup>
+                <FieldGroup label={tModal("weight")} htmlFor="item-weight">
                   <InputWithEndSelect
                     inputId="item-weight"
                     inputType="number"
@@ -569,9 +566,9 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                     ]}
                     selectAriaLabel={tModal("weightUnit")}
                   />
-                </div>
-              </div>
-            </div>
+                </FieldGroup>
+              </FormFieldRow>
+            </FormSubsection>
           </form>
         )}
       </SurfaceShell>

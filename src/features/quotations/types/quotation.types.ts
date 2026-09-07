@@ -78,6 +78,7 @@ export type QuotationPlotPin = {
   amount?: number | string | null;
   description?: string | null;
   location?: number | string | null;
+  variation?: boolean | null;
   project_form?: number | { id?: number; name?: string | null; submission_id?: number | null; submission_status?: string | null } | null;
   status_detail?: {
     id?: number | null;
@@ -141,6 +142,9 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  /** Product group selected when adding the line (service quotes). */
+  group_id?: number | null;
+  group_name?: string | null;
   source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
@@ -254,6 +258,15 @@ export type QuotationListItem = {
   quote_category?: string | null;
   /** @deprecated Prefer `quote_category`. */
   category?: string | null;
+  /** Set when a job was created from this service quotation. */
+  job?: number | { id: number } | null;
+  job_id?: number | null;
+  has_job?: boolean | null;
+  is_job_created?: boolean | null;
+  service_job?: number | { id: number } | null;
+  linked_job?: number | { id: number } | null;
+  created_job?: number | { id: number } | null;
+  job_created?: boolean | null;
   is_active: boolean;
   organization: number | null;
 };
@@ -268,6 +281,14 @@ export type QuotationDetail = QuotationListItem & {
   site_snapshots?: QuotationSiteSnapshot[];
   comment: string | null;
   sites?: Array<{ id: number; site_name: string }>;
+  /** Client acceptance signature (URL or data URL) after approve. */
+  signature?: string | null;
+  signature_url?: string | null;
+  client_signature?: string | null;
+  acceptance_signature?: string | null;
+  signed_at?: string | null;
+  approved_at?: string | null;
+  accepted_at?: string | null;
 };
 
 export type QuotationPagination = {

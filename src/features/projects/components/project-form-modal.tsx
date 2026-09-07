@@ -153,7 +153,7 @@ export function ProjectFormModal({
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, is_active: true, search: searchQuery });
+      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, search: searchQuery });
       const newOptions = items.map((s) => ({ value: String(s.id), label: s.site_name }));
       newOptions.forEach((opt) => {
         accumulatedSiteLabels.current[opt.value] = opt.label;
@@ -386,7 +386,7 @@ export function ProjectFormModal({
           </p>
         ) : null}
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.name")} htmlFor="project-name" required>
             <input
               id="project-name"
@@ -459,7 +459,7 @@ export function ProjectFormModal({
           </FieldGroup>
         </FormFieldRow>
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.sites")} htmlFor="project-sites">
             <Controller
               control={control}
@@ -506,24 +506,26 @@ export function ProjectFormModal({
           </FieldGroup>
         </FormFieldRow>
 
-        <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
-          <textarea
-            id="project-description"
-            rows={4}
-            aria-invalid={errors.description ? true : undefined}
-            aria-describedby={errors.description ? "project-desc-err" : undefined}
-            className={cn(
-              surfaceInputClassName,
-              "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
-              errors.description && "border-red-500 dark:border-red-500",
-            )}
-            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
-            {...register("description", rhfRegisterOptions("description"))}
-          />
-          <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
-        </FieldGroup>
+        <FormFieldRow cols="2" from="md">
+          <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
+            <textarea
+              id="project-description"
+              rows={4}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={errors.description ? "project-desc-err" : undefined}
+              className={cn(
+                surfaceInputClassName,
+                "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                errors.description && "border-red-500 dark:border-red-500",
+              )}
+              maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
+              {...register("description", rhfRegisterOptions("description"))}
+            />
+            <FieldErrorText id="project-desc-err">{errors.description?.message}</FieldErrorText>
+          </FieldGroup>
+        </FormFieldRow>
 
-        <FormFieldRow cols="1" className="gap-4 sm:grid-cols-2">
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("fields.startDate")} htmlFor="project-start" required>
             <SurfaceDateInput
               id="project-start"
