@@ -295,16 +295,26 @@ export function DrawingPinPreviewModal({
   React.useEffect(() => {
     if (open) {
       setPageSize(null);
-      setLoading(!hideDrawing);
+      // If no drawing file or hideDrawing, no loading state needed
+      setLoading(!hideDrawing && Boolean(normalizedFileUrl));
       setIsPanning(false);
     }
-  }, [open, drawingFile, hideDrawing]);
+  }, [open, drawingFile, hideDrawing, normalizedFileUrl]);
 
   React.useEffect(() => {
     if (!pdfFailed || hideDrawing) return;
     setLoading(false);
     toastError("Failed to render blueprint PDF drawing");
   }, [pdfFailed, hideDrawing]);
+
+  // Safety: if it's a PDF but pdfFile is still null after the hook, clear loading
+  // (handles the case where useAuthenticatedPdfFile hook never resolves on public pages)
+  React.useEffect(() => {
+    if (!open || hideDrawing || !isPdf || !normalizedFileUrl) return;
+    if (!pdfFile && !pdfFailed) return; // Still loading
+    // pdfFile resolved (success) or pdfFailed (failure) — either way, clear loading
+    setLoading(false);
+  }, [open, hideDrawing, isPdf, normalizedFileUrl, pdfFile, pdfFailed]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -390,9 +400,10 @@ export function DrawingPinPreviewModal({
     if (open) {
       setIsEditing(false);
       setPinEditData(null);
-      setDetailsOpen(embedded || hideDrawing);
+      // Auto-open details when: embedded, hideDrawing, or no drawing file to interact with
+      setDetailsOpen(embedded || hideDrawing || !normalizedFileUrl);
     }
-  }, [open, embedded, hideDrawing, pin?.id]);
+  }, [open, embedded, hideDrawing, normalizedFileUrl, pin?.id]);
 
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
@@ -522,7 +533,19 @@ export function DrawingPinPreviewModal({
     }
   }
 
-  if (!open || !pin) return null;
+  if (!open) return null;
+
+  // While pin details are still fetching, show a loading placeholder modal
+  if (!pin) {
+    return (
+      <AppModal open={open} onClose={onClose} title="Loading pin details…" size="5xl">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-[color:var(--dash-accent,#f97316)]" />
+        </div>
+      </AppModal>
+    );
+  }
+
 
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const abbreviation = resolvePinMarkerAbbreviation(pin, {}, productName);
@@ -760,6 +783,7 @@ export function DrawingPinPreviewModal({
                 No drawing file available.
               </div>
             )}
+
           </div>
         </div>
         ) : null}

@@ -524,8 +524,10 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
   let isPage1 = true;
   let currentY = margin;
 
+  const hasSidebar = Boolean(options.pinDetails);
+
   function getContentWidth() {
-    return isPage1 ? mainWidthPage1 : fullContentWidth;
+    return isPage1 && hasSidebar ? mainWidthPage1 : fullContentWidth;
   }
 
   function checkPageOverflow(neededHeight: number) {
@@ -732,14 +734,22 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
   const subMetaParts: string[] = [];
   if (options.submittedAt) subMetaParts.push(`Submitted: ${options.submittedAt}`);
   if (options.statusName) subMetaParts.push(`Status: ${options.statusName}`);
+  if (options.locationText) subMetaParts.push(`Location: #${options.locationText}`);
+  if (!hasSidebar && options.productName) subMetaParts.push(options.productName);
 
   pdf.text(subMetaParts.join("   •   ") || "Form Submission Details", margin + 4, currentY + 16);
   currentY += 27;
 
   // ==========================================
-  // 3. Extract Form Fields (Only visible fields; display "null" if empty)
+  // 3. Extract Form Fields Grouped by Section
   // ==========================================
-  const items: FormPdfFieldItem[] = [];
+  type FormPdfSectionGroup = {
+    sectionIndex: number;
+    sectionName: string;
+    items: FormPdfFieldItem[];
+  };
+
+  const sectionsToRender: FormPdfSectionGroup[] = [];
   let counter = 1;
   const ignoredTypes = new Set(["button", "submit", "reset", "heading", "divider", "separator"]);
 
@@ -788,6 +798,8 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
   options.sections.forEach((section, sIdx) => {
     if (!isSectionVisible(section, sIdx)) return; // skip hidden sections
 
+    const sectionItems: FormPdfFieldItem[] = [];
+
     for (const field of section.fields ?? []) {
       const typeLower = String(field.field_type ?? "").toLowerCase();
       if (ignoredTypes.has(typeLower)) continue;
@@ -804,7 +816,7 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
         imageUrls.length > 0 ||
         fileLinks.length > 0;
 
-      items.push({
+      sectionItems.push({
         index: counter++,
         label: field.field_label?.trim() || field.api_name || `Field ${counter}`,
         fieldType: String(field.field_type ?? ""),
@@ -813,18 +825,59 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
         fileLinks,
       });
     }
+
+    if (sectionItems.length > 0) {
+      const rawName =
+        (typeof section.name === "string" ? section.name.trim() : "") ||
+        (typeof (section as any).sectionHeader === "string" ? (section as any).sectionHeader.trim() : "") ||
+        (typeof (section as any).title === "string" ? (section as any).title.trim() : "");
+      const sectionName = rawName || `Section ${sIdx + 1}`;
+      sectionsToRender.push({
+        sectionIndex: sIdx,
+        sectionName,
+        items: sectionItems,
+      });
+    }
   });
 
   // ==========================================
-  // 4. Render Each Filled Field
+  // 4. Render Form Sections & Fields
   // ==========================================
-  if (items.length === 0) {
+  const totalItemsCount = sectionsToRender.reduce((sum, s) => sum + s.items.length, 0);
+
+  if (totalItemsCount === 0) {
     pdf.setFont("helvetica", "italic");
     pdf.setFontSize(9.5);
     pdf.setTextColor(148, 163, 184);
     pdf.text("No filled fields to display in this form.", margin, currentY);
   } else {
-    for (const item of items) {
+    for (let sIdx = 0; sIdx < sectionsToRender.length; sIdx++) {
+      const currentSection = sectionsToRender[sIdx];
+      const sectionWidth = getContentWidth();
+
+      // Check overflow for section header banner
+      checkPageOverflow(18);
+
+      // Section Header Banner
+      pdf.setFillColor(241, 245, 249); // slate-100
+      pdf.roundedRect(margin, currentY, sectionWidth, 8, 1.5, 1.5, "F");
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.2);
+      pdf.roundedRect(margin, currentY, sectionWidth, 8, 1.5, 1.5, "S");
+
+      // Blue accent pill on left edge
+      pdf.setFillColor(37, 99, 235); // blue-600
+      pdf.roundedRect(margin, currentY, 3, 8, 1, 1, "F");
+
+      // Section Title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(30, 41, 59); // slate-800
+      pdf.text(currentSection.sectionName, margin + 6, currentY + 5.5);
+
+      currentY += 12;
+
+      for (const item of currentSection.items) {
       const activeWidth = getContentWidth();
       const hasImages = item.imageUrls && item.imageUrls.length > 0;
       const hasLinks = item.fileLinks && item.fileLinks.length > 0;
@@ -989,7 +1042,11 @@ export async function generateAndDownloadFormPdf(options: GenerateFormPdfOptions
       pdf.line(margin + 12, currentY, margin + activeWidth, currentY);
       currentY += 3;
     }
+
+    // Spacing between sections
+    currentY += 4;
   }
+}
 
   // ==========================================
   // 5. Page Numbers & Footer on All Pages

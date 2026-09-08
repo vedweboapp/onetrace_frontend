@@ -12,6 +12,7 @@ import {
   updateJobFormSubmission,
 } from "@/features/job-forms/api/job-form.api";
 import { fetchJob } from "@/features/jobs/api/job.api";
+import type { Job } from "@/features/jobs/types/job.types";
 import {
   jobChecklistEntries,
   jobChecklistIsMarked,
@@ -28,6 +29,7 @@ import {
   buildJobFormSubmissionFormData,
   mapSubmissionValuesToFormDefaults,
 } from "@/features/job-forms/utils/job-form-values.util";
+import { generateAndDownloadFormPdf } from "@/features/job-forms/utils/generate-form-pdf.util";
 import FormRenderer, { type FormRendererRef } from "@/shared/form/formbuilder/FormRenderer";
 import { useFormHandler } from "@/shared/form/hook/useFormHandler";
 import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
@@ -37,6 +39,7 @@ import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } fr
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import normalizeRules from "@/shared/form/utility/normalizerule";
+import { Download, Loader2 } from "lucide-react";
 
 type UiMode = "fill" | "view" | "edit";
 
@@ -62,6 +65,8 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const jobDetailHref = `${routes.dashboard.jobs}/${jobId}`;
   const safeBack = resolveFormBackUrl(searchParams.get("back"), "jobs", jobDetailHref);
 
+  const [job, setJob] = React.useState<Job | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [formTitle, setFormTitle] = React.useState(formNameHint?.trim() || t("untitledForm"));
@@ -128,6 +133,12 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     setChecklistBlocked(false);
     setSubmissionOnlyView(false);
     try {
+      // Fetch job context for metadata (title, site, levels, etc.)
+      const jobData = await fetchJob(jobId, { silent: true }).catch(() => null);
+      if (jobData) {
+        setJob(jobData);
+      }
+
       // Worker Forms tab: detail payload has values/files but no project_form_id.
       if (resolvedFormId == null) {
         if (submissionIdHint == null) {
@@ -159,12 +170,11 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         return;
       }
 
-      if (!submissionIdHint) {
-        const job = await fetchJob(jobId, { silent: true });
-        const checklists = jobChecklistEntries(job);
+      if (!submissionIdHint && jobData) {
+        const checklists = jobChecklistEntries(jobData);
         if (
           checklists.length > 0 &&
-          !requiredJobChecklistsComplete(checklists, { isMarked: jobChecklistIsMarked(job) })
+          !requiredJobChecklistsComplete(checklists, { isMarked: jobChecklistIsMarked(jobData) })
         ) {
           setChecklistBlocked(true);
           return;
@@ -280,27 +290,119 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     }
   }
 
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      const currentValues = {
+        ...defaultValues,
+        ...(formRef.current?.getFormData?.() ?? {}),
+      };
+
+      const submittedAt = submission?.submitted_at
+        ? new Date(submission.submitted_at).toLocaleString()
+        : null;
+
+      const locationText = jobPinIdHint ? String(jobPinIdHint) : null;
+      let statusName = submission?.status || null;
+      let productName: string | null = null;
+      let plotName: string | null = null;
+      let levelName: string | null = null;
+
+      if (job) {
+        if (job.title) {
+          productName = job.title;
+        }
+        if (typeof job.site === "object" && job.site?.site_name) {
+          plotName = job.site.site_name;
+        }
+        if (typeof job.job_status === "object" && job.job_status && "status_name" in job.job_status) {
+          statusName = (job.job_status as any).status_name || statusName;
+        }
+        const jobLevels = (job as any).levels;
+        if (Array.isArray(jobLevels) && jobPinIdHint) {
+          for (const lvl of jobLevels) {
+            if (Array.isArray(lvl?.plots)) {
+              for (const plot of lvl.plots) {
+                if (Array.isArray(plot?.pins) && plot.pins.some((p: any) => p?.id === jobPinIdHint)) {
+                  levelName = lvl.name ?? null;
+                  plotName = plot.name ?? null;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      await generateAndDownloadFormPdf({
+        formTitle,
+        formId: resolvedFormId ?? submission?.id ?? resolvedJobFormId,
+        locationText,
+        productName,
+        plotName,
+        levelName,
+        statusName,
+        submittedAt,
+        sections: schemaSections,
+        defaultValues: currentValues,
+        submission,
+        rules,
+      });
+
+      toastSuccess("PDF downloaded successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const displaySections = readOnly ? applyReadOnlyToSections(schemaSections, true) : schemaSections;
 
-  const headerActions = checklistBlocked || submissionOnlyView ? null : uiMode === "view" ? (
-    <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
-      {t("edit")}
-    </AppButton>
-  ) : (
-    <div className="flex items-center gap-2">
-      <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={cancelEdit}>
-        {t("cancel")}
-      </AppButton>
+  const downloadPdfAction =
+    schemaSections.length > 0 && !loading ? (
       <AppButton
         type="button"
-        variant="primary"
+        variant="secondary"
         size="sm"
-        loading={submitting}
-        disabled={submitting || loading}
-        onClick={() => void handleFormSubmit()}
+        disabled={downloadingPdf}
+        onClick={() => void handleDownloadPdf()}
+        title="Download Form PDF"
       >
-        {uiMode === "edit" ? t("saveChanges") : t("submit")}
+        {downloadingPdf ? (
+          <Loader2 className="size-3.5 animate-spin text-blue-600" aria-hidden />
+        ) : (
+          <Download className="size-3.5 text-slate-500 dark:text-slate-400" aria-hidden />
+        )}
+        <span>{downloadingPdf ? "Generating..." : "Download PDF"}</span>
       </AppButton>
+    ) : null;
+
+  const headerActions = checklistBlocked ? null : (
+    <div className="flex items-center gap-2">
+      {downloadPdfAction}
+      {submissionOnlyView ? null : uiMode === "view" ? (
+        <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
+          {t("edit")}
+        </AppButton>
+      ) : (
+        <>
+          <AppButton type="button" variant="secondary" size="sm" disabled={submitting} onClick={cancelEdit}>
+            {t("cancel")}
+          </AppButton>
+          <AppButton
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={submitting}
+            disabled={submitting || loading}
+            onClick={() => void handleFormSubmit()}
+          >
+            {uiMode === "edit" ? t("saveChanges") : t("submit")}
+          </AppButton>
+        </>
+      )}
     </div>
   );
 

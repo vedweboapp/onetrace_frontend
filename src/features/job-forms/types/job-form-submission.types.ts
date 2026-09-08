@@ -30,6 +30,7 @@ export type JobFormSubmission = {
   files?: JobFormSubmissionFile[];
   submitted_at?: string | null;
   modified_at?: string | null;
+  submission_id?: number;
 };
 
 /** POST /jobs/{id}/submit-form/ summary payload (fetch detail for full values). */

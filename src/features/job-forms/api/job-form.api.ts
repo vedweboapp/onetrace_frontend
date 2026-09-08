@@ -247,12 +247,20 @@ export async function updateJobFormSubmission(
   const jobFormId = Number(formData.get("job_form_id")) || 0;
   const resolvedProjectFormId =
     projectFormId ?? data.data.project_form_id ?? data.data.form_id ?? 0;
-  return normalizeSubmission(
+  const normalized = normalizeSubmission(
     normalizeSubmissionRow(data.data),
     jobId,
     jobFormId,
     resolvedProjectFormId,
   );
+  return {
+    ...normalized,
+    id: normalized.id > 0 ? normalized.id : submissionId,
+    submission_id:
+      typeof (data.data as any)?.submission_id === "number" && (data.data as any).submission_id > 0
+        ? (data.data as any).submission_id
+        : submissionId,
+  };
 }
 
 export async function submitJobForm(
@@ -269,17 +277,24 @@ export async function submitJobForm(
   // Extract job_form_id from the job_form_id field inside FormData
   const jobFormId = Number(formData.get("job_form_id")) || 0;
   if (isSubmitSummary(body)) {
+    const summarySubmissionId = body.submission_id;
     try {
-      const detail = await fetchJobSubmittedForm(jobId, body.submission_id);
-      return normalizeSubmission(
+      const detail = await fetchJobSubmittedForm(jobId, summarySubmissionId);
+      const normalized = normalizeSubmission(
         detail,
         jobId,
         jobFormId,
         projectFormId ?? body.project_form_id ?? 0,
       );
+      return {
+        ...normalized,
+        id: normalized.id > 0 ? normalized.id : summarySubmissionId,
+        submission_id: summarySubmissionId,
+      };
     } catch {
       return {
-        id: body.submission_id,
+        id: summarySubmissionId,
+        submission_id: summarySubmissionId,
         job_id: body.job_id,
         job_form_id: jobFormId,
         form_id: body.project_form_id,
@@ -289,10 +304,20 @@ export async function submitJobForm(
       };
     }
   }
-  return normalizeSubmission(
+  const rawSid = (body as any)?.submission_id ?? (body as any)?.id;
+  const normalized = normalizeSubmission(
     body,
     jobId,
     jobFormId,
     projectFormId ?? body.project_form_id ?? body.form_id ?? 0,
   );
+  return {
+    ...normalized,
+    submission_id:
+      typeof rawSid === "number" && rawSid > 0
+        ? rawSid
+        : normalized.id > 0
+          ? normalized.id
+          : undefined,
+  };
 }

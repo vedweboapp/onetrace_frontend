@@ -1016,6 +1016,10 @@ export function QuotationPinDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Per-pin data fetched when user clicks a pin in the document
+  const [clickedPinPayload, setClickedPinPayload] = useState<QuotationScopePinDetailPayload | null>(null);
+  const [pinDetailLoading, setPinDetailLoading] = useState(false);
+
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -1350,6 +1354,8 @@ export function QuotationPinDetails() {
   }, [pinPayload, effectiveQuotationDetail]);
 
   const selectedPin = useMemo(() => {
+    // Prefer clickedPinPayload (fetched when user clicks a pin in the doc)
+    if (clickedPinPayload?.selectedPin) return clickedPinPayload.selectedPin;
     const allPins = plots.flatMap((p: any) => p.pins ?? []);
     if (pinParam) {
       const found = allPins.find((p: any) => String(p.id) === String(pinParam));
@@ -1357,18 +1363,32 @@ export function QuotationPinDetails() {
     }
     if (pinPayload?.selectedPin) return pinPayload.selectedPin;
     return allPins[0] ?? null;
-  }, [plots, pinParam, pinPayload]);
+  }, [clickedPinPayload, plots, pinParam, pinPayload]);
 
   const handlePinClick = (pinId: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("pin", String(pinId));
     params.set("pinDialog", "true");
     router.push(`?${params.toString()}`, { scroll: false });
+    setClickedPinPayload(null);
     setIsPinDialogOpen(true);
+    // Fetch the full pin detail (drawing file + plots) for this specific pin
+    setPinDetailLoading(true);
+    fetchPublicPinDetails(pinId)
+      .then((payload) => {
+        setClickedPinPayload(payload);
+      })
+      .catch(() => {
+        // Fallback: use global drawing data already loaded
+      })
+      .finally(() => {
+        setPinDetailLoading(false);
+      });
   };
 
   const handleClosePinDialog = () => {
     setIsPinDialogOpen(false);
+    setClickedPinPayload(null);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("pinDialog");
     router.push(`?${params.toString()}`, { scroll: false });
@@ -1494,14 +1514,14 @@ export function QuotationPinDetails() {
         onRefresh={refreshQuotation}
         token={token}
       />
-      {selectedPin && (
+      {isPinDialogOpen && (selectedPin || pinDetailLoading) && (
         <DrawingPinPreviewModal
           open={isPinDialogOpen}
           onClose={handleClosePinDialog}
-          pin={selectedPin}
-          plots={plots}
-          drawingFile={drawingFile}
-          drawingName={drawingName}
+          pin={selectedPin ?? null}
+          plots={clickedPinPayload?.plots?.length ? clickedPinPayload.plots : plots}
+          drawingFile={clickedPinPayload?.drawingFile ?? drawingFile}
+          drawingName={clickedPinPayload?.drawingName ?? drawingName}
           embedded={false}
           hideFormRow={true}
         />

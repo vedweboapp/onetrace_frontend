@@ -63,9 +63,21 @@ import {
   detailMapFormGridClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
-import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
-import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
-import { isPinEligibleForQualityAssurance } from "@/features/jobs/utils/quality-assurance-eligibility.util";
+import {
+  QualityAssuranceDetailGrid,
+  QualityAssuranceStatusBadge,
+} from "@/features/jobs/components/quality-assurance-status";
+import {
+  isQualityAssuranceDecided,
+  type QualityAssuranceRecord,
+} from "@/features/jobs/types/quality-assurance.types";
+import {
+  savePinsToSessionStorage,
+  loadPinsFromSessionStorage,
+  buildPinPreviewUrl,
+  extractTrimmedPinsFromJob,
+  type TrimmedPinNavigationItem,
+} from "@/features/projects/utils/pin-preview-navigation.util";
 import { routes } from "@/shared/config/routes";
 import {
   getApiErrorDisplayMessage,
@@ -95,9 +107,11 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Map,
   Maximize2,
   Eye,
+  ShieldCheck,
 } from "lucide-react";
 
 type PinContext = {
@@ -243,6 +257,12 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [submission, setSubmission] = React.useState<JobFormSubmission | null>(null);
   const [hasSubmission, setHasSubmission] = React.useState(false);
   const [formName, setFormName] = React.useState<string | null>(null);
+  const [createdSubmissionId, setCreatedSubmissionId] = React.useState<number | null>(null);
+  const [pinNavList, setPinNavList] = React.useState<TrimmedPinNavigationItem[]>([]);
+
+  React.useEffect(() => {
+    setCreatedSubmissionId(null);
+  }, [pinId, projectId, jobId]);
 
   const modeParam = searchParams.get("mode");
   const [isEditMode, setIsEditMode] = React.useState(modeParam === "edit");
@@ -268,6 +288,15 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           const job = await fetchJob(jobId, { silent: true });
           if (cancelled) return;
           setJobCategoryForNav(resolveJobCategory(job));
+          // If sessionStorage pin list is not yet populated, extract & cache it
+          const stored = loadPinsFromSessionStorage(jobId);
+          if (stored.length === 0) {
+            const trimmed = extractTrimmedPinsFromJob(job);
+            if (trimmed.length > 0) {
+              savePinsToSessionStorage(jobId, trimmed);
+              setPinNavList(trimmed);
+            }
+          }
           const typed = job as unknown as {
             levels?: LevelLike[];
             level?: LevelLike | LevelLike[];
@@ -348,6 +377,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const urlSubmissionId = searchParams.get("submission_id") ?? searchParams.get("submissionId");
 
   const rawSubmissionId =
+    createdSubmissionId ??
     urlSubmissionId ??
     formMeta?.submissionId ??
     (context?.pin as any)?.submission_id ??
@@ -384,8 +414,30 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const effectiveJobId =
     jobId ??
     (Number.isFinite(parsedJobIdParam) && (parsedJobIdParam as number) > 0
-      ? parsedJobIdParam
-      : pinJobId);
+      ? (parsedJobIdParam as number)
+      : submission?.job_id && Number(submission.job_id) > 0
+        ? Number(submission.job_id)
+        : pinJobId);
+
+  const urlJobPinId = searchParams.get("job_pin_id");
+  const targetJobPinId =
+    urlJobPinId && Number(urlJobPinId) > 0
+      ? Number(urlJobPinId)
+      : context?.pin?.job_pin_id != null && Number(context.pin.job_pin_id) > 0
+        ? Number(context.pin.job_pin_id)
+        : context?.pin?.id != null && Number(context.pin.id) > 0
+          ? Number(context.pin.id)
+          : pinId;
+
+  // Read pin preview navigation list from sessionStorage
+  React.useEffect(() => {
+    if (effectiveJobId != null && effectiveJobId > 0) {
+      const stored = loadPinsFromSessionStorage(effectiveJobId);
+      if (stored.length > 0) {
+        setPinNavList(stored);
+      }
+    }
+  }, [effectiveJobId, pinId]);
 
   React.useEffect(() => {
     if (
@@ -577,7 +629,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
       }
     }
 
-    const currentSubmissionId = submission?.id ?? submissionId;
+    const currentSubmissionId = createdSubmissionId ?? submission?.id ?? submissionId;
     const isEditingExisting =
       typeof currentSubmissionId === "number" && currentSubmissionId > 0;
 
@@ -585,42 +637,84 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
       let updatedSubmissionId = currentSubmissionId;
       if (isEditingExisting) {
         const res = await updateJobFormSubmission(effectiveJobId, currentSubmissionId, fd, projectFormId);
-        if (res?.id) updatedSubmissionId = res.id;
+        const resolvedId = res?.submission_id ?? res?.id;
+        if (typeof resolvedId === "number" && resolvedId > 0) {
+          updatedSubmissionId = resolvedId;
+        }
         toastSuccess(t("updatedToast"));
       } else {
         const res = await submitJobForm(effectiveJobId, fd, projectFormId);
-        if (res?.id) updatedSubmissionId = res.id;
+        const newSid =
+          (typeof res?.submission_id === "number" && res.submission_id > 0
+            ? res.submission_id
+            : typeof res?.id === "number" && res.id > 0
+              ? res.id
+              : null);
+        if (newSid != null && newSid > 0) {
+          updatedSubmissionId = newSid;
+        }
         toastSuccess(t("submittedToast"));
       }
 
-      // Explicitly re-fetch fresh form data from the submitted form API to refresh the view
-      if (effectiveJobId && updatedSubmissionId) {
-        try {
-          const fresh = await fetchJobSubmittedForm(effectiveJobId, updatedSubmissionId);
-          if (fresh) {
-            setSubmission(fresh);
-            setHasSubmission(true);
-            if (fresh.form_name?.trim()) {
-              setFormName(fresh.form_name.trim());
+      // Sync submission_id to browser URL and refetch form data
+      if (updatedSubmissionId && updatedSubmissionId > 0) {
+        setCreatedSubmissionId(updatedSubmissionId);
+
+        // Update the cached pin navigation item in state and sessionStorage so that
+        // navigating previous / next or returning to this pin preserves submission_id!
+        setPinNavList((prevList) => {
+          const nextList = prevList.map((item) => {
+            if (item.pinId === pinId || item.job_pin_id === pinId) {
+              return { ...item, submission_id: updatedSubmissionId };
             }
-            const enriched = fresh.files?.length
-              ? enrichSectionsWithSubmissionFiles(rawSections, fresh.files)
-              : rawSections;
-            setRawSections(enriched);
-            const maps = buildFieldMaps(enriched);
-            setFieldMaps(maps);
-            setDefaultValues(
-              mapSubmissionValuesToFormDefaults(
-                fresh.values,
-                enriched,
-                maps.apiNameByFieldId,
-                maps.fieldTypeByFieldId,
-                fresh.files,
-              ),
-            );
+            return item;
+          });
+          if (effectiveJobId) {
+            savePinsToSessionStorage(effectiveJobId, nextList);
           }
-        } catch (err) {
-          console.warn("Failed to refresh form data after submission", err);
+          return nextList;
+        });
+
+        // 1. Append/update submission_id in browser URL
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.set("submission_id", String(updatedSubmissionId));
+        nextParams.delete("mode");
+        const nextQuery = nextParams.toString();
+        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", nextUrl);
+        }
+        router.replace(nextUrl, { scroll: false });
+
+        // 2. Explicitly re-fetch fresh form data from the submitted form API to refresh the view
+        if (effectiveJobId) {
+          try {
+            const fresh = await fetchJobSubmittedForm(effectiveJobId, updatedSubmissionId);
+            if (fresh) {
+              setSubmission(fresh);
+              setHasSubmission(true);
+              if (fresh.form_name?.trim()) {
+                setFormName(fresh.form_name.trim());
+              }
+              const enriched = fresh.files?.length
+                ? enrichSectionsWithSubmissionFiles(rawSections, fresh.files)
+                : rawSections;
+              setRawSections(enriched);
+              const maps = buildFieldMaps(enriched);
+              setFieldMaps(maps);
+              setDefaultValues(
+                mapSubmissionValuesToFormDefaults(
+                  fresh.values,
+                  enriched,
+                  maps.apiNameByFieldId,
+                  maps.fieldTypeByFieldId,
+                  fresh.files,
+                ),
+              );
+            }
+          } catch (err) {
+            console.warn("Failed to refresh form data after submission", err);
+          }
         }
       }
 
@@ -655,12 +749,35 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
     context?.pin?.group_detail?.name ||
     (context?.pin?.item != null ? `#${context.pin.item}` : null);
   const rendererKey = `${context?.pin?.id ?? "pin"}-${isReadOnly ? "view" : "edit"}-${submission?.id ?? "new"}-${Object.keys(defaultValues).length}`;
-  const qaPinId = context?.pin?.id ?? null;
+  const qaPinId = targetJobPinId;
   const pinQa = context?.pin?.quality_assurance ?? null;
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const qaDecided = isQualityAssuranceDecided(pinQa);
-  const showPinQualityAssurance =
-    context?.pin != null && isPinEligibleForQualityAssurance(context.pin) && !qaDecided;
+
+  const handleQaSuccess = (newRecord?: QualityAssuranceRecord) => {
+    if (newRecord && context?.pin) {
+      setContext((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pin: {
+            ...prev.pin,
+            quality_assurance: newRecord,
+          },
+        };
+      });
+    }
+    setReloadToken((n) => n + 1);
+  };
+
+  const isFormSubmitted = Boolean(
+    (submissionId != null && submissionId > 0) ||
+    hasSubmission ||
+    (submission?.id != null && submission.id > 0) ||
+    (submission?.submission_id != null && submission.submission_id > 0) ||
+    (createdSubmissionId != null && createdSubmissionId > 0)
+  );
+
   const formImages = React.useMemo(
     () => collectFormImagePreviews(rawSections, defaultValues),
     [rawSections, defaultValues],
@@ -693,6 +810,19 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const snapshotState = context?.drawingId
     ? levelSnapshots.get(context.drawingId)
     : levelSnapshots.get(1);
+
+  const currentIndex = React.useMemo(() => {
+    if (pinNavList.length === 0) return -1;
+    return pinNavList.findIndex(
+      (item) => item.pinId === pinId || item.job_pin_id === pinId,
+    );
+  }, [pinNavList, pinId]);
+
+  const prevPin = currentIndex > 0 ? pinNavList[currentIndex - 1] : null;
+  const nextPin =
+    currentIndex >= 0 && currentIndex < pinNavList.length - 1
+      ? pinNavList[currentIndex + 1]
+      : null;
 
   const [downloadingPdf, setDownloadingPdf] = React.useState(false);
 
@@ -793,16 +923,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         backHref={safeBack}
         backAriaLabel={tPins("backAria")}
         subtitle={productName ?? undefined}
-        actions={
-          jobId != null && qaPinId != null && showPinQualityAssurance ? (
-            <JobQualityAssuranceControls
-              jobId={jobId}
-              pinIds={[qaPinId]}
-              existing={pinQa}
-              onSuccess={() => setReloadToken((n) => n + 1)}
-            />
-          ) : null
-        }
       />
       <DetailPagePadding className="-mt-4 sm:-mt-5">
         {loading ? (
@@ -843,42 +963,96 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
 
                   {/* Right: Actions */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Pagination Controls (UI only) */}
+                    {/* Pagination Controls */}
                     <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                        title="Previous form"
+                        disabled={!prevPin}
+                        onClick={() => {
+                          if (prevPin) {
+                            router.push(buildPinPreviewUrl(prevPin));
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title={prevPin ? `Previous pin (#${prevPin.pinId})` : "Previous"}
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         <span>Previous</span>
                       </button>
                       <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                      {currentIndex >= 0 && pinNavList.length > 0 && (
+                        <>
+                          <div
+                            className="relative inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer select-none group"
+                            title="Click to select form number"
+                          >
+                            <span className="tabular-nums">
+                              {currentIndex + 1} / {pinNavList.length}
+                            </span>
+                            <ChevronDown className="h-3 w-3 ml-0.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                            <select
+                              value={currentIndex}
+                              onChange={(e) => {
+                                const nextIdx = Number(e.target.value);
+                                if (
+                                  Number.isFinite(nextIdx) &&
+                                  nextIdx >= 0 &&
+                                  nextIdx < pinNavList.length &&
+                                  pinNavList[nextIdx]
+                                ) {
+                                  router.push(buildPinPreviewUrl(pinNavList[nextIdx]));
+                                }
+                              }}
+                              className="absolute inset-0 size-full opacity-0 cursor-pointer"
+                              aria-label="Select form number"
+                            >
+                              {pinNavList.map((item, idx) => (
+                                <option
+                                  key={item.pinId ?? idx}
+                                  value={idx}
+                                  className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs py-1"
+                                >
+                                  {idx + 1} / {pinNavList.length}{item.name ? ` - ${item.name}` : ""}{item.pinId ? ` (Location #${item.pinId})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                        </>
+                      )}
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                        title="Next form"
+                        disabled={!nextPin}
+                        onClick={() => {
+                          if (nextPin) {
+                            router.push(buildPinPreviewUrl(nextPin));
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title={nextPin ? `Next pin (#${nextPin.pinId})` : "Next"}
                       >
                         <span>Next</span>
                         <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
 
-                    {/* Download PDF Button */}
-                    <button
-                      type="button"
-                      disabled={downloadingPdf || loadingForm || rawSections.length === 0}
-                      onClick={handleDownloadPdf}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors"
-                      title="Download Form PDF"
-                    >
-                      {downloadingPdf ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                      )}
-                      <span>{downloadingPdf ? "Generating..." : "Download PDF"}</span>
-                    </button>
+                    {/* Download PDF Button - only visible if form is submitted */}
+                    {isFormSubmitted ? (
+                      <button
+                        type="button"
+                        disabled={downloadingPdf || loadingForm || rawSections.length === 0}
+                        onClick={handleDownloadPdf}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        title="Download Form PDF"
+                      >
+                        {downloadingPdf ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                        )}
+                        <span>{downloadingPdf ? "Generating..." : "Download PDF"}</span>
+                      </button>
+                    ) : null}
 
                     {/* Form Edit / Save Actions */}
                     {formMeta ? (
@@ -920,6 +1094,19 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                         </div>
                       )
                     ) : null}
+
+                    {/* Quality Assurance Controls (Approve / Reject) - only visible if form is submitted */}
+                    {isFormSubmitted && effectiveJobId != null && targetJobPinId != null ? (
+                      <JobQualityAssuranceControls
+                        jobId={effectiveJobId}
+                        pinIds={[targetJobPinId]}
+                        existing={pinQa}
+                        buttonSize="sm"
+                        approveClassName="h-7 px-2.5 text-xs font-semibold"
+                        rejectClassName="h-7 px-2.5 text-xs font-semibold"
+                        onSuccess={handleQaSuccess}
+                      />
+                    ) : null}
                   </div>
                 </div>
 
@@ -948,7 +1135,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                   <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
                 </div>
               ) : formError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-7">{formError}</p>
               ) : displaySections.length > 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-950">
@@ -989,6 +1176,10 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                 formName={resolvedFormName}
                 snapshotState={snapshotState}
                 onPreviewClick={() => setIsEditModalOpen(true)}
+                effectiveJobId={effectiveJobId}
+                qaPinId={targetJobPinId}
+                onQaSuccess={handleQaSuccess}
+                isFormSubmitted={isFormSubmitted}
               />
             </div>
           </div>
@@ -1142,6 +1333,10 @@ function PinCard({
   formName,
   snapshotState,
   onPreviewClick,
+  effectiveJobId,
+  qaPinId,
+  onQaSuccess,
+  isFormSubmitted,
 }: {
   context: PinContext;
   qaDecided: boolean;
@@ -1153,6 +1348,10 @@ function PinCard({
   formName: string;
   snapshotState?: LevelSnapshotState;
   onPreviewClick: () => void;
+  effectiveJobId?: number;
+  qaPinId?: number;
+  onQaSuccess?: (record?: QualityAssuranceRecord) => void;
+  isFormSubmitted?: boolean;
 }) {
   const pin = context.pin;
   const locationText = pin.location || String(pin.id);
@@ -1285,6 +1484,23 @@ function PinCard({
                 </span>
               }
             />
+
+            {/* 11. Quality Assurance */}
+            {effectiveJobId != null && (isFormSubmitted || qaDecided) ? (
+              <DetailRowItem
+                icon={ShieldCheck}
+                label={tQa("label")}
+                value={
+                  qaDecided ? (
+                    <QualityAssuranceStatusBadge record={pinQa} />
+                  ) : (
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                      {tQa("statusPending")}
+                    </span>
+                  )
+                }
+              />
+            ) : null}
           </div>
         </div>
 

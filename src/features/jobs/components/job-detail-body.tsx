@@ -57,6 +57,11 @@ import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { useSearchParams } from "next/navigation";
+import {
+  savePinsToSessionStorage,
+  extractTrimmedPinsFromJob,
+  fetchAndBuildJobTrimmedPins,
+} from "@/features/projects/utils/pin-preview-navigation.util";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -241,21 +246,12 @@ function ProjectPinRow({
       <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
       <div className="min-w-0">
         {form ? (
-          <button
-            type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (form.submitted || checklistsComplete) {
-              onNavigate(form.href);
-            } else {
-              onOpenGateModal(form.href, form.label);
-            }
-          }}
+          <span
             className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold transition text-left",
+              "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold text-left pointer-events-none select-none",
               !form.submitted && !checklistsComplete
-                ? "border-slate-200 bg-slate-100 text-slate-400 cursor-pointer dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
-                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-[color:var(--dash-accent)] hover:text-[color:var(--dash-accent)] dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                ? "border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
+                : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
             )}
           >
             <span className="truncate">{form.label}</span>
@@ -273,7 +269,8 @@ function ProjectPinRow({
             >
               {form.submitted ? t("statusSubmitted") : t("statusPending")}
             </span>
-          </button>
+          </span>
+
         ) : (
           <span className="text-xs text-slate-500">{locale === "es" ? "Agregar formulario" : "Add a form"}</span>
         )}
@@ -715,6 +712,25 @@ export function JobDetailBody({
     };
   }, [detail?.id]);
 
+  /** Background pin list fetch & cache in sessionStorage without blocking initial render. */
+  React.useEffect(() => {
+    if (!detail?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const trimmed = await fetchAndBuildJobTrimmedPins(detail);
+        if (!cancelled && trimmed.length > 0) {
+          savePinsToSessionStorage(detail.id, trimmed);
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail]);
+
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
       const meta = resolvePinFormMeta(pin, { formEntries });
@@ -982,6 +998,10 @@ export function JobDetailBody({
                               });
                             }}
                             onOpenPinDetail={(pin) => {
+                              const trimmed = extractTrimmedPinsFromJob(detail, { formEntries });
+                              if (trimmed.length > 0) {
+                                savePinsToSessionStorage(detail.id, trimmed);
+                              }
                               const backHref = `${routes.dashboard.jobs}/${detail.id}`;
                               const baseRoute =
                                 projectId != null

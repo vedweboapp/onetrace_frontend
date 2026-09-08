@@ -296,16 +296,24 @@ export function DrawingPinPreviewModal({
   React.useEffect(() => {
     if (open) {
       setPageSize(null);
-      setLoading(!hideDrawing);
+      // Only show loading spinner if there is actually a file to load
+      setLoading(!hideDrawing && Boolean(normalizedFileUrl));
       setIsPanning(false);
     }
-  }, [open, drawingFile, hideDrawing]);
+  }, [open, drawingFile, hideDrawing, normalizedFileUrl]);
 
   React.useEffect(() => {
     if (!pdfFailed || hideDrawing) return;
     setLoading(false);
     toastError("Failed to render blueprint PDF drawing");
   }, [pdfFailed, hideDrawing]);
+
+  // Safety: clear loading when PDF hook resolves (success or failure)
+  React.useEffect(() => {
+    if (!open || hideDrawing || !isPdf || !normalizedFileUrl) return;
+    if (!pdfFile && !pdfFailed) return;
+    setLoading(false);
+  }, [open, hideDrawing, isPdf, normalizedFileUrl, pdfFile, pdfFailed]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -391,9 +399,10 @@ export function DrawingPinPreviewModal({
     if (open) {
       setIsEditing(false);
       setPinEditData(null);
-      setDetailsOpen(embedded || hideDrawing);
+      // Auto-open details when: embedded, hideDrawing, or no drawing file to interact with
+      setDetailsOpen(embedded || hideDrawing || !normalizedFileUrl);
     }
-  }, [open, embedded, hideDrawing, pin?.id]);
+  }, [open, embedded, hideDrawing, normalizedFileUrl, pin?.id]);
 
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
