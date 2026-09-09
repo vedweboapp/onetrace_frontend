@@ -36,27 +36,44 @@ export function getPinNavigationSessionKey(jobId: number | string): string {
 }
 
 export function savePinsToSessionStorage(
-  jobId: number | string,
-  pins: TrimmedPinNavigationItem[],
+  id: number | string,
+  pins: TrimmedPinNavigationItem[] | Array<{ id: number; name: string; [key: string]: any }>,
 ): void {
   if (typeof window === "undefined" || !window.sessionStorage) return;
   try {
-    window.sessionStorage.setItem(getPinNavigationSessionKey(jobId), JSON.stringify(pins));
+    const data = JSON.stringify(pins);
+    window.sessionStorage.setItem(`pins_job_${id}`, data);
+    window.sessionStorage.setItem(`pins_project_${id}`, data);
+    window.sessionStorage.setItem(`pins_nav_${id}`, data);
   } catch (err) {
     console.warn("Failed to save pins to sessionStorage", err);
   }
 }
 
-export function loadPinsFromSessionStorage(jobId: number | string): TrimmedPinNavigationItem[] {
+export function loadPinsFromSessionStorage(id: number | string): TrimmedPinNavigationItem[] {
   if (typeof window === "undefined" || !window.sessionStorage) return [];
   try {
-    const raw = window.sessionStorage.getItem(getPinNavigationSessionKey(jobId));
+    const raw =
+      window.sessionStorage.getItem(`pins_project_${id}`) ??
+      window.sessionStorage.getItem(`pins_job_${id}`) ??
+      window.sessionStorage.getItem(`pins_nav_${id}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.warn("Failed to load pins from sessionStorage", err);
     return [];
+  }
+}
+
+export function clearPinsFromSessionStorage(id: number | string): void {
+  if (typeof window === "undefined" || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.removeItem(`pins_job_${id}`);
+    window.sessionStorage.removeItem(`pins_project_${id}`);
+    window.sessionStorage.removeItem(`pins_nav_${id}`);
+  } catch (err) {
+    console.warn("Failed to clear pins from sessionStorage", err);
   }
 }
 
@@ -77,6 +94,29 @@ export function buildPinPreviewUrl(item: TrimmedPinNavigationItem): string {
     item.projectId > 0
       ? `/projects/${item.projectId}/pins/${item.pinId}`
       : `/jobs/${item.jobId}/pins/${item.pinId}`;
+
+  return `${basePath}?${params.toString()}`;
+}
+
+export function buildLocationPreviewUrl(item: TrimmedPinNavigationItem | { id: number; pinId?: number; name?: string; drawingId?: number; projectId?: number; back?: string; [key: string]: any }): string {
+  const params = new URLSearchParams();
+  const effectivePinId = (item as any).pinId ?? (item as any).id;
+  const effectiveProjectId = (item as any).projectId ?? 0;
+  if (item.back) params.set("back", item.back);
+  if (item.drawingId) params.set("drawingId", String(item.drawingId));
+  if ((item as any).jobId) params.set("jobId", String((item as any).jobId));
+  if ((item as any).formId) params.set("formId", String((item as any).formId));
+  if ((item as any).job_form_id) params.set("job_form_id", String((item as any).job_form_id));
+  if (item.name) params.set("name", item.name);
+  if ((item as any).job_pin_id) params.set("job_pin_id", String((item as any).job_pin_id));
+  if ((item as any).submission_id != null && (item as any).submission_id > 0) {
+    params.set("submission_id", String((item as any).submission_id));
+  }
+
+  const basePath =
+    effectiveProjectId > 0
+      ? `/projects/${effectiveProjectId}/locations/${effectivePinId}`
+      : `/projects/1/locations/${effectivePinId}`;
 
   return `${basePath}?${params.toString()}`;
 }

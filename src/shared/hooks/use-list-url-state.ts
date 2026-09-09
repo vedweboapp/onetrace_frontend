@@ -45,6 +45,7 @@ export function hasListActiveFilters(args: {
   /** Quotations `quote_category` (or legacy category) URL param. */
   categoryParam?: string | null;
   quoteCategoryParam?: string | null;
+  jobCategoryParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
@@ -61,6 +62,7 @@ export function hasListActiveFilters(args: {
   if (args.projectTypeParam != null && args.projectTypeParam.trim() !== "") return true;
   if (args.categoryParam != null && args.categoryParam.trim() !== "") return true;
   if (args.quoteCategoryParam != null && args.quoteCategoryParam.trim() !== "") return true;
+  if (args.jobCategoryParam != null && args.jobCategoryParam.trim() !== "") return true;
   return false;
 }
 

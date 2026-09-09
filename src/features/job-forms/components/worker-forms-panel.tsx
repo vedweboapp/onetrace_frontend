@@ -17,7 +17,9 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
+import { JOB_CATEGORY, parseJobCategoryParam } from "@/features/jobs/constants/job-category";
 import {
+  CheckmarkSelect,
   DataTablePaginationBar,
   ListPageCard,
   ListPageCardFooter,
@@ -76,6 +78,18 @@ export function WorkerFormsPanel() {
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
 
+  const rawJobCategoryParam = searchParams.get("job_category");
+  const jobCategoryParam = parseJobCategoryParam(rawJobCategoryParam);
+
+  const jobCategoryOptions = React.useMemo(
+    () => [
+      { value: "", label: t("filterAllCategories") },
+      { value: JOB_CATEGORY.service, label: t("categoryService") },
+      { value: JOB_CATEGORY.project, label: t("categoryProject") },
+    ],
+    [t],
+  );
+
   const [items, setItems] = React.useState<WorkerFormSubmissionTableRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -97,7 +111,9 @@ export function WorkerFormsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const list = await fetchAllWorkerFormSubmissions();
+        const list = await fetchAllWorkerFormSubmissions(
+          jobCategoryParam ? { job_category: jobCategoryParam } : undefined,
+        );
         if (!cancelled) setItems(list);
       } catch (error) {
         if (!cancelled) {
@@ -111,12 +127,19 @@ export function WorkerFormsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [jobCategoryParam, t]);
 
   const filtered = React.useMemo(() => {
+    let list = items;
+    if (jobCategoryParam) {
+      const anyHasCategory = list.some((row) => Boolean(row.job_category));
+      if (anyHasCategory) {
+        list = list.filter((row) => parseJobCategoryParam(row.job_category) === jobCategoryParam);
+      }
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((row) => {
+    if (!q) return list;
+    return list.filter((row) => {
       const haystack = [
         String(row.id),
         row.worker_name,
@@ -128,7 +151,7 @@ export function WorkerFormsPanel() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [items, search]);
+  }, [items, jobCategoryParam, search]);
 
   const totalRecords = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize) || 1);
@@ -155,7 +178,10 @@ export function WorkerFormsPanel() {
   );
   const pageRange = getListPageRange(pagination);
 
-  const hasActiveFilters = hasListActiveFilters({ search });
+  const hasActiveFilters = hasListActiveFilters({
+    search,
+    jobCategoryParam: rawJobCategoryParam,
+  });
   const { hideListChrome, listLoading, emptyStateKind } = useSimpleListEmptyState({
     loading,
     loadError,
@@ -224,6 +250,19 @@ export function WorkerFormsPanel() {
                 ariaLabel={t("searchPlaceholder")}
                 className="sm:max-w-sm"
               />
+              <CheckmarkSelect
+                listLabel={t("filterCategory")}
+                buttonAriaLabel={t("filterCategory")}
+                options={jobCategoryOptions}
+                value={jobCategoryParam ?? ""}
+                emptyLabel={t("filterAllCategories")}
+                portaled
+                clearable
+                className="w-full min-w-0 sm:w-48"
+                onChange={(v) =>
+                  setUrl({ job_category: v || null, page: null }, { replace: true })
+                }
+              />
             </div>
           }
         />
@@ -256,7 +295,9 @@ export function WorkerFormsPanel() {
               title: t("emptyTitle"),
               description: t("emptyDescription"),
             }}
-            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+            onClearFilters={() =>
+              setUrl({ search: null, job_category: null, page: null }, { replace: true })
+            }
           />
         ) : listViewMode === "list" ? (
           <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">

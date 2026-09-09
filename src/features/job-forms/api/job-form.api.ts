@@ -16,7 +16,7 @@ export async function fetchJobFormSchema(formId: number, jobId?: number | string
   return normalizeProjectFormMetadataResponse(raw);
 }
 
-function normalizeSubmissionRow(
+export function normalizeSubmissionRow(
   row: JobFormSubmission & {
     submission_id?: number;
     project_form?: number | { id?: number };
@@ -69,6 +69,12 @@ function normalizeWorkerFormSubmissionListItem(row: Partial<WorkerFormSubmission
     (typeof row.job_name === "string" && row.job_name.trim()) ||
     (typeof nestedJob?.name === "string" && nestedJob.name.trim()) ||
     null;
+  const jobCategory =
+    (typeof row.job_category === "string" && row.job_category.trim()) ||
+    (typeof (nestedJob as { job_category?: string } | null | undefined)?.job_category === "string"
+      ? (nestedJob as { job_category?: string }).job_category?.trim()
+      : null) ||
+    null;
   return {
     id,
     worker_id: Number(row.worker_id) || 0,
@@ -80,6 +86,7 @@ function normalizeWorkerFormSubmissionListItem(row: Partial<WorkerFormSubmission
     job_id: Number.isFinite(jobIdRaw) && jobIdRaw > 0 ? jobIdRaw : null,
     job_serial_number: jobSerial,
     job_name: jobName,
+    job_category: jobCategory,
     status: typeof row.status === "string" ? row.status : "",
     submitted_at: row.submitted_at ?? null,
   };
@@ -116,9 +123,16 @@ export async function fetchJobWorkerFormSubmissions(
 }
 
 /** GET /jobs/worker-form-submissions/ — submissions across all jobs. */
-export async function fetchAllWorkerFormSubmissions(): Promise<WorkerFormSubmissionListItem[]> {
+export async function fetchAllWorkerFormSubmissions(filters?: {
+  job_category?: string;
+}): Promise<WorkerFormSubmissionListItem[]> {
+  const params: Record<string, string> = {};
+  if (filters?.job_category) {
+    params.job_category = filters.job_category;
+  }
   const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionListItem[]>>(
     JOB_FORM_PATHS.workerFormSubmissionsAll,
+    { params: Object.keys(params).length > 0 ? params : undefined },
   );
   assertApiSuccess(data);
   const rows = unwrapWorkerFormSubmissionRows(data.data);

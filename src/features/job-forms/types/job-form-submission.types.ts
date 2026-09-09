@@ -53,6 +53,7 @@ export type WorkerFormSubmissionListItem = {
   job_id?: number | null;
   job_serial_number?: string | null;
   job_name?: string | null;
+  job_category?: string | null;
   status: string;
   submitted_at?: string | null;
 };

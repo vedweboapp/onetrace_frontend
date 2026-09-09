@@ -40,6 +40,12 @@ export const routes = {
         ? `${base}?drawingId=${drawingId}`
         : base;
     },
+    projectLocationDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
+      const base = `/projects/${projectId}/locations/${pinId}`;
+      return drawingId != null && String(drawingId).trim() !== ""
+        ? `${base}?drawingId=${drawingId}`
+        : base;
+    },
     groups: "/groups",
     items: "/items",
     compositeItems: "/composite-items",

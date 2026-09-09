@@ -7,6 +7,7 @@ import type {
   Drawing,
   DrawingDetail,
   DrawingListResponse,
+  DrawingPlot,
   DrawingPlotUpsert,
 } from "../types/drawing.types";
 import type { ProjectPagination } from "../types/project.types";
@@ -133,3 +134,43 @@ export async function updateDrawingName(
   }
   return data as Drawing;
 }
+
+export type PinDetailApiResponse = {
+  id: number;
+  level_detail?: {
+    id: number;
+    name: string;
+    order?: number;
+    drawing_file?: string;
+    drawing_file_size?: number;
+    drawing_file_type?: string;
+    project?: number;
+    organization?: number;
+    plots?: DrawingPlot[];
+  };
+  submit_forms_details?: {
+    id: number;
+    name: string;
+    submission_id?: number | null;
+    submission_status?: string | null;
+  } | null;
+  [key: string]: any;
+};
+
+export async function fetchPinDetail(pinId: number): Promise<PinDetailApiResponse> {
+  const { data } = await api.get<ApiEnvelope<PinDetailApiResponse> | PinDetailApiResponse>(
+    DRAWING_PATHS.pinDetail(pinId),
+  );
+  if (
+    data &&
+    typeof data === "object" &&
+    "success" in data &&
+    "data" in data
+  ) {
+    const envelope = data as ApiEnvelope<PinDetailApiResponse>;
+    assertApiSuccess(envelope);
+    return envelope.data;
+  }
+  return data as PinDetailApiResponse;
+}
+

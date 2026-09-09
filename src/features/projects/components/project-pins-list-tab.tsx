@@ -40,6 +40,7 @@ import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
+import { savePinsToSessionStorage } from "@/features/projects/utils/pin-preview-navigation.util";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
@@ -1830,8 +1831,27 @@ const ProjectPinsListTab = ({
                                 });
                               }}
                               onOpenPinDetail={(pin) => {
+                                const wholePinsCollection = locations.flatMap((lvl) =>
+                                  (lvl.plots ?? []).flatMap((plt) =>
+                                    (plt.pins ?? []).map((p) => ({
+                                      id: p.id,
+                                      pinId: p.id,
+                                      name:
+                                        (resolveFormName ? resolveFormName(p) : "") ||
+                                        p.item_detail?.name ||
+                                        p.group_detail?.name ||
+                                        (p.location ? `Location #${p.location}` : `Pin #${p.id}`),
+                                      drawingId: lvl.id,
+                                      projectId: Number(id),
+                                      back: buildProjectDetailTabHref(Number(id), "location"),
+                                    }))
+                                  )
+                                );
+                                if (wholePinsCollection.length > 0) {
+                                  savePinsToSessionStorage(Number(id), wholePinsCollection as any);
+                                }
                                 router.push(
-                                  `${routes.dashboard.projectPinDetail(id, pin.id, level.id)}&back=${encodeURIComponent(
+                                  `${routes.dashboard.projectLocationDetail(id, pin.id, level.id)}&back=${encodeURIComponent(
                                     buildProjectDetailTabHref(Number(id), "location"),
                                   )}`,
                                 );

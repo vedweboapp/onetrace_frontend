@@ -2314,6 +2314,10 @@
       "pageLabel": "Showing {start}-{end} of {total} forms",
       "prev": "Previous",
       "next": "Next",
+      "filterCategory": "Job Category",
+      "filterAllCategories": "All Categories",
+      "categoryService": "Service Job",
+      "categoryProject": "Project Job",
       "columns": {
         "id": "ID",
         "job": "Job",
@@ -4190,6 +4194,7 @@
         "yes": "Yes",
         "no": "No",
         "noFormAssigned": "No form assigned to this pin.",
+        "noFormFields": "This form has no fields yet.",
         "formSubmitted": "Submitted",
         "formNotSubmitted": "Not submitted",
         "formImages": "Form images"

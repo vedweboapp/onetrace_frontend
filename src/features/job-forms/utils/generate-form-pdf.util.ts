@@ -5,6 +5,18 @@ import type {
 } from "@/features/job-forms/types/job-form-submission.types";
 import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
 import { buildFieldRuleState } from "@/shared/form/formbuilder/form-rules-engine";
+import { currencyList } from "@/shared/form/components/currency-list";
+
+const CURRENCY_CODES = new Set(currencyList.map((c) => c.value.toUpperCase()));
+
+function isCurrencyCode(val: string): boolean {
+  const trimmed = val.trim().toUpperCase();
+  return trimmed.length === 3 && CURRENCY_CODES.has(trimmed);
+}
+
+function isNumericAmount(val: string): boolean {
+  return /^-?\d+(\.\d+)?$/.test(val.trim());
+}
 
 export type FormPdfFileLink = {
   name: string;
@@ -283,6 +295,16 @@ function formatNonImageValue(val: unknown): string {
         // use string as is
       }
     }
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") {
+          return formatNonImageValue(parsed);
+        }
+      } catch {
+        // use string as is
+      }
+    }
     return trimmed;
   }
   if (Array.isArray(val)) {
@@ -290,8 +312,28 @@ function formatNonImageValue(val: unknown): string {
   }
   if (typeof val === "object") {
     const obj = val as Record<string, unknown>;
-    const name = obj.name ?? obj.label ?? obj.title ?? obj.value;
-    if (typeof name === "string") return name.trim();
+
+    // 1. Currency/Amount object: { amount: "120", currency: "GTQ" }
+    if (obj.amount != null || obj.currency != null) {
+      const amountStr = obj.amount != null ? String(obj.amount).trim() : "";
+      const currencyStr = obj.currency != null ? String(obj.currency).trim() : "";
+      if (amountStr && currencyStr) return `${amountStr} ${currencyStr}`;
+      if (amountStr) return amountStr;
+      if (currencyStr) return currencyStr;
+    }
+
+    // 2. Objects with name, label, title, value, formatted, display, text
+    const candidate =
+      obj.name ??
+      obj.label ??
+      obj.title ??
+      obj.value ??
+      obj.formatted ??
+      obj.display ??
+      obj.text;
+    if (typeof candidate === "string") return candidate.trim();
+    if (typeof candidate === "number" || typeof candidate === "boolean") return String(candidate);
+
     return "";
   }
   return "";
@@ -306,7 +348,9 @@ function extractFieldValue(
 
   const rawVal =
     (field.api_name ? defaultValues[field.api_name] : undefined) ??
-    (field.id != null ? defaultValues[field.id] : undefined);
+    (field.id != null ? defaultValues[field.id] : undefined) ??
+    (field.id != null ? defaultValues[String(field.id)] : undefined) ??
+    (field.field_label ? defaultValues[field.field_label] : undefined);
 
   const subVal = submission?.values?.find(
     (v) => (field.id != null && v.field_id === field.id) || (field.api_name && v.api_name === field.api_name),
@@ -348,8 +392,60 @@ function extractFieldValue(
   // Extract non-file text value if not already handled
   let text = "";
   if (imageUrls.length === 0 && fileLinks.length === 0) {
-    const candidate = rawVal ?? subVal?.value;
-    text = formatNonImageValue(candidate);
+    if (type === "currency" || type === "amount" || type.includes("currency")) {
+      let resolvedCurrency = formatNonImageValue(rawVal);
+      if (!resolvedCurrency && submission?.values) {
+        const matching = submission.values.filter(
+          (v) =>
+            (field.id != null && v.field_id === field.id) ||
+            (field.api_name && v.api_name === field.api_name),
+        );
+        if (matching.length > 0) {
+          let amount = "";
+          let currency = "";
+          for (const row of matching) {
+            const v = row.value?.trim() ?? "";
+            if (!v) continue;
+            if (isCurrencyCode(v)) {
+              currency = v.toUpperCase();
+            } else if (isNumericAmount(v)) {
+              amount = v;
+            } else if (!amount) {
+              amount = v;
+            }
+          }
+          if (amount && currency) {
+            resolvedCurrency = `${amount} ${currency}`;
+          } else if (amount) {
+            resolvedCurrency = amount;
+          } else if (currency) {
+            resolvedCurrency = currency;
+          }
+        }
+      }
+
+      if (resolvedCurrency && isNumericAmount(resolvedCurrency)) {
+        const fieldDefaultCurrency =
+          (field as any)?.currency ??
+          (field as any)?.default_currency ??
+          (field.properties as any)?.currency ??
+          (field.properties as any)?.default_currency ??
+          (field.properties as any)?.validation_rules?.default_value?.currency ??
+          (field.properties as any)?.validation_rules?.defaultValue?.currency;
+        if (typeof fieldDefaultCurrency === "string" && fieldDefaultCurrency.trim()) {
+          resolvedCurrency = `${resolvedCurrency} ${fieldDefaultCurrency.trim()}`;
+        }
+      }
+
+      if (resolvedCurrency) {
+        text = resolvedCurrency;
+      }
+    }
+
+    if (!text) {
+      const candidate = rawVal ?? subVal?.value;
+      text = formatNonImageValue(candidate);
+    }
   } else {
     // If it has files, check if rawVal was a separate text note
     if (typeof rawVal === "string" && !isDisplayableUrl(rawVal)) {

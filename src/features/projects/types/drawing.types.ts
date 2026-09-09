@@ -70,6 +70,8 @@ export type DrawingPin = {
     sku: string;
     is_composite: boolean;
     installation_type?: number | ItemInstallationTypeRef | null;
+    attachments?: DrawingPinAttachment[] | null;
+    [key: string]: unknown;
   } | null;
   group_detail?: any;
   status_detail?: {
@@ -78,6 +80,9 @@ export type DrawingPin = {
     bg_colour: string;
     text_colour: string;
   } | null;
+  qa_remarks?: string | null;
+  qa_approved_at?: string | null;
+  qa_approved_by?: unknown;
   quality_assurance?: QualityAssuranceRecord | null;
 };
 

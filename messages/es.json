@@ -2303,6 +2303,10 @@
       "pageLabel": "Mostrando {start}-{end} de {total} formularios",
       "prev": "Anterior",
       "next": "Siguiente",
+      "filterCategory": "Categoría de trabajo",
+      "filterAllCategories": "Todas las categorías",
+      "categoryService": "Trabajo de servicio",
+      "categoryProject": "Trabajo de proyecto",
       "columns": {
         "id": "ID",
         "job": "Trabajo",
@@ -4173,6 +4177,7 @@
         "yes": "Sí",
         "no": "No",
         "noFormAssigned": "No hay formulario asignado a este pin.",
+        "noFormFields": "Este formulario aún no tiene campos.",
         "formSubmitted": "Enviado",
         "formNotSubmitted": "No enviado",
         "formImages": "Imágenes del formulario"

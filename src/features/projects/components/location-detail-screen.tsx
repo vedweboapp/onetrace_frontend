@@ -3,12 +3,12 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import api from "@/core/api/axios";
 import {
   fetchJobFormSchema,
   fetchJobSubmittedForm,
   loadJobFormSubmission,
-  submitJobForm,
-  updateJobFormSubmission,
+  normalizeSubmissionRow,
 } from "@/features/job-forms/api/job-form.api";
 import type {
   JobFormSubmission,
@@ -20,10 +20,7 @@ import {
   enrichSectionsWithSubmissionFiles,
   synthesizeFormSectionsFromSubmission,
 } from "@/features/job-forms/utils/job-form-schema.util";
-import {
-  buildJobFormSubmissionFormData,
-  mapSubmissionValuesToFormDefaults,
-} from "@/features/job-forms/utils/job-form-values.util";
+import { mapSubmissionValuesToFormDefaults } from "@/features/job-forms/utils/job-form-values.util";
 import {
   generateAndDownloadFormPdf,
   generatePinCropDataUrl,
@@ -35,6 +32,7 @@ import {
   type JobCategoryApi,
 } from "@/features/jobs/constants/job-category";
 import { jobFormEntries } from "@/features/jobs/utils/job-nested-fields.util";
+import type { Job } from "@/features/jobs/types/job.types";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
 import { fetchPinDetail } from "@/features/projects/api/drawing.api";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
@@ -59,22 +57,19 @@ import {
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-import {
-  detailMapFormGridClassName,
-} from "@/shared/components/layout/detail-page-map-layout";
-import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
+import { detailMapFormGridClassName } from "@/shared/components/layout/detail-page-map-layout";
 import {
   QualityAssuranceDetailGrid,
 } from "@/features/jobs/components/quality-assurance-status";
 import {
-  isQualityAssuranceApproved,
   isQualityAssuranceDecided,
   type QualityAssuranceRecord,
 } from "@/features/jobs/types/quality-assurance.types";
 import {
   savePinsToSessionStorage,
   loadPinsFromSessionStorage,
-  buildPinPreviewUrl,
+  clearPinsFromSessionStorage,
+  buildLocationPreviewUrl,
   extractTrimmedPinsFromJob,
   type TrimmedPinNavigationItem,
 } from "@/features/projects/utils/pin-preview-navigation.util";
@@ -88,7 +83,7 @@ import {
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { buildProjectDetailTabHref } from "@/shared/utils/detail-from-list.util";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
-import { AppButton, SurfaceShell } from "@/shared/ui";
+import { SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 import {
@@ -134,147 +129,147 @@ type Props = {
   drawingIdHint?: number | null;
 };
 
+
 async function resolvePinFromPinApi(
   pinId: number,
   projectIdHint?: number,
-  formEntries?: any[],
-): Promise<PinContext | null> {
+): Promise<(Omit<PinContext, "formMeta"> & { rawFormMeta?: PinFormMeta | null; rawJobId?: number | null }) | null> {
   try {
     const pinData = await fetchPinDetail(pinId);
-    if (!pinData) return null;
-
-    const ld = pinData.level_detail;
-    const plots = (ld?.plots ?? []) as DrawingPlot[];
-
-    const targetPinId = Number(pinId);
-    let foundPin: DrawingPin | null = null;
-    let foundPlot: DrawingPlot | null = null;
-    for (const plot of plots) {
-      const p = (plot.pins ?? []).find((entry) => {
-        if (Number(entry.id) === targetPinId) return true;
-        const jobPinId = Number(entry.job_pin_id);
-        return Number.isFinite(jobPinId) && jobPinId > 0 && jobPinId === targetPinId;
-      });
-      if (p) {
-        foundPin = p;
-        foundPlot = plot;
-        break;
+    if (pinData) {
+      const ld = pinData.level_detail;
+      const plots = (ld?.plots ?? []) as DrawingPlot[];
+      const targetPinId = Number(pinId);
+      let foundPin: DrawingPin | null = null;
+      for (const plot of plots) {
+        const p = (plot.pins ?? []).find((entry) => {
+          if (Number(entry.id) === targetPinId) return true;
+          const jobPinId = Number(entry.job_pin_id);
+          return Number.isFinite(jobPinId) && jobPinId > 0 && jobPinId === targetPinId;
+        });
+        if (p) {
+          foundPin = p;
+          break;
+        }
       }
-    }
 
-    const rawTopJobId =
-      (pinData as any).job_id ??
-      (pinData as any).job ??
-      (pinData as any).job_detail?.id ??
-      null;
-    const topJobId =
-      typeof rawTopJobId === "number" && rawTopJobId > 0
-        ? rawTopJobId
-        : rawTopJobId && typeof rawTopJobId === "object" && typeof rawTopJobId.id === "number"
-          ? rawTopJobId.id
-          : null;
+      // Extract job_id from top-level pinData fields (many possible keys)
+      const rawTopJobId =
+        (pinData as any).job_id ??
+        (pinData as any).job ??
+        (pinData as any).job_detail?.id ??
+        null;
+      const topJobId =
+        typeof rawTopJobId === "number" && rawTopJobId > 0
+          ? rawTopJobId
+          : rawTopJobId && typeof rawTopJobId === "object" && typeof rawTopJobId.id === "number"
+            ? rawTopJobId.id
+            : null;
 
-    const sfdCandidate =
-      (Array.isArray((pinData as any).submit_forms_details)
-        ? (pinData as any).submit_forms_details[0]
-        : (pinData as any).submit_forms_details) ??
-      (Array.isArray((pinData as any).submit_forms)
-        ? (pinData as any).submit_forms[0]
-        : (pinData as any).submit_forms) ??
-      (Array.isArray((pinData as any).submitted_forms)
-        ? (pinData as any).submitted_forms[0]
-        : (pinData as any).submitted_forms) ??
-      (pinData as any).submitted_form ??
-      ((pinData as any).project_form && typeof (pinData as any).project_form === "object"
-        ? (pinData as any).project_form
-        : null) ??
-      (pinData as any).submission ??
-      null;
-
-    const rawSubId =
-      sfdCandidate?.submission_id ??
-      sfdCandidate?.submitted_form_id ??
-      (pinData as any).submission_id ??
-      (pinData as any).submitted_form_id ??
-      (pinData as any).submission?.id ??
-      null;
-    const subId = rawSubId != null && Number(rawSubId) > 0 ? Number(rawSubId) : null;
-
-    const rawPFormId =
-      sfdCandidate?.id ??
-      sfdCandidate?.project_form_id ??
-      sfdCandidate?.form_id ??
-      (typeof (pinData as any).project_form === "number"
-        ? (pinData as any).project_form
-        : (pinData as any).project_form?.id != null
-          ? Number((pinData as any).project_form.id)
+      // Robust extraction of form & submission candidate (handling arrays or objects)
+      const sfdCandidate =
+        (Array.isArray((pinData as any).submit_forms_details)
+          ? (pinData as any).submit_forms_details[0]
+          : (pinData as any).submit_forms_details) ??
+        (Array.isArray((pinData as any).submit_forms)
+          ? (pinData as any).submit_forms[0]
+          : (pinData as any).submit_forms) ??
+        (Array.isArray((pinData as any).submitted_forms)
+          ? (pinData as any).submitted_forms[0]
+          : (pinData as any).submitted_forms) ??
+        (pinData as any).submitted_form ??
+        ((pinData as any).project_form && typeof (pinData as any).project_form === "object"
+          ? (pinData as any).project_form
           : null) ??
-      (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null);
-    const pFormId = rawPFormId != null && Number(rawPFormId) > 0 ? Number(rawPFormId) : null;
+        (pinData as any).submission ??
+        null;
 
-    const formLabel =
-      (typeof sfdCandidate?.name === "string" && sfdCandidate.name.trim()) ||
-      (typeof sfdCandidate?.form_name === "string" && sfdCandidate.form_name.trim()) ||
-      (typeof (pinData as any).project_form?.name === "string" && (pinData as any).project_form.name.trim()) ||
-      (typeof (pinData as any).project_form_name === "string" && (pinData as any).project_form_name.trim()) ||
-      "Form";
+      const rawSubId =
+        sfdCandidate?.submission_id ??
+        sfdCandidate?.submitted_form_id ??
+        (pinData as any).submission_id ??
+        (pinData as any).submitted_form_id ??
+        (pinData as any).submission?.id ??
+        null;
+      const subId = rawSubId != null && Number(rawSubId) > 0 ? Number(rawSubId) : null;
 
-    const sfdJobRaw = sfdCandidate?.job_id ?? sfdCandidate?.job ?? null;
-    const sfdJobId =
-      typeof sfdJobRaw === "number" && sfdJobRaw > 0
-        ? sfdJobRaw
-        : sfdJobRaw && typeof sfdJobRaw === "object" && typeof sfdJobRaw.id === "number"
-          ? sfdJobRaw.id
-          : null;
+      const rawPFormId =
+        sfdCandidate?.id ??
+        sfdCandidate?.project_form_id ??
+        sfdCandidate?.form_id ??
+        (typeof (pinData as any).project_form === "number"
+          ? (pinData as any).project_form
+          : (pinData as any).project_form?.id != null
+            ? Number((pinData as any).project_form.id)
+            : null) ??
+        (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null);
+      const pFormId = rawPFormId != null && Number(rawPFormId) > 0 ? Number(rawPFormId) : null;
 
-    const effectiveJobFromApi = topJobId ?? sfdJobId;
+      const formLabel =
+        (typeof sfdCandidate?.name === "string" && sfdCandidate.name.trim()) ||
+        (typeof sfdCandidate?.form_name === "string" && sfdCandidate.form_name.trim()) ||
+        (typeof (pinData as any).project_form?.name === "string" && (pinData as any).project_form.name.trim()) ||
+        (typeof (pinData as any).project_form_name === "string" && (pinData as any).project_form_name.trim()) ||
+        "Form";
 
-    const basePin = foundPin ?? (pinData as unknown as DrawingPin);
-    const resolvedPin: DrawingPin = {
-      ...basePin,
-      id: Number(pinData.id ?? pinId),
-      status_detail: (basePin as any).status_detail ?? null,
-      status: (basePin as any).status ?? null,
-      qa_remarks: (basePin as any).qa_remarks ?? null,
-      qa_approved_at: (basePin as any).qa_approved_at ?? null,
-      qa_approved_by: (basePin as any).qa_approved_by ?? null,
-      ...(effectiveJobFromApi != null ? { job_id: effectiveJobFromApi, job: effectiveJobFromApi } : {}),
-      ...(subId != null ? { submission_id: subId } : {}),
-      ...(sfdCandidate ? { submit_forms_details: sfdCandidate, project_form: sfdCandidate } : {}),
-    };
+      const sfdJobRaw = sfdCandidate?.job_id ?? sfdCandidate?.job ?? null;
+      const sfdJobId =
+        typeof sfdJobRaw === "number" && sfdJobRaw > 0
+          ? sfdJobRaw
+          : sfdJobRaw && typeof sfdJobRaw === "object" && typeof sfdJobRaw.id === "number"
+            ? sfdJobRaw.id
+            : null;
 
-    let formMeta: PinFormMeta | null = null;
-    if (pFormId != null || subId != null) {
-      formMeta = {
-        projectFormId: pFormId ?? 1,
-        jobFormId: pFormId ?? 1,
-        label: formLabel,
-        submitted:
-          sfdCandidate?.submission_status === "submitted" ||
-          (pinData as any).submission_status === "submitted" ||
-          (subId != null && subId > 0),
-        submissionId: subId,
+      const effectiveJobFromApi = topJobId ?? sfdJobId;
+
+      const basePin = foundPin ?? (pinData as unknown as DrawingPin);
+      const resolvedPin: DrawingPin = {
+        ...basePin,
+        id: Number(pinData.id ?? pinId),
+        status_detail: (basePin as any).status_detail ?? null,
+        status: (basePin as any).status ?? null,
+        qa_remarks: (basePin as any).qa_remarks ?? null,
+        qa_approved_at: (basePin as any).qa_approved_at ?? null,
+        qa_approved_by: (basePin as any).qa_approved_by ?? null,
+        ...(effectiveJobFromApi != null ? { job_id: effectiveJobFromApi, job: effectiveJobFromApi } : {}),
+        ...(subId != null ? { submission_id: subId } : {}),
+        ...(sfdCandidate ? { submit_forms_details: sfdCandidate, project_form: sfdCandidate } : {}),
       };
-    } else {
-      formMeta = resolvePinFormMeta(resolvedPin, { formEntries });
-    }
 
-    return {
-      pin: resolvedPin,
-      plots: foundPlot ? [foundPlot] : plots,
-      drawingFile: ld?.drawing_file ?? "",
-      drawingName: ld?.name ?? "",
-      drawingId: ld?.id,
-      projectId: ld?.project ?? projectIdHint,
-      formMeta,
-    };
+      let rawFormMeta: PinFormMeta | null = null;
+      let rawJobId: number | null = effectiveJobFromApi;
+
+      if (pFormId != null || subId != null) {
+        rawFormMeta = {
+          projectFormId: pFormId ?? 1,
+          jobFormId: pFormId ?? 1,
+          label: formLabel,
+          submitted:
+            sfdCandidate?.submission_status === "submitted" ||
+            (pinData as any).submission_status === "submitted" ||
+            (subId != null && subId > 0),
+          submissionId: subId,
+        };
+      }
+
+      return {
+        pin: resolvedPin,
+        plots,
+        drawingFile: ld?.drawing_file ?? "",
+        drawingName: ld?.name ?? "",
+        drawingId: ld?.id,
+        projectId: ld?.project ?? projectIdHint,
+        rawFormMeta,
+        rawJobId,
+      };
+    }
   } catch (err) {
-    console.warn("fetchPinDetail failed in PinDetailScreen", err);
-    return null;
+    console.warn("fetchPinDetail failed in LocationDetailScreen, falling back to drawings resolution", err);
   }
+  return null;
 }
 
-export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Props) {
+export function LocationDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Props) {
   const t = useTranslations("Dashboard.jobs.forms");
   const tPins = useTranslations("Dashboard.projects.pins");
   const searchParams = useSearchParams();
@@ -299,6 +294,8 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [reloadToken, setReloadToken] = React.useState(0);
   const [jobCategoryForNav, setJobCategoryForNav] = React.useState<JobCategoryApi | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  /** job_id resolved from the pin API response — used when no jobId prop is provided */
+  const [pinApiJobId, setPinApiJobId] = React.useState<number | null>(null);
 
   const dateFmt = React.useMemo(
     () =>
@@ -323,13 +320,11 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [formName, setFormName] = React.useState<string | null>(null);
   const [createdSubmissionId, setCreatedSubmissionId] = React.useState<number | null>(null);
   const [pinNavList, setPinNavList] = React.useState<TrimmedPinNavigationItem[]>([]);
+  const [job, setJob] = React.useState<Job | null>(null);
 
   React.useEffect(() => {
     setCreatedSubmissionId(null);
   }, [pinId, projectId, jobId]);
-
-  const modeParam = searchParams.get("mode");
-  const [isEditMode, setIsEditMode] = React.useState(modeParam === "edit");
 
   /** Keep header/sidebar job category in sync (QR links omit `?job_category=`). */
   React.useEffect(() => {
@@ -348,49 +343,64 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
       setLoadError(null);
       setJobCategoryForNav(null);
       try {
-        let formEntries: any[] | undefined = undefined;
+        let fetchedJob: Job | null = null;
+        let formEntries: ReturnType<typeof jobFormEntries> = [];
         let resolvedProjectId = projectId;
 
         if (jobId != null && jobId > 0) {
-          try {
-            const job = await fetchJob(jobId, { silent: true });
-            if (cancelled) return;
-            setJobCategoryForNav(resolveJobCategory(job));
-            // If sessionStorage pin list is not yet populated, extract & cache it
-            const stored = loadPinsFromSessionStorage(jobId);
-            if (stored.length === 0) {
-              const trimmed = extractTrimmedPinsFromJob(job);
-              if (trimmed.length > 0) {
-                savePinsToSessionStorage(jobId, trimmed);
-                setPinNavList(trimmed);
-              }
+          fetchedJob = await fetchJob(jobId, { silent: true });
+          if (cancelled) return;
+          setJob(fetchedJob);
+          setJobCategoryForNav(resolveJobCategory(fetchedJob));
+          // If sessionStorage pin list is not yet populated, extract & cache it
+          const stored = loadPinsFromSessionStorage(jobId);
+          if (stored.length === 0) {
+            const trimmed = extractTrimmedPinsFromJob(fetchedJob);
+            if (trimmed.length > 0) {
+              savePinsToSessionStorage(jobId, trimmed);
+              setPinNavList(trimmed);
             }
-            formEntries = jobFormEntries(job);
-            const typed = job as unknown as {
-              project?: number | { id: number };
-            };
-            resolvedProjectId =
-              typeof typed.project === "number"
-                ? typed.project
-                : typed.project && typeof typed.project === "object"
-                  ? typed.project.id
-                  : resolvedProjectId;
-          } catch (err) {
-            console.warn("fetchJob failed in PinDetailScreen", err);
           }
+          const typed = fetchedJob as unknown as {
+            project?: number | { id: number };
+          };
+          formEntries = jobFormEntries(fetchedJob);
+          resolvedProjectId =
+            typeof typed.project === "number"
+              ? typed.project
+              : typed.project && typeof typed.project === "object"
+                ? typed.project.id
+                : resolvedProjectId;
         }
 
-        // Direct fetch using /pins/${pinId}/ API
-        const resolvedContext = await resolvePinFromPinApi(pinId, resolvedProjectId, formEntries);
+        // 1. Direct fetch using /pins/${pinId}/
+        const fromPinApi = await resolvePinFromPinApi(pinId, resolvedProjectId);
         if (cancelled) return;
 
-        if (!resolvedContext) {
-          setContext(null);
-          setLoadError(tPins("loadError"));
+        if (fromPinApi) {
+          const mergedFormMeta =
+            fromPinApi.rawFormMeta ??
+            resolvePinFormMeta(fromPinApi.pin, { formEntries });
+
+          // Store the job_id extracted from the pin API so we can fetch submission data
+          if (fromPinApi.rawJobId != null && fromPinApi.rawJobId > 0) {
+            setPinApiJobId(fromPinApi.rawJobId);
+          }
+
+          setContext({
+            pin: fromPinApi.pin,
+            plots: fromPinApi.plots,
+            drawingFile: fromPinApi.drawingFile,
+            drawingName: fromPinApi.drawingName,
+            drawingId: fromPinApi.drawingId,
+            projectId: fromPinApi.projectId ?? resolvedProjectId,
+            formMeta: mergedFormMeta,
+          });
           return;
         }
 
-        setContext(resolvedContext);
+        setContext(null);
+        setLoadError(tPins("loadError"));
       } catch (error) {
         if (!cancelled) {
           setContext(null);
@@ -407,8 +417,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
 
   const formMeta = context?.formMeta ?? null;
 
-  // URL params injected by job-detail-body — same set used in the form-fill URL:
-  // formId, job_form_id, name, job_pin_id, submission_id
   const urlFormId = searchParams.get("formId") ?? searchParams.get("form_id");
   const urlJobFormId = searchParams.get("job_form_id");
   const urlSubmissionId = searchParams.get("submission_id") ?? searchParams.get("submissionId");
@@ -436,7 +444,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
     formMeta?.jobFormId ??
     (urlJobFormId ? Number.parseInt(urlJobFormId, 10) : null) ??
     projectFormId;
-  const submittedHint = formMeta?.submitted ?? (submissionId != null && submissionId > 0);
 
   const rawJobIdParam = searchParams.get("jobId") ?? searchParams.get("job_id");
   const parsedJobIdParam = rawJobIdParam ? Number.parseInt(rawJobIdParam, 10) : undefined;
@@ -458,28 +465,60 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
       ? (parsedJobIdParam as number)
       : submission?.job_id && Number(submission.job_id) > 0
         ? Number(submission.job_id)
-        : pinJobId);
+        : pinJobId ?? pinApiJobId);
 
-  const urlJobPinId = searchParams.get("job_pin_id");
-  const targetJobPinId =
-    urlJobPinId && Number(urlJobPinId) > 0
-      ? Number(urlJobPinId)
-      : context?.pin?.job_pin_id != null && Number(context.pin.job_pin_id) > 0
-        ? Number(context.pin.job_pin_id)
-        : context?.pin?.id != null && Number(context.pin.id) > 0
-          ? Number(context.pin.id)
-          : pinId;
-
-  // Read pin preview navigation list from sessionStorage
+  // Read pin preview navigation list from sessionStorage (by projectId or effectiveJobId)
   React.useEffect(() => {
-    if (effectiveJobId != null && effectiveJobId > 0) {
-      const stored = loadPinsFromSessionStorage(effectiveJobId);
+    const idToLoad = projectId ?? effectiveJobId;
+    if (idToLoad != null && idToLoad > 0) {
+      const stored = loadPinsFromSessionStorage(idToLoad);
       if (stored.length > 0) {
         setPinNavList(stored);
       }
     }
-  }, [effectiveJobId, pinId]);
+  }, [projectId, effectiveJobId, pinId]);
 
+  // Clean session storage for the pins list when closing/navigating away from location-details
+  React.useEffect(() => {
+    const handleUnload = () => {
+      if (projectId) clearPinsFromSessionStorage(projectId);
+      if (effectiveJobId) clearPinsFromSessionStorage(effectiveJobId);
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      setTimeout(() => {
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.includes("/locations/") &&
+          !window.location.pathname.includes("/pins/")
+        ) {
+          if (projectId) clearPinsFromSessionStorage(projectId);
+          if (effectiveJobId) clearPinsFromSessionStorage(effectiveJobId);
+        }
+      }, 50);
+    };
+  }, [projectId, effectiveJobId]);
+
+  // Fetch job details if not already loaded and effectiveJobId is available
+  React.useEffect(() => {
+    if (effectiveJobId != null && effectiveJobId > 0 && (!job || job.id !== effectiveJobId)) {
+      let cancelled = false;
+      fetchJob(effectiveJobId, { silent: true })
+        .then((data) => {
+          if (!cancelled && data) {
+            setJob(data);
+          }
+        })
+        .catch(() => { });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [effectiveJobId, job]);
+
+  // Fetch form schema & submission values
   React.useEffect(() => {
     if (
       !context?.pin ||
@@ -503,7 +542,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
       try {
         let loadedSubmission: JobFormSubmission | null = null;
 
-        // 1. If we have effectiveJobId and submissionId, fetch via the submitted form API
+        // 1. If we have effectiveJobId and submissionId, fetch via submitted form API
         if (effectiveJobId != null && effectiveJobId > 0 && submissionId != null && submissionId > 0) {
           try {
             loadedSubmission = await fetchJobSubmittedForm(effectiveJobId, submissionId);
@@ -512,7 +551,31 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           }
         }
 
-        // 2. If not loaded directly, try loadJobFormSubmission by jobFormId / projectFormId
+        // 2. Direct submitted form endpoints if jobId was unknown or primary failed
+        if (!loadedSubmission && submissionId != null && submissionId > 0) {
+          const endpoints = [
+            `jobs/submitted-forms/${submissionId}/`,
+            `submitted-forms/${submissionId}/`,
+            `job-forms/submissions/${submissionId}/`,
+            `projects/submitted-forms/${submissionId}/`,
+          ];
+          for (const ep of endpoints) {
+            try {
+              const res = await api.get(ep);
+              if (res?.data?.data) {
+                loadedSubmission = normalizeSubmissionRow({
+                  ...res.data.data,
+                  id: res.data.data.id ?? submissionId,
+                });
+                break;
+              }
+            } catch {
+              // try next
+            }
+          }
+        }
+
+        // 3. If not loaded directly, try loadJobFormSubmission by jobFormId / projectFormId
         if (!loadedSubmission && effectiveJobId != null && effectiveJobId > 0 && jobFormId != null && jobFormId > 0) {
           try {
             loadedSubmission = await loadJobFormSubmission(
@@ -526,6 +589,10 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           }
         }
 
+        if (loadedSubmission?.job_id && Number(loadedSubmission.job_id) > 0) {
+          setPinApiJobId(Number(loadedSubmission.job_id));
+        }
+
         if (cancelled) return;
 
         const resolvedProjectFormId =
@@ -537,18 +604,24 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         let sectionsForRender: NormalizedFormSection[] = [];
 
         if (resolvedProjectFormId != null && resolvedProjectFormId > 0) {
-          const schema = await fetchJobFormSchema(resolvedProjectFormId, effectiveJobId);
-          if (cancelled) return;
-          if (schema.name?.trim()) {
-            setFormName(schema.name.trim());
-          } else if (loadedSubmission?.form_name?.trim()) {
-            setFormName(loadedSubmission.form_name.trim());
+          try {
+            const schema = await fetchJobFormSchema(resolvedProjectFormId, effectiveJobId);
+            if (cancelled) return;
+            if (schema.name?.trim()) {
+              setFormName(schema.name.trim());
+            } else if (loadedSubmission?.form_name?.trim()) {
+              setFormName(loadedSubmission.form_name.trim());
+            }
+            setRules(normalizeRules((schema.rules ?? []) as FormRule[]));
+            sectionsForRender = loadedSubmission?.files?.length
+              ? enrichSectionsWithSubmissionFiles(schema.sections, loadedSubmission.files)
+              : schema.sections;
+          } catch (schemaErr) {
+            console.warn("fetchJobFormSchema failed:", schemaErr);
           }
-          setRules(normalizeRules((schema.rules ?? []) as FormRule[]));
-          sectionsForRender = loadedSubmission?.files?.length
-            ? enrichSectionsWithSubmissionFiles(schema.sections, loadedSubmission.files)
-            : schema.sections;
-        } else if (loadedSubmission) {
+        }
+
+        if (sectionsForRender.length === 0 && loadedSubmission) {
           if (loadedSubmission.form_name?.trim()) {
             setFormName(loadedSubmission.form_name.trim());
           }
@@ -559,227 +632,59 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
           });
         }
 
+        setRawSections(sectionsForRender);
         const maps = buildFieldMaps(sectionsForRender);
         setFieldMaps(maps);
-        setRawSections(sectionsForRender);
 
-        let nextDefaults: Record<string, unknown> = {};
         if (loadedSubmission) {
-          nextDefaults = mapSubmissionValuesToFormDefaults(
-            loadedSubmission.values,
-            sectionsForRender,
-            maps.apiNameByFieldId,
-            maps.fieldTypeByFieldId,
-            loadedSubmission.files,
+          setSubmission(loadedSubmission);
+          setHasSubmission(true);
+          setDefaultValues(
+            mapSubmissionValuesToFormDefaults(
+              loadedSubmission.values,
+              sectionsForRender,
+              maps.apiNameByFieldId,
+              maps.fieldTypeByFieldId,
+              loadedSubmission.files,
+            ),
           );
-        }
-        setDefaultValues(nextDefaults);
-
-        const resolvedSubmitted = Boolean(loadedSubmission) || submittedHint;
-        setHasSubmission(resolvedSubmitted);
-        setSubmission(loadedSubmission);
-
-        if (modeParam === "edit") {
-          setIsEditMode(true);
-        } else if (resolvedSubmitted) {
-          setIsEditMode(false);
         } else {
-          setIsEditMode(true);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setFormError(getApiErrorDisplayMessage(error, t("loadError")));
-          setRawSections([]);
           setSubmission(null);
+          setHasSubmission(false);
+          setDefaultValues({});
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setFormError(getApiErrorDisplayMessage(err, "Failed to load form"));
         }
       } finally {
-        if (!cancelled) setLoadingForm(false);
+        if (!cancelled) {
+          setLoadingForm(false);
+        }
       }
     })();
-
     return () => {
       cancelled = true;
     };
   }, [
-    context?.pin?.id,
+    context?.pin,
     projectFormId,
     jobFormId,
-    effectiveJobId,
     submissionId,
-    submittedHint,
-    modeParam,
-    t,
-    reloadToken,
+    effectiveJobId,
+    pinApiJobId,
   ]);
 
-  const isReadOnly = (hasSubmission || submittedHint) && !isEditMode;
-  const displaySections = React.useMemo(() => {
-    return isReadOnly ? applyReadOnlyToSections(rawSections, true) : rawSections;
-  }, [rawSections, isReadOnly]);
+  const formRef = React.useRef<FormRendererRef>(null);
 
-  const {
-    formRef,
-    isLoading: submitting,
-    handleSubmit: handleFormSubmit,
-  } = useFormHandler<Record<string, unknown>, FormRendererRef>(async (data) => {
-    if (projectFormId == null) {
-      toastError(t("loadError"));
-      return;
-    }
-    if (effectiveJobId == null || effectiveJobId <= 0) {
-      toastError("No Job ID associated with this pin. Form submission requires an active job.");
-      return;
-    }
-    const targetJobFormId = jobFormId ?? projectFormId;
-    // Prefer the job_pin_id URL param (set by job-detail-body from the correct
-    // pin.job_pin_id) — the context pin fetched via drawings API may have a
-    // different id value.
-    const urlJobPinId = searchParams.get("job_pin_id");
-    const targetJobPinId =
-      urlJobPinId && Number(urlJobPinId) > 0
-        ? Number(urlJobPinId)
-        : context?.pin?.job_pin_id != null && Number(context.pin.job_pin_id) > 0
-          ? Number(context.pin.job_pin_id)
-          : context?.pin?.id != null && Number(context.pin.id) > 0
-            ? Number(context.pin.id)
-            : undefined;
+  // Form is strictly read-only on the location detail screen
+  const isReadOnly = true;
+  const displaySections = React.useMemo(
+    () => applyReadOnlyToSections(rawSections, true),
+    [rawSections],
+  );
 
-    const fd = buildJobFormSubmissionFormData(
-      targetJobFormId,
-      data,
-      rawSections,
-      {
-        status: "submitted",
-        defaultValues,
-        job_pin_id: targetJobPinId,
-      },
-    );
-
-    // Validate that at least one value is present
-    const valuesJson = fd.get("values");
-    if (valuesJson) {
-      const parsed = JSON.parse(valuesJson as string) as unknown[];
-      if (
-        parsed.length === 0 &&
-        !Array.from(fd.keys()).some(
-          (k) => !["job_form_id", "status", "values", "remarks", "job_pin_id"].includes(k),
-        )
-      ) {
-        toastError(t("validationEmpty"));
-        return;
-      }
-    }
-
-    const currentSubmissionId = createdSubmissionId ?? submission?.id ?? submissionId;
-    const isEditingExisting =
-      typeof currentSubmissionId === "number" && currentSubmissionId > 0;
-
-    try {
-      let updatedSubmissionId = currentSubmissionId;
-      if (isEditingExisting) {
-        const res = await updateJobFormSubmission(effectiveJobId, currentSubmissionId, fd, projectFormId);
-        const resolvedId = res?.submission_id ?? res?.id;
-        if (typeof resolvedId === "number" && resolvedId > 0) {
-          updatedSubmissionId = resolvedId;
-        }
-        toastSuccess(t("updatedToast"));
-      } else {
-        const res = await submitJobForm(effectiveJobId, fd, projectFormId);
-        const newSid =
-          (typeof res?.submission_id === "number" && res.submission_id > 0
-            ? res.submission_id
-            : typeof res?.id === "number" && res.id > 0
-              ? res.id
-              : null);
-        if (newSid != null && newSid > 0) {
-          updatedSubmissionId = newSid;
-        }
-        toastSuccess(t("submittedToast"));
-      }
-
-      // Sync submission_id to browser URL and refetch form data
-      if (updatedSubmissionId && updatedSubmissionId > 0) {
-        setCreatedSubmissionId(updatedSubmissionId);
-
-        // Update the cached pin navigation item in state and sessionStorage so that
-        // navigating previous / next or returning to this pin preserves submission_id!
-        setPinNavList((prevList) => {
-          const nextList = prevList.map((item) => {
-            if (item.pinId === pinId || item.job_pin_id === pinId) {
-              return { ...item, submission_id: updatedSubmissionId };
-            }
-            return item;
-          });
-          if (effectiveJobId) {
-            savePinsToSessionStorage(effectiveJobId, nextList);
-          }
-          return nextList;
-        });
-
-        // 1. Append/update submission_id in browser URL
-        const nextParams = new URLSearchParams(searchParams.toString());
-        nextParams.set("submission_id", String(updatedSubmissionId));
-        nextParams.delete("mode");
-        const nextQuery = nextParams.toString();
-        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", nextUrl);
-        }
-        router.replace(nextUrl, { scroll: false });
-
-        // 2. Explicitly re-fetch fresh form data from the submitted form API to refresh the view
-        if (effectiveJobId) {
-          try {
-            const fresh = await fetchJobSubmittedForm(effectiveJobId, updatedSubmissionId);
-            if (fresh) {
-              setSubmission(fresh);
-              setHasSubmission(true);
-              if (fresh.form_name?.trim()) {
-                setFormName(fresh.form_name.trim());
-              }
-              const enriched = fresh.files?.length
-                ? enrichSectionsWithSubmissionFiles(rawSections, fresh.files)
-                : rawSections;
-              setRawSections(enriched);
-              const maps = buildFieldMaps(enriched);
-              setFieldMaps(maps);
-              setDefaultValues(
-                mapSubmissionValuesToFormDefaults(
-                  fresh.values,
-                  enriched,
-                  maps.apiNameByFieldId,
-                  maps.fieldTypeByFieldId,
-                  fresh.files,
-                ),
-              );
-            }
-          } catch (err) {
-            console.warn("Failed to refresh form data after submission", err);
-          }
-        }
-      }
-
-      setIsEditMode(false);
-      setReloadToken((n) => n + 1);
-    } catch (error) {
-      toastApiError(error, t("submitError"));
-    }
-  });
-
-  const handleCancelEdit = () => {
-    setIsEditMode(false);
-    if (submission) {
-      setDefaultValues(
-        mapSubmissionValuesToFormDefaults(
-          submission.values,
-          rawSections,
-          fieldMaps.apiNameByFieldId,
-          fieldMaps.fieldTypeByFieldId,
-          submission.files,
-        ),
-      );
-    }
-  };
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
 
   const title =
     context?.pin != null
@@ -789,77 +694,18 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
     context?.pin?.item_detail?.name ||
     context?.pin?.group_detail?.name ||
     (context?.pin?.item != null ? `#${context.pin.item}` : null);
-  const rendererKey = `${context?.pin?.id ?? "pin"}-${isReadOnly ? "view" : "edit"}-${submission?.id ?? "new"}-${Object.keys(defaultValues).length}`;
-  const qaPinId = context?.pin?.id ?? pinId;
-
-  const pinStatusDetail =
-    context?.pin?.status_detail ||
-    (context?.pin as any)?.statusDetail;
-  const pinStatusName = (
-    pinStatusDetail?.status_name ||
-    (pinStatusDetail as any)?.name ||
-    (typeof (context?.pin as any)?.status === "object" && (context?.pin as any)?.status !== null
-      ? (context?.pin as any).status.status_name || (context?.pin as any).status.name
-      : "") ||
-    (typeof context?.pin?.status === "string" ? context.pin.status : "") ||
-    (context?.pin as any)?.status_name ||
-    ""
-  ).toLowerCase().trim();
-
-  const isPinCompleted =
-    pinStatusName === "completed" ||
-    pinStatusName.includes("complet") ||
-    (pinStatusDetail as any)?.category === "closed" ||
-    String(context?.pin?.status_id).toLowerCase() === "completed" ||
-    String(context?.pin?.status).toLowerCase() === "completed" ||
-    context?.pin?.status === 3 ||
-    context?.pin?.status_id === 3 ||
-    pinStatusDetail?.id === 3;
+  const rendererKey = `${context?.pin?.id ?? "pin"}-view-${submission?.id ?? "new"}-${Object.keys(defaultValues).length}`;
 
   const pinQa = context?.pin?.quality_assurance ?? null;
-
-  const rawQaStatus = String(
-    (typeof pinQa === "object" && pinQa !== null ? pinQa.status : pinQa) ||
-    (context?.pin as any)?.qa_status ||
-    (context?.pin as any)?.quality_assurance_status ||
-    (typeof (context?.pin as any)?.quality_assurance === "string" ? (context?.pin as any).quality_assurance : "") ||
-    ""
-  ).toLowerCase().replace(/[\s_-]/g, "");
-
-  const isQaApproved =
-    isQualityAssuranceApproved(pinQa) ||
-    rawQaStatus.includes("qaapp") ||
-    rawQaStatus.includes("qapp") ||
-    rawQaStatus === "approved" ||
-    rawQaStatus.includes("approved");
   const tQa = useTranslations("Dashboard.jobs.qualityAssurance");
   const qaDecided = isQualityAssuranceDecided(pinQa);
-
-  const handleQaSuccess = (newRecord?: QualityAssuranceRecord) => {
-    if (newRecord && context?.pin) {
-      setContext((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          pin: {
-            ...prev.pin,
-            quality_assurance: newRecord,
-          },
-        };
-      });
-    }
-    setReloadToken((n) => n + 1);
-  };
 
   const isFormSubmitted = Boolean(
     (submissionId != null && submissionId > 0) ||
     hasSubmission ||
     (submission?.id != null && submission.id > 0) ||
     (submission?.submission_id != null && submission.submission_id > 0) ||
-    (createdSubmissionId != null && createdSubmissionId > 0) ||
-    (context?.pin as any)?.submit_forms_details?.submission_status === "submitted" ||
-    (context?.pin as any)?.submission_status === "submitted" ||
-    context?.formMeta?.submitted
+    (createdSubmissionId != null && createdSubmissionId > 0)
   );
 
   const formImages = React.useMemo(
@@ -894,21 +740,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const snapshotState = context?.drawingId
     ? levelSnapshots.get(context.drawingId)
     : levelSnapshots.get(1);
-
-  const currentIndex = React.useMemo(() => {
-    if (pinNavList.length === 0) return -1;
-    return pinNavList.findIndex(
-      (item) => item.pinId === pinId || item.job_pin_id === pinId,
-    );
-  }, [pinNavList, pinId]);
-
-  const prevPin = currentIndex > 0 ? pinNavList[currentIndex - 1] : null;
-  const nextPin =
-    currentIndex >= 0 && currentIndex < pinNavList.length - 1
-      ? pinNavList[currentIndex + 1]
-      : null;
-
-  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
 
   const handleDownloadPdf = async () => {
     if (downloadingPdf) return;
@@ -962,6 +793,11 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         );
       }
 
+      const currentValues = {
+        ...defaultValues,
+        ...(formRef.current?.getFormData?.() ?? {}),
+      };
+
       await generateAndDownloadFormPdf({
         formTitle: resolvedFormName,
         formId: projectFormId,
@@ -972,7 +808,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
         statusName,
         submittedAt: submission?.submitted_at ? new Date(submission.submitted_at).toLocaleString() : null,
         sections: rawSections,
-        defaultValues,
+        defaultValues: currentValues,
         submission,
         rules,
         pinDetails: {
@@ -999,11 +835,23 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
     }
   };
 
+  // Derive previous/next pin navigation
+  const currentIndex = React.useMemo(() => {
+    if (!pinNavList.length || !pinId) return -1;
+    return pinNavList.findIndex((item) => {
+      if (item.pinId === pinId) return true;
+      if (item.job_pin_id != null && item.job_pin_id === pinId) return true;
+      return false;
+    });
+  }, [pinNavList, pinId]);
+
+  const prevPin = currentIndex > 0 ? pinNavList[currentIndex - 1] : null;
+  const nextPin = currentIndex >= 0 && currentIndex < pinNavList.length - 1 ? pinNavList[currentIndex + 1] : null;
+
   return (
-    <>
+    <div className="min-h-full">
       <DetailPageHeader
         title={loading ? <DetailPageHeaderTitleSkeleton /> : title}
-        titleLoading={loading}
         backHref={safeBack}
         backAriaLabel={tPins("backAria")}
         subtitle={productName ?? undefined}
@@ -1054,7 +902,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                         disabled={!prevPin}
                         onClick={() => {
                           if (prevPin) {
-                            router.push(buildPinPreviewUrl(prevPin));
+                            router.push(buildLocationPreviewUrl(prevPin));
                           }
                         }}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -1084,7 +932,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                                   nextIdx < pinNavList.length &&
                                   pinNavList[nextIdx]
                                 ) {
-                                  router.push(buildPinPreviewUrl(pinNavList[nextIdx]));
+                                  router.push(buildLocationPreviewUrl(pinNavList[nextIdx]));
                                 }
                               }}
                               className="absolute inset-0 size-full opacity-0 cursor-pointer"
@@ -1109,7 +957,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                         disabled={!nextPin}
                         onClick={() => {
                           if (nextPin) {
-                            router.push(buildPinPreviewUrl(nextPin));
+                            router.push(buildLocationPreviewUrl(nextPin));
                           }
                         }}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -1136,60 +984,6 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                         )}
                         <span>{downloadingPdf ? "Generating..." : "Download PDF"}</span>
                       </button>
-                    ) : null}
-
-                    {/* Form Edit / Save Actions */}
-                    {formMeta ? (
-                      isReadOnly ? (
-                        <AppButton
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setIsEditMode(true)}
-                          className="h-7 px-2.5 text-xs font-semibold"
-                        >
-                          {t("edit")}
-                        </AppButton>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          {hasSubmission ? (
-                            <AppButton
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled={submitting}
-                              onClick={handleCancelEdit}
-                              className="h-7 px-2.5 text-xs font-semibold"
-                            >
-                              {t("cancel")}
-                            </AppButton>
-                          ) : null}
-                          <AppButton
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            loading={submitting}
-                            disabled={submitting || loadingForm}
-                            onClick={() => void handleFormSubmit()}
-                            className="h-7 px-2.5 text-xs font-semibold"
-                          >
-                            {hasSubmission ? t("saveChanges") : t("submit")}
-                          </AppButton>
-                        </div>
-                      )
-                    ) : null}
-
-                    {/* Quality Assurance Controls (Approve / Reject) - only visible if form is submitted, pin status is Completed, and not QA Approved */}
-                    {isFormSubmitted && effectiveJobId != null && qaPinId != null && isPinCompleted && !isQaApproved ? (
-                      <JobQualityAssuranceControls
-                        jobId={effectiveJobId}
-                        pinIds={[qaPinId]}
-                        existing={pinQa}
-                        buttonSize="sm"
-                        approveClassName="h-7 px-2.5 text-xs font-semibold"
-                        rejectClassName="h-7 px-2.5 text-xs font-semibold"
-                        onSuccess={handleQaSuccess}
-                      />
                     ) : null}
                   </div>
                 </div>
@@ -1223,14 +1017,17 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
               ) : displaySections.length > 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-950">
-                    <FormRenderer
-                      key={rendererKey}
-                      ref={formRef}
-                      schema={displaySections}
-                      rules={rules}
-                      defaultValues={defaultValues}
-                      renderMode="desktop"
-                    />
+                    {/* fieldset[disabled] enforces true read-only on ALL field types including subforms */}
+                    <fieldset disabled className="border-0 p-0 m-0">
+                      <FormRenderer
+                        key={rendererKey}
+                        ref={formRef}
+                        schema={displaySections}
+                        rules={rules}
+                        defaultValues={defaultValues}
+                        renderMode="desktop"
+                      />
+                    </fieldset>
                   </div>
                 </div>
               ) : (
@@ -1240,63 +1037,45 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
               )}
             </div>
 
-            {/* Right Column - Single Pin Card sticky to header and side with comfortable width */}
-            <div
-              className={cn(
-                "w-full lg:w-[340px] xl:w-[380px] shrink-0 min-w-0",
-                "lg:sticky lg:top-0 lg:self-start lg:overflow-y-auto",
-                "lg:-mr-6 -mr-4",
-                "lg:max-h-[calc(100dvh-3.5rem)]",
-              )}
-            >
-              <PinCard
-                context={context}
-                qaDecided={qaDecided}
-                pinQa={pinQa}
-                dateFmt={dateFmt}
-                formImages={formImages}
-                tPins={tPins}
-                tQa={tQa}
-                formName={resolvedFormName}
-                snapshotState={snapshotState}
-                onPreviewClick={() => setIsEditModalOpen(true)}
-                effectiveJobId={effectiveJobId}
-                qaPinId={qaPinId}
-                onQaSuccess={handleQaSuccess}
-                isFormSubmitted={isFormSubmitted}
-              />
+            {/* Right Column - Pin Details and Preview */}
+            <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0 min-w-0">
+              <div className="sticky top-4">
+                <LocationCard
+                  context={context}
+                  qaDecided={qaDecided}
+                  pinQa={pinQa}
+                  dateFmt={dateFmt}
+                  formImages={formImages}
+                  tPins={tPins}
+                  tQa={tQa}
+                  formName={formName || ""}
+                  snapshotState={snapshotState}
+                  onPreviewClick={() => setIsEditModalOpen(true)}
+                />
+              </div>
             </div>
           </div>
         )}
       </DetailPagePadding>
 
-      {/* Drawing Pin Preview / Edit Modal Dialog */}
-      {context && isEditModalOpen ? (
+      {/* Pin Preview Modal - Allows viewing/editing pin details in drawing */}
+      {context && isEditModalOpen && (
         <DrawingPinPreviewModal
           open={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           pin={context.pin}
-          plots={context.plots}
-          drawingFile={context.drawingFile}
-          drawingName={context.drawingName}
-          projectId={context.projectId}
           drawingId={context.drawingId}
-          formSummary={
-            formMeta
-              ? {
-                label: formMeta.label,
-                projectFormId: formMeta.projectFormId,
-                submitted: hasSubmission || formMeta.submitted,
-              }
-              : null
-          }
+          drawingName={context.drawingName}
+          drawingFile={context.drawingFile}
+          plots={context.plots}
+          projectId={context.projectId ?? projectId ?? 1}
           onSaveSuccess={() => {
             setIsEditModalOpen(false);
             setReloadToken((n) => n + 1);
           }}
         />
-      ) : null}
-    </>
+      )}
+    </div>
   );
 }
 
@@ -1309,22 +1088,21 @@ function DrawingPinThumbnail({
   onClick,
 }: {
   drawingFile: string;
-  drawingName: string;
+  drawingName?: string;
   plots: DrawingPlot[];
   pin: DrawingPin;
   snapshotState?: LevelSnapshotState;
   onClick: () => void;
 }) {
-  const statusColor = pin.status_detail?.bg_colour || "#10b981";
-  const locationText = pin.location || String(pin.id);
+  const isPdf = drawingFile.toLowerCase().endsWith(".pdf");
 
   return (
     <div
       onClick={onClick}
-      className="relative group cursor-pointer h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center select-none"
-      title="Click to view full drawing"
+      className="relative aspect-video w-full overflow-hidden bg-slate-900/90 dark:bg-slate-950 cursor-pointer group select-none"
+      title="Click to open full drawing preview"
     >
-      {/* Real Drawing Background - Focused thumbnail using snapshot */}
+      {/* Visual background rendering */}
       {snapshotState?.status === "ready" && snapshotState.snapshot ? (
         <PinThumbnailCropped
           snapshotUrl={snapshotState.snapshot.objectUrl}
@@ -1333,43 +1111,36 @@ function DrawingPinThumbnail({
           xPercent={pin.x_coordinate}
           yPercent={pin.y_coordinate}
           marginFraction={0.18}
-          pinColor={statusColor}
-          pinLabel={`#${locationText}`}
+          pinColor={pin.status_detail?.bg_colour || "#10b981"}
+          pinLabel={`#${pin.location || pin.id}`}
           className="absolute inset-0"
-          alt={drawingName || "Pin Preview"}
+          alt={drawingName || "Pin location snapshot"}
         />
-      ) : snapshotState?.status === "loading" ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 animate-pulse">
-          <div className="h-full w-full bg-slate-200/60 dark:bg-slate-700/60" />
-        </div>
-      ) : drawingFile && plots.length > 0 ? (
-        <span className="absolute inset-0 overflow-hidden">
-          <div
-            className="absolute inset-0"
-            style={{
-              transformOrigin: `${pin.x_coordinate}% ${pin.y_coordinate}%`,
-              transform: `translate(${50 - pin.x_coordinate}%, ${50 - pin.y_coordinate}%) scale(3)`,
-            }}
-          >
-            <DrawingFilePreviewFill
-              drawingFile={drawingFile}
-              fileType={drawingFile.toLowerCase().includes("pdf") ? "pdf" : ""}
-              alt={drawingName || "Drawing"}
-              className="size-full"
-            />
-            <DrawingPinThumbnailOverlay
-              plots={plots}
-              activePinId={pin.id}
-            />
-          </div>
-        </span>
+      ) : isPdf ? (
+        <DrawingFilePreviewFill
+          drawingFile={drawingFile}
+          fileType="pdf"
+          alt={drawingName || "Drawing"}
+          className="size-full object-cover opacity-90 transition-transform duration-300 group-hover:scale-105"
+        />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">
-          No drawing blueprint
-        </div>
+        <img
+          src={drawingFile}
+          alt={drawingName || "Drawing"}
+          className="size-full object-cover opacity-90 transition-transform duration-300 group-hover:scale-105"
+        />
       )}
 
-      {/* Blueprint Grid Subtle Overlay */}
+      {/* Overlay showing pin position on thumbnail */}
+      {(!snapshotState || snapshotState.status !== "ready" || !snapshotState.snapshot?.objectUrl) && (
+        <DrawingPinThumbnailOverlay
+          plots={plots}
+          activePinId={pin.id}
+          className="absolute inset-0 size-full pointer-events-none"
+        />
+      )}
+
+      {/* Blueprint Grid pattern decoration */}
       <div
         className="absolute inset-0 pointer-events-none opacity-10"
         style={{
@@ -1406,7 +1177,7 @@ function DrawingPinThumbnail({
   );
 }
 
-function PinCard({
+function LocationCard({
   context,
   qaDecided,
   pinQa,
@@ -1417,10 +1188,6 @@ function PinCard({
   formName,
   snapshotState,
   onPreviewClick,
-  effectiveJobId,
-  qaPinId,
-  onQaSuccess,
-  isFormSubmitted,
 }: {
   context: PinContext;
   qaDecided: boolean;
@@ -1432,10 +1199,6 @@ function PinCard({
   formName: string;
   snapshotState?: LevelSnapshotState;
   onPreviewClick: () => void;
-  effectiveJobId?: number;
-  qaPinId?: number;
-  onQaSuccess?: (record?: QualityAssuranceRecord) => void;
-  isFormSubmitted?: boolean;
 }) {
   const pin = context.pin;
   const locationText = pin.location || String(pin.id);
@@ -1457,6 +1220,24 @@ function PinCard({
     context.formMeta?.label ||
     (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null) ||
     "-";
+
+  const allAttachments = React.useMemo(() => {
+    const list = [...(pin.attachments ?? [])];
+    if (pin.item_detail?.attachments && Array.isArray(pin.item_detail.attachments)) {
+      for (const itemAtt of pin.item_detail.attachments) {
+        if (
+          !list.some(
+            (a) =>
+              (a.id && itemAtt.id && a.id === itemAtt.id) ||
+              (a.file_name && itemAtt.file_name && a.file_name === itemAtt.file_name),
+          )
+        ) {
+          list.push(itemAtt as any);
+        }
+      }
+    }
+    return list;
+  }, [pin.attachments, pin.item_detail]);
 
   return (
     <div className="flex flex-col rounded-xl lg:rounded-none lg:rounded-bl-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden lg:border-r-0 lg:border-t-0">
@@ -1480,7 +1261,7 @@ function PinCard({
         </p>
       </div>
 
-      {/* 3. Details list (Original UI style with compact padding) */}
+      {/* 3. Details list */}
       <div className="p-3.5 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto min-h-0 flex-1">
         <div>
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
@@ -1521,14 +1302,14 @@ function PinCard({
             <DetailRowItem icon={FileText} label="Description" value={pin.description || "-"} />
 
             {/* 8. Attachments */}
-            {pin.attachments && pin.attachments.length > 0 ? (
+            {allAttachments.length > 0 ? (
               <div className="py-2 border-b border-slate-100 dark:border-slate-800/50">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Paperclip className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Attachments</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-5">
-                  {pin.attachments.map((att, idx) => {
+                  {allAttachments.map((att: any, idx: number) => {
                     const url = att.file_url ?? att.url ?? (typeof att.file === "string" ? att.file : null);
                     const name = att.file_name ?? att.name ?? `Attachment #${att.id || idx + 1}`;
                     return (
@@ -1640,3 +1421,5 @@ function DetailRowItem({
     </div>
   );
 }
+
+export default LocationDetailScreen;
