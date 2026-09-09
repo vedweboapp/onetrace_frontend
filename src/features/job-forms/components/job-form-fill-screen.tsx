@@ -12,7 +12,7 @@ import {
   updateJobFormSubmission,
 } from "@/features/job-forms/api/job-form.api";
 import { fetchJob } from "@/features/jobs/api/job.api";
-import type { Job } from "@/features/jobs/types/job.types";
+import type { Job, JobFormRef } from "@/features/jobs/types/job.types";
 import {
   jobChecklistEntries,
   jobChecklistIsMarked,
@@ -30,6 +30,10 @@ import {
   mapSubmissionValuesToFormDefaults,
 } from "@/features/job-forms/utils/job-form-values.util";
 import { generateAndDownloadFormPdf } from "@/features/job-forms/utils/generate-form-pdf.util";
+import {
+  loadJobFormsFromSessionStorage,
+  buildJobFormFillUrl,
+} from "@/features/job-forms/utils/job-form-navigation.util";
 import FormRenderer, { type FormRendererRef } from "@/shared/form/formbuilder/FormRenderer";
 import { useFormHandler } from "@/shared/form/hook/useFormHandler";
 import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
@@ -39,7 +43,7 @@ import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } fr
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import normalizeRules from "@/shared/form/utility/normalizerule";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 
 type UiMode = "fill" | "view" | "edit";
 
@@ -68,6 +72,7 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   const [job, setJob] = React.useState<Job | null>(null);
   const [downloadingPdf, setDownloadingPdf] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const [formNavList, setFormNavList] = React.useState<JobFormRef[]>([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [formTitle, setFormTitle] = React.useState(formNameHint?.trim() || t("untitledForm"));
   const [schemaSections, setSchemaSections] = React.useState<
@@ -225,6 +230,25 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  // Load form navigation list from sessionStorage
+  React.useEffect(() => {
+    const stored = loadJobFormsFromSessionStorage(jobId);
+    if (stored.length > 0) {
+      setFormNavList(stored);
+    }
+  }, [jobId]);
+
+  const currentFormIndex = React.useMemo(() => {
+    if (formNavList.length === 0 || resolvedFormId == null) return -1;
+    return formNavList.findIndex((f) => f.project_form_id === resolvedFormId);
+  }, [formNavList, resolvedFormId]);
+
+  const prevForm = currentFormIndex > 0 ? formNavList[currentFormIndex - 1] : null;
+  const nextForm =
+    currentFormIndex >= 0 && currentFormIndex < formNavList.length - 1
+      ? formNavList[currentFormIndex + 1]
+      : null;
   const {
     formRef,
     isLoading: submitting,
@@ -379,8 +403,84 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       </AppButton>
     ) : null;
 
+  // Form pagination nav pill (matches pin-detail-screen style)
+  const formPaginationNav = formNavList.length > 1 ? (
+    <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      <button
+        type="button"
+        disabled={!prevForm}
+        onClick={() => {
+          if (prevForm) {
+            router.push(buildJobFormFillUrl(jobId, prevForm, safeBack));
+          }
+        }}
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title={prevForm ? `Previous form: ${prevForm.name ?? `#${prevForm.project_form_id}`}` : "Previous"}
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+        <span>Previous</span>
+      </button>
+      <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+      {currentFormIndex >= 0 && (
+        <>
+          <div
+            className="relative inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors cursor-pointer select-none group"
+            title="Click to jump to a form"
+          >
+            <span className="tabular-nums">
+              {currentFormIndex + 1} / {formNavList.length}
+            </span>
+            <ChevronDown className="h-3 w-3 ml-0.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+            <select
+              value={currentFormIndex}
+              onChange={(e) => {
+                const nextIdx = Number(e.target.value);
+                if (
+                  Number.isFinite(nextIdx) &&
+                  nextIdx >= 0 &&
+                  nextIdx < formNavList.length &&
+                  formNavList[nextIdx]
+                ) {
+                  router.push(buildJobFormFillUrl(jobId, formNavList[nextIdx], safeBack));
+                }
+              }}
+              className="absolute inset-0 size-full opacity-0 cursor-pointer"
+              aria-label="Select form number"
+            >
+              {formNavList.map((form, idx) => (
+                <option
+                  key={`${form.id}-${form.project_form_id}`}
+                  value={idx}
+                  className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs py-1"
+                >
+                  {idx + 1} / {formNavList.length}{form.name ? ` - ${form.name}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+        </>
+      )}
+      <button
+        type="button"
+        disabled={!nextForm}
+        onClick={() => {
+          if (nextForm) {
+            router.push(buildJobFormFillUrl(jobId, nextForm, safeBack));
+          }
+        }}
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        title={nextForm ? `Next form: ${nextForm.name ?? `#${nextForm.project_form_id}`}` : "Next"}
+      >
+        <span>Next</span>
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  ) : null;
+
   const headerActions = checklistBlocked ? null : (
     <div className="flex items-center gap-2">
+      {formPaginationNav}
       {downloadPdfAction}
       {submissionOnlyView ? null : uiMode === "view" ? (
         <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
