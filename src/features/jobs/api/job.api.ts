@@ -128,8 +128,8 @@ export async function deleteJob(id: number): Promise<void> {
 }
 
 export type JobQualityAssurancePayload =
-  | { status: "approved"; pin_ids?: number[] }
-  | { status: "rejected"; remarks: string; pin_ids?: number[] };
+  | { status: "approved"; submission_id?: number; remarks?: string; pin_ids?: number[] }
+  | { status: "rejected"; remarks: string; submission_id?: number; pin_ids?: number[] };
 
 export async function submitJobQualityAssurance(
   jobId: number,

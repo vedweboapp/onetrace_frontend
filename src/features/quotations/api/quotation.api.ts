@@ -268,8 +268,17 @@ export async function exportQuotation(
   }
 }
 
-export async function sendQuotation(id: number): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id));
+export type SendQuotationPayload =
+  | {
+      notification_send_to: "client";
+    }
+  | {
+      notification_send_to: "vendors";
+      vendor_ids: number[];
+    };
+
+export async function sendQuotation(id: number, body?: SendQuotationPayload): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id), body);
   assertApiSuccess(data);
 }
 

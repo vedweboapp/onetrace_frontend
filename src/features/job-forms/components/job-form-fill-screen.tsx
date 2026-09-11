@@ -43,6 +43,8 @@ import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } fr
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import normalizeRules from "@/shared/form/utility/normalizerule";
+import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
+import type { QualityAssuranceRecord } from "@/features/jobs/types/quality-assurance.types";
 import { Download, Loader2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 
 type UiMode = "fill" | "view" | "edit";
@@ -123,6 +125,9 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
       params.set("job_form_id", String(resolvedJobFormId));
     }
     params.set("back", safeBack);
+    if (searchParams.get("for_qa") === "true") {
+      params.set("for_qa", "true");
+    }
     if (formNameHint?.trim()) params.set("name", formNameHint.trim());
     if (jobPinIdHint != null) params.set("job_pin_id", String(jobPinIdHint));
     if (dynamicFormIdHint != null) params.set("dynamic_form_id", String(dynamicFormIdHint));
@@ -478,10 +483,41 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     </div>
   ) : null;
 
+  const isForQa = searchParams.get("for_qa") === "true";
+  const activeSubmissionId = submission?.submission_id ?? submission?.id ?? submissionIdHint;
+
+  const qaRecord =
+    submission?.service_based_form_quality_assurance ??
+    ((submission as any)?.service_based_form_quality_assurance as QualityAssuranceRecord | null | undefined) ??
+    (submission?.status ? { status: submission.status, remarks: submission.remarks } : null);
+
   const headerActions = checklistBlocked ? null : (
     <div className="flex items-center gap-2">
       {formPaginationNav}
       {downloadPdfAction}
+      {isForQa && activeSubmissionId != null && activeSubmissionId > 0 && uiMode === "view" && (
+        <JobQualityAssuranceControls
+          jobId={jobId}
+          submissionId={activeSubmissionId}
+          existing={qaRecord ?? { status: "pending" }}
+          showBadgeWhenDecided={true}
+          allowChangeWhenDecided={false}
+          onSuccess={(rec) => {
+            if (rec && submission) {
+              setSubmission({
+                ...submission,
+                service_based_form_quality_assurance: {
+                  status: rec.status,
+                  remarks: rec.remarks ?? null,
+                  approved_at: new Date().toISOString(),
+                },
+                status: rec.status,
+                remarks: rec.remarks ?? submission.remarks,
+              });
+            }
+          }}
+        />
+      )}
       {submissionOnlyView ? null : uiMode === "view" ? (
         <AppButton type="button" variant="secondary" size="sm" onClick={enterEditMode}>
           {t("edit")}
@@ -548,15 +584,31 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         ) : (
           <div className="space-y-6 p-4 sm:p-6">
             {uiMode === "view" && submission ? (
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                <span>
-                  {t("submittedAt")}:{" "}
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
-                    {submission.submitted_at
-                      ? new Date(submission.submitted_at).toLocaleString()
-                      : "—"}
+              <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600 dark:text-slate-400">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span>
+                    {t("submittedAt")}:{" "}
+                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                      {submission.submitted_at
+                        ? new Date(submission.submitted_at).toLocaleString()
+                        : "—"}
+                    </span>
                   </span>
-                </span>
+                  {submission.worker_name && (
+                    <span>
+                      Worker:{" "}
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {submission.worker_name}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                {((submission.service_based_form_quality_assurance?.remarks) || (submission.remarks && (submission.status?.toLowerCase() === "rejected" || submission.service_based_form_quality_assurance?.status?.toLowerCase() === "rejected"))) && (submission.service_based_form_quality_assurance?.status?.toLowerCase() === "rejected" || submission.status?.toLowerCase() === "rejected") ? (
+                  <div className="rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-400">
+                    <span className="font-semibold">Rejection reason:</span>{" "}
+                    {submission.service_based_form_quality_assurance?.remarks || submission.remarks}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

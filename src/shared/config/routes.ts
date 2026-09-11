@@ -7,6 +7,8 @@ export const routes = {
   },
   public: {
     quotation: "/public/quotation",
+    vendorQuotation: "/public/vendor-quotation",
+    vendorQuotationToken: (token: string) => `/public/vendor-quotation/${token}`,
     qrCode: (orgId: string, qrUuid: string) => `/${orgId}/${qrUuid}`,
   },
   dashboard: {

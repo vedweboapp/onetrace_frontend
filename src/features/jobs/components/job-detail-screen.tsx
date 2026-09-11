@@ -13,16 +13,13 @@ import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
-import { JobQualityAssuranceControls } from "@/features/jobs/components/job-quality-assurance-controls";
 import {
   parseJobCategoryParam,
   resolveJobCategory,
   isServiceJobCategory,
 } from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
-import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { getJobStatusId } from "@/features/jobs/utils/job-nested-fields.util";
-import { isJobStatusCompleted } from "@/features/jobs/utils/quality-assurance-eligibility.util";
 import {
   EntityDetailErrorState,
   EntityDetailLoadingSkeleton,
@@ -299,12 +296,6 @@ function JobDetailActions({
     router.push(targetUrl);
   }
 
-  const showQualityAssurance =
-    (isServiceJobCategory(searchParams.get("job_category")) ||
-      isServiceJobCategory(detail.job_category)) &&
-    isJobStatusCompleted(detail) &&
-    !isQualityAssuranceDecided(detail.job_quality_assurance);
-
   async function handleStatusUpdate(jobStatusId: number) {
     setStatusSaving(true);
     try {
@@ -320,9 +311,6 @@ function JobDetailActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {showQualityAssurance ? (
-        <JobQualityAssuranceControls jobId={detail.id} onSuccess={onStatusSaved} />
-      ) : null}
       <AppButton type="button" variant="secondary" size="sm" onClick={onOpenStatus}>
         {t("updateStatus.action")}
       </AppButton>

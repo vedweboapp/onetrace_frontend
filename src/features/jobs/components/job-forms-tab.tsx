@@ -109,7 +109,7 @@ export function JobFormsTab({ detail }: Props) {
       const formName =
         row.project_form_name.trim() || t("forms.untitledForm");
       const back = `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
-      const common = `submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}`;
+      const common = `submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}&for_qa=true`;
 
       if (resolved && resolved.formId > 0) {
         const jobFormId = resolved.jobFormId > 0 ? resolved.jobFormId : resolved.formId;
@@ -182,6 +182,8 @@ export function JobFormsTab({ detail }: Props) {
                         if (!busy) openSubmission(row);
                       }}
                     >
+
+
                       <DetailLinkedTableTd
                         narrow
                         className={detailLinkedTableCellClassName({

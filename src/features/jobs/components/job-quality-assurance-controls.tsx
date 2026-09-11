@@ -19,6 +19,8 @@ import { Check, X } from "lucide-react";
 
 type Props = {
   jobId: number;
+  /** When set, QA applies to this form submission (submission_id). */
+  submissionId?: number;
   /** When set, QA applies to these pins (project/pin detail or bulk selection). Omit for whole service job. */
   pinIds?: number[];
   /** Existing QA from API — when decided (approved/rejected), controls are hidden or display badge. */
@@ -28,11 +30,13 @@ type Props = {
   approveClassName?: string;
   rejectClassName?: string;
   showBadgeWhenDecided?: boolean;
+  allowChangeWhenDecided?: boolean;
   onSuccess?: (record?: QualityAssuranceRecord) => void;
 };
 
 export function JobQualityAssuranceControls({
   jobId,
+  submissionId,
   pinIds,
   existing,
   className,
@@ -40,6 +44,7 @@ export function JobQualityAssuranceControls({
   approveClassName,
   rejectClassName,
   showBadgeWhenDecided = true,
+  allowChangeWhenDecided = true,
   onSuccess,
 }: Props) {
   const t = useTranslations("Dashboard.jobs.qualityAssurance");
@@ -47,6 +52,7 @@ export function JobQualityAssuranceControls({
   const [rejectOpen, setRejectOpen] = React.useState(false);
   const [remarks, setRemarks] = React.useState("");
   const [remarksError, setRemarksError] = React.useState<string | null>(null);
+  const [isEditingDecision, setIsEditingDecision] = React.useState(false);
 
   const alreadySet = isQualityAssuranceDecided(existing);
 
@@ -60,9 +66,10 @@ export function JobQualityAssuranceControls({
       setRejectOpen(false);
       setRemarks("");
       setRemarksError(null);
+      setIsEditingDecision(false);
       const record: QualityAssuranceRecord = {
         status: payload.status,
-        remarks: payload.status === "rejected" ? payload.remarks : null,
+        remarks: payload.status === "rejected" ? payload.remarks : payload.remarks ?? null,
         approved_at: new Date().toISOString(),
       };
       onSuccess?.(record);
@@ -75,9 +82,15 @@ export function JobQualityAssuranceControls({
 
   function handleApprove() {
     const payload: JobQualityAssurancePayload =
-      pinIds != null && pinIds.length > 0
-        ? { status: "approved", pin_ids: pinIds }
-        : { status: "approved" };
+      submissionId != null && submissionId > 0
+        ? {
+            status: "approved",
+            submission_id: submissionId,
+            remarks: "Form verified successfully",
+          }
+        : pinIds != null && pinIds.length > 0
+          ? { status: "approved", pin_ids: pinIds }
+          : { status: "approved" };
     void submit(payload);
   }
 
@@ -88,9 +101,11 @@ export function JobQualityAssuranceControls({
       return;
     }
     const payload: JobQualityAssurancePayload =
-      pinIds != null && pinIds.length > 0
-        ? { status: "rejected", remarks: trimmed, pin_ids: pinIds }
-        : { status: "rejected", remarks: trimmed };
+      submissionId != null && submissionId > 0
+        ? { status: "rejected", remarks: trimmed, submission_id: submissionId }
+        : pinIds != null && pinIds.length > 0
+          ? { status: "rejected", remarks: trimmed, pin_ids: pinIds }
+          : { status: "rejected", remarks: trimmed };
     void submit(payload);
   }
 
@@ -148,14 +163,22 @@ export function JobQualityAssuranceControls({
         <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{remarksError}</p>
       ) : null}
     </AppModal>
-
   );
 
-  if (alreadySet) {
+  if (alreadySet && !isEditingDecision) {
     if (!showBadgeWhenDecided) return null;
     return (
       <div className={cn("flex flex-wrap items-center gap-2", className)}>
         <QualityAssuranceStatusBadge record={existing} />
+        {allowChangeWhenDecided && (
+          <button
+            type="button"
+            onClick={() => setIsEditingDecision(true)}
+            className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline font-medium cursor-pointer"
+          >
+            Change
+          </button>
+        )}
       </div>
     );
   }
@@ -194,6 +217,15 @@ export function JobQualityAssuranceControls({
           <X className="h-3.5 w-3.5 mr-1 shrink-0 stroke-[2.5]" />
           {t("reject")}
         </AppButton>
+        {isEditingDecision && (
+          <button
+            type="button"
+            onClick={() => setIsEditingDecision(false)}
+            className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 ml-1 cursor-pointer"
+          >
+            {t("cancel")}
+          </button>
+        )}
       </div>
       {rejectModal}
     </>

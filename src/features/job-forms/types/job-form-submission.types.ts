@@ -1,3 +1,5 @@
+import type { QualityAssuranceRecord } from "@/features/jobs/types/quality-assurance.types";
+
 export type JobFormSubmissionValue = {
   field_id: number;
   value: string;
@@ -26,6 +28,7 @@ export type JobFormSubmission = {
   worker_name?: string | null;
   status: string;
   remarks?: string | null;
+  service_based_form_quality_assurance?: QualityAssuranceRecord | null;
   values: JobFormSubmissionValue[];
   files?: JobFormSubmissionFile[];
   submitted_at?: string | null;
