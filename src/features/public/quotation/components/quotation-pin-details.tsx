@@ -241,7 +241,14 @@ function ErrorScreen({ message }: { message: string }) {
   );
 }
 
+function hasValue(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed !== "" && trimmed !== "—" && trimmed !== "-";
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
+  if (!hasValue(value)) return null;
   return (
     <div className="flex items-start gap-2">
       <dt className="w-24 shrink-0 text-xs font-medium text-slate-400 pt-0.5">{label}</dt>

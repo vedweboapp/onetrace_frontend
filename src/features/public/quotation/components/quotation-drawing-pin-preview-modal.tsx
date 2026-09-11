@@ -98,7 +98,10 @@ const DetailRow = ({
   statusColor,
   statusTextColor,
 }: DetailRowProps) => {
-  const strValue = (value === null || value === undefined) ? "" : String(value);
+  const strValue = (value === null || value === undefined) ? "" : String(value).trim();
+  if (!isEditing && (!strValue || strValue === "-" || strValue === "—" || strValue.toLowerCase() === "n/a")) {
+    return null;
+  }
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
       <div className="flex items-center gap-3">
@@ -276,6 +279,7 @@ export function DrawingPinPreviewModal({
   detailsFooter,
 }: DrawingPinPreviewModalProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement | null>(null);
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const [pageSize, setPageSize] = React.useState<{ width: number; height: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -300,6 +304,27 @@ export function DrawingPinPreviewModal({
       setIsPanning(false);
     }
   }, [open, drawingFile, hideDrawing, normalizedFileUrl]);
+
+  // Check if cached image is already complete in DOM
+  React.useEffect(() => {
+    if (!open || hideDrawing || isPdf || !normalizedFileUrl) return;
+    const img = imgRef.current;
+    if (img && img.complete) {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setPageSize((prev) => prev ?? { width: img.naturalWidth, height: img.naturalHeight });
+      }
+      setLoading(false);
+    }
+  }, [open, hideDrawing, isPdf, normalizedFileUrl]);
+
+  // Safety fallback: ensure loading spinner doesn't get stuck indefinitely
+  React.useEffect(() => {
+    if (!open || hideDrawing || !normalizedFileUrl) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [open, hideDrawing, normalizedFileUrl]);
 
   React.useEffect(() => {
     if (!pdfFailed || hideDrawing) return;
@@ -660,12 +685,21 @@ export function DrawingPinPreviewModal({
                   ) : null
                 ) : (
                   <img
+                    ref={(el) => {
+                      imgRef.current = el;
+                      if (el && el.complete && el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize((prev) => prev ?? { width: el.naturalWidth, height: el.naturalHeight });
+                        setLoading(false);
+                      }
+                    }}
                     src={normalizedFileUrl}
                     alt={drawingName}
                     className="block max-w-none rounded-lg"
                     onLoad={(e) => {
                       const el = e.currentTarget;
-                      setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      }
                       setLoading(false);
                     }}
                     onError={() => {
@@ -1007,187 +1041,208 @@ export function DrawingPinPreviewModal({
             {/* Description, Attachments, Form, Variation */}
             <div className="space-y-4">
               {/* Description */}
-              <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-slate-400">
-                    <FileText className="h-[18px] w-[18px]" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</span>
-                </div>
-                <div className="flex-1 flex justify-end">
-                  {isEditing && pinEditData ? (
-                    <textarea
-                      rows={3}
-                      className="w-full max-w-[200px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
-                      value={String(pinEditData.description ?? pin.description ?? "")}
-                      onChange={(e) => setPinEditData((prev) => prev ? ({ ...prev, description: e.target.value }) : null)}
-                    />
-                  ) : (
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap text-right">
-                      {pin.description || "-"}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Attachments */}
-              <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
-                <div className="flex items-start justify-between gap-3">
+              {isEditing || (pin.description && pin.description.trim() && pin.description.trim() !== "-" && pin.description.trim() !== "—") ? (
+                <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
                   <div className="flex items-center gap-3">
                     <div className="text-slate-400">
-                      <Paperclip className="h-[18px] w-[18px]" />
+                      <FileText className="h-[18px] w-[18px]" />
                     </div>
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Attachments</span>
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</span>
                   </div>
-                  {isEditing ? (
-                    <div className="w-1/2 flex justify-end">
-                      <input
-                        type="file"
-                        multiple
-                        className="block w-full text-xs text-slate-700 dark:text-slate-200"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files ?? []);
-                          if (!files.length) return;
-                          void (async () => {
-                            const draftAttachments = await filesToPinAttachments(files);
-                            setPinEditData((prev) => prev ? ({
-                              ...prev,
-                              attachments: [
-                                ...(prev.attachments ?? pin.attachments ?? []),
-                                ...draftAttachments,
-                              ],
-                            }) : null);
-                          })();
-                          e.currentTarget.value = "";
-                        }}
+                  <div className="flex-1 flex justify-end">
+                    {isEditing && pinEditData ? (
+                      <textarea
+                        rows={3}
+                        className="w-full max-w-[200px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900"
+                        value={String(pinEditData.description ?? pin.description ?? "")}
+                        onChange={(e) => setPinEditData((prev) => prev ? ({ ...prev, description: e.target.value }) : null)}
                       />
-                    </div>
-                  ) : null}
+                    ) : (
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap text-right">
+                        {pin.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
+              ) : null}
 
-                <div className="mt-3 space-y-2">
-                  {(() => {
-                    const attachments = (isEditing && pinEditData ? pinEditData.attachments : pin.attachments) ?? [];
-                    if (!attachments.length) return <p className="text-sm text-slate-500 text-right">-</p>;
-                    return (
-                      <div className="grid grid-cols-2 gap-2">
-                        {attachments.map((att, idx) => {
-                          const url =
-                            att.url ??
-                            att.file_url ??
-                            (typeof att.attachment === "string" ? att.attachment : null) ??
-                            (typeof att.file === "string" ? att.file : null) ??
-                            att.data_url ??
-                            att.file_data ??
-                            (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
-                          const name =
-                            att.file_name ??
-                            att.name ??
-                            (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
-                          const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
-
-                          return (
-                            <div key={idx} className={`flex flex-col gap-2 px-3 py-2 border rounded-lg ${isEditing ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50' : 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700'}`}>
-                              <div className="flex flex-col min-w-0">
-                                <p className={`text-xs truncate font-semibold ${isEditing ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`} title={name}>{name}</p>
-                                <p className={`text-[10px] ${isEditing ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>{fileType}</p>
-                              </div>
-                              <div className="flex items-center gap-2 w-full">
-                                {isEditing ? (
-                                  <button
-                                    type="button"
-                                    className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
-                                    onClick={() => {
-                                      setPinEditData((prev) => {
-                                        if (!prev) return null;
-                                        const curr = (prev.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
-                                        const next = curr.filter((_, i) => i !== idx);
-                                        return { ...prev, attachments: next };
-                                      });
-                                    }}
-                                  >
-                                    Remove
-                                  </button>
-                                ) : null}
-                                {url ? (
-                                  <button
-                                    type="button"
-                                    className={`text-[10px] font-semibold ${isEditing ? 'text-blue-600 hover:text-blue-700' : 'text-slate-600 hover:text-slate-700'} hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5 flex-shrink-0 ${!isEditing ? 'ml-auto' : ''}`}
-                                    onClick={async () => {
-                                      if (url.startsWith("blob:") || url.startsWith("data:")) {
-                                        const link = document.createElement("a");
-                                        link.href = url;
-                                        link.download = name;
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        document.body.removeChild(link);
-                                        return;
-                                      }
-                                      try {
-                                        const response = await fetch(url);
-                                        const blob = await response.blob();
-                                        const blobUrl = URL.createObjectURL(blob);
-                                        const link = document.createElement("a");
-                                        link.href = blobUrl;
-                                        link.download = name;
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        document.body.removeChild(link);
-                                        URL.revokeObjectURL(blobUrl);
-                                      } catch (error) {
-                                        console.error("Failed to download file:", error);
-                                        window.open(url, "_blank");
-                                      }
-                                    }}
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </button>
-                                ) : null}
-                              </div>
-                            </div>
-                          );
-                        })}
+              {/* Attachments */}
+              {isEditing || (pin.attachments && pin.attachments.length > 0) ? (
+                <div className="py-3 border-b border-slate-50 dark:border-slate-800/50">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="text-slate-400">
+                        <Paperclip className="h-[18px] w-[18px]" />
                       </div>
-                    );
-                  })()}
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Attachments</span>
+                    </div>
+                    {isEditing ? (
+                      <div className="w-1/2 flex justify-end">
+                        <input
+                          type="file"
+                          multiple
+                          className="block w-full text-xs text-slate-700 dark:text-slate-200"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files ?? []);
+                            if (!files.length) return;
+                            void (async () => {
+                              const draftAttachments = await filesToPinAttachments(files);
+                              setPinEditData((prev) => prev ? ({
+                                ...prev,
+                                attachments: [
+                                  ...(prev.attachments ?? pin.attachments ?? []),
+                                  ...draftAttachments,
+                                ],
+                              }) : null);
+                            })();
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {(() => {
+                      const attachments = (isEditing && pinEditData ? pinEditData.attachments : pin.attachments) ?? [];
+                      if (!attachments.length) return isEditing ? <p className="text-sm text-slate-500 text-right">-</p> : null;
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          {attachments.map((att, idx) => {
+                            const url =
+                              att.url ??
+                              att.file_url ??
+                              (typeof att.attachment === "string" ? att.attachment : null) ??
+                              (typeof att.file === "string" ? att.file : null) ??
+                              att.data_url ??
+                              att.file_data ??
+                              (att.file && typeof att.file !== "string" ? URL.createObjectURL(att.file as any) : null);
+                            const name =
+                              att.file_name ??
+                              att.name ??
+                              (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                            const fileType = name.split('.').pop()?.toUpperCase() || 'FILE';
+
+                            return (
+                              <div key={idx} className={`flex flex-col gap-2 px-3 py-2 border rounded-lg ${isEditing ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50' : 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700'}`}>
+                                <div className="flex flex-col min-w-0">
+                                  <p className={`text-xs truncate font-semibold ${isEditing ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`} title={name}>{name}</p>
+                                  <p className={`text-[10px] ${isEditing ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>{fileType}</p>
+                                </div>
+                                <div className="flex items-center gap-2 w-full">
+                                  {isEditing ? (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                      onClick={() => {
+                                        setPinEditData((prev) => {
+                                          if (!prev) return null;
+                                          const curr = (prev.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
+                                          const next = curr.filter((_, i) => i !== idx);
+                                          return { ...prev, attachments: next };
+                                        });
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                  {url ? (
+                                    <button
+                                      type="button"
+                                      className={`text-[10px] font-semibold ${isEditing ? 'text-blue-600 hover:text-blue-700' : 'text-slate-600 hover:text-slate-700'} hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5 flex-shrink-0 ${!isEditing ? 'ml-auto' : ''}`}
+                                      onClick={async () => {
+                                        if (url.startsWith("blob:") || url.startsWith("data:")) {
+                                          const link = document.createElement("a");
+                                          link.href = url;
+                                          link.download = name;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                          return;
+                                        }
+                                        try {
+                                          const response = await fetch(url);
+                                          const blob = await response.blob();
+                                          const blobUrl = URL.createObjectURL(blob);
+                                          const link = document.createElement("a");
+                                          link.href = blobUrl;
+                                          link.download = name;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                          URL.revokeObjectURL(blobUrl);
+                                        } catch (error) {
+                                          console.error("Failed to download file:", error);
+                                          window.open(url, "_blank");
+                                        }
+                                      }}
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               {/* Form */}
-              {!hideFormRow ? (
-              <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-slate-400">
-                    <FileText className="h-[18px] w-[18px]" />
+              {!hideFormRow && (isEditing || Boolean(readonlyFormLabel || formSummary?.projectFormId)) ? (
+                <div className="flex items-start justify-between py-3 border-b border-slate-50 dark:border-slate-800/50 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-400">
+                      <FileText className="h-[18px] w-[18px]" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
                   </div>
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
-                </div>
-                <div className="flex-1 flex justify-end">
-                  {availableForms.length > 0 ? (
-                    isEditing && pinEditData ? (
-                      <select
-                        value={String(
-                          pinEditData.formId ??
-                          (typeof pinEditData.project_form === "number" ? pinEditData.project_form : null) ??
-                          ""
-                        )}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setPinEditData(prev => prev ? ({ ...prev, formId: value ? Number(value) : null, project_form: value ? Number(value) : null }) : null);
-                        }}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px]"
-                      >
-                        <option value="">Select Form</option>
-                        {availableForms.map((opt) => (
-                          <option key={opt.id} value={opt.id}>
-                            {opt.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
+                  <div className="flex-1 flex justify-end">
+                    {availableForms.length > 0 ? (
+                      isEditing && pinEditData ? (
+                        <select
+                          value={String(
+                            pinEditData.formId ??
+                            (typeof pinEditData.project_form === "number" ? pinEditData.project_form : null) ??
+                            ""
+                          )}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setPinEditData(prev => prev ? ({ ...prev, formId: value ? Number(value) : null, project_form: value ? Number(value) : null }) : null);
+                          }}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px]"
+                        >
+                          <option value="">Select Form</option>
+                          {availableForms.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {readonlyFormLabel || "-"}
+                          </span>
+                          {formSummary?.projectFormId ? (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              #{formSummary.projectFormId}
+                            </span>
+                          ) : null}
+                          {formSummary?.submitted ? (
+                            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              Submitted
+                            </span>
+                          ) : null}
+                        </div>
+                      )
+                    ) : readonlyFormLabel ? (
                       <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
                         <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {readonlyFormLabel || "-"}
+                          {readonlyFormLabel}
                         </span>
                         {formSummary?.projectFormId ? (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1200,63 +1255,48 @@ export function DrawingPinPreviewModal({
                           </span>
                         ) : null}
                       </div>
-                    )
-                  ) : readonlyFormLabel ? (
-                    <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {readonlyFormLabel}
+                    ) : activeInstallationType && isEditing ? (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
+                        {t("noFormWithInstallationType")}
                       </span>
-                      {formSummary?.projectFormId ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          #{formSummary.projectFormId}
-                        </span>
-                      ) : null}
-                      {formSummary?.submitted ? (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Submitted
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : activeInstallationType ? (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
-                      {t("noFormWithInstallationType")}
-                    </span>
-                  ) : null}
+                    ) : null}
+                  </div>
                 </div>
-              </div>
               ) : null}
 
               {/* Variation */}
-              <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <div className="text-slate-400">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+              {isEditing || pin.variation ? (
+                <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800/50">
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-400">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                    </div>
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Variation</span>
                   </div>
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Variation</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!(isEditing && pinEditData ? pinEditData.variation : pin.variation)}
+                    disabled={!isEditing}
+                    onClick={() => {
+                      if (isEditing) {
+                        setPinEditData(prev => prev ? ({ ...prev, variation: !prev.variation }) : null);
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${(isEditing && pinEditData ? pinEditData.variation : pin.variation)
+                      ? "bg-blue-600"
+                      : "bg-slate-200 dark:bg-slate-700"
+                      } ${!isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${(isEditing && pinEditData ? pinEditData.variation : pin.variation)
+                        ? "translate-x-6"
+                        : "translate-x-1"
+                        }`}
+                    />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={!!(isEditing && pinEditData ? pinEditData.variation : pin.variation)}
-                  disabled={!isEditing}
-                  onClick={() => {
-                    if (isEditing) {
-                      setPinEditData(prev => prev ? ({ ...prev, variation: !prev.variation }) : null);
-                    }
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${(isEditing && pinEditData ? pinEditData.variation : pin.variation)
-                    ? "bg-blue-600"
-                    : "bg-slate-200 dark:bg-slate-700"
-                    } ${!isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${(isEditing && pinEditData ? pinEditData.variation : pin.variation)
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                      }`}
-                  />
-                </button>
-              </div>
+              ) : null}
             </div>
 
             {/* Coordinate Details */}

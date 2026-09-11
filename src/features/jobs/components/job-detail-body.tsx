@@ -804,49 +804,49 @@ export function JobDetailBody({
               </DetailMetricCard>
             )}
             <DetailMetricCard label={t("fields.assignedWorkers")} className="col-span-full">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  {assignedWorkers.length === 0 ? (
-                    <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
-                  ) : (
-                    <DetailMultiValue>
-                      {assignedWorkers.map((worker) => (
-                        <DetailMultiValueItem
-                          key={worker.id}
-                          href={`${routes.dashboard.settingsUsers}/${worker.id}`}
-                          title={worker.label}
-                        >
-                          {worker.label}
-                        </DetailMultiValueItem>
-                      ))}
-                    </DetailMultiValue>
-                  )}
-                  {onOpenScheduling ? (
-                    <button
-                      type="button"
-                      title={t("detail.openScheduling")}
-                      aria-label={t("detail.openScheduling")}
-                      onClick={onOpenScheduling}
-                      className={cn(
-                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
-                      )}
-                    >
-                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                    </button>
-                  ) : null}
-                </div>
-              </DetailMetricCard>
-              <DetailEditableField
-                label={t("fields.description")}
-                value={detail.description ?? ""}
-                kind="text"
-                multiline
-                textareaBox
-                span="full"
-                editAriaLabel={tActions("edit")}
-                empty="—"
-                onSave={(next) => patchField({ description: next })}
-              />
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {assignedWorkers.length === 0 ? (
+                  <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
+                ) : (
+                  <DetailMultiValue>
+                    {assignedWorkers.map((worker) => (
+                      <DetailMultiValueItem
+                        key={worker.id}
+                        href={`${routes.dashboard.settingsUsers}/${worker.id}`}
+                        title={worker.label}
+                      >
+                        {worker.label}
+                      </DetailMultiValueItem>
+                    ))}
+                  </DetailMultiValue>
+                )}
+                {onOpenScheduling ? (
+                  <button
+                    type="button"
+                    title={t("detail.openScheduling")}
+                    aria-label={t("detail.openScheduling")}
+                    onClick={onOpenScheduling}
+                    className={cn(
+                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                    )}
+                  >
+                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            </DetailMetricCard>
+            <DetailEditableField
+              label={t("fields.description")}
+              value={detail.description ?? ""}
+              kind="text"
+              multiline
+              textareaBox
+              span="full"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ description: next })}
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -1069,7 +1069,7 @@ export function JobDetailBody({
           }}
         />
       </div>
-      
+
       {previewPinData && (
         <DrawingPinPreviewModal
           open={previewPinData !== null}

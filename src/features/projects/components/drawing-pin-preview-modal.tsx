@@ -277,6 +277,7 @@ export function DrawingPinPreviewModal({
   detailsFooter,
 }: DrawingPinPreviewModalProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement | null>(null);
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const [pageSize, setPageSize] = React.useState<{ width: number; height: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -301,6 +302,27 @@ export function DrawingPinPreviewModal({
       setIsPanning(false);
     }
   }, [open, drawingFile, hideDrawing, normalizedFileUrl]);
+
+  // Check if cached image is already complete in DOM
+  React.useEffect(() => {
+    if (!open || hideDrawing || isPdf || !normalizedFileUrl) return;
+    const img = imgRef.current;
+    if (img && img.complete) {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setPageSize((prev) => prev ?? { width: img.naturalWidth, height: img.naturalHeight });
+      }
+      setLoading(false);
+    }
+  }, [open, hideDrawing, isPdf, normalizedFileUrl]);
+
+  // Safety fallback: ensure loading spinner doesn't get stuck indefinitely
+  React.useEffect(() => {
+    if (!open || hideDrawing || !normalizedFileUrl) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [open, hideDrawing, normalizedFileUrl]);
 
   React.useEffect(() => {
     if (!pdfFailed || hideDrawing) return;
@@ -664,12 +686,21 @@ export function DrawingPinPreviewModal({
                   ) : null
                 ) : (
                   <img
+                    ref={(el) => {
+                      imgRef.current = el;
+                      if (el && el.complete && el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize((prev) => prev ?? { width: el.naturalWidth, height: el.naturalHeight });
+                        setLoading(false);
+                      }
+                    }}
                     src={normalizedFileUrl}
                     alt={drawingName}
                     className="block max-w-none rounded-lg"
                     onLoad={(e) => {
                       const el = e.currentTarget;
-                      setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      }
                       setLoading(false);
                     }}
                     onError={() => {
