@@ -42,17 +42,8 @@ import {
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { CheckmarkSelect, type CheckmarkSelectOption } from "@/shared/ui";
 
-/* ── Dynamic imports ─────────────────────────────────── */
-
-const DrawingPinPreviewModal = dynamic(
-  () => import("./quotation-drawing-pin-preview-modal").then((mod) => mod.DrawingPinPreviewModal),
-  { ssr: false },
-);
-
-const SignaturePad = dynamic(
-  () => import("@/shared/form/components/signature-pad").then((mod) => mod.default ?? mod),
-  { ssr: false },
-);
+import SignaturePad from "@/shared/form/components/signature-pad";
+import { DrawingPinPreviewModal } from "./quotation-drawing-pin-preview-modal";
 
 /* ── Helpers ─────────────────────────────────────────── */
 
@@ -1266,7 +1257,10 @@ export function QuotationPinDetails() {
     };
   }, [effectiveQuotationDetail]);
 
-  const pdfSections = enrichedSections ?? effectiveQuotationDetail?.quote_sections ?? [];
+  const pdfSections = useMemo(
+    () => enrichedSections ?? effectiveQuotationDetail?.quote_sections ?? [],
+    [enrichedSections, effectiveQuotationDetail?.quote_sections],
+  );
 
   /* ── Snapshot generation ── */
   const [snapStatus, setSnapStatus] = useState<SnapshotStatus>("idle");
@@ -1284,7 +1278,6 @@ export function QuotationPinDetails() {
     }
 
     let cancelled = false;
-    setPinSnapshots(new Map());
     setSnapStatus("generating");
     setSnapProgress({ completed: 0, total: tasks.length });
 
@@ -1305,7 +1298,7 @@ export function QuotationPinDetails() {
       .catch(() => { if (!cancelled) setSnapStatus("error"); });
 
     return () => { cancelled = true; };
-  }, [effectiveQuotationDetail, enrichedSections, pdfSections]);
+  }, [enrichedSections]);
 
   /* ── Derived pin values ── */
   const sectionLabel = useMemo(() => {

@@ -6,7 +6,7 @@ export const routes = {
     forgotPassword: "/forgot-password",
   },
   public: {
-    quotation: "/public/quotation",
+    quotation: "/public/client-quotation",
     vendorQuotation: "/public/vendor-quotation",
     vendorQuotationToken: (token: string) => `/public/vendor-quotation/${token}`,
     qrCode: (orgId: string, qrUuid: string) => `/${orgId}/${qrUuid}`,

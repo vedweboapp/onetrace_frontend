@@ -132,7 +132,13 @@ export function LoginForm() {
     try {
       await submit(values);
     } catch (error) {
-      reportFormSubmitApiError(error, form.setError, "Failed to sign in");
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg =
+        fieldErrors.non_field_errors ||
+        fieldErrors.detail ||
+        getApiErrorDisplayMessage(error, "Invalid email or password. Please try again.");
+      reportFormSubmitApiError(error, form.setError, msg);
+      toastError(msg);
     }
   }
 

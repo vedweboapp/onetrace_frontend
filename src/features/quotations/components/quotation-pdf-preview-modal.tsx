@@ -229,9 +229,9 @@ function PlotTable({
                 "",
               );
               const pinLink = quotationId
-                ? `${frontendAddr}/public/quotation?token=${quotationId}${sp.pin_id ? `&pin=${sp.pin_id}&pinDialog=true` : ""}`
+                ? `${frontendAddr}/public/client-quotation?token=${quotationId}${sp.pin_id ? `&pin=${sp.pin_id}&pinDialog=true` : ""}`
                 : sp.pin_id
-                  ? `${frontendAddr}/public/quotation?token=${sp.pin_id}&pinDialog=true`
+                  ? `${frontendAddr}/public/client-quotation?token=${sp.pin_id}&pinDialog=true`
                   : null;
 
               return (
