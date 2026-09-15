@@ -20,6 +20,7 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import {
   getQuotationAdditionalContactEntries,
   getQuotationAdditionalContactIds,
@@ -257,9 +258,18 @@ export function QuotationDetailBody({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() =>
-    searchParams.get("tab") === "pricing" ? "pricing" : "project",
-  );
+  const [detailTab, setDetailTab] = React.useState<"project" | "pricing" | "vendor-quotations">(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "pricing") return "pricing";
+    if (
+      tabParam === "vendor-quotations" ||
+      tabParam === "vendor_quotations" ||
+      tabParam === "vendors"
+    ) {
+      return "vendor-quotations";
+    }
+    return "project";
+  });
 
   const statusOptions = React.useMemo(
     () =>
@@ -277,11 +287,11 @@ export function QuotationDetailBody({
   );
 
   const goToTab = React.useCallback(
-    (tab: "project" | "pricing") => {
+    (tab: "project" | "pricing" | "vendor-quotations") => {
       setDetailTab(tab);
       const params = new URLSearchParams(searchParams.toString());
-      if (tab === "pricing") params.set("tab", "pricing");
-      else params.delete("tab");
+      if (tab === "project") params.delete("tab");
+      else params.set("tab", tab);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       if (typeof window !== "undefined") {
@@ -292,7 +302,18 @@ export function QuotationDetailBody({
   );
 
   React.useEffect(() => {
-    setDetailTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "pricing") {
+      setDetailTab("pricing");
+    } else if (
+      tabParam === "vendor-quotations" ||
+      tabParam === "vendor_quotations" ||
+      tabParam === "vendors"
+    ) {
+      setDetailTab("vendor-quotations");
+    } else {
+      setDetailTab("project");
+    }
   }, [detail.id, searchParams]);
 
   const siteRows = React.useMemo(() => quotationSiteListRows(detail, siteNames), [detail, siteNames]);
@@ -615,9 +636,10 @@ export function QuotationDetailBody({
         tabs={[
           { id: "project", label: t("formTabs.project") },
           { id: "pricing", label: t("formTabs.pricing") },
+          { id: "vendor-quotations", label: t("formTabs.vendorQuotations") },
         ]}
         value={detailTab}
-        onValueChange={(id) => goToTab(id === "pricing" ? "pricing" : "project")}
+        onValueChange={(id) => goToTab(id as "project" | "pricing" | "vendor-quotations")}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
         className="mb-1"
@@ -733,6 +755,20 @@ export function QuotationDetailBody({
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
+      </div>
+      <div
+        role="tabpanel"
+        id="quotation-detail-vendor-quotations"
+        aria-labelledby="quotation-detail-trigger-vendor-quotations"
+        className={cn(detailTab !== "vendor-quotations" && "hidden")}
+      >
+        <QuotationVendorQuotationsTab
+          quotationId={detail.id}
+          quoteName={detail.quote_name}
+          detail={detail}
+          onGoToPricingTab={() => goToTab("pricing")}
+          onSent={onSaved}
+        />
       </div>
     </DetailPagePadding>
   );

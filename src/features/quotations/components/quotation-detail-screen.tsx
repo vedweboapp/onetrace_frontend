@@ -43,7 +43,7 @@ import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { AppButton } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
- 
+
 type Props = {
   quotationId: number;
 };
@@ -262,13 +262,18 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     };
   }, [detailForSite]);
 
+  const fetchDetailWithVendors = React.useCallback(
+    (id: number) => fetchQuotation(id, { include: "vendors" }),
+    [],
+  );
+
   return (
     <EntityDetailScreen
       entityId={quotationId}
       listSection="quotations"
       listRoute={routes.dashboard.quotations}
       loadError={t("detailLoadError")}
-      fetch={fetchQuotation}
+      fetch={fetchDetailWithVendors}
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
       labels={{

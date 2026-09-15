@@ -2864,6 +2864,7 @@
         "project": "Proyecto y datos",
         "details": "Datos",
         "pricing": "Alcance y precios",
+        "vendorQuotations": "Cotizaciones de proveedores",
         "prevToProject": "Anterior: Proyecto y datos",
         "prevToDetails": "Anterior: Datos",
         "nextToPricing": "Siguiente: Alcance y precios"

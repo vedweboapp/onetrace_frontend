@@ -238,6 +238,93 @@ function ErrorScreen({ message }: { message: string }) {
   );
 }
 
+function getAccessContextStatus(detail: QuotationDetail | null | undefined): string | null {
+  if (!detail) return null;
+  const ac = (detail as any).access_context;
+  if (!ac) return null;
+  if (typeof ac === "string") return ac.toLowerCase().trim();
+  if (typeof ac === "object") {
+    const s = ac.status ?? ac.status_name ?? ac.value ?? ac.state;
+    if (typeof s === "string") return s.toLowerCase().trim();
+  }
+  return null;
+}
+
+function SubmittedScreen({ detail }: { detail?: QuotationDetail | null }) {
+  const customerName = detail ? getCustomerName(detail) : null;
+  const projectName = detail ? getProjectName(detail) : null;
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-6 px-4 py-12">
+      <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center space-y-5">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
+          <CheckCircle2 className="size-9" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="size-1.5 rounded-full bg-emerald-600" />
+            Response Submitted
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">
+            Quotation Already Submitted
+          </h1>
+          <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+            {detail?.quote_name ? (
+              <>
+                Your pricing and delivery response for{" "}
+                <span className="font-semibold text-slate-800">
+                  {detail.quote_name}
+                </span>{" "}
+                has already been submitted and received.
+              </>
+            ) : (
+              "This quotation response has already been submitted and received."
+            )}
+          </p>
+        </div>
+
+        {detail ? (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-left divide-y divide-slate-200/60 text-xs">
+            {detail.quote_name && (
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-500">Quotation</span>
+                <span className="font-semibold text-slate-900 text-right truncate max-w-[240px]">
+                  {detail.quote_name}
+                </span>
+              </div>
+            )}
+            {detail.quotation_serial_number && (
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-500">Quotation #</span>
+                <span className="font-mono font-medium text-slate-700">
+                  #{detail.quotation_serial_number}
+                </span>
+              </div>
+            )}
+            {customerName && customerName !== "—" && (
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-500">Customer</span>
+                <span className="font-medium text-slate-800 text-right">{customerName}</span>
+              </div>
+            )}
+            {projectName && projectName !== "—" && (
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-500">Project</span>
+                <span className="font-medium text-slate-800 text-right">{projectName}</span>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <p className="text-[11px] text-slate-400">
+          No further actions are required. If you need to revise your quotation, please contact the project manager directly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Acceptance / Signature Dialog ── */
 
 function AcceptanceDialog({
@@ -536,9 +623,17 @@ export function VendorQuotationDetails() {
   ).length;
   const allFilled = lineItems.length > 0 && filledCount === lineItems.length;
 
+  const accessStatus = getAccessContextStatus(detail);
+  const isSubmitInAccessContext =
+    accessStatus === "submit" ||
+    accessStatus === "submitted" ||
+    (detail?.status ?? "").toLowerCase() === "submit" ||
+    (detail?.status ?? "").toLowerCase() === "submitted";
+
   /* ── Render states ── */
   if (loading) return <LoadingScreen />;
   if (error || !detail) return <ErrorScreen message={error ?? "Quotation not found."} />;
+  if (isSubmitInAccessContext) return <SubmittedScreen detail={detail} />;
 
   const customerName = getCustomerName(detail);
   const siteName = getSiteName(detail);

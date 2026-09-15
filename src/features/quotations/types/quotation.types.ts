@@ -271,6 +271,41 @@ export type QuotationListItem = {
   organization: number | null;
 };
 
+export type QuotationVendorItem = {
+  quantity?: number;
+  item_total?: number;
+  unit_price?: number;
+  /** Note: backend uses the typo spelling `composite_itmes` */
+  composite_itmes?: number | string | null;
+  composite_items?: number | string | null;
+  composite_item?: number | string | null;
+  composite_item_id?: number | null;
+  item_name?: string | null;
+  name?: string | null;
+  date_of_delivery?: string | null;
+  delivery_date?: string | null;
+};
+
+export type QuotationVendorRef = {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  organization?: number | null;
+};
+
+export type QuotationVendorSubmission = {
+  id?: number;
+  quotation?: number;
+  status?: string;
+  sent_at?: string | null;
+  submitted_at?: string | null;
+  public_token?: string | null;
+  signature?: string | null;
+  vendor: QuotationVendorRef;
+  items?: QuotationVendorItem[];
+};
+
 export type QuotationDetail = QuotationListItem & {
   salesperson?: number | string | QuotationUserRef | null;
   project_manager?: number | string | QuotationUserRef | null;
@@ -289,6 +324,8 @@ export type QuotationDetail = QuotationListItem & {
   signed_at?: string | null;
   approved_at?: string | null;
   accepted_at?: string | null;
+  /** Vendor quotation submissions returned when fetched with ?include=vendors */
+  vendors?: QuotationVendorSubmission[];
 };
 
 export type QuotationPagination = {

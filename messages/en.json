@@ -2878,6 +2878,7 @@
         "project": "Project & details",
         "details": "Details",
         "pricing": "Scope & pricing",
+        "vendorQuotations": "Vendor quotations",
         "prevToProject": "Previous: Project & details",
         "prevToDetails": "Previous: Details",
         "nextToPricing": "Next: Scope & pricing"

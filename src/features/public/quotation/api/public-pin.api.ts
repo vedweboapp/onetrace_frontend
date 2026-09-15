@@ -327,7 +327,13 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
 
 export async function fetchPublicQuotationByToken(token: string): Promise<QuotationDetail> {
   const response = await api.get<unknown>(`public/quotations/${token}/`);
-  const data = unwrapApiData(response.data);
+  const raw = response.data;
+  const data = unwrapApiData(raw);
+  if (isObject(raw) && isObject(data)) {
+    if ("access_context" in raw && !("access_context" in data)) {
+      (data as any).access_context = (raw as any).access_context;
+    }
+  }
   return data as QuotationDetail;
 }
 
