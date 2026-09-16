@@ -34,6 +34,12 @@ input[type="number"]::-webkit-outer-spin-button {
   padding-bottom: 0;
 }
 
+.dashboard-page-scroll-pane:has(.dashboard-full-bleed-page),
+.dashboard-page-scroll-pane:has([data-full-bleed-page]) {
+  overflow: hidden;
+  padding: 0 !important;
+}
+
 .surface-phone-root .PhoneInput {
   --PhoneInput-countryFlag-heightEm: 0.875em;
   display: flex;

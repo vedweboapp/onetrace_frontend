@@ -892,6 +892,7 @@ export function VendorQuotationDetails() {
                 unit_price: price,
                 item_total: itemTotal,
                 date_of_delivery: item.deliveryDate || "",
+                purchased: false,
               };
             });
 
@@ -899,6 +900,7 @@ export function VendorQuotationDetails() {
               status: "submit",
               items: JSON.stringify(items),
               signature: signatureData,
+              purchased: false,
             });
             setIsAcceptDialogOpen(false);
             toastSuccess("Quotation submitted successfully");

@@ -719,6 +719,7 @@ function DashboardSettingsSidebar({
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const kiosksHref = routes.dashboard.settingsKiosks;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const integrationsHref = routes.dashboard.settingsIntegrations;
 
@@ -738,6 +739,7 @@ function DashboardSettingsSidebar({
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const kiosksActive = pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
@@ -781,6 +783,14 @@ function DashboardSettingsSidebar({
           active={modulesActive}
           label={t("modules")}
           icon={Settings}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={kiosksHref}
+          active={kiosksActive}
+          label={t("kiosks")}
+          icon={Store}
           expanded={expanded}
           resolved={resolved}
         />

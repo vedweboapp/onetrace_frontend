@@ -384,6 +384,7 @@
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
+      "kiosks": "Kiosks",
       "integrations": "Integrations",
       "hint": "Customize theme and accent for this workspace.",
       "customization": {

@@ -84,5 +84,7 @@ export const routes = {
     settingsZohoWebhookSetup: "/settings/integrations/zoho/webhook-setup",
     projectJobsForms: "/projects/[id]/job-forms",
     settingsTitle: "/settings/title-settings",
+    settingsKiosks: "/settings/kiosks",
+    settingsKiosk: "/settings/kiosks",
   },
 } as const;

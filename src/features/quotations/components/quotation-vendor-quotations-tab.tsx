@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   Check,
+  CheckCircle2,
   ChevronDown,
   Clock,
   Copy,
@@ -25,6 +26,7 @@ import { QuotationSendVendorsModal } from "@/features/quotations/components/quot
 import { fetchQuotation, createPurchaseOrderFromQuotation } from "@/features/quotations/api/quotation.api";
 import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
+import { useRouter } from "@/i18n/navigation";
 import { toastSuccess, toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -44,6 +46,8 @@ interface VendorBidRow {
   unitPrice: number | null;
   itemTotal: number | null;
   deliveryDate: string | null;
+  purchased: boolean;
+  matchedItem?: QuotationVendorItem;
 }
 
 interface GridRow extends VendorRfqLineItem {
@@ -87,8 +91,22 @@ function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
   return Array.from(map.entries()).map(([key, d]) => ({ key, compositeId: d.compositeId, name: d.name, sku: d.sku, groupName: d.groupName, quantity: d.quantity, unit: d.unit }));
 }
 
+function isVendorSubmitted(status?: string): boolean {
+  const s = (status ?? "").toLowerCase().trim();
+  return s === "submit" || s === "submitted";
+}
+
 function matchBidItem(vi: any, si: VendorRfqLineItem): boolean {
-  const bidId = vi.composite_itmes != null ? Number(vi.composite_itmes) : vi.composite_items != null ? Number(vi.composite_items) : vi.composite_item_id != null ? Number(vi.composite_item_id) : null;
+  const bidId =
+    vi.composite_itmes != null
+      ? Number(vi.composite_itmes)
+      : vi.composite_items != null
+        ? Number(vi.composite_items)
+        : vi.composite_item != null
+          ? Number(vi.composite_item)
+          : vi.composite_item_id != null
+            ? Number(vi.composite_item_id)
+            : null;
   if (bidId != null && si.compositeId != null) return bidId === si.compositeId;
   const bn = (vi.name ?? vi.item_name ?? "").toLowerCase().trim();
   return bn !== "" && bn === si.name.toLowerCase().trim();
@@ -98,8 +116,25 @@ function buildGridRows(scope: VendorRfqLineItem[], vendors: QuotationVendorSubmi
   return scope.map((si) => ({
     ...si,
     bids: vendors.map((sub) => {
-      const m = (sub.items ?? []).find((vi: QuotationVendorItem) => matchBidItem(vi, si));
-      return { submission: sub, unitPrice: m?.unit_price ?? null, itemTotal: m?.item_total ?? null, deliveryDate: m?.date_of_delivery ?? m?.delivery_date ?? null };
+      const isSub = isVendorSubmitted(sub.status);
+      const m = isSub
+        ? (sub.items ?? []).find((vi: QuotationVendorItem) => matchBidItem(vi, si))
+        : undefined;
+      const isPurchased =
+        m?.purchased === true ||
+        (m as any)?.purchased === 1 ||
+        (m as any)?.purchased === "true" ||
+        (m as any)?.is_purchased === true ||
+        (m as any)?.is_purchased === 1 ||
+        (m as any)?.is_purchased === "true";
+      return {
+        submission: sub,
+        unitPrice: m?.unit_price != null ? Number(m.unit_price) : null,
+        itemTotal: m?.item_total != null ? Number(m.item_total) : null,
+        deliveryDate: m?.date_of_delivery ?? m?.delivery_date ?? null,
+        purchased: Boolean(isPurchased),
+        matchedItem: m,
+      };
     }),
   }));
 }
@@ -206,6 +241,7 @@ function SigDialog({ open, url, name, onClose }: { open: boolean; url: string | 
 type Props = { quotationId: number; quoteName?: string; detail: QuotationDetail; onGoToPricingTab?: () => void; onSent?: () => void; };
 
 export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, onGoToPricingTab, onSent }: Props) {
+  const router = useRouter();
   const [sendModalOpen, setSendModalOpen] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
@@ -235,14 +271,24 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
 
   const uniqueVendors = React.useMemo(() => {
     const seen = new Map<number, string>();
-    vendors.forEach((v) => { if (!seen.has(v.vendor.id)) seen.set(v.vendor.id, v.vendor.name); });
+    vendors.forEach((v) => {
+      if (!seen.has(v.vendor.id)) {
+        seen.set(v.vendor.id, v.vendor.name);
+      }
+    });
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [vendors]);
 
   const filteredRows = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return gridRows;
-    return gridRows.filter((r) => r.name.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q) || (r.groupName?.toLowerCase().includes(q) ?? false) || r.bids.some((b) => b.submission.vendor.name.toLowerCase().includes(q)));
+    return gridRows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.sku.toLowerCase().includes(q) ||
+        (r.groupName?.toLowerCase().includes(q) ?? false) ||
+        r.bids.some((b) => b.submission.vendor.name.toLowerCase().includes(q)),
+    );
   }, [gridRows, search]);
 
   function getFilteredBids(row: GridRow): VendorBidRow[] {
@@ -252,27 +298,41 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
     });
   }
 
-  const submitted = vendors.filter((v) => v.status === "submit" || v.status === "submitted").length;
+  const submitted = vendors.filter((v) => isVendorSubmitted(v.status)).length;
 
   const lowestTotal = React.useMemo(() => {
     const vals: number[] = [];
-    vendors.forEach((v) => { if (v.status !== "submit" && v.status !== "submitted") return; vals.push((v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0)); });
+    vendors.forEach((v) => {
+      if (!isVendorSubmitted(v.status)) return;
+      vals.push((v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0));
+    });
     return vals.length ? Math.min(...vals) : null;
   }, [vendors]);
 
   const lowestVendorId = React.useMemo(() => {
     const m = new Map<number, number>();
-    vendors.forEach((v) => { if (v.status !== "submit" && v.status !== "submitted") return; m.set(v.vendor.id, (v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0)); });
+    vendors.forEach((v) => {
+      if (!isVendorSubmitted(v.status)) return;
+      m.set(v.vendor.id, (v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0));
+    });
     if (!m.size) return null;
-    let minId: number | null = null; let minVal = Infinity;
-    m.forEach((val, id) => { if (val < minVal) { minVal = val; minId = id; } });
+    let minId: number | null = null;
+    let minVal = Infinity;
+    m.forEach((val, id) => {
+      if (val < minVal) {
+        minVal = val;
+        minId = id;
+      }
+    });
     return minId;
   }, [vendors]);
 
   const lowestPricePerItem = React.useMemo(() => {
     const m = new Map<string, number>();
     gridRows.forEach((r) => {
-      const prices = r.bids.filter((b) => b.unitPrice != null && (b.submission.status === "submit" || b.submission.status === "submitted")).map((b) => b.unitPrice!);
+      const prices = r.bids
+        .filter((b) => b.unitPrice != null && Number(b.unitPrice) > 0 && isVendorSubmitted(b.submission.status))
+        .map((b) => Number(b.unitPrice!));
       if (prices.length) m.set(r.key, Math.min(...prices));
     });
     return m;
@@ -302,6 +362,18 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
     async (row: GridRow, bid: VendorBidRow, overriddenQty?: number) => {
       const rowKey = `${row.key}-${bid.submission.vendor.id}`;
       if (purchasingKey) return;
+
+      if (bid.purchased) {
+        toastError("This item has already been purchased.");
+        return;
+      }
+
+      const isSubmitted = isVendorSubmitted(bid.submission.status);
+      const hasValidPrice = bid.unitPrice != null && Number(bid.unitPrice) > 0;
+      if (!isSubmitted || !hasValidPrice) {
+        toastError("Cannot purchase: Vendor quotation is not submitted or unit price is missing.");
+        return;
+      }
 
       const matchedBidItem = (bid.submission.items ?? []).find((vi: QuotationVendorItem) => matchBidItem(vi, row));
       const compId =
@@ -335,13 +407,33 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
         });
         toastSuccess(res?.message ?? `Purchase order created for ${row.name}`);
         onSent?.();
+
+        // Extract created Purchase Order ID from API response
+        let poId: number | string | null = null;
+        if (Array.isArray(res?.data) && res.data.length > 0) {
+          poId = res.data[0]?.id ?? res.data[0]?.purchase_order_id ?? null;
+        } else if (res?.data && typeof res.data === "object") {
+          poId =
+            res.data.id ??
+            res.data.purchase_order_id ??
+            (Array.isArray(res.data.data) ? res.data.data[0]?.id : null) ??
+            null;
+        } else if ((res as any)?.id != null) {
+          poId = (res as any).id;
+        }
+
+        if (poId != null) {
+          router.push(`${routes.dashboard.purchaseOrders}/${poId}`);
+        } else {
+          router.push(routes.dashboard.purchaseOrders);
+        }
       } catch (err: any) {
         toastApiError(err, "Failed to create purchase order");
       } finally {
         setPurchasingKey(null);
       }
     },
-    [purchasingKey, onSent],
+    [purchasingKey, quotationId, onSent, router],
   );
 
   return (
@@ -451,17 +543,21 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
                     const bids = getFilteredBids(row);
                     const lowPrice = lowestPricePerItem.get(row.key);
                     return bids.map((bid, bi) => {
+                      const isSubmitted = isVendorSubmitted(bid.submission.status);
+                      const hasValidPrice = bid.unitPrice != null && Number(bid.unitPrice) > 0;
+                      const isPurchased = Boolean(bid.purchased);
                       const isLow =
-                        bid.unitPrice != null &&
+                        hasValidPrice &&
                         lowPrice != null &&
                         bid.unitPrice === lowPrice &&
-                        (bid.submission.status === "submit" || bid.submission.status === "submitted");
+                        isSubmitted;
                       const hasBid = bid.unitPrice != null || bid.deliveryDate != null;
                       const isCopied = copied === String(bid.submission.vendor.id);
                       const ss = statusStyle(bid.submission.status);
                       const isLowestVendor = lowestVendorId === bid.submission.vendor.id && submitted > 0;
                       const isFirstBid = bi === 0;
                       const rowBg = ri % 2 === 0 ? "bg-white dark:bg-slate-950/20" : "bg-slate-50/40 dark:bg-slate-900/20";
+                      const isPurchaseEnabled = isSubmitted && hasValidPrice && !isPurchased && purchasingKey == null;
 
                       return (
                         <tr
@@ -627,15 +723,35 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
                               <AppButton
                                 type="button"
                                 size="sm"
-                                variant="primary"
+                                variant={isPurchased ? "secondary" : "primary"}
                                 loading={purchasingKey === `${row.key}-${bid.submission.vendor.id}`}
-                                disabled={purchasingKey != null}
+                                disabled={!isPurchaseEnabled}
                                 onClick={() => void handlePurchase(row, bid, qtyOverrides[row.key] ?? row.quantity)}
-                                className="h-7 px-2.5 text-xs font-semibold"
-                                title={`Create Purchase Order for ${row.name}`}
+                                className={cn(
+                                  "h-7 px-2.5 text-xs font-semibold",
+                                  isPurchased && "border-emerald-200 bg-emerald-50 text-emerald-700 opacity-90 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300",
+                                )}
+                                title={
+                                  isPurchased
+                                    ? "This item has already been purchased"
+                                    : !isSubmitted
+                                      ? "Vendor quotation must be submitted to purchase"
+                                      : !hasValidPrice
+                                        ? "No valid unit price provided by vendor"
+                                        : `Create Purchase Order for ${row.name}`
+                                }
                               >
-                                <ShoppingCart className="mr-1 size-3.5" />
-                                Purchase
+                                {isPurchased ? (
+                                  <>
+                                    <CheckCircle2 className="mr-1 size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    Purchased
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="mr-1 size-3.5" />
+                                    Purchase
+                                  </>
+                                )}
                               </AppButton>
                             </div>
                           </td>
@@ -650,7 +766,7 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
                         <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                           {search.trim()
                             ? <>No items matched &ldquo;{search}&rdquo;</>
-                            : "No vendor quotations match the selected filters."}
+                            : "No items or vendor quotations match the selected filters."}
                         </td>
                       </tr>
                     );

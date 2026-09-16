@@ -284,6 +284,8 @@ export type QuotationVendorItem = {
   name?: string | null;
   date_of_delivery?: string | null;
   delivery_date?: string | null;
+  purchased?: boolean;
+  is_purchased?: boolean;
 };
 
 export type QuotationVendorRef = {
