@@ -9,7 +9,7 @@ import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-tra
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
-import { fetchQuotation, createJobFromServiceQuotation, sendQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchQuotation, createJobFromServiceQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
@@ -17,6 +17,7 @@ import {
 } from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
+import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
 import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
@@ -45,7 +46,7 @@ import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
- 
+
 type Props = {
   quotationId: number;
 };
@@ -274,13 +275,18 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     };
   }, [detailForSite]);
 
+  const fetchDetailWithVendors = React.useCallback(
+    (id: number) => fetchQuotation(id, { include: "vendors" }),
+    [],
+  );
+
   return (
     <EntityDetailScreen
       entityId={quotationId}
       listSection="quotations"
       listRoute={routes.dashboard.quotations}
       loadError={t("detailLoadError")}
-      fetch={fetchQuotation}
+      fetch={fetchDetailWithVendors}
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
       labels={{
@@ -394,7 +400,6 @@ function QuotationDetailActions({
 }) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
   const [creatingJob, setCreatingJob] = React.useState(false);
   const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
 
@@ -419,19 +424,6 @@ function QuotationDetailActions({
       toastApiError(error, t("statusUpdateError"));
     } finally {
       setStatusSaving(false);
-    }
-  }
-
-  async function handleSendQuotation() {
-    setSending(true);
-    try {
-      await sendQuotation(quotationId);
-      toastSuccess("Quotation sent successfully");
-      onStatusSaved();
-    } catch (error) {
-      toastApiError(error, "Failed to send quotation");
-    } finally {
-      setSending(false);
     }
   }
 
@@ -468,16 +460,11 @@ function QuotationDetailActions({
       <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
         {t("updateStatus.action")}
       </AppButton>
-      <AppButton
-        type="button"
-        variant="secondary"
-        size="sm"
-        loading={sending}
-        disabled={sending}
-        onClick={() => void handleSendQuotation()}
-      >
-        Send Quotation
-      </AppButton>
+      <QuotationSendDropdown
+        quotationId={quotationId}
+        quoteName={detail.quote_name}
+        onSent={onStatusSaved}
+      />
       <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
       <EntityDetailEditButton
         label={t("edit")}

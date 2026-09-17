@@ -7,8 +7,8 @@ export type WithDropdownFilter = {
 };
 
 /**
- * Default `page_size` for `dropdown=true` list loads.
- * Full option lists still load completely by following `pagination.next` / cursor `next`.
+ * Default `page_size` for `dropdown=true` list loads (one page).
+ * Selects should search for more; do not auto-walk every page.
  */
 export const DROPDOWN_LIST_PAGE_SIZE = 20;
 
@@ -225,8 +225,10 @@ export async function fetchListNextPage<T, P extends PaginationWithNext = Pagina
 }
 
 /**
- * When `dropdown` is true, follow cursor/`pagination.next` until exhausted and return all rows.
- * Otherwise return the single page as-is.
+ * Resolve a list page for selects.
+ * - Default: return the first page only (no page/cursor walk).
+ * - Pass `fetchAllPages: true` only when the caller truly needs every row
+ *   (e.g. schedules calendar, audit timeline, project levels).
  */
 export async function resolveDropdownListPages<
   T,
@@ -234,10 +236,12 @@ export async function resolveDropdownListPages<
 >(args: {
   dropdown?: boolean;
   silent?: boolean;
+  /** Follow `pagination.next` / cursor until exhausted. Off by default. */
+  fetchAllPages?: boolean;
   fetchFirst: () => Promise<ListPageResult<T, P>>;
 }): Promise<ListPageResult<T, P>> {
   const first = coerceListPageResult(await args.fetchFirst());
-  if (args.dropdown !== true) return first;
+  if (args.fetchAllPages !== true) return first;
 
   const all = [...first.items];
   let next = first.pagination?.next ?? null;

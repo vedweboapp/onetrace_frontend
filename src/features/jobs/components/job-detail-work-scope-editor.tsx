@@ -116,7 +116,10 @@ export function JobDetailWorkScopeEditor({
     [draftRows],
   );
 
+  const catalogLoadedRef = React.useRef(false);
+
   React.useEffect(() => {
+    if (!editing || catalogLoadedRef.current) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -125,6 +128,7 @@ export function JobDetailWorkScopeEditor({
           fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (cancelled) return;
+        catalogLoadedRef.current = true;
         setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
         setItemOptions(
           items.items.map((it) => ({
@@ -155,7 +159,7 @@ export function JobDetailWorkScopeEditor({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [editing]);
 
   function itemOptionsForGroup(groupIdRaw: string): Option[] {
     if (!/^\d+$/.test(groupIdRaw)) return itemOptions;

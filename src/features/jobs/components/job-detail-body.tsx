@@ -49,12 +49,19 @@ import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-p
 import { QualityAssuranceDetailGrid } from "@/features/jobs/components/quality-assurance-status";
 import { isQualityAssuranceDecided } from "@/features/jobs/types/quality-assurance.types";
 import { resolvePinFormMeta } from "@/features/projects/utils/pin-form-meta.util";
+import { fetchJobSubmittedForms } from "@/features/job-forms/api/job-form.api";
+import type { JobFormSubmission } from "@/features/job-forms/types/job-form-submission.types";
 import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { useLevelSnapshots, type LevelSnapshotState } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
 import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { useSearchParams } from "next/navigation";
+import {
+  savePinsToSessionStorage,
+  extractTrimmedPinsFromJob,
+  fetchAndBuildJobTrimmedPins,
+} from "@/features/projects/utils/pin-preview-navigation.util";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -133,7 +140,7 @@ function ProjectPinRow({
   drawingName,
 }: {
   pin: DrawingPin;
-  form?: { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  form?: { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   onPreview: () => void;
   onOpenDetail: () => void;
   checklistsComplete: boolean;
@@ -239,21 +246,12 @@ function ProjectPinRow({
       <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{pin.quantity ?? 1}</span>
       <div className="min-w-0">
         {form ? (
-          <button
-            type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (form.submitted || checklistsComplete) {
-              onNavigate(form.href);
-            } else {
-              onOpenGateModal(form.href, form.label);
-            }
-          }}
+          <span
             className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold transition text-left",
+              "inline-flex min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-full border px-2.5 py-1 text-xs font-semibold text-left pointer-events-none select-none",
               !form.submitted && !checklistsComplete
-                ? "border-slate-200 bg-slate-100 text-slate-400 cursor-pointer dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
-                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-[color:var(--dash-accent)] hover:text-[color:var(--dash-accent)] dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                ? "border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-500"
+                : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
             )}
           >
             <span className="truncate">{form.label}</span>
@@ -271,7 +269,8 @@ function ProjectPinRow({
             >
               {form.submitted ? t("statusSubmitted") : t("statusPending")}
             </span>
-          </button>
+          </span>
+
         ) : (
           <span className="text-xs text-slate-500">{locale === "es" ? "Agregar formulario" : "Add a form"}</span>
         )}
@@ -368,7 +367,7 @@ function PlotPinCategoryGroup({
   onToggleExpanded: () => void;
   onPreviewPin: (pin: DrawingPin) => void;
   onOpenPinDetail: (pin: DrawingPin) => void;
-  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
@@ -449,7 +448,7 @@ function PlotPinsBlock({
   pins: DrawingPin[];
   onPreviewPin: (pin: DrawingPin) => void;
   onOpenPinDetail: (pin: DrawingPin) => void;
-  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; submitted: boolean } | null;
+  getPinForm: (pin: DrawingPin) => { label: string; href: string; projectFormId: number; jobFormId: number; submissionId: number | null; submitted: boolean } | null;
   checklistsComplete: boolean;
   checklistMarked: boolean;
   onOpenGateModal: (href: string, label: string) => void;
@@ -695,23 +694,75 @@ export function JobDetailBody({
     }
   }
 
+  const [submittedForms, setSubmittedForms] = React.useState<JobFormSubmission[]>([]);
+
+  React.useEffect(() => {
+    if (!detail?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await fetchJobSubmittedForms(detail.id);
+        if (!cancelled) setSubmittedForms(list);
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.id]);
+
+  /** Background pin list fetch & cache in sessionStorage without blocking initial render. */
+  React.useEffect(() => {
+    if (!detail?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const trimmed = await fetchAndBuildJobTrimmedPins(detail);
+        if (!cancelled && trimmed.length > 0) {
+          savePinsToSessionStorage(detail.id, trimmed);
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail]);
+
   const getPinForm = React.useCallback(
     (pin: DrawingPin) => {
       const meta = resolvePinFormMeta(pin, { formEntries });
       if (!meta) return null;
 
+      const targetPinId = Number(pin.job_pin_id ?? pin.id);
+      const matchedSubmission = submittedForms.find((sub) => {
+        const subPinId = Number((sub as any).job_pin_id ?? (sub as any).job_pin);
+        if (Number.isFinite(targetPinId) && targetPinId > 0 && subPinId === targetPinId) return true;
+        if (sub.job_form_id === meta.jobFormId || sub.project_form_id === meta.projectFormId) return true;
+        return false;
+      });
+
+      const effectiveSubmissionId =
+        meta.submissionId ??
+        (matchedSubmission && matchedSubmission.id > 0 ? matchedSubmission.id : null);
+      const isSubmitted = meta.submitted || Boolean(matchedSubmission);
+
       const baseHref = `${routes.dashboard.jobFormFill(detail.id, meta.projectFormId, meta.jobFormId)}&name=${encodeURIComponent(
         meta.label,
-      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${Number(pin.job_pin_id)}`;
+      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${targetPinId}`;
 
       return {
         label: meta.label,
-        href: meta.submitted && meta.submissionId ? `${baseHref}&submission_id=${meta.submissionId}` : baseHref,
+        href: isSubmitted && effectiveSubmissionId ? `${baseHref}&submission_id=${effectiveSubmissionId}` : baseHref,
         projectFormId: meta.projectFormId,
-        submitted: meta.submitted,
+        jobFormId: meta.jobFormId,
+        submissionId: effectiveSubmissionId,
+        submitted: isSubmitted,
       };
     },
-    [detail.id, formEntries],
+    [detail.id, formEntries, submittedForms],
   );
 
   const assignedWorkers = React.useMemo(() => getJobAssignedWorkerRows(detail), [detail]);
@@ -753,49 +804,49 @@ export function JobDetailBody({
               </DetailMetricCard>
             )}
             <DetailMetricCard label={t("fields.assignedWorkers")} className="col-span-full">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  {assignedWorkers.length === 0 ? (
-                    <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
-                  ) : (
-                    <DetailMultiValue>
-                      {assignedWorkers.map((worker) => (
-                        <DetailMultiValueItem
-                          key={worker.id}
-                          href={`${routes.dashboard.settingsUsers}/${worker.id}`}
-                          title={worker.label}
-                        >
-                          {worker.label}
-                        </DetailMultiValueItem>
-                      ))}
-                    </DetailMultiValue>
-                  )}
-                  {onOpenScheduling ? (
-                    <button
-                      type="button"
-                      title={t("detail.openScheduling")}
-                      aria-label={t("detail.openScheduling")}
-                      onClick={onOpenScheduling}
-                      className={cn(
-                        "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-                        "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
-                      )}
-                    >
-                      <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
-                    </button>
-                  ) : null}
-                </div>
-              </DetailMetricCard>
-              <DetailEditableField
-                label={t("fields.description")}
-                value={detail.description ?? ""}
-                kind="text"
-                multiline
-                textareaBox
-                span="full"
-                editAriaLabel={tActions("edit")}
-                empty="—"
-                onSave={(next) => patchField({ description: next })}
-              />
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {assignedWorkers.length === 0 ? (
+                  <span className="font-normal text-slate-400 dark:text-slate-500">—</span>
+                ) : (
+                  <DetailMultiValue>
+                    {assignedWorkers.map((worker) => (
+                      <DetailMultiValueItem
+                        key={worker.id}
+                        href={`${routes.dashboard.settingsUsers}/${worker.id}`}
+                        title={worker.label}
+                      >
+                        {worker.label}
+                      </DetailMultiValueItem>
+                    ))}
+                  </DetailMultiValue>
+                )}
+                {onOpenScheduling ? (
+                  <button
+                    type="button"
+                    title={t("detail.openScheduling")}
+                    aria-label={t("detail.openScheduling")}
+                    onClick={onOpenScheduling}
+                    className={cn(
+                      "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
+                      "hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300",
+                    )}
+                  >
+                    <CalendarDays className="size-4" strokeWidth={1.75} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            </DetailMetricCard>
+            <DetailEditableField
+              label={t("fields.description")}
+              value={detail.description ?? ""}
+              kind="text"
+              multiline
+              textareaBox
+              span="full"
+              editAriaLabel={tActions("edit")}
+              empty="—"
+              onSave={(next) => patchField({ description: next })}
+            />
           </DetailMetricsGrid>
         </DetailPanelCard>
 
@@ -947,14 +998,34 @@ export function JobDetailBody({
                               });
                             }}
                             onOpenPinDetail={(pin) => {
+                              const trimmed = extractTrimmedPinsFromJob(detail, { formEntries });
+                              if (trimmed.length > 0) {
+                                savePinsToSessionStorage(detail.id, trimmed);
+                              }
                               const backHref = `${routes.dashboard.jobs}/${detail.id}`;
-                              // Project jobs: open via project pin route (loads pin from drawings API).
-                              // Service jobs without a project: keep job-scoped pin route.
-                              const detailHref =
+                              const baseRoute =
                                 projectId != null
-                                  ? routes.dashboard.projectPinDetail(projectId, pin.id, level.id)
-                                  : routes.dashboard.jobPinDetail(detail.id, pin.id, level.id);
-                              router.push(mergeUrlQueryParam(detailHref, "back", backHref));
+                                  ? routes.dashboard.projectPinDetail(projectId, pin.id)
+                                  : routes.dashboard.jobPinDetail(detail.id, pin.id);
+
+                              const params = new URLSearchParams({ back: backHref });
+                              if (level?.id != null) {
+                                params.set("drawingId", String(level.id));
+                              }
+                              // Always carry the job ID so the form can be submitted or loaded.
+                              params.set("jobId", String(detail.id));
+
+                              const pinForm = getPinForm(pin);
+                              if (pinForm) {
+                                params.set("formId", String(pinForm.projectFormId));
+                                params.set("job_form_id", String(pinForm.jobFormId ?? pinForm.projectFormId));
+                                params.set("name", pinForm.label);
+                                params.set("job_pin_id", String(Number(pin.job_pin_id ?? pin.id)));
+                                if (pinForm.submissionId != null && pinForm.submissionId > 0) {
+                                  params.set("submission_id", String(pinForm.submissionId));
+                                }
+                              }
+                              router.push(`${baseRoute}?${params.toString()}`);
                             }}
                             getPinForm={getPinForm}
                             checklistsComplete={checklistsComplete}
@@ -998,6 +1069,7 @@ export function JobDetailBody({
           }}
         />
       </div>
+
       {previewPinData && (
         <DrawingPinPreviewModal
           open={previewPinData !== null}

@@ -56,6 +56,7 @@ type Props = {
   pinColor?: string;
   className?: string;
   alt?: string;
+  pinLabel?: React.ReactNode;
 };
 
 function PinThumbnailCroppedComponent({
@@ -68,6 +69,7 @@ function PinThumbnailCroppedComponent({
   pinColor = "#f97316",
   className,
   alt = "",
+  pinLabel,
 }: Props) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">("loading");
@@ -156,14 +158,29 @@ function PinThumbnailCroppedComponent({
       />
       {status === "ready" && pinPos && (
         <span
-          className="absolute pointer-events-none"
+          className="absolute pointer-events-none z-10 drop-shadow-md"
           style={{
             left: `${pinPos.left}%`,
             top: `${pinPos.top}%`,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <TinyPin color={pinColor} />
+          {pinLabel ? (
+            <div className="flex flex-col items-center">
+              <div
+                className="flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-full bg-white shadow-md border-2 font-bold text-[11px]"
+                style={{ borderColor: pinColor, color: pinColor }}
+              >
+                {pinLabel}
+              </div>
+              <div
+                className="w-0 h-0 mx-auto border-x-[3px] border-x-transparent border-t-[5px]"
+                style={{ borderTopColor: pinColor }}
+              />
+            </div>
+          ) : (
+            <TinyPin color={pinColor} />
+          )}
         </span>
       )}
       {status === "loading" && (

@@ -3,6 +3,7 @@
 import React from "react";
 import { State } from "country-state-city";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import { cn } from "@/core/utils/http.util";
 import { surfaceSelectClassName } from "@/shared/ui";
 
 interface StateSelectProps {
@@ -44,13 +45,14 @@ const StateSelect = ({
         {...register}
         {...rest}
         disabled={readOnly || !countryCode}
-        className={`
-          rounded-[8px] px-3 py-2 outline-none w-full text-slate-900 dark:text-white
-          ${readOnly || !countryCode
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} `
-          }
-        `}
+        className={cn(
+          surfaceSelectClassName,
+          "field-control",
+          (readOnly || !countryCode) &&
+            "cursor-not-allowed border-slate-200 bg-slate-50 select-none focus-visible:border-slate-200 focus-visible:ring-0 dark:border-slate-700 dark:bg-slate-800/50",
+          errors && "border-red-500 dark:border-red-500",
+          className,
+        )}
       >
         <option value="">
           {countryCode ? "Select State" : "Select Country First"}

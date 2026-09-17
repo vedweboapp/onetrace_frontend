@@ -1174,9 +1174,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
               {componentsInvalid ? <FieldErrorText>{tModal("atLeastOneComponentError")}</FieldErrorText> : null}
             </FormSubsection>
             <div className="space-y-3">
-              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                {tModal("pricesFromComponentsHint")}
-              </p>
               <FormFieldRow cols="2" from="md" className="gap-4">
                 <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                   <MoneyInput

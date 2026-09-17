@@ -81,7 +81,8 @@ export function initialsFromName(name: string): string {
 }
 
 export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<SchedulingTechnician[]> {
-  const { items } = await fetchUsersPage(1, 20, { dropdown: true });
+  // Full catalog for day/week/month colors + bulk select — walk all dropdown pages.
+  const { items } = await fetchUsersPage(1, 20, { dropdown: true, fetchAllPages: true });
   const seen = new Set<number>();
   const rows: SchedulingTechnician[] = [];
   for (const user of items) {

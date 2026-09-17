@@ -45,6 +45,7 @@ export async function fetchChecklistTypesPage(
 
   return resolveDropdownListPages({
     dropdown: filters?.dropdown,
+    fetchAllPages: filters?.dropdown === true,
     fetchFirst: async () => {
       const { data } = await api.get<ChecklistTypeListResponse>(CHECKLIST_TYPE_PATHS.list, { params });
       return parseListApiPage(data, pageSize);

@@ -13,6 +13,7 @@ import {
 import { routes } from "@/shared/config/routes";
 import { toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { cn } from "@/core/utils/http.util";
+import { saveJobFormsToSessionStorage } from "@/features/job-forms/utils/job-form-navigation.util";
 
 type Props = {
   jobId: number;
@@ -50,8 +51,10 @@ export function JobFormsSection({
   const checklistsComplete = requiredJobChecklistsComplete(checklists, { isMarked: checklistMarked });
 
   React.useEffect(() => {
-    setGateChecklists(checklists);
-  }, [checklists]);
+    if (jobId && forms.length > 0) {
+      saveJobFormsToSessionStorage(jobId, forms);
+    }
+  }, [jobId, forms]);
 
   if (forms.length === 0) return null;
 

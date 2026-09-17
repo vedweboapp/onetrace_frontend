@@ -5,6 +5,10 @@ import { useTranslations } from "next-intl";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
 import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
 import { fitGoogleMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
+import {
+  createJobMapPinElement,
+  setJobMapPinSelected,
+} from "@/features/jobs/utils/job-map-pin-element.util";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import {
   clearAdvancedMarker,
@@ -50,6 +54,7 @@ export function JobsGoogleMap({
   onResolvedPinsChangeRef.current = onResolvedPinsChange;
 
   const [mapReady, setMapReady] = React.useState(false);
+  const [mapFailed, setMapFailed] = React.useState(false);
   const [resolved, setResolved] = React.useState<ResolvedPin[]>([]);
 
   React.useLayoutEffect(() => {
@@ -77,9 +82,15 @@ export function JobsGoogleMap({
         } as google.maps.InfoWindowOptions);
         mapRef.current = map;
         map.addListener("click", () => infoRef.current?.close());
+        setMapFailed(false);
         setMapReady(true);
       })
-      .catch(() => setMapReady(false));
+      .catch(() => {
+        if (!cancelled) {
+          setMapFailed(true);
+          setMapReady(false);
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -179,15 +190,21 @@ export function JobsGoogleMap({
 
     const listeners: Array<() => void> = [];
     for (const pin of resolved) {
+      const content = createJobMapPinElement({
+        title: pin.jobLabel,
+        selected: false,
+      });
       const marker = createAdvancedMarker({
         map,
         lat: pin.lat,
         lng: pin.lon,
-        title: pin.label,
+        title: pin.jobLabel,
+        content,
       });
       markersRef.current.set(pin.jobId, marker);
       const onClick = () => {
         onPinClickRef.current(pin.jobId);
+        onOpenDetailsRef.current(pin.jobId);
         openInfo(pin, marker);
       };
       marker.addEventListener("gmp-click", onClick);
@@ -202,13 +219,18 @@ export function JobsGoogleMap({
   }, [mapReady, resolved, openInfo]);
 
   React.useEffect(() => {
+    if (!mapReady) return;
+    for (const [jobId, marker] of markersRef.current) {
+      setJobMapPinSelected(marker.content as HTMLElement | null, selectedJobId === jobId);
+    }
+  }, [mapReady, selectedJobId, resolved]);
+
+  React.useEffect(() => {
     if (!mapReady || selectedJobId == null) return;
     const pin = resolved.find((p) => p.jobId === selectedJobId);
-    const marker = markersRef.current.get(selectedJobId);
-    if (!pin || !marker) return;
-    openInfo(pin, marker);
+    if (!pin) return;
     mapRef.current?.panTo({ lat: pin.lat, lng: pin.lon });
-  }, [selectedJobId, resolved, mapReady, openInfo]);
+  }, [selectedJobId, resolved, mapReady]);
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -223,6 +245,24 @@ export function JobsGoogleMap({
   }, [mapReady]);
 
   return (
-    <div ref={containerRef} className={cn("h-full w-full", className)} role="img" aria-label={t("ariaMap")} />
+    <div className={cn("relative h-full w-full", className)}>
+      {!mapReady ? (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-100 px-4 text-center dark:bg-slate-800"
+          aria-busy={!mapFailed}
+          aria-live="polite"
+        >
+          {mapFailed ? (
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("loadMapError")}</p>
+          ) : (
+            <>
+              <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-[color:var(--dash-accent,#0f766e)] dark:border-slate-600 dark:border-t-[color:var(--dash-accent,#2dd4bf)]" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("loadingMap")}</p>
+            </>
+          )}
+        </div>
+      ) : null}
+      <div ref={containerRef} className="h-full w-full" role="img" aria-label={t("ariaMap")} />
+    </div>
   );
 }

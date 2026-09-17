@@ -6,7 +6,9 @@ export const routes = {
     forgotPassword: "/forgot-password",
   },
   public: {
-    quotation: "/public/quotation",
+    quotation: "/public/client-quotation",
+    vendorQuotation: "/public/vendor-quotation",
+    vendorQuotationToken: (token: string) => `/public/vendor-quotation/${token}`,
     qrCode: (orgId: string, qrUuid: string) => `/${orgId}/${qrUuid}`,
   },
   dashboard: {
@@ -32,11 +34,16 @@ export const routes = {
         : base;
     },
     scheduling: "/scheduling",
-    attendance: "/attendance",
     qrCodes: "/qr-codes",
     projects: "/projects",
     projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
       const base = `/projects/${projectId}/pins/${pinId}`;
+      return drawingId != null && String(drawingId).trim() !== ""
+        ? `${base}?drawingId=${drawingId}`
+        : base;
+    },
+    projectLocationDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
+      const base = `/projects/${projectId}/locations/${pinId}`;
       return drawingId != null && String(drawingId).trim() !== ""
         ? `${base}?drawingId=${drawingId}`
         : base;
@@ -78,5 +85,7 @@ export const routes = {
     settingsZohoWebhookSetup: "/settings/integrations/zoho/webhook-setup",
     projectJobsForms: "/projects/[id]/job-forms",
     settingsTitle: "/settings/title-settings",
+    settingsKiosks: "/settings/kiosks",
+    settingsKiosk: "/settings/kiosks",
   },
 } as const;

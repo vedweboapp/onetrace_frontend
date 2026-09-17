@@ -3,7 +3,12 @@
 import React from "react";
 import { Country } from "country-state-city";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
-import { surfaceSelectClassName } from "@/shared/ui";
+import {
+  FieldErrorText,
+  FieldGroup,
+  surfaceSelectClassName,
+} from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 interface CountrySelectProps {
   label?: React.ReactNode;
@@ -12,10 +17,23 @@ interface CountrySelectProps {
   readOnly?: boolean;
   className?: string;
   placeholder?: string;
-  countryCode?: string;   
-  stateCode?: string;     
-  defaultValue?: string;  
+  countryCode?: string;
+  stateCode?: string;
+  defaultValue?: string;
+  fieldRequired?: boolean;
+  required?: boolean;
+  id?: string;
+  name?: string;
 }
+
+const cleanLabelNode = (label?: React.ReactNode): React.ReactNode => {
+  if (!label) return "";
+  if (typeof label === "string") return label.replace(/[*:]/g, "").trim();
+  return label;
+};
+
+const labelLooksRequired = (label?: React.ReactNode) =>
+  typeof label === "string" && /\*/.test(label);
 
 const CountrySelect = ({
   label,
@@ -24,42 +42,60 @@ const CountrySelect = ({
   readOnly,
   className = "",
   placeholder = "Select Country",
-  countryCode,
-  stateCode,
-  defaultValue,
+  countryCode: _countryCode,
+  stateCode: _stateCode,
+  defaultValue: _defaultValue,
+  fieldRequired,
+  required,
+  id,
+  name,
   ...rest
 }: CountrySelectProps) => {
   const countries = Country.getAllCountries();
+  const selectId = id ?? register?.name ?? name;
+  const isRequired = Boolean(fieldRequired ?? required ?? labelLooksRequired(label));
+  const displayLabel = cleanLabelNode(label);
+
+  const control = (
+    <select
+      id={selectId}
+      name={name}
+      {...register}
+      {...rest}
+      disabled={readOnly}
+      aria-invalid={errors ? true : undefined}
+      className={cn(
+        surfaceSelectClassName,
+        "field-control",
+        readOnly &&
+          "cursor-not-allowed border-slate-200 bg-slate-50 select-none focus-visible:border-slate-200 focus-visible:ring-0 dark:border-slate-700 dark:bg-slate-800/50",
+        errors && "border-red-500 dark:border-red-500",
+        className,
+      )}
+    >
+      <option value="">{placeholder}</option>
+      {countries.map((country) => (
+        <option key={country.isoCode} value={country.isoCode}>
+          {country.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (!label) {
+    return (
+      <div className="relative w-full min-w-0 overflow-visible">
+        {control}
+        <FieldErrorText>{errors?.message}</FieldErrorText>
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex flex-col gap-1 w-full ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-mutedtext">
-          {label}
-        </label>
-      )}
-
-      <select
-        {...register}
-        disabled={readOnly}
-        className={`
-          rounded-[8px] px-3 py-2 outline-none w-full text-slate-900 dark:text-white
-          ${readOnly
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${errors ? "border-red-500" : "border-gray-300 dark:border-slate-700"} ${surfaceSelectClassName}`
-          }
-        `}
-      >
-        <option value="">Select Country</option>
-        {countries.map((country) => (
-          <option key={country.isoCode} value={country.isoCode}>
-            {country.name}
-          </option>
-        ))}
-      </select>
-
-      {errors && <span className="text-red-500 text-xs">{errors.message}</span>}
-    </div>
+    <FieldGroup label={displayLabel} htmlFor={selectId} required={isRequired} className="w-full">
+      {control}
+      <FieldErrorText>{errors?.message}</FieldErrorText>
+    </FieldGroup>
   );
 };
 
