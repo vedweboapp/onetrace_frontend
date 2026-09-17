@@ -1059,3 +1059,14 @@ input[type="number"] {
 .gm-style .gm-style-iw-d:has(.ot-job-pin-card) {
   overflow: hidden !important;
 }
+
+/* Jobs map pins — pointer cursor on hover (Leaflet divIcon). */
+.ot-jobs-map .ot-job-map-leaflet-pin,
+.ot-jobs-map .ot-job-map-leaflet-pin * {
+  cursor: pointer !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+.ot-jobs-map .ot-job-map-leaflet-pin .ot-job-map-pin {
+  display: inline-flex;
+}

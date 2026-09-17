@@ -32,7 +32,6 @@ export const routes = {
         : base;
     },
     scheduling: "/scheduling",
-    attendance: "/attendance",
     qrCodes: "/qr-codes",
     projects: "/projects",
     projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {

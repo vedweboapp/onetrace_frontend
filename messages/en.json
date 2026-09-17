@@ -346,7 +346,6 @@
       "flyoutService": "Service",
       "flyoutProject": "Project",
       "scheduling": "Scheduling",
-      "attendance": "Attendance",
       "qrCodes": "QR codes",
       "forms": "Forms",
       "projects": "Projects",
@@ -464,8 +463,11 @@
         "action": "Action",
         "allModules": "All modules",
         "allActions": "All actions",
-        "fromDate": "From date",
-        "toDate": "To date"
+        "fromDate": "From Date",
+        "toDate": "To Date",
+        "clearDates": "Clear Dates",
+        "clearFromDate": "Clear from date",
+        "clearToDate": "Clear to date"
       },
       "modules": {
         "materialRequest": "Material request",
@@ -1993,15 +1995,18 @@
       "fields": {
         "profileName": "Profile Name",
         "profileType": "Profile Type",
-        "description": "Description"
+        "description": "Description",
+        "role": "Role"
       },
       "placeholders": {
         "profileName": "Enter profile name",
         "profileType": "Enter profile type (optional)",
-        "description": "Enter description (optional)"
+        "description": "Enter description (optional)",
+        "role": "Select role"
       },
       "validation": {
-        "profileName": "Profile name is required."
+        "profileName": "Profile name is required.",
+        "role": "Select a role."
       },
       "modal": {
         "save": "Save",
@@ -3874,31 +3879,6 @@
         "recurrenceEnd": "Repeat end date is required"
       }
     },
-    "attendance": {
-      "metaTitle": "Attendance",
-      "title": "Attendance",
-      "subtitle": "See where workers are scheduled today by job site and company HQ.",
-      "searchPlaceholder": "Search locations or workers…",
-      "closeSearch": "Close Search",
-      "filterLabel": "Location Filter",
-      "filterAll": "All",
-      "filterHq": "Company HQ",
-      "filterJobs": "Job Locations",
-      "companyHq": "Company HQ",
-      "jobLocation": "Job Location",
-      "address": "Address",
-      "workersHere": "Workers Here",
-      "workerCount": "{count, plural, one {# worker} other {# workers}}",
-      "noWorkers": "No workers scheduled at this location today.",
-      "workingNow": "Now",
-      "openJob": "Open Job",
-      "panelTitle": "Location Details",
-      "closePanel": "Close Location Panel",
-      "emptyTitle": "No Locations To Show",
-      "emptyDescription": "There are no scheduled job sites or company HQ address that can be placed on the map for today.",
-      "loadError": "Could not load attendance. Try again.",
-      "retry": "Retry"
-    },
     "jobs": {
       "metaTitle": "Jobs",
       "detailMetaTitle": "Job Details",
@@ -3956,6 +3936,8 @@
         "emptyDescription": "None of these jobs have a site address that can be placed on the map. Add site address details to show pins.",
         "skippedCount": "{count, plural, one {# job has no usable map location and is listed below.} other {# jobs have no usable map location and are listed below.}}",
         "ariaMap": "Jobs map",
+        "loadingMap": "Loading map…",
+        "loadMapError": "Could not load Google Maps. Check your API key and try again.",
         "jobId": "Job ID",
         "address": "Address",
         "site": "Site",
@@ -3963,7 +3945,9 @@
         "status": "Status",
         "viewDetails": "Details",
         "openJob": "Open job",
-        "panelTitle": "Job location",
+        "panelTitle": "Job details",
+        "panelSubtitle": "Loading job overview…",
+        "loadDetailError": "Could not load this job. Try again.",
         "closePanel": "Close job panel",
         "unmappedTitle": "Jobs not shown on map",
         "unmappedDescription": "{count, plural, one {# job could not be placed on the map.} other {# jobs could not be placed on the map.}}",

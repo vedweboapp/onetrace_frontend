@@ -339,7 +339,6 @@
       "flyoutService": "Servicio",
       "flyoutProject": "Proyecto",
       "scheduling": "Programación",
-      "attendance": "Asistencia",
       "qrCodes": "Códigos QR",
       "forms": "Formularios",
       "projects": "Proyectos",
@@ -458,7 +457,10 @@
         "allModules": "Todos los módulos",
         "allActions": "Todas las acciones",
         "fromDate": "Desde",
-        "toDate": "Hasta"
+        "toDate": "Hasta",
+        "clearDates": "Borrar fechas",
+        "clearFromDate": "Borrar fecha desde",
+        "clearToDate": "Borrar fecha hasta"
       },
       "modules": {
         "materialRequest": "Solicitud de material",
@@ -1982,15 +1984,18 @@
       "fields": {
         "profileName": "Nombre del perfil",
         "profileType": "Tipo de perfil",
-        "description": "Descripción"
+        "description": "Descripción",
+        "role": "Rol"
       },
       "placeholders": {
         "profileName": "Introduce el nombre del perfil",
         "profileType": "Introduce el tipo de perfil (opcional)",
-        "description": "Introduce una descripción (opcional)"
+        "description": "Introduce una descripción (opcional)",
+        "role": "Selecciona un rol"
       },
       "validation": {
-        "profileName": "El nombre del perfil es obligatorio."
+        "profileName": "El nombre del perfil es obligatorio.",
+        "role": "Selecciona un rol."
       },
       "modal": {
         "save": "Guardar",
@@ -3859,31 +3864,6 @@
         "recurrenceEnd": "La fecha de fin de repetición es obligatoria"
       }
     },
-    "attendance": {
-      "metaTitle": "Asistencia",
-      "title": "Asistencia",
-      "subtitle": "Consulta dónde están programados los trabajadores hoy por sitio de trabajo y sede.",
-      "searchPlaceholder": "Buscar ubicaciones o trabajadores…",
-      "closeSearch": "Cerrar búsqueda",
-      "filterLabel": "Filtro de ubicación",
-      "filterAll": "Todos",
-      "filterHq": "Sede de la empresa",
-      "filterJobs": "Ubicaciones de trabajo",
-      "companyHq": "Sede de la empresa",
-      "jobLocation": "Ubicación del trabajo",
-      "address": "Dirección",
-      "workersHere": "Trabajadores aquí",
-      "workerCount": "{count, plural, one {# trabajador} other {# trabajadores}}",
-      "noWorkers": "No hay trabajadores programados en esta ubicación hoy.",
-      "workingNow": "Ahora",
-      "openJob": "Abrir trabajo",
-      "panelTitle": "Detalles de la ubicación",
-      "closePanel": "Cerrar panel de ubicación",
-      "emptyTitle": "No hay ubicaciones para mostrar",
-      "emptyDescription": "No hay sitios de trabajo programados ni dirección de sede que se puedan colocar en el mapa para hoy.",
-      "loadError": "No se pudo cargar la asistencia. Inténtalo de nuevo.",
-      "retry": "Reintentar"
-    },
     "jobs": {
       "metaTitle": "Trabajos",
       "detailMetaTitle": "Detalles del trabajo",
@@ -3941,6 +3921,8 @@
         "emptyDescription": "Ninguno de estos trabajos tiene una dirección de sitio que se pueda ubicar en el mapa. Añade detalles de dirección para mostrar pines.",
         "skippedCount": "{count, plural, one {# trabajo no tiene ubicación usable y se lista abajo.} other {# trabajos no tienen ubicación usable y se listan abajo.}}",
         "ariaMap": "Mapa de trabajos",
+        "loadingMap": "Cargando mapa…",
+        "loadMapError": "No se pudo cargar Google Maps. Revisa la clave de API e inténtalo de nuevo.",
         "jobId": "ID del trabajo",
         "address": "Dirección",
         "site": "Sitio",
@@ -3948,7 +3930,9 @@
         "status": "Estado",
         "viewDetails": "Detalles",
         "openJob": "Abrir trabajo",
-        "panelTitle": "Ubicación del trabajo",
+        "panelTitle": "Detalles del trabajo",
+        "panelSubtitle": "Cargando resumen del trabajo…",
+        "loadDetailError": "No se pudo cargar este trabajo. Inténtalo de nuevo.",
         "closePanel": "Cerrar panel del trabajo",
         "unmappedTitle": "Trabajos no mostrados en el mapa",
         "unmappedDescription": "{count, plural, one {# trabajo no se pudo ubicar en el mapa.} other {# trabajos no se pudieron ubicar en el mapa.}}",

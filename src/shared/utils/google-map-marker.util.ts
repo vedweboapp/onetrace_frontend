@@ -28,12 +28,15 @@ export function createAdvancedMarker(options: {
   lng: number;
   title?: string;
   draggable?: boolean;
+  /** Custom pin element (use for pointer cursor / branded markers). */
+  content?: HTMLElement;
 }): GoogleAdvancedMarker {
   return new google.maps.marker.AdvancedMarkerElement({
     map: options.map,
     position: { lat: options.lat, lng: options.lng },
     title: options.title,
     gmpDraggable: options.draggable === true,
+    ...(options.content ? { content: options.content } : {}),
   });
 }
 

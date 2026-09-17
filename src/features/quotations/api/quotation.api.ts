@@ -118,13 +118,15 @@ export async function fetchProjectLevelsForQuotation(projectId: number): Promise
   try {
     const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
       dropdown: true,
+      // Rarely >100 levels; larger page cuts page-2+ spam while still covering select-all.
+      fetchAllPages: true,
       silent: true,
       fetchFirst: async () => {
         const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
           skipErrorToast: true,
-          params: { page_size: 20, dropdown: true },
+          params: { page_size: 100, dropdown: true },
         });
-        return parseListApiPage<ProjectLevelForQuotation>(data, 20);
+        return parseListApiPage<ProjectLevelForQuotation>(data, 100);
       },
     });
     return items
@@ -139,13 +141,14 @@ export async function fetchProjectLevelRowsForQuotation(projectId: number): Prom
   try {
     const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
       dropdown: true,
+      fetchAllPages: true,
       silent: true,
       fetchFirst: async () => {
         const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
           skipErrorToast: true,
-          params: { page_size: 20, dropdown: true },
+          params: { page_size: 100, dropdown: true },
         });
-        return parseListApiPage<ProjectLevelForQuotation>(data, 20);
+        return parseListApiPage<ProjectLevelForQuotation>(data, 100);
       },
     });
     return items;
