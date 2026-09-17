@@ -5,6 +5,8 @@ import L from "leaflet";
 import { useTranslations } from "next-intl";
 import "leaflet/dist/leaflet.css";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
+import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
+import { fitLeafletMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import { cn } from "@/core/utils/http.util";
 
@@ -15,6 +17,7 @@ type Props = {
   selectedJobId: number | null;
   onPinClick: (jobId: number) => void;
   onOpenDetails: (jobId: number) => void;
+  onResolvedPinsChange?: (jobIds: number[]) => void;
   className?: string;
 };
 
@@ -31,15 +34,14 @@ function ensureLeafletDefaultIcons() {
   });
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails, className }: Props) {
+export function JobsLeafletMap({
+  pins,
+  selectedJobId,
+  onPinClick,
+  onOpenDetails,
+  onResolvedPinsChange,
+  className,
+}: Props) {
   const t = useTranslations("Dashboard.jobs.mapView");
   ensureLeafletDefaultIcons();
 
@@ -48,8 +50,10 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
   const markersRef = React.useRef<Map<number, L.Marker>>(new Map());
   const onPinClickRef = React.useRef(onPinClick);
   const onOpenDetailsRef = React.useRef(onOpenDetails);
+  const onResolvedPinsChangeRef = React.useRef(onResolvedPinsChange);
   onPinClickRef.current = onPinClick;
   onOpenDetailsRef.current = onOpenDetails;
+  onResolvedPinsChangeRef.current = onResolvedPinsChange;
 
   const [resolved, setResolved] = React.useState<ResolvedPin[]>([]);
   const [status, setStatus] = React.useState<"idle" | "ready">("idle");
@@ -75,13 +79,19 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
     if (pins.length === 0) {
       setResolved([]);
       setStatus("idle");
+      onResolvedPinsChangeRef.current?.([]);
       return;
     }
     void (async () => {
       const next: ResolvedPin[] = [];
       for (const pin of pins) {
         const coords = pin.coordinates;
-        if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
+        if (
+          coords &&
+          Number.isFinite(coords.lat) &&
+          Number.isFinite(coords.lon) &&
+          isPlausibleMapCoordinate(coords.lat, coords.lon)
+        ) {
           next.push({ ...pin, lat: coords.lat, lon: coords.lon });
           continue;
         }
@@ -100,7 +110,12 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
           const res = await fetch(`/api/geocode?${qs}`);
           if (!res.ok) continue;
           const json = (await res.json()) as { found?: boolean; lat?: number; lon?: number };
-          if (json.found && json.lat != null && json.lon != null) {
+          if (
+            json.found &&
+            json.lat != null &&
+            json.lon != null &&
+            isPlausibleMapCoordinate(json.lat, json.lon)
+          ) {
             next.push({ ...pin, lat: json.lat, lon: json.lon });
           }
         } catch {
@@ -109,7 +124,8 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
       }
       if (!cancelled) {
         setResolved(next);
-        setStatus(next.length > 0 ? "ready" : "idle");
+        setStatus("ready");
+        onResolvedPinsChangeRef.current?.(next.map((p) => p.jobId));
       }
     })();
     return () => {
@@ -124,9 +140,12 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
       mapRef.current = L.map(el, {
         scrollWheelZoom: true,
         zoomControl: true,
+        minZoom: 3,
+        worldCopyJump: false,
       }).setView([20.5937, 78.9629], 4);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
+        noWrap: true,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(mapRef.current);
     }
@@ -145,20 +164,10 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
     for (const marker of markersRef.current.values()) marker.remove();
     markersRef.current.clear();
 
-    const bounds = L.latLngBounds([]);
     for (const pin of resolved) {
       const marker = L.marker([pin.lat, pin.lon], { title: pin.label }).addTo(map);
-      const html = `
-        <div style="min-width:180px;max-width:240px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:4px;">${escapeHtml(pin.jobLabel)}</div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:2px;">${escapeHtml(t("jobId"))} #${pin.jobId}</div>
-          <div style="font-size:12px;line-height:1.35;color:#334155;">${escapeHtml(pin.addressText || "—")}</div>
-          <button type="button" class="ot-job-map-details" data-job-id="${pin.jobId}" style="margin-top:8px;border:0;background:#0f172a;color:#fff;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;">
-            ${escapeHtml(t("viewDetails"))}
-          </button>
-        </div>
-      `;
-      marker.bindPopup(html, { maxWidth: 280, className: "ot-job-map-popup" });
+      const html = buildJobPinPopupHtml(pin, { openAriaLabel: t("viewDetails") });
+      marker.bindPopup(html, { maxWidth: 320, className: "ot-job-map-popup", closeButton: true });
       marker.on("click", () => {
         onPinClickRef.current(pin.jobId);
       });
@@ -174,14 +183,9 @@ export function JobsLeafletMap({ pins, selectedJobId, onPinClick, onOpenDetails,
         };
       });
       markersRef.current.set(pin.jobId, marker);
-      bounds.extend([pin.lat, pin.lon]);
     }
 
-    if (resolved.length === 1) {
-      map.setView([resolved[0]!.lat, resolved[0]!.lon], 14);
-    } else if (resolved.length > 1) {
-      map.fitBounds(bounds.pad(0.18));
-    }
+    fitLeafletMapToPins(map, () => L.latLngBounds([]), resolved);
     requestAnimationFrame(() => map.invalidateSize());
   }, [status, resolved, t]);
 

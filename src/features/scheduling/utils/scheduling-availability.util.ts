@@ -56,6 +56,22 @@ export function getDayAvailabilityWindow(
   return { startMinutes, endMinutes };
 }
 
+/** Shared bookable window across workers (null if any worker has none / no overlap). */
+export function intersectAvailabilityWindows(
+  windows: Array<AvailabilityWindow | null | undefined>,
+): AvailabilityWindow | null {
+  if (windows.length === 0) return null;
+  let startMinutes = 0;
+  let endMinutes = 24 * 60;
+  for (const window of windows) {
+    if (!window) return null;
+    startMinutes = Math.max(startMinutes, window.startMinutes);
+    endMinutes = Math.min(endMinutes, window.endMinutes);
+  }
+  if (endMinutes <= startMinutes) return null;
+  return { startMinutes, endMinutes };
+}
+
 export function hasAvailabilityData(availableDays: UserAvailabilityPayloadRow[] | null | undefined): boolean {
   return Array.isArray(availableDays) && availableDays.length > 0;
 }

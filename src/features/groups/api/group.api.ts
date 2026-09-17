@@ -3,6 +3,11 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { GROUP_PATHS } from "./group.paths";
 import type {
   Group,
@@ -20,6 +25,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 export type GroupListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
 
 export async function fetchGroupsPage(
@@ -27,13 +33,18 @@ export async function fetchGroupsPage(
   pageSize = 20,
   filters?: GroupListFilters,
 ): Promise<{ items: Group[]; pagination: GroupListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<GroupListResponse>(GROUP_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<GroupListResponse>(GROUP_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function fetchAllGroupIds(filters?: GroupListFilters): Promise<number[]> {

@@ -111,7 +111,7 @@ export function PurchaseOrdersPanel() {
   const [projectOptions, setProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const loadVendorOptions = React.useCallback(async () => {
-    const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+    const { items: vendors } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
     return vendors.map((v) => ({ value: String(v.id), label: v.name }));
   }, []);
 
@@ -179,8 +179,8 @@ export function PurchaseOrdersPanel() {
     (async () => {
       try {
         const [contactsRes, projectsRes] = await Promise.all([
-          fetchContactsPage(1, 500, { contact_type: "vendor", is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
+          fetchContactsPage(1, 20, { contact_type: "vendor", is_active: true, dropdown: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setContactOptions(

@@ -115,7 +115,7 @@ export function QrCodesPanel() {
   const [fetchJobOptions, setFetchJobOptions] = React.useState(false);
 
   const loadJobOptions = React.useCallback(async () => {
-    const { items: jobs } = await fetchJobsPage(1, 500, undefined, { silent: true });
+    const { items: jobs } = await fetchJobsPage(1, 20, { dropdown: true }, { silent: true });
     return jobs.map((j) => ({
       value: String(j.id),
       label: j.title?.trim() || `#${j.id}`,

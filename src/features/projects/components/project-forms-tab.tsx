@@ -167,7 +167,7 @@ export function ProjectFormsTab() {
           }
           return;
         }
-        const { items: forms } = await fetchFormsPage(1, 500, { project_type: projectTypeId }, { silent: true });
+        const { items: forms } = await fetchFormsPage(1, 20, { project_type: projectTypeId, dropdown: true }, { silent: true });
         if (!cancelled) {
           const assignedIds = Array.isArray(project.form_ids)
             ? project.form_ids

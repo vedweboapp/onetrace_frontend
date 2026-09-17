@@ -67,7 +67,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   const [vendorTypeModalOpen, setVendorTypeModalOpen] = React.useState(false);
 
   const loadTypeOptions = React.useCallback(async () => {
-    const { items } = await fetchVendorTypesPage(1, 100, { is_active: true });
+    const { items } = await fetchVendorTypesPage(1, 20, { is_active: true, dropdown: true });
     setTypeOptions(items.map((row) => ({ value: String(row.id), label: row.name })));
   }, []);
 

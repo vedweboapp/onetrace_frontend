@@ -99,12 +99,12 @@ export function ContactsPanel() {
   const [fetchVendorOptions, setFetchVendorOptions] = React.useState(() => Boolean(vendorParam));
 
   const loadClientOptions = React.useCallback(async () => {
-    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
     return clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
   const loadVendorOptions = React.useCallback(async () => {
-    const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+    const { items: vendors } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
     return vendors.map((v) => ({ value: String(v.id), label: v.name }));
   }, []);
 

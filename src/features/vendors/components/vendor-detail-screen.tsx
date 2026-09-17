@@ -4,6 +4,8 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
 import { deleteVendor, fetchVendor } from "@/features/vendors/api/vendor.api";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
@@ -27,6 +29,7 @@ type Props = {
 
 export function VendorDetailScreen({ vendorId }: Props) {
   const t = useTranslations("Dashboard.vendors");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -39,8 +42,9 @@ export function VendorDetailScreen({ vendorId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "items", label: t("detail.tabs.items") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
@@ -151,6 +155,12 @@ export function VendorDetailScreen({ vendorId }: Props) {
             <EntityContactsTab entityType="vendor" entityId={detail.id} />
           ) : detail && activeTab === "items" ? (
             <VendorItemsTab vendorId={detail.id} />
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.vendor}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
           ) : null}
         </div>
       )}

@@ -170,7 +170,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     (async () => {
       setUnitTypesError(null);
       try {
-        const { items } = await fetchUnitTypesPage(1, 500, { is_active: true });
+        const { items } = await fetchUnitTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const options = items.map((row) => ({
             value: String(row.id),
@@ -193,7 +193,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     (async () => {
       setVendorsError(null);
       try {
-        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        const { items } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
         }
@@ -263,7 +263,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const reloadVendors = React.useCallback(async () => {
     setVendorsError(null);
     try {
-      const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+      const { items } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
       setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
     } catch {
       setVendorsError(tModal("vendorsLoadError"));

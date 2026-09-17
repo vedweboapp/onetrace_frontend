@@ -8,6 +8,11 @@ import type {
   WorkflowColourStatusListResponse,
   WorkflowColourStatusUpdatePayload,
 } from "@/shared/types/workflow-colour-status.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { MATERIAL_STATUS_PATHS } from "./material-status.paths";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
@@ -74,6 +79,7 @@ function toPatchBody(body: WorkflowColourStatusUpdatePayload): Record<string, st
 export type MaterialStatusListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export async function fetchMaterialStatusesPage(
@@ -85,16 +91,22 @@ export async function fetchMaterialStatusesPage(
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (filters?.is_active !== undefined) params.is_active = filters.is_active;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<WorkflowColourStatusListResponse>(
-    MATERIAL_STATUS_PATHS.list,
-    { params },
-  );
-  assertEnvelopeSuccess(data);
-  return {
-    items: (data.data as unknown as MaterialStatusApiRow[]).map(normalizeMaterialStatusRow),
-    pagination: data.pagination,
-  };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<WorkflowColourStatusListResponse>(
+        MATERIAL_STATUS_PATHS.list,
+        { params },
+      );
+      const page = parseListApiPage<MaterialStatusApiRow>(data, pageSize);
+      return {
+        items: page.items.map(normalizeMaterialStatusRow),
+        pagination: page.pagination as never,
+      };
+    },
+  });
 }
 
 export async function fetchMaterialStatus(id: number): Promise<WorkflowColourStatus> {

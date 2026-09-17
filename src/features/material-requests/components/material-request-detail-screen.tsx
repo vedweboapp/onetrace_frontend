@@ -3,9 +3,11 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchMaterialRequest } from "@/features/material-requests/api/material-request.api";
 import { MaterialRequestDetailBody } from "@/features/material-requests/components/material-request-detail-body";
-import { MaterialRequestDetailTimeline } from "@/features/material-requests/components/material-request-detail-timeline";
+import { MaterialRequestDispatchesTab } from "@/features/material-requests/components/material-request-dispatches-tab";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
@@ -18,6 +20,7 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { routes } from "@/shared/config/routes";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { AppButton, AppTabs } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   materialRequestId: number;
@@ -25,6 +28,7 @@ type Props = {
 
 export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
   const t = useTranslations("Dashboard.materialRequests");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const [activeTab, setActiveTab] = React.useState("overview");
@@ -67,9 +71,10 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
   const detailTabs = React.useMemo(
     () => [
       { id: "overview", label: t("detail.tabOverview") },
-      { id: "logs", label: t("detail.tabActivityTimeline") },
+      { id: "dispatches", label: t("detail.tabDispatches") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   return (
@@ -114,7 +119,10 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
           role="tabpanel"
           id={`material-request-detail-tab-${activeTab}`}
           aria-labelledby={`material-request-detail-tab-trigger-${activeTab}`}
-          className={entityDetailTabPanelClassName}
+          className={cn(
+            entityDetailTabPanelClassName,
+            activeTab === "dispatches" && "flex min-h-0 flex-1 flex-col",
+          )}
         >
           {loading ? (
             <EntityDetailLoadingSkeleton />
@@ -141,8 +149,14 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
                 />
               );
             })()
-          ) : detail && activeTab === "logs" ? (
-            <MaterialRequestDetailTimeline materialRequestId={detail.id} dateFmt={dateFmt} />
+          ) : detail && activeTab === "dispatches" ? (
+            <MaterialRequestDispatchesTab materialRequestId={detail.id} />
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.materialRequest}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
           ) : null}
         </div>
       )}

@@ -94,7 +94,7 @@ export function SiteDetailContactPersonsEditor({
     let cancelled = false;
     void (async () => {
       try {
-        const { items } = await fetchTitlesPage(1, 500);
+        const { items } = await fetchTitlesPage(1, 20, { dropdown: true });
         if (!cancelled) setTitles(items);
       } catch {
         if (!cancelled) setTitles([]);
@@ -113,7 +113,7 @@ export function SiteDetailContactPersonsEditor({
         return;
       }
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: clientId, is_active: true });
+        const { items } = await fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true });
         if (!cancelled) {
           setContactOptions(
             items.map((c) => ({

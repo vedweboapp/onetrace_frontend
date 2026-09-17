@@ -178,7 +178,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     (async () => {
       setUnitTypesError(null);
       try {
-        const { items: next } = await fetchUnitTypesPage(1, 500, { is_active: true });
+        const { items: next } = await fetchUnitTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const options = next.map((row) => ({
             value: String(row.id),
@@ -202,7 +202,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     (async () => {
       setVendorsError(null);
       try {
-        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        const { items } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setVendorOptions(items.map((v) => ({ value: String(v.id), label: v.name })));
         }

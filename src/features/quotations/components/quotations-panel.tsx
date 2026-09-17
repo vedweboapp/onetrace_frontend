@@ -140,7 +140,7 @@ export function QuotationsPanel() {
   const [massUserOptions, setMassUserOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const loadCustomerOptions = React.useCallback(async () => {
-    const { items } = await fetchClientsPage(1, 500, { is_active: true });
+    const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
     return items.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
@@ -192,9 +192,7 @@ export function QuotationsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, {
-          client: customerFilter,
-        });
+        const { items } = await fetchSitesPage(1, 20, { client: customerFilter, dropdown: true });
         if (!cancelled) setSiteRows(items);
       } catch {
         if (!cancelled) setSiteRows([]);
@@ -210,7 +208,7 @@ export function QuotationsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchProjectsPage(1, 500, { is_active: true });
+        const { items } = await fetchProjectsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) setProjectRows(items);
       } catch {
         if (!cancelled) setProjectRows([]);
@@ -227,10 +225,10 @@ export function QuotationsPanel() {
     (async () => {
       try {
         const [contactsRes, tagsRes, roleUsers, sitesRes] = await Promise.all([
-          fetchContactsPage(1, 500, { is_active: true }),
-          fetchTagsPage(1, 500, { is_active: true }),
+          fetchContactsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchTagsPage(1, 20, { is_active: true, dropdown: true }),
           fetchUsersForAppRoles(["technician", "manager", "sales"]),
-          fetchSitesPage(1, 500),
+          fetchSitesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setMassContactOptions(contactsRes.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));

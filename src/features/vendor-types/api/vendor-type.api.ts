@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { VENDOR_TYPE_PATHS } from "./vendor-type.paths";
 import type {
   VendorType,
@@ -52,6 +57,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type VendorTypeListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export async function fetchVendorTypesPage(
@@ -59,16 +65,25 @@ export async function fetchVendorTypesPage(
   pageSize = 20,
   filters?: VendorTypeListFilters,
 ): Promise<{ items: VendorType[]; pagination: VendorTypeListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<VendorTypeListResponse>(VENDOR_TYPE_PATHS.list, {
-    params,
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<VendorTypeListResponse>(VENDOR_TYPE_PATHS.list, {
+        params,
+      });
+      const page = parseListApiPage<VendorTypeApiRow>(data, pageSize);
+      return {
+        items: page.items.map((row) => normalizeVendorType(row)),
+        pagination: page.pagination as never,
+      };
+    },
   });
-  assertEnvelopeSuccess(data);
-  return { items: data.data.map((row) => normalizeVendorType(row as VendorTypeApiRow)), pagination: data.pagination };
 }
 
 export async function fetchVendorType(id: number): Promise<VendorType> {

@@ -257,7 +257,7 @@ export function JobsPanel() {
       try {
         const [workers, statuses] = await Promise.all([
           loadTechnicianOptions(),
-          fetchJobStatusesPage(1, 500),
+          fetchJobStatusesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
@@ -291,9 +291,9 @@ export function JobsPanel() {
     (async () => {
       try {
         const [clients, projects, sites] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchSitesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
@@ -330,13 +330,15 @@ export function JobsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchJobsPage(page, pageSize, {
-          search: search || undefined,
-          job_status: jobStatusFilter,
-          assigned_worker: assignedWorkerFilter,
-          job_type: jobTypeParam || undefined,
-          job_category: jobCategoryParam || undefined,
-        });
+        const isMapView = listViewMode === "map";
+        const { items: nextItems, pagination: p } = await fetchJobsPage(
+          isMapView ? 1 : page,
+          isMapView ? 500 : pageSize,
+          {
+            ...listFilters,
+            ...(isMapView ? { dropdown: true } : {}),
+          },
+        );
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
@@ -354,13 +356,10 @@ export function JobsPanel() {
       cancelled = true;
     };
   }, [
+    listViewMode,
     page,
     pageSize,
-    search,
-    jobCategoryParam,
-    jobStatusFilter,
-    assignedWorkerFilter,
-    jobTypeParam,
+    listFilters,
     refreshNonce,
     t,
   ]);
@@ -722,7 +721,7 @@ export function JobsPanel() {
           />
         )}
 
-        {!listLoading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 && listViewMode !== "map" ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

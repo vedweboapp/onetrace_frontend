@@ -91,7 +91,7 @@ export function VendorsPanel() {
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const loadTypeOptions = React.useCallback(async () => {
-    const { items: types } = await fetchVendorTypesPage(1, 200, { is_active: true });
+    const { items: types } = await fetchVendorTypesPage(1, 20, { is_active: true, dropdown: true });
     return types.map((row) => ({ value: String(row.id), label: row.name }));
   }, []);
 

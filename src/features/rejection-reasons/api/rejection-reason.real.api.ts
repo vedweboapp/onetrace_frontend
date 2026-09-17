@@ -2,6 +2,7 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { REJECTION_REASON_PATHS } from "./rejection-reason.paths";
 import type {
   RejectionReason,
@@ -42,8 +43,7 @@ export async function fetchRejectionReasonsPage(
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
 
   const { data } = await api.get<RejectionReasonListResponse>(REJECTION_REASON_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return parseListApiPage(data, pageSize);
 }
 
 export async function fetchRejectionReason(id: number): Promise<RejectionReason> {

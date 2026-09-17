@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
+import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
+import { fitGoogleMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import {
   clearAdvancedMarker,
@@ -21,31 +23,19 @@ type Props = {
   onPinClick: (jobId: number) => void;
   /** Opens the side details panel. */
   onOpenDetails: (jobId: number) => void;
+  /** Job ids that successfully resolved to a map coordinate. */
+  onResolvedPinsChange?: (jobIds: number[]) => void;
   className?: string;
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function popupHtml(pin: ResolvedPin, labels: { jobId: string; address: string; details: string }): string {
-  return `
-    <div style="max-width:240px;font-family:system-ui,-apple-system,sans-serif;padding:2px 0;">
-      <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(pin.jobLabel)}</div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:2px;">${escapeHtml(labels.jobId)} #${pin.jobId}</div>
-      <div style="font-size:12px;line-height:1.35;color:#334155;">${escapeHtml(pin.addressText || "—")}</div>
-      <button type="button" data-job-details="${pin.jobId}" style="margin-top:8px;border:0;background:#0f172a;color:#fff;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;">
-        ${escapeHtml(labels.details)}
-      </button>
-    </div>
-  `;
-}
-
-export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, className }: Props) {
+export function JobsGoogleMap({
+  pins,
+  selectedJobId,
+  onPinClick,
+  onOpenDetails,
+  onResolvedPinsChange,
+  className,
+}: Props) {
   const t = useTranslations("Dashboard.jobs.mapView");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
@@ -54,8 +44,10 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
   const onPinClickRef = React.useRef(onPinClick);
   const onOpenDetailsRef = React.useRef(onOpenDetails);
+  const onResolvedPinsChangeRef = React.useRef(onResolvedPinsChange);
   onPinClickRef.current = onPinClick;
   onOpenDetailsRef.current = onOpenDetails;
+  onResolvedPinsChangeRef.current = onResolvedPinsChange;
 
   const [mapReady, setMapReady] = React.useState(false);
   const [resolved, setResolved] = React.useState<ResolvedPin[]>([]);
@@ -68,6 +60,7 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
     createGoogleMap(el, {
       center: { lat: 20.5937, lng: 78.9629 },
       zoom: 4,
+      minZoom: 3,
       scrollwheel: true,
       fullscreenControl: true,
       mapTypeControl: false,
@@ -77,7 +70,11 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
       .then(({ google: g, map }) => {
         if (cancelled) return;
         geocoderRef.current = new g.maps.Geocoder();
-        infoRef.current = new g.maps.InfoWindow({ maxWidth: 280 });
+        infoRef.current = new g.maps.InfoWindow({
+          maxWidth: 320,
+          // Strip default header chrome so our card matches Google place popups.
+          headerDisabled: true,
+        } as google.maps.InfoWindowOptions);
         mapRef.current = map;
         map.addListener("click", () => infoRef.current?.close());
         setMapReady(true);
@@ -104,7 +101,12 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
       const next: ResolvedPin[] = [];
       for (const pin of pins) {
         const coords = pin.coordinates;
-        if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
+        if (
+          coords &&
+          Number.isFinite(coords.lat) &&
+          Number.isFinite(coords.lon) &&
+          isPlausibleMapCoordinate(coords.lat, coords.lon)
+        ) {
           next.push({ ...pin, lat: coords.lat, lon: coords.lon });
           continue;
         }
@@ -127,12 +129,19 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
             componentRestrictions: iso.length === 2 ? { country: iso } : undefined,
           });
           const loc = res.results?.[0]?.geometry?.location;
-          if (loc) next.push({ ...pin, lat: loc.lat(), lon: loc.lng() });
+          if (loc) {
+            const lat = loc.lat();
+            const lon = loc.lng();
+            if (isPlausibleMapCoordinate(lat, lon)) next.push({ ...pin, lat, lon });
+          }
         } catch {
-          /* skip */
+          /* skip — reported as invalid_address in the unmapped table */
         }
       }
-      if (!cancelled) setResolved(next);
+      if (!cancelled) {
+        setResolved(next);
+        onResolvedPinsChangeRef.current?.(next.map((p) => p.jobId));
+      }
     })();
 
     return () => {
@@ -145,10 +154,8 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
     const info = infoRef.current;
     if (!map || !info) return;
     info.setContent(
-      popupHtml(pin, {
-        jobId: t("jobId"),
-        address: t("address"),
-        details: t("viewDetails"),
+      buildJobPinPopupHtml(pin, {
+        openAriaLabel: t("viewDetails"),
       }),
     );
     info.open({ map, anchor: marker });
@@ -187,14 +194,7 @@ export function JobsGoogleMap({ pins, selectedJobId, onPinClick, onOpenDetails, 
       listeners.push(() => marker.removeEventListener("gmp-click", onClick));
     }
 
-    if (resolved.length === 1) {
-      map.setCenter({ lat: resolved[0]!.lat, lng: resolved[0]!.lon });
-      map.setZoom(14);
-    } else if (resolved.length > 1) {
-      const bounds = new google.maps.LatLngBounds();
-      for (const pin of resolved) bounds.extend({ lat: pin.lat, lng: pin.lon });
-      map.fitBounds(bounds, 56);
-    }
+    fitGoogleMapToPins(map, resolved);
 
     return () => {
       for (const remove of listeners) remove();

@@ -4,6 +4,7 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { Job, JobListResponse } from "@/features/jobs/types/job.types";
+import { resolveDropdownListPages, parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { QUOTATION_PATHS } from "./quotation.paths";
 import { QUOTE_CATEGORY } from "../constants/quotation-category";
 import type {
@@ -74,8 +75,7 @@ export async function fetchQuotationsPage(
   if (filters?.quote_category?.trim()) params.quote_category = filters.quote_category.trim();
 
   const { data } = await api.get<QuotationListResponse>(QUOTATION_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return parseListApiPage(data, pageSize);
 }
 
 export async function fetchAllQuotationIds(filters?: QuotationListFilters): Promise<number[]> {
@@ -116,13 +116,18 @@ export async function updateQuotation(id: number, body: QuotationUpdatePayload):
 /** Loads selectable levels for a project when composing a quotation. */
 export async function fetchProjectLevelsForQuotation(projectId: number): Promise<QuotationLevelRef[]> {
   try {
-    const { data } = await api.get<ApiEnvelope<ProjectLevelForQuotation[]>>(QUOTATION_PATHS.projectLevels(projectId), {
-      skipErrorToast: true,
-      params: { page_size: 100 },
+    const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
+      dropdown: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
+          skipErrorToast: true,
+          params: { page_size: 20, dropdown: true },
+        });
+        return parseListApiPage<ProjectLevelForQuotation>(data, 20);
+      },
     });
-    assertApiSuccess(data);
-    const rows = Array.isArray(data.data) ? data.data : [];
-    return rows
+    return items
       .map((r) => ({ id: r.id, name: r.name }))
       .filter((r) => Number.isFinite(r.id) && r.id > 0 && typeof r.name === "string");
   } catch {
@@ -132,12 +137,18 @@ export async function fetchProjectLevelsForQuotation(projectId: number): Promise
 
 export async function fetchProjectLevelRowsForQuotation(projectId: number): Promise<ProjectLevelForQuotation[]> {
   try {
-    const { data } = await api.get<ApiEnvelope<ProjectLevelForQuotation[]>>(QUOTATION_PATHS.projectLevels(projectId), {
-      skipErrorToast: true,
-      params: { page_size: 100 },
+    const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
+      dropdown: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
+          skipErrorToast: true,
+          params: { page_size: 20, dropdown: true },
+        });
+        return parseListApiPage<ProjectLevelForQuotation>(data, 20);
+      },
     });
-    assertApiSuccess(data);
-    return Array.isArray(data.data) ? data.data : [];
+    return items;
   } catch {
     return [];
   }
@@ -165,11 +176,18 @@ export async function createProjectLevelForQuotation(
 /** Optional; used to populate user role dropdowns when the route exists. */
 export async function fetchWorkspaceUsers(): Promise<WorkspaceUserRow[]> {
   try {
-    const { data } = await api.get<{ success: boolean; data: WorkspaceUserRow[] }>("users/", {
-      params: { page_size: 500 },
-      skipErrorToast: true,
+    const { items } = await resolveDropdownListPages<WorkspaceUserRow>({
+      dropdown: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get("users/", {
+          params: { page_size: 20, dropdown: true },
+          skipErrorToast: true,
+        });
+        return parseListApiPage(data, 20);
+      },
     });
-    if (data?.success && Array.isArray(data.data)) return data.data;
+    return items;
   } catch {
     /* route may be absent or named differently on the API */
   }

@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { UNIT_TYPE_PATHS } from "./unit-type.paths";
 import type {
   UnitType,
@@ -35,6 +40,7 @@ function toUnitTypeWritePayload(body: UnitTypeCreatePayload | UnitTypeUpdatePayl
 export type UnitTypeListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export async function fetchUnitTypesPage(
@@ -42,14 +48,19 @@ export async function fetchUnitTypesPage(
   pageSize = 20,
   filters?: UnitTypeListFilters,
 ): Promise<{ items: UnitType[]; pagination: UnitTypeListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<UnitTypeListResponse>(UNIT_TYPE_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<UnitTypeListResponse>(UNIT_TYPE_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function fetchUnitType(id: number): Promise<UnitType> {

@@ -178,7 +178,7 @@ export function ReturnToStockPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: dispatches } = await fetchDispatchesPage(1, 500);
+        const { items: dispatches } = await fetchDispatchesPage(1, 20, { dropdown: true });
         if (cancelled) return;
         const seen = new Set<number>();
         const options: { value: string; label: string }[] = [];

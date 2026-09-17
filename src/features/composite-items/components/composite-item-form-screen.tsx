@@ -393,7 +393,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const reloadItems = React.useCallback(async () => {
     setItemsError(null);
     try {
-      const { items: next } = await fetchItemsPage(1, 500, { isComposite: false });
+      const { items: next } = await fetchItemsPage(1, 20, { isComposite: false, dropdown: true });
       setItemOptions(next);
     } catch {
       setItemsError(tModal("itemsLoadError"));
@@ -562,7 +562,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     (async () => {
       setItemsError(null);
       try {
-        const itemsRes = await fetchItemsPage(1, 500, { isComposite: false });
+        const itemsRes = await fetchItemsPage(1, 20, { isComposite: false, dropdown: true });
         if (!cancelled) setItemOptions(itemsRes.items);
       } catch {
         if (!cancelled) setItemsError(tModal("itemsLoadError"));
@@ -572,7 +572,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     (async () => {
       setInstallationTypesError(null);
       try {
-        const installationTypesRes = await fetchInstallationTypesPage(1, 500, { is_active: true });
+        const installationTypesRes = await fetchInstallationTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setInstallationTypeOptions(
             installationTypesRes.items.map((row) => ({
@@ -589,7 +589,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     (async () => {
       setUnitTypesError(null);
       try {
-        const unitTypesRes = await fetchUnitTypesPage(1, 500, { is_active: true });
+        const unitTypesRes = await fetchUnitTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const options = unitTypesRes.items.map((row) => ({
             value: String(row.id),

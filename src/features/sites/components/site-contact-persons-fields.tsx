@@ -45,7 +45,7 @@ export function SiteContactPersonsFields({
     }
     setLoadingContacts(true);
     try {
-      const { items } = await fetchContactsPage(1, 500, { client: clientId, is_active: true });
+      const { items } = await fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true });
       setContactOptions(
         items.map((c) => ({
           value: String(c.id),
@@ -70,7 +70,7 @@ export function SiteContactPersonsFields({
     let cancelled = false;
     void (async () => {
       try {
-        const { items } = await fetchTitlesPage(1, 500);
+        const { items } = await fetchTitlesPage(1, 20, { dropdown: true });
         if (!cancelled) {
           setTitles(items);
         }
