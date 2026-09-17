@@ -377,6 +377,7 @@
       "formBuilder": "Creador de formularios",
       "projectForms": "Formularios de proyecto",
       "modules": "Módulos",
+      "kiosks": "Quioscos",
       "integrations": "Integraciones",
       "auditLogs": "Registros de auditoría",
       "hint": "Personaliza el tema y el color de acento de este espacio.",
@@ -2388,6 +2389,10 @@
       "pageLabel": "Mostrando {start}-{end} de {total} formularios",
       "prev": "Anterior",
       "next": "Siguiente",
+      "filterCategory": "Categoría de trabajo",
+      "filterAllCategories": "Todas las categorías",
+      "categoryService": "Trabajo de servicio",
+      "categoryProject": "Trabajo de proyecto",
       "columns": {
         "id": "ID",
         "job": "Trabajo",
@@ -2945,6 +2950,7 @@
         "project": "Proyecto y datos",
         "details": "Datos",
         "pricing": "Alcance y precios",
+        "vendorQuotations": "Cotizaciones de proveedores",
         "prevToProject": "Anterior: Proyecto y datos",
         "prevToDetails": "Anterior: Datos",
         "nextToPricing": "Siguiente: Alcance y precios"
@@ -4278,6 +4284,7 @@
         "yes": "Sí",
         "no": "No",
         "noFormAssigned": "No hay formulario asignado a este pin.",
+        "noFormFields": "Este formulario aún no tiene campos.",
         "formSubmitted": "Enviado",
         "formNotSubmitted": "No enviado",
         "formImages": "Imágenes del formulario"

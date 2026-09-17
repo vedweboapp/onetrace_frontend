@@ -277,6 +277,7 @@ export function DrawingPinPreviewModal({
   detailsFooter,
 }: DrawingPinPreviewModalProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement | null>(null);
   const t = useTranslations("Dashboard.projects.drawings.editor");
   const [pageSize, setPageSize] = React.useState<{ width: number; height: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -296,16 +297,45 @@ export function DrawingPinPreviewModal({
   React.useEffect(() => {
     if (open) {
       setPageSize(null);
-      setLoading(!hideDrawing);
+      // Only show loading spinner if there is actually a file to load
+      setLoading(!hideDrawing && Boolean(normalizedFileUrl));
       setIsPanning(false);
     }
-  }, [open, drawingFile, hideDrawing]);
+  }, [open, drawingFile, hideDrawing, normalizedFileUrl]);
+
+  // Check if cached image is already complete in DOM
+  React.useEffect(() => {
+    if (!open || hideDrawing || isPdf || !normalizedFileUrl) return;
+    const img = imgRef.current;
+    if (img && img.complete) {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setPageSize((prev) => prev ?? { width: img.naturalWidth, height: img.naturalHeight });
+      }
+      setLoading(false);
+    }
+  }, [open, hideDrawing, isPdf, normalizedFileUrl]);
+
+  // Safety fallback: ensure loading spinner doesn't get stuck indefinitely
+  React.useEffect(() => {
+    if (!open || hideDrawing || !normalizedFileUrl) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [open, hideDrawing, normalizedFileUrl]);
 
   React.useEffect(() => {
     if (!pdfFailed || hideDrawing) return;
     setLoading(false);
     toastError("Failed to render blueprint PDF drawing");
   }, [pdfFailed, hideDrawing]);
+
+  // Safety: clear loading when PDF hook resolves (success or failure)
+  React.useEffect(() => {
+    if (!open || hideDrawing || !isPdf || !normalizedFileUrl) return;
+    if (!pdfFile && !pdfFailed) return;
+    setLoading(false);
+  }, [open, hideDrawing, isPdf, normalizedFileUrl, pdfFile, pdfFailed]);
 
   // Centering scroll viewport on pin after page size is resolved
   React.useEffect(() => {
@@ -391,9 +421,10 @@ export function DrawingPinPreviewModal({
     if (open) {
       setIsEditing(false);
       setPinEditData(null);
-      setDetailsOpen(embedded || hideDrawing);
+      // Auto-open details when: embedded, hideDrawing, or no drawing file to interact with
+      setDetailsOpen(embedded || hideDrawing || !normalizedFileUrl);
     }
-  }, [open, embedded, hideDrawing, pin?.id]);
+  }, [open, embedded, hideDrawing, normalizedFileUrl, pin?.id]);
 
   async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
     if (!files.length) return [];
@@ -655,12 +686,21 @@ export function DrawingPinPreviewModal({
                   ) : null
                 ) : (
                   <img
+                    ref={(el) => {
+                      imgRef.current = el;
+                      if (el && el.complete && el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize((prev) => prev ?? { width: el.naturalWidth, height: el.naturalHeight });
+                        setLoading(false);
+                      }
+                    }}
                     src={normalizedFileUrl}
                     alt={drawingName}
                     className="block max-w-none rounded-lg"
                     onLoad={(e) => {
                       const el = e.currentTarget;
-                      setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                        setPageSize({ width: el.naturalWidth, height: el.naturalHeight });
+                      }
                       setLoading(false);
                     }}
                     onError={() => {

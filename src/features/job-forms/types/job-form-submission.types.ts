@@ -1,3 +1,5 @@
+import type { QualityAssuranceRecord } from "@/features/jobs/types/quality-assurance.types";
+
 export type JobFormSubmissionValue = {
   field_id: number;
   value: string;
@@ -26,10 +28,12 @@ export type JobFormSubmission = {
   worker_name?: string | null;
   status: string;
   remarks?: string | null;
+  service_based_form_quality_assurance?: QualityAssuranceRecord | null;
   values: JobFormSubmissionValue[];
   files?: JobFormSubmissionFile[];
   submitted_at?: string | null;
   modified_at?: string | null;
+  submission_id?: number;
 };
 
 /** POST /jobs/{id}/submit-form/ summary payload (fetch detail for full values). */
@@ -52,6 +56,7 @@ export type WorkerFormSubmissionListItem = {
   job_id?: number | null;
   job_serial_number?: string | null;
   job_name?: string | null;
+  job_category?: string | null;
   status: string;
   submitted_at?: string | null;
 };

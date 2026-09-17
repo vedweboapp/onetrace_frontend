@@ -82,8 +82,19 @@ export async function fetchAllQuotationIds(filters?: QuotationListFilters): Prom
   return fetchAllEntityIds((page, pageSize) => fetchQuotationsPage(page, pageSize, filters));
 }
 
-export async function fetchQuotation(id: number): Promise<QuotationDetail> {
-  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id));
+export type FetchQuotationOptions = {
+  include?: string;
+};
+
+export async function fetchQuotation(
+  id: number,
+  options?: FetchQuotationOptions,
+): Promise<QuotationDetail> {
+  const params: Record<string, string> = {};
+  if (options?.include) params.include = options.include;
+  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
   assertApiSuccess(data);
   return data.data;
 }
@@ -289,8 +300,17 @@ export async function exportQuotation(
   }
 }
 
-export async function sendQuotation(id: number): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id));
+export type SendQuotationPayload =
+  | {
+      notification_send_to: "client";
+    }
+  | {
+      notification_send_to: "vendors";
+      vendor_ids: number[];
+    };
+
+export async function sendQuotation(id: number, body?: SendQuotationPayload): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id), body);
   assertApiSuccess(data);
 }
 
@@ -307,4 +327,24 @@ function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
 export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
   const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
   return parseJobCreateResponse(data);
+}
+
+export type CreatePurchaseOrderItemPayload = {
+  composite_item: number;
+  quantity: number;
+  vendor: number;
+  [key: string]: any;
+};
+
+export type CreatePurchaseOrderPayload = {
+  items: CreatePurchaseOrderItemPayload[];
+};
+
+/** POST `quotations/:id/create-purchase-order/` — creates purchase order for selected quotation items. */
+export async function createPurchaseOrderFromQuotation(
+  quotationId: number,
+  payload: CreatePurchaseOrderPayload,
+): Promise<{ success: boolean; message?: string; data?: any }> {
+  const { data } = await api.post<ApiEnvelope<any>>(QUOTATION_PATHS.createPurchaseOrder(quotationId), payload);
+  return data;
 }

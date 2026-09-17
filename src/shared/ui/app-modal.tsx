@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
@@ -79,7 +80,7 @@ export function AppModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
       role="presentation"
@@ -139,6 +140,7 @@ export function AppModal({
         </div>
         {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

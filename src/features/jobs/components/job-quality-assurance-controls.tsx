@@ -15,21 +15,36 @@ import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, surfaceTextareaClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
+import { Check, X } from "lucide-react";
+
 type Props = {
   jobId: number;
+  /** When set, QA applies to this form submission (submission_id). */
+  submissionId?: number;
   /** When set, QA applies to these pins (project/pin detail or bulk selection). Omit for whole service job. */
   pinIds?: number[];
-  /** Existing QA from API — when decided (approved/rejected), controls are hidden. */
+  /** Existing QA from API — when decided (approved/rejected), controls are hidden or display badge. */
   existing?: QualityAssuranceRecord | null;
   className?: string;
-  onSuccess?: () => void;
+  buttonSize?: "sm" | "md" | "lg";
+  approveClassName?: string;
+  rejectClassName?: string;
+  showBadgeWhenDecided?: boolean;
+  allowChangeWhenDecided?: boolean;
+  onSuccess?: (record?: QualityAssuranceRecord) => void;
 };
 
 export function JobQualityAssuranceControls({
   jobId,
+  submissionId,
   pinIds,
   existing,
   className,
+  buttonSize = "sm",
+  approveClassName,
+  rejectClassName,
+  showBadgeWhenDecided = true,
+  allowChangeWhenDecided = true,
   onSuccess,
 }: Props) {
   const t = useTranslations("Dashboard.jobs.qualityAssurance");
@@ -37,6 +52,7 @@ export function JobQualityAssuranceControls({
   const [rejectOpen, setRejectOpen] = React.useState(false);
   const [remarks, setRemarks] = React.useState("");
   const [remarksError, setRemarksError] = React.useState<string | null>(null);
+  const [isEditingDecision, setIsEditingDecision] = React.useState(false);
 
   const alreadySet = isQualityAssuranceDecided(existing);
 
@@ -50,7 +66,13 @@ export function JobQualityAssuranceControls({
       setRejectOpen(false);
       setRemarks("");
       setRemarksError(null);
-      onSuccess?.();
+      setIsEditingDecision(false);
+      const record: QualityAssuranceRecord = {
+        status: payload.status,
+        remarks: payload.status === "rejected" ? payload.remarks : payload.remarks ?? null,
+        approved_at: new Date().toISOString(),
+      };
+      onSuccess?.(record);
     } catch (error) {
       toastApiError(error, t("error"));
     } finally {
@@ -60,9 +82,15 @@ export function JobQualityAssuranceControls({
 
   function handleApprove() {
     const payload: JobQualityAssurancePayload =
-      pinIds != null && pinIds.length > 0
-        ? { status: "approved", pin_ids: pinIds }
-        : { status: "approved" };
+      submissionId != null && submissionId > 0
+        ? {
+            status: "approved",
+            submission_id: submissionId,
+            remarks: "Form verified successfully",
+          }
+        : pinIds != null && pinIds.length > 0
+          ? { status: "approved", pin_ids: pinIds }
+          : { status: "approved" };
     void submit(payload);
   }
 
@@ -73,9 +101,11 @@ export function JobQualityAssuranceControls({
       return;
     }
     const payload: JobQualityAssurancePayload =
-      pinIds != null && pinIds.length > 0
-        ? { status: "rejected", remarks: trimmed, pin_ids: pinIds }
-        : { status: "rejected", remarks: trimmed };
+      submissionId != null && submissionId > 0
+        ? { status: "rejected", remarks: trimmed, submission_id: submissionId }
+        : pinIds != null && pinIds.length > 0
+          ? { status: "rejected", remarks: trimmed, pin_ids: pinIds }
+          : { status: "rejected", remarks: trimmed };
     void submit(payload);
   }
 
@@ -135,10 +165,20 @@ export function JobQualityAssuranceControls({
     </AppModal>
   );
 
-  if (alreadySet) {
+  if (alreadySet && !isEditingDecision) {
+    if (!showBadgeWhenDecided) return null;
     return (
       <div className={cn("flex flex-wrap items-center gap-2", className)}>
         <QualityAssuranceStatusBadge record={existing} />
+        {allowChangeWhenDecided && (
+          <button
+            type="button"
+            onClick={() => setIsEditingDecision(true)}
+            className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline font-medium cursor-pointer"
+          >
+            Change
+          </button>
+        )}
       </div>
     );
   }
@@ -148,27 +188,44 @@ export function JobQualityAssuranceControls({
       <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
         <AppButton
           type="button"
-          variant="primary"
-          size="sm"
+          size={buttonSize}
           loading={saving && !rejectOpen}
           disabled={saving}
           onClick={handleApprove}
+          className={cn(
+            "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-sm border border-emerald-700/20 font-semibold transition-colors",
+            approveClassName,
+          )}
         >
+          <Check className="h-3.5 w-3.5 mr-1 shrink-0 stroke-[2.5]" />
           {t("approve")}
         </AppButton>
         <AppButton
           type="button"
-          variant="secondary"
-          size="sm"
+          size={buttonSize}
           disabled={saving}
           onClick={() => {
             setRemarks("");
             setRemarksError(null);
             setRejectOpen(true);
           }}
+          className={cn(
+            "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:bg-slate-900 dark:text-red-400 dark:border-red-900/60 dark:hover:bg-red-950/30 shadow-sm font-semibold transition-colors",
+            rejectClassName,
+          )}
         >
+          <X className="h-3.5 w-3.5 mr-1 shrink-0 stroke-[2.5]" />
           {t("reject")}
         </AppButton>
+        {isEditingDecision && (
+          <button
+            type="button"
+            onClick={() => setIsEditingDecision(false)}
+            className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 ml-1 cursor-pointer"
+          >
+            {t("cancel")}
+          </button>
+        )}
       </div>
       {rejectModal}
     </>
