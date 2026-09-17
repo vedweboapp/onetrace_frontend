@@ -1,11 +1,12 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle, useState } from "react";
+import React, { forwardRef, useImperativeHandle, useState, useCallback, useEffect, useRef } from "react";
 import { CheckCircle, Check, Layers, Send, Palette, X } from "lucide-react";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
+import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -183,6 +184,8 @@ export interface KioskRendererProps {
   onSubmit?: (values: Record<string, any>) => void;
   renderMode?: "desktop" | "phone";
   isSubmitting?: boolean;
+  /** Per-question draft option while configuring (live builder sync) */
+  livePreviewOptions?: Record<string, KioskOption | null | undefined>;
 }
 
 const getGridClass = (cols: number = 2) => {
@@ -207,6 +210,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       onSubmit,
       renderMode = "desktop",
       isSubmitting = false,
+      livePreviewOptions,
     },
     ref,
   ) {
@@ -218,16 +222,29 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       currentColor: string;
     } | null>(null);
 
+    // Must be declared before optionByUid which depends on it
+    const isPhone = renderMode === "phone";
+    const activeQuestions = (config.questions ?? []).filter(
+      (q) => q.is_deleted !== true,
+    );
+
+    /** Build a flat UID→option index across all active questions */
+    const optionByUid = React.useMemo(() => {
+      const map = new Map<string, { option: KioskOption; question: KioskQuestion }>();
+      activeQuestions.forEach((q) => {
+        (q.options || []).forEach((opt) => {
+          if (opt._uid) map.set(opt._uid, { option: opt, question: q });
+        });
+      });
+      return map;
+    }, [activeQuestions]);
+
     const handleSelectOption = (question: KioskQuestion, option: KioskOption) => {
       const qKey = question.api_name || question._uid;
-      // Always use _uid as the selection key — it's guaranteed unique per option.
-      // This prevents two options sharing the same label/value from both appearing selected.
       const optUid = option._uid;
-      // Payload value: prefer explicit value, then color, then label
       const payloadVal = option.value || option.color || option.label || option._uid;
 
       if (option.field_type === "checkbox") {
-        // Multi-select: toggle uid in array
         setAnswers((prev) => {
           const current: any[] = Array.isArray(prev[qKey]) ? prev[qKey] : [];
           const exists = current.some((v) => (typeof v === "object" ? v.uid === optUid : v === optUid));
@@ -239,7 +256,6 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           };
         });
       } else {
-        // Single-select
         setAnswers((prev) => ({
           ...prev,
           [qKey]: { uid: optUid, value: payloadVal },
@@ -267,11 +283,6 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       getConfig: () => config,
       getValues: () => answers,
     }));
-
-    const isPhone = renderMode === "phone";
-    const activeQuestions = (config.questions ?? []).filter(
-      (q) => q.is_deleted !== true,
-    );
 
     if (submitted) {
       return (
@@ -359,8 +370,17 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           </div>
         )}
 
-        {/* Questions List */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <KioskLiveBuildPanel
+            config={config}
+            answers={answers}
+            livePreviewOptions={livePreviewOptions}
+            className="order-1 lg:order-2 lg:sticky lg:top-2 lg:self-start"
+            compact={isPhone}
+          />
+
+          {/* Questions List */}
+          <div className="order-2 min-w-0 flex-1 space-y-6 lg:order-1">
           {activeQuestions.map((question, qIdx) => {
             const qKey = question.api_name || question._uid;
             const selectedVal = answers[qKey];
@@ -392,6 +412,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                       const isColor = option.field_type === "color";
                       const isImageRadio = option.field_type === "image_radio";
                       const optUid = option._uid;
+
+
 
                       // answeredColor: only resolve if selectedVal belongs to THIS option (uid match)
                       const answeredColor =
@@ -608,19 +630,20 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             );
           })}
         </div>
+      </div>
 
-        {/* Submit Action */}
-        <div className="flex items-center justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-          <AppButton
-            type="submit"
-            size="md"
-            loading={isSubmitting}
-            className="w-full sm:w-auto px-6 font-semibold"
-          >
-            <Send className="mr-1.5 size-4" />
-            {config.submitting?.button_text || "Submit"}
-          </AppButton>
-        </div>
+          {/* Submit Action */}
+          <div className="flex items-center justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
+            <AppButton
+              type="submit"
+              size="md"
+              loading={isSubmitting}
+              className="w-full px-6 font-semibold sm:w-auto"
+            >
+              <Send className="mr-1.5 size-4" />
+              {config.submitting?.button_text || "Submit"}
+            </AppButton>
+          </div>
       </form>
     );
   }

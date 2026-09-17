@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { DndProvider, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useRouter } from "@/i18n/navigation";
@@ -19,6 +19,7 @@ import {
   MoreHorizontal,
   Check,
   Columns,
+  Eye,
 } from "lucide-react";
 import {
   type KioskConfig,
@@ -435,6 +436,28 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     option: KioskOption;
     questionUid: string;
   } | null>(null);
+  const [draftOption, setDraftOption] = useState<KioskOption | null>(null);
+
+  const livePreviewOptions = useMemo(() => {
+    if (!editingOptionModal || !draftOption) return undefined;
+    return { [editingOptionModal.questionUid]: draftOption };
+  }, [editingOptionModal, draftOption]);
+
+  const previewConfig = useMemo((): KioskConfig => {
+    if (!draftOption || !editingOptionModal) return config;
+    return {
+      ...config,
+      questions: (config.questions || []).map((q) => {
+        if (q._uid !== editingOptionModal.questionUid) return q;
+        return {
+          ...q,
+          options: (q.options || []).map((opt) =>
+            opt._uid === draftOption._uid ? { ...draftOption } : opt,
+          ),
+        };
+      }),
+    };
+  }, [config, draftOption, editingOptionModal]);
 
   // Question Management
   const handleAddQuestion = useCallback((insertIndex?: number) => {
@@ -571,6 +594,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   );
 
   const handleEditOption = useCallback((option: KioskOption, questionUid: string) => {
+    setDraftOption({ ...option });
     setEditingOptionModal({ option, questionUid });
   }, []);
 
@@ -591,6 +615,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       }),
     }));
     setEditingOptionModal(null);
+    setDraftOption(null);
   }, [editingOptionModal]);
 
   const handleDeleteOption = useCallback((questionUid: string, optionUid: string) => {
@@ -693,12 +718,12 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           </div>
 
           {/* Center: Tabs (Form, Preview) */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-800 dark:bg-slate-800">
             <button
               onClick={() => setActiveTab("form")}
               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                 activeTab === "form"
-                  ? "border-b-2 border-black text-black dark:border-white dark:text-white font-bold"
+                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
               }`}
             >
@@ -708,7 +733,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
               onClick={() => setActiveTab("preview")}
               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                 activeTab === "preview"
-                  ? "border-b-2 border-black text-black dark:border-white dark:text-white font-bold"
+                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
               }`}
             >
@@ -816,8 +841,8 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             </main>
           </div>
         ) : (
-          /* Live Preview Mode */
-           <main className="flex flex-1 min-h-0 flex-col overflow-y-auto p-4 custom-scrollbar bg-slate-200/60 dark:bg-slate-950">
+          /* Full Live Preview Mode */
+          <main className="flex flex-1 min-h-0 flex-col overflow-y-auto p-4 custom-scrollbar bg-slate-200/60 dark:bg-slate-950">
             <div
               className={`w-full mt-6 transition-all duration-300 ${
                 previewDevice === "mobile"
@@ -827,7 +852,8 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             >
               <div className="p-4 md:p-5">
                 <KioskRenderer
-                  config={config}
+                  config={previewConfig}
+                  livePreviewOptions={livePreviewOptions}
                   onSubmit={(values) => {
                     console.log("Kiosk simulated submit values:", values);
                     toastSuccess("Simulated kiosk submission recorded!");
@@ -842,9 +868,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         {editingOptionModal && (
           <KioskFieldConfigModal
             option={editingOptionModal.option}
-            questions={config.questions || []}
+            questionUid={editingOptionModal.questionUid}
+            questions={previewConfig.questions || []}
             onSave={handleSaveOptionConfig}
-            onClose={() => setEditingOptionModal(null)}
+            onClose={() => {
+              setEditingOptionModal(null);
+              setDraftOption(null);
+            }}
+            onDraftChange={setDraftOption}
           />
         )}
       </div>

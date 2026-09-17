@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { KioskOption } from "../types/kiosk.types";
+import { applyColorFill } from "../utils/kiosk-color-fill";
 
 interface DynamicKioskOptionPreviewProps {
   option: KioskOption;
@@ -36,6 +37,31 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
   const rowRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [colorFilledThumb, setColorFilledThumb] = useState<string>("");
+
+  const isColorType =
+    option.field_type === "color" || option.field_type === "color_swatch";
+  const fillImageSrc = option.fill_image ? String(option.fill_image) : "";
+  const swatchColor = String(
+    option.color ||
+      (typeof option.value === "string" && option.value.startsWith("#")
+        ? option.value
+        : "#2563EB"),
+  );
+
+  useEffect(() => {
+    if (!isColorType || !fillImageSrc) {
+      setColorFilledThumb("");
+      return;
+    }
+    let cancelled = false;
+    applyColorFill(fillImageSrc, swatchColor).then((result) => {
+      if (!cancelled) setColorFilledThumb(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isColorType, fillImageSrc, swatchColor]);
 
   // Close ellipsis menu when clicking outside
   useEffect(() => {
@@ -124,17 +150,25 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
             </div>
           )}
 
-          {/* Small option-height matching image preview */}
-          {option.image && (
+          {/* Color-filled or object image thumbnail */}
+          {(colorFilledThumb || option.image || option.fill_image) && (
             <div className="mt-0.5 size-9 shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-2xs">
               <img
-                src={String(option.image)}
+                src={String(colorFilledThumb || option.image || option.fill_image)}
                 alt={option.label || "Option preview"}
                 className="h-full w-full object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
             </div>
           )}
+
+          {option.field_type === "image_radio" &&
+            (option.placement_mode === "place" ||
+              option.placement?.mode === "place") && (
+              <span className="mt-1 shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                Place
+              </span>
+            )}
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
