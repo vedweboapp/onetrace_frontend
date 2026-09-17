@@ -42,7 +42,7 @@ export type SchedulingCatalog = {
 type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
 
 /** Bump when filter/technician shape changes so in-memory caches reset. */
-const CATALOG_VERSION = 6;
+const CATALOG_VERSION = 7;
 let techniciansCacheVersion = 0;
 let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
@@ -157,7 +157,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
         .catch(() => {
           if (partial.projects.length === 0) publish({ projects: [] });
         }),
-      fetchUserGroupsPage(1, 20, { dropdown: true })
+      fetchUserGroupsPage(1, 20, { dropdown: true, fetchAllPages: true })
         .then((groupsRes) => {
           publish({
             userGroups: Array.isArray(groupsRes.items) ? groupsRes.items : [],

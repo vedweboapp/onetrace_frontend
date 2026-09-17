@@ -4,7 +4,6 @@ import {
   applyDropdownListParam,
   DROPDOWN_LIST_PAGE_SIZE,
   resolveDropdownListPages,
-  unwrapListPayload,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
 import { AUDIT_TRAIL_PATHS } from "./audit-trail.paths";
@@ -58,6 +57,7 @@ export async function fetchAuditTrailsPage(
 
   return resolveDropdownListPages({
     dropdown: filters.dropdown,
+    // Never auto-walk pages here — settings panel paginates; entity timelines use one page.
     fetchFirst: async () => {
       const { data } = await api.get<AuditTrailListResponse>(AUDIT_TRAIL_PATHS.list, { params });
       return parseListApiPage(data, pageSize);
@@ -65,8 +65,8 @@ export async function fetchAuditTrailsPage(
   });
 }
 
-/** Load full audit timeline for a module (optionally scoped to one record). */
+/** Load audit timeline for a module (optionally scoped to one record). One page only. */
 export async function fetchAuditTrails(filters: AuditTrailListFilters): Promise<AuditTrailEntry[]> {
-  const { items } = await fetchAuditTrailsPage(1, DROPDOWN_LIST_PAGE_SIZE, { ...filters, dropdown: true });
+  const { items } = await fetchAuditTrailsPage(1, 50, { ...filters, dropdown: true });
   return items;
 }

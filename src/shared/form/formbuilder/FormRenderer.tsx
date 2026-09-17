@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useEffect,
   useRef,
+  useCallback,
 } from "react";
 import { useForm, Controller } from "react-hook-form";
 import Input from "../components/input";
@@ -423,6 +424,7 @@ const FormField: React.FC<{
   sectionFields?: Field[];
   ruleState?: FieldRuleState;
   forceSingleColumn?: boolean;
+  fieldName?: string;
 }> = ({
   field,
   control,
@@ -436,6 +438,7 @@ const FormField: React.FC<{
   sectionFields = [],
   ruleState,
   forceSingleColumn = false,
+  fieldName,
 }) => {
   if (!field || !field.api_name) return null;
 
@@ -518,16 +521,7 @@ const FormField: React.FC<{
   const isDisabled = !!ruleState?.disabled;
   const isReadOnly = field.readOnly || isDisabled;
 
-  const label = (
-    <div className="flex items-center gap-1 mb-1">
-      <span className="text-[length:var(--dash-label-size,0.875rem)] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
-        {field.field_label}
-      </span>
-      {isRequired && (
-        <span className="text-red-500 font-bold text-sm ml-0.5">*</span>
-      )}
-    </div>
-  );
+  const cleanLabel = field.field_label || "";
 
   const colSpan = field.colspan || 1;
   const colSpanClass = forceSingleColumn
@@ -542,9 +536,9 @@ const FormField: React.FC<{
 
   if (normType === "phone" || normType === "mobile") {
     return (
-      <div className={fieldShellClass}>
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
         <FormPhoneInput
-          feildName={label}
+          feildName={cleanLabel}
           name={field.api_name}
           control={control}
           errors={errors}
@@ -575,7 +569,7 @@ const FormField: React.FC<{
       field.defaultValue === "true";
 
     return (
-      <div className={fieldShellClass}>
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
         <Controller
           name={field.api_name}
           control={control}
@@ -583,7 +577,7 @@ const FormField: React.FC<{
           defaultValue={defaultChecked}
           render={({ field: { onChange, onBlur, value, ref } }) => (
             <FormCheckbox
-              label={label}
+              label={cleanLabel}
               name={field.api_name}
               checked={value !== undefined ? !!value : defaultChecked}
               onChange={onChange}
@@ -598,13 +592,11 @@ const FormField: React.FC<{
     );
   }
 
-  const cleanLabel = field.field_label || "";
-
   if (normType === "multi_line" && getEditorType(field) === "rich") {
     const richTextValidations = buildRichTextValidations(validations, field);
 
     return (
-      <div className={fieldShellClass}>
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
         <FieldGroup label={cleanLabel} required={isRequired} className="w-full">
           <Controller
             name={field.api_name}
@@ -633,7 +625,7 @@ const FormField: React.FC<{
   if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
-      <div className={fieldShellClass}>
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
         <FieldGroup label={cleanLabel} required={isRequired} className="w-full">
           <Controller
             name={field.api_name}
@@ -693,7 +685,7 @@ const FormField: React.FC<{
   // can silently swallow user changes in React 19.
   if (["picklist", "select"].includes(normType)) {
     return (
-      <div className={fieldShellClass}>
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
         <Controller
           name={field.api_name}
           control={control}
@@ -705,7 +697,8 @@ const FormField: React.FC<{
               : (value ?? "");
             return (
             <Component
-              label={label}
+              label={cleanLabel}
+              fieldRequired={isRequired}
               name={field.api_name}
               value={scalarValue}
               onChange={onChange}
@@ -725,7 +718,8 @@ const FormField: React.FC<{
   }
 
   const commonProps = {
-    label: label,
+    label: cleanLabel,
+    fieldRequired: isRequired,
     name: field.api_name,
     register: register(field.api_name, validations),
     defaultValue: field.defaultValue !== undefined ? field.defaultValue : "",
@@ -738,7 +732,7 @@ const FormField: React.FC<{
   };
 
   return (
-    <div className={fieldShellClass}>
+    <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
       <Component {...commonProps} options={field.options || []} />
     </div>
   );
@@ -1044,6 +1038,7 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
 const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
   ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [], renderMode = "desktop" }, ref) => {
     const forceSingleColumn = renderMode === "phone";
+    const formContainerRef = useRef<HTMLDivElement>(null);
     const initialValuesRef = useRef<Record<string, unknown>>(
       Array.isArray(schema) && schema.length > 0
         ? autoPopulateData
@@ -1179,6 +1174,67 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
     const getError = (name: string) =>
       touchedFields?.[name] || isSubmitted ? (errors as any)[name] : undefined;
 
+    // Build an ordered list of all visible field api_names following the same sort
+    // order used during rendering (sequence then index). Used to find the *first*
+    // invalid field in schema order when the form fails validation.
+    const getOrderedFieldNames = useCallback((): string[] => {
+      if (!Array.isArray(schema)) return [];
+
+      const sorted = [...schema]
+        .map((section, index) => ({ section, index }))
+        .sort((a, b) => {
+          const aSeq = a.section.sequence;
+          const bSeq = b.section.sequence;
+          if (aSeq != null && bSeq != null && aSeq !== bSeq) return aSeq - bSeq;
+          if (aSeq != null && bSeq == null) return -1;
+          if (aSeq == null && bSeq != null) return 1;
+          return a.index - b.index;
+        })
+        .map(({ section }) => section);
+
+      const names: string[] = [];
+      sorted.forEach((section, sIdx) => {
+        const sectionRuleTarget = getSectionRuleTarget(section, sIdx);
+        const sRuleState = fieldRuleState.get(sectionRuleTarget);
+        if (sRuleState?.visible === false) return;
+        if (section.is_subform) return; // subforms handled separately
+
+        const fields = [...(section.fields || [])]
+          .filter((f) => !f.is_deleted && f.api_name)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        fields.forEach((f) => {
+          const merged = mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sRuleState);
+          if (merged?.visible === false) return;
+          names.push(f.api_name);
+        });
+      });
+
+      return names;
+    }, [schema, fieldRuleState]);
+
+    const scrollToFirstError = useCallback(
+      (errorFields: Record<string, any>) => {
+        const orderedNames = getOrderedFieldNames();
+        const firstErrorName = orderedNames.find((name) => !!errorFields[name]);
+        if (!firstErrorName || !formContainerRef.current) return;
+
+        const el = formContainerRef.current.querySelector(
+          `[data-field-name="${CSS.escape(firstErrorName)}"]`,
+        ) as HTMLElement | null;
+
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Focus the first focusable input inside the field wrapper
+          const focusable = el.querySelector<HTMLElement>(
+            "input, textarea, select, [tabindex]:not([tabindex='-1'])",
+          );
+          focusable?.focus({ preventScroll: true });
+        }
+      },
+      [getOrderedFieldNames],
+    );
+
     useImperativeHandle(ref, () => ({
       getFormData: () => sanitizeOutput(getValues(), schema, fieldRuleState),
       getChangedData: () => {
@@ -1194,9 +1250,15 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       },
       reset: (v) => reset(v),
       submit: (onSuccess, onError) => {
-        handleSubmit((data) => {
-          onSuccess(sanitizeOutput(data, schema, fieldRuleState));
-        }, onError)();
+        handleSubmit(
+          (data) => {
+            onSuccess(sanitizeOutput(data, schema, fieldRuleState));
+          },
+          (errorFields) => {
+            scrollToFirstError(errorFields);
+            onError?.(errorFields);
+          },
+        )();
       },
       watch,
       setValue,
@@ -1210,7 +1272,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       );
 
     return (
-      <div className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
+      <div ref={formContainerRef} className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
         {[...schema]
           .map((section, index) => ({ section, index }))
           .sort((a, b) => {
@@ -1301,6 +1363,7 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       sectionFields={section.fields}
                       ruleState={mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sectionRuleState)}
                       forceSingleColumn={forceSingleColumn}
+                      fieldName={f?.api_name}
                     />
                   ))}
               </div>

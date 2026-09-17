@@ -581,7 +581,13 @@ export function JobsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
+      <SurfaceShell
+        className={cn(
+          listPageSurfaceShellClassName(hideListChrome),
+          // Map view stacks map + unmapped table — allow the shell to scroll.
+          listViewMode === "map" && "overflow-y-auto",
+        )}
+      >
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
@@ -594,7 +600,13 @@ export function JobsPanel() {
               </ListPageCardGrid>
             </div>
           ) : listViewMode === "map" ? (
-            <div className="min-h-[min(72vh,640px)] w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            <div
+              className="flex min-h-[min(72vh,640px)] w-full flex-col items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800"
+              aria-busy="true"
+            >
+              <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-[color:var(--dash-accent,#0f766e)] dark:border-slate-600 dark:border-t-[color:var(--dash-accent,#2dd4bf)]" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("mapView.loadingMap")}</p>
+            </div>
           ) : (
             <div className="space-y-2 p-6">
               <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

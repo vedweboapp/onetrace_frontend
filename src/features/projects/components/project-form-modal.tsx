@@ -26,7 +26,10 @@ import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { fetchUsersPage } from "@/features/users/api/user.api";
-import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
+import {
+  resolveAppRoleIdMap,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import {
   AppButton,
   AppModal,
@@ -197,8 +200,18 @@ export function ProjectFormModal({
 
   const reloadManagers = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchUsersPage(1, 20, { search: searchQuery, dropdown: true });
-      const newOptions = items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) }));
+      const roleIds = await resolveAppRoleIdMap();
+      const roleId = roleIds.get("manager");
+      if (roleId == null) {
+        setManagerOptions([]);
+        return;
+      }
+      const { items } = await fetchUsersPage(1, 20, {
+        role: roleId,
+        search: searchQuery?.trim() || undefined,
+        dropdown: true,
+      });
+      const newOptions = userProfilesToSelectOptions(items);
       newOptions.forEach((opt) => {
         accumulatedManagerLabels.current[opt.value] = opt.label;
       });

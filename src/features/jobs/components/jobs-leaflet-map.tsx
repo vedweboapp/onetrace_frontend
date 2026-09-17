@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
 import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
 import { fitLeafletMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
+import { createJobMapPinElement } from "@/features/jobs/utils/job-map-pin-element.util";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import { cn } from "@/core/utils/http.util";
 
@@ -165,11 +166,20 @@ export function JobsLeafletMap({
     markersRef.current.clear();
 
     for (const pin of resolved) {
-      const marker = L.marker([pin.lat, pin.lon], { title: pin.label }).addTo(map);
+      const pinEl = createJobMapPinElement({ title: pin.jobLabel });
+      const icon = L.divIcon({
+        className: "ot-job-map-leaflet-pin",
+        html: pinEl.outerHTML,
+        iconSize: [36, 44],
+        iconAnchor: [18, 44],
+        popupAnchor: [0, -40],
+      });
+      const marker = L.marker([pin.lat, pin.lon], { title: pin.jobLabel, icon }).addTo(map);
       const html = buildJobPinPopupHtml(pin, { openAriaLabel: t("viewDetails") });
       marker.bindPopup(html, { maxWidth: 320, className: "ot-job-map-popup", closeButton: true });
       marker.on("click", () => {
         onPinClickRef.current(pin.jobId);
+        onOpenDetailsRef.current(pin.jobId);
       });
       marker.on("popupopen", () => {
         const btn = document.querySelector<HTMLButtonElement>(
@@ -209,6 +219,18 @@ export function JobsLeafletMap({
   }, []);
 
   return (
-    <div ref={containerRef} className={cn("h-full w-full", className)} role="img" aria-label={t("ariaMap")} />
+    <div className={cn("relative h-full w-full", className)}>
+      {pins.length > 0 && status !== "ready" ? (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-[color:var(--dash-accent,#0f766e)] dark:border-slate-600 dark:border-t-[color:var(--dash-accent,#2dd4bf)]" />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("loadingMap")}</p>
+        </div>
+      ) : null}
+      <div ref={containerRef} className="h-full w-full" role="img" aria-label={t("ariaMap")} />
+    </div>
   );
 }

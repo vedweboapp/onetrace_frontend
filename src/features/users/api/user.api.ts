@@ -26,7 +26,13 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export async function fetchUsersPage(
   page = 1,
   pageSize = 20,
-  filters?: { search?: string; role?: number | string; dropdown?: boolean },
+  filters?: {
+    search?: string;
+    role?: number | string;
+    dropdown?: boolean;
+    /** Follow cursor/next until exhausted (e.g. scheduling technician calendar). */
+    fetchAllPages?: boolean;
+  },
 ): Promise<{ items: UserProfile[]; pagination: UserListResponse["pagination"] }> {
   const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
@@ -40,6 +46,7 @@ export async function fetchUsersPage(
 
   return resolveDropdownListPages({
     dropdown: filters?.dropdown,
+    fetchAllPages: filters?.fetchAllPages === true,
     fetchFirst: async () => {
       const { data } = await api.get<UserListResponse>(USER_PATHS.list, { params });
       return parseListApiPage(data, pageSize);

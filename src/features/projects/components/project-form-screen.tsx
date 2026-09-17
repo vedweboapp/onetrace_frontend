@@ -13,8 +13,11 @@ import { formatProjectTypeLabel } from "@/features/project-types/utils/project-t
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import {
+  resolveAppRoleIdMap,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
-import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -123,8 +126,18 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   const reloadManagers = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchUsersPage(1, 20, { search: searchQuery, dropdown: true });
-      setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+      const roleIds = await resolveAppRoleIdMap();
+      const roleId = roleIds.get("manager");
+      if (roleId == null) {
+        setManagerOptions([]);
+        return;
+      }
+      const { items } = await fetchUsersPage(1, 20, {
+        role: roleId,
+        search: searchQuery?.trim() || undefined,
+        dropdown: true,
+      });
+      setManagerOptions(userProfilesToSelectOptions(items));
     } catch {
       setManagerOptions([]);
     }

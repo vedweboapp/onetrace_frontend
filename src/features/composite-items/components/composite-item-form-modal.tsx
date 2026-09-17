@@ -604,9 +604,6 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
         </FormSubsection>
 
         <div className="space-y-3">
-          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            {t("pricesFromComponentsHint")}
-          </p>
           <FormFieldRow cols="2" from="md" className="gap-4">
             <FieldGroup label={t("costPrice")} htmlFor={costId} required>
               <MoneyInput

@@ -4,6 +4,8 @@ import type { UserProfile } from "@/features/users/types/user.types";
 export type AppRoleKey = "technician" | "manager" | "sales";
 
 let roleIdMapPromise: Promise<Map<AppRoleKey, number>> | null = null;
+/** In-flight / resolved role-scoped lists so job/quotation screens don't re-hit page 1. */
+const usersByRoleCache = new Map<AppRoleKey, Promise<UserProfile[]>>();
 
 function matchAppRoleKey(roleName: string): AppRoleKey | null {
   const name = roleName.trim().toLowerCase();
@@ -35,30 +37,36 @@ export async function resolveAppRoleIdMap(): Promise<Map<AppRoleKey, number>> {
 }
 
 /**
- * Loads users for one role via `GET user-profile/?role=<id>`.
+ * Loads users for one role via `GET user-profile/?role=<id>` (page 1 only).
  * Returns [] when that role does not exist — never falls back to an unfiltered list.
+ * Cached per session so quotation/job screens don't repeat the same call.
  */
 export async function fetchUsersForAppRole(role: AppRoleKey): Promise<UserProfile[]> {
-  const roleIds = await resolveAppRoleIdMap();
-  const roleId = roleIds.get(role);
-  if (roleId == null) return [];
-  const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
-  return items;
+  const cached = usersByRoleCache.get(role);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const roleIds = await resolveAppRoleIdMap();
+    const roleId = roleIds.get(role);
+    if (roleId == null) return [];
+    const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
+    return items;
+  })().catch((error) => {
+    usersByRoleCache.delete(role);
+    throw error;
+  });
+
+  usersByRoleCache.set(role, promise);
+  return promise;
 }
 
 /** Parallel role-scoped loads; only requested roles that exist are fetched. */
 export async function fetchUsersForAppRoles(
   roles: readonly AppRoleKey[],
 ): Promise<Partial<Record<AppRoleKey, UserProfile[]>>> {
-  const roleIds = await resolveAppRoleIdMap();
   const unique = [...new Set(roles)];
   const entries = await Promise.all(
-    unique.map(async (role) => {
-      const roleId = roleIds.get(role);
-      if (roleId == null) return [role, [] as UserProfile[]] as const;
-      const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
-      return [role, items] as const;
-    }),
+    unique.map(async (role) => [role, await fetchUsersForAppRole(role)] as const),
   );
   return Object.fromEntries(entries) as Partial<Record<AppRoleKey, UserProfile[]>>;
 }

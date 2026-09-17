@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import type { SchedulingPeopleListMode } from "@/features/scheduling/utils/scheduling-people-row.util";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
@@ -16,6 +17,8 @@ type Props = {
   focusedWorker?: SchedulingTechnician | null;
   onBack?: () => void;
   onSearchChange: (value: string) => void;
+  peopleListMode: SchedulingPeopleListMode;
+  onPeopleListModeChange: (mode: SchedulingPeopleListMode) => void;
   selectedCount?: number;
   allVisibleSelected?: boolean;
   someVisibleSelected?: boolean;
@@ -30,6 +33,8 @@ export function SchedulingPeopleHeader({
   focusedWorker,
   onBack,
   onSearchChange,
+  peopleListMode,
+  onPeopleListModeChange,
   selectedCount = 0,
   allVisibleSelected = false,
   someVisibleSelected = false,
@@ -43,7 +48,7 @@ export function SchedulingPeopleHeader({
   const searchRef = React.useRef<HTMLInputElement>(null);
   const expanded = searchOpen || search.trim() !== "";
   const showBulk = allowBulkSchedule && !focusedWorker;
-  const searchLabel = t("searchUsers");
+  const searchLabel = peopleListMode === "groups" ? t("searchGroups") : t("searchUsers");
 
   React.useEffect(() => {
     if (!expanded) return;
@@ -99,15 +104,46 @@ export function SchedulingPeopleHeader({
                 if (el) el.indeterminate = !allVisibleSelected && someVisibleSelected;
               }}
               onChange={onToggleSelectAll}
-              aria-label={t("bulk.selectAll")}
-              title={t("bulk.selectAll")}
+              aria-label={
+                peopleListMode === "groups" ? t("bulk.selectAllGroups") : t("bulk.selectAll")
+              }
+              title={peopleListMode === "groups" ? t("bulk.selectAllGroups") : t("bulk.selectAll")}
             />
           </span>
         ) : null}
 
-        <p className="shrink-0 text-[13px] font-semibold text-slate-800 dark:text-slate-100">
-          {t("usersColumn")}
-        </p>
+        <div
+          role="group"
+          aria-label={t("peopleListModeAria")}
+          className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-700 dark:bg-slate-800/90"
+        >
+          <button
+            type="button"
+            className={cn(
+              "rounded px-2 py-1 text-[11px] font-semibold transition",
+              peopleListMode === "users"
+                ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-50"
+                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
+            )}
+            aria-pressed={peopleListMode === "users"}
+            onClick={() => onPeopleListModeChange("users")}
+          >
+            {t("usersColumn")}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "rounded px-2 py-1 text-[11px] font-semibold transition",
+              peopleListMode === "groups"
+                ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-50"
+                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
+            )}
+            aria-pressed={peopleListMode === "groups"}
+            onClick={() => onPeopleListModeChange("groups")}
+          >
+            {t("groupsColumn")}
+          </button>
+        </div>
 
         {expanded ? (
           <div className="relative min-w-0 flex-1">
@@ -165,7 +201,9 @@ export function SchedulingPeopleHeader({
             disabled={scheduleBusy}
             onClick={onScheduleSelected}
           >
-            {t("bulk.scheduleSelected", { count: selectedCount })}
+            {peopleListMode === "groups"
+              ? t("bulk.scheduleSelectedGroups", { count: selectedCount })
+              : t("bulk.scheduleSelected", { count: selectedCount })}
           </AppButton>
         </div>
       ) : null}

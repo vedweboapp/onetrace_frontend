@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   Store,
   Truck,
-  UserCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -113,7 +112,6 @@ export function DashboardHeader() {
   const serviceJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.service}`;
   const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
   const schedulingHref = routes.dashboard.scheduling;
-  const attendanceHref = routes.dashboard.attendance;
   const qrCodesHref = routes.dashboard.qrCodes;
   const formsHref = routes.dashboard.forms;
   const homeHref = routes.dashboard.root;
@@ -127,6 +125,7 @@ export function DashboardHeader() {
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const kiosksHref = routes.dashboard.settingsKiosks;
   const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
   const projectStatusHref = routes.dashboard.settingsProjectStatus;
@@ -185,8 +184,6 @@ export function DashboardHeader() {
   const projectJobActive = jobsActive && jobCategory === JOB_CATEGORY.project;
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
-  const attendanceActive =
-    pathname === attendanceHref || pathname.startsWith(`${attendanceHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
   const projectsActive =
@@ -208,6 +205,8 @@ export function DashboardHeader() {
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive =
     pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const kiosksActive =
+    pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const pinStatusActive =
     pathname === pinStatusHref || pathname.startsWith(`${pinStatusHref}/`);
   const projectStatusActive =
@@ -279,69 +278,69 @@ export function DashboardHeader() {
                         : tNav("serviceJob")
                       : schedulingActive
                         ? tNav("scheduling")
-                        : attendanceActive
-                          ? tNav("attendance")
                         : qrCodesActive
-                        ? tNav("qrCodes")
-                        : formsActive
-                          ? tNav("forms")
-                        : groupsActive
-                          ? tNav("groups")
-                          : materialRequestsActive
-                            ? tNav("materialRequests")
-                            : dispatchesActive
-                              ? tNav("dispatches")
-                              : returnToStockActive
-                                ? tNav("returnToStock")
-                                : compositeActive
-                                  ? tNav("compositeItems")
-                                  : itemsActive
-                                    ? tNav("itemsPlain")
-                                    : personalProfileActive
-                                      ? tSettingsNav("personalProfile")
-                                      : companySettingsActive
-                                        ? tSettingsNav("companySettings")
-                                        : modulesActive
-                                          ? tSettingsNav("modules")
-                                          : customizationHubActive
-                                            ? tSettingsNav("customization.label")
-                                            : pinStatusActive
-                                              ? tSettingsNav("pinStatus")
-                                              : projectStatusActive
-                                                ? tSettingsNav("projectStatus")
-                                                : jobStatusActive
-                                                  ? tSettingsNav("jobStatus")
-                                                  : materialStatusActive
-                                                    ? tSettingsNav("materialStatus")
-                                                    : tagActive
-                                                      ? tSettingsNav("tags")
-                                                      : installationTypeActive
-                                                        ? tSettingsNav("installationTypes")
-                                                        : vendorTypeActive
-                                                          ? tSettingsNav("vendorTypes")
-                                                          : unitTypeActive
-                                                            ? tSettingsNav("unitTypes")
-                                                            : rejectionReasonActive
-                                                              ? tSettingsNav("rejectionReasons")
-                                                              : checklistTypeActive
-                                                                ? tSettingsNav("checklistTypes")
-                                                                : titleActive
-                                                                  ? tSettingsNav("titles")
-                                                                  : projectTypeActive
-                                                                    ? tSettingsNav("projectTypes")
-                                                                    : usersActive
-                                                                      ? tSettingsNav("users")
-                                                                      : rolesActive
-                                                                        ? tSettingsNav("roles")
-                                                                        : profilesActive
-                                                                          ? tSettingsNav("profiles")
-                                                                          : integrationsActive
-                                                                            ? tSettingsNav("integrations")
-                                                                            : auditLogsActive
-                                                                              ? tSettingsNav("auditLogs")
-                                                                              : projectFormsActive
-                                                                                ? tSettingsNav("projectForms")
-                                                                                : tNav("home");
+                          ? tNav("qrCodes")
+                          : formsActive
+                            ? tNav("forms")
+                            : groupsActive
+                              ? tNav("groups")
+                              : materialRequestsActive
+                                ? tNav("materialRequests")
+                                : dispatchesActive
+                                  ? tNav("dispatches")
+                                  : returnToStockActive
+                                    ? tNav("returnToStock")
+                                    : compositeActive
+                                      ? tNav("compositeItems")
+                                      : itemsActive
+                                        ? tNav("itemsPlain")
+                                        : personalProfileActive
+                                          ? tSettingsNav("personalProfile")
+                                          : companySettingsActive
+                                            ? tSettingsNav("companySettings")
+                                            : modulesActive
+                                              ? tSettingsNav("modules")
+                                              : kiosksActive
+                                            ? tSettingsNav("kiosks")
+                                            : customizationHubActive
+                                                  ? tSettingsNav("customization.label")
+                                                  : pinStatusActive
+                                                    ? tSettingsNav("pinStatus")
+                                                    : projectStatusActive
+                                                      ? tSettingsNav("projectStatus")
+                                                      : jobStatusActive
+                                                        ? tSettingsNav("jobStatus")
+                                                        : materialStatusActive
+                                                          ? tSettingsNav("materialStatus")
+                                                          : tagActive
+                                                            ? tSettingsNav("tags")
+                                                            : installationTypeActive
+                                                              ? tSettingsNav("installationTypes")
+                                                              : vendorTypeActive
+                                                                ? tSettingsNav("vendorTypes")
+                                                                : unitTypeActive
+                                                                  ? tSettingsNav("unitTypes")
+                                                                  : rejectionReasonActive
+                                                                    ? tSettingsNav("rejectionReasons")
+                                                                    : checklistTypeActive
+                                                                      ? tSettingsNav("checklistTypes")
+                                                                      : titleActive
+                                                                        ? tSettingsNav("titles")
+                                                                        : projectTypeActive
+                                                                          ? tSettingsNav("projectTypes")
+                                                                          : usersActive
+                                                                            ? tSettingsNav("users")
+                                                                            : rolesActive
+                                                                              ? tSettingsNav("roles")
+                                                                              : profilesActive
+                                                                                ? tSettingsNav("profiles")
+                                                                                : integrationsActive
+                                                                                  ? tSettingsNav("integrations")
+                                                                                : auditLogsActive
+                                                                                  ? tSettingsNav("auditLogs")
+                                                                                    : projectFormsActive
+                                                                                      ? tSettingsNav("projectForms")
+                                                                                      : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -440,6 +439,7 @@ export function DashboardHeader() {
             <TopNavLink href={personalProfileHref} label={tSettingsNav("personalProfile")} icon={UserRound} active={personalProfileActive} resolved={resolved} />
             <TopNavLink href={companySettingsHref} label={tSettingsNav("companySettings")} icon={Building2} active={companySettingsActive} resolved={resolved} />
             <TopNavLink href={modulesHref} label={tSettingsNav("modules")} icon={Settings} active={modulesActive} resolved={resolved} />
+            <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
             <TopNavLink href={usersHref} label={tSettingsNav("users")} icon={UserRound} active={usersActive} resolved={resolved} />
@@ -487,7 +487,6 @@ export function DashboardHeader() {
               ]}
             />
             <TopNavLink href={schedulingHref} label={tNav("scheduling")} icon={CalendarDays} active={schedulingActive} resolved={resolved} />
-            <TopNavLink href={attendanceHref} label={tNav("attendance")} icon={UserCheck} active={attendanceActive} resolved={resolved} />
             <TopNavLink href={qrCodesHref} label={tNav("qrCodes")} icon={QrCode} active={qrCodesActive} resolved={resolved} />
             <TopNavLink href={formsHref} label={tNav("forms")} icon={ClipboardPen} active={formsActive} resolved={resolved} />
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />

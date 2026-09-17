@@ -3,7 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { Controller, useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import {
   createProfile,
@@ -17,6 +17,7 @@ import {
   profileToFormDefaults,
   type ProfileFormValues,
 } from "@/features/settings/profiles/schemas/profile-form-schema";
+import { fetchRoles } from "@/features/users/api/user.api";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -24,11 +25,14 @@ import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { routes } from "@/shared/config/routes";
 import {
   AppButton,
-  dashboardScrollablePageClassName,
+  CheckmarkSelect,
+  FieldErrorText,
+  FieldGroup,
   FormFieldRow,
   SurfaceShell,
   SurfaceTextareaField,
   SurfaceTextField,
+  dashboardScrollablePageClassName,
 } from "@/shared/ui";
 
 export type ProfileFormProps = {
@@ -45,17 +49,20 @@ export function ProfileFormScreen({ mode = "create", profileId }: ProfileFormPro
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
+  const [roleOptions, setRoleOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const schema = React.useMemo(
     () =>
       createProfileFormSchema({
         profileNameRequired: t("validation.profileName"),
+        roleRequired: t("validation.role"),
       }),
     [t],
   );
 
   const {
     register,
+    control,
     reset,
     setError,
     handleSubmit,
@@ -64,6 +71,28 @@ export function ProfileFormScreen({ mode = "create", profileId }: ProfileFormPro
     resolver: zodResolver(schema),
     defaultValues: emptyProfileFormDefaults(),
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const roles = await fetchRoles();
+        if (!cancelled) {
+          setRoleOptions(
+            roles.map((r) => ({
+              value: String(r.id),
+              label: r.role_name?.trim() || r.name?.trim() || `Role #${r.id}`,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setRoleOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!isEdit || !profileId) return;
@@ -158,7 +187,6 @@ export function ProfileFormScreen({ mode = "create", profileId }: ProfileFormPro
             noValidate
             onSubmit={handleSubmit(onSubmit)}
           >
-            {/* Row 1: profile_name & profile_type */}
             <FormFieldRow cols="2">
               <SurfaceTextField
                 register={register}
@@ -171,6 +199,29 @@ export function ProfileFormScreen({ mode = "create", profileId }: ProfileFormPro
                 disabled={saving}
               />
 
+              <FieldGroup label={t("fields.role")} htmlFor="profile-role" required>
+                <Controller
+                  control={control}
+                  name="role"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="profile-role"
+                      listLabel={t("fields.role")}
+                      options={roleOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.role")}
+                      disabled={saving || roleOptions.length === 0}
+                      invalid={!!errors.role}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.role?.message}</FieldErrorText>
+              </FieldGroup>
+            </FormFieldRow>
+
+            <FormFieldRow cols="2">
               <SurfaceTextField
                 register={register}
                 name="profile_type"
@@ -182,7 +233,6 @@ export function ProfileFormScreen({ mode = "create", profileId }: ProfileFormPro
               />
             </FormFieldRow>
 
-            {/* Row 2: description */}
             <FormFieldRow cols="2">
               <SurfaceTextareaField
                 register={register}

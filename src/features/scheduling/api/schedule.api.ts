@@ -79,6 +79,7 @@ async function fetchAllListRows<T>(
 
   const { items } = await resolveDropdownListPages<T>({
     dropdown: true,
+    fetchAllPages: true,
     silent: options?.silent,
     fetchFirst: async () => {
       const { data } = await api.get<ListEnvelope<T>>(path, {

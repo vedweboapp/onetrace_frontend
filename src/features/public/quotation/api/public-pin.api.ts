@@ -327,7 +327,13 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
 
 export async function fetchPublicQuotationByToken(token: string): Promise<QuotationDetail> {
   const response = await api.get<unknown>(`public/quotations/${token}/`);
-  const data = unwrapApiData(response.data);
+  const raw = response.data;
+  const data = unwrapApiData(raw);
+  if (isObject(raw) && isObject(data)) {
+    if ("access_context" in raw && !("access_context" in data)) {
+      (data as any).access_context = (raw as any).access_context;
+    }
+  }
   return data as QuotationDetail;
 }
 
@@ -359,10 +365,14 @@ export async function fetchPublicQuotationRejectionReasons(token: string): Promi
 }
 
 export type PublicQuotationResponsePayload = {
-  status: "approved" | "rejected" | "questioned";
+  status: "approved" | "rejected" | "questioned" | "submit" | string;
   comment?: string;
   rejection_reason_ids?: number;
   signature?: File | Blob | string | null;
+  composite_items?: any[] | string;
+  items?: any[] | string;
+  quotation_total?: number | string;
+  [key: string]: any;
 };
 
 export function dataURLtoBlob(dataurl: string): Blob {
@@ -381,41 +391,71 @@ export async function submitPublicQuotationResponse(
   token: string,
   payload: PublicQuotationResponsePayload,
 ): Promise<void> {
-  if (!payload.signature) {
-    const body: Record<string, string | number> = {
-      status: payload.status,
-    };
-    if (payload.comment?.trim()) {
-      body.comment = payload.comment.trim();
-    }
-    if (typeof payload.rejection_reason_ids === "number") {
-      body.rejection_reason_ids = payload.rejection_reason_ids;
-    }
-    await api.post(`public/quotations/${token}/`, body);
-    return;
-  }
-
   const formData = new FormData();
-  formData.append("status", payload.status);
 
-  if (payload.comment?.trim()) {
-    formData.append("comment", payload.comment.trim());
+  if (payload.status) {
+    formData.append("status", payload.status);
   }
 
-  if (typeof payload.rejection_reason_ids === "number") {
+  if (payload.comment) {
+    formData.append("comment", payload.comment);
+  }
+
+  if (payload.rejection_reason_ids !== undefined && payload.rejection_reason_ids !== null) {
     formData.append("rejection_reason_ids", String(payload.rejection_reason_ids));
   }
 
   if (payload.signature) {
-    if (payload.signature instanceof File || payload.signature instanceof Blob) {
-      formData.append("signature", payload.signature, "signature.png");
-    } else if (typeof payload.signature === "string" && payload.signature.startsWith("data:")) {
+    if (typeof payload.signature === "string" && payload.signature.startsWith("data:image")) {
       const blob = dataURLtoBlob(payload.signature);
       formData.append("signature", blob, "signature.png");
-    } else if (typeof payload.signature === "string" && payload.signature.trim()) {
-      formData.append("signature", payload.signature.trim());
+    } else if (payload.signature instanceof File || payload.signature instanceof Blob) {
+      formData.append("signature", payload.signature, "signature.png");
+    } else {
+      formData.append("signature", payload.signature as any);
     }
   }
+
+  if (payload.items !== undefined && payload.items !== null) {
+    formData.append(
+      "items",
+      typeof payload.items === "string" ? payload.items : JSON.stringify(payload.items),
+    );
+  }
+
+  if (payload.composite_items !== undefined && payload.composite_items !== null) {
+    formData.append(
+      "composite_items",
+      typeof payload.composite_items === "string"
+        ? payload.composite_items
+        : JSON.stringify(payload.composite_items),
+    );
+  }
+
+  if (payload.quotation_total !== undefined && payload.quotation_total !== null) {
+    formData.append("quotation_total", String(payload.quotation_total));
+  }
+
+  // Append any extra keys
+  const handledKeys = new Set([
+    "status",
+    "comment",
+    "rejection_reason_ids",
+    "signature",
+    "items",
+    "composite_items",
+    "quotation_total",
+  ]);
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (!handledKeys.has(key) && value !== undefined && value !== null) {
+      if (typeof value === "object") {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
+      }
+    }
+  });
 
   await api.post(`public/quotations/${token}/`, formData, {
     headers: {

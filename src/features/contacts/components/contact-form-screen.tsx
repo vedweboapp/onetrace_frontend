@@ -162,10 +162,16 @@ export function ContactFormScreen({ mode, contactId }: Props) {
     }
   }, []);
 
+  // Client contact form → clients only; vendor contact form → vendors only.
   React.useEffect(() => {
+    if (contactType === "vendor") {
+      setClientOptions([]);
+      void reloadVendors();
+      return;
+    }
+    setVendorOptions([]);
     void reloadClients();
-    void reloadVendors();
-  }, [reloadClients, reloadVendors]);
+  }, [contactType, reloadClients, reloadVendors]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -210,8 +216,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     onReloadOptions: async () => {
-      await reloadClients();
-      await reloadVendors();
+      const type = getValues("contact_type");
+      if (type === "vendor") await reloadVendors();
+      else await reloadClients();
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {

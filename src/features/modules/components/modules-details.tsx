@@ -10,21 +10,27 @@ import {
     DataTableScroll,
     DataTableTd,
     DataTableTh,
+    DataTableTextModeToggle,
     SurfaceShell,
     AppButton,
     DataTablePaginationBar,
     ListPageSearchField,
     AddButton,
     ListPageEmptyStates,
+    useDataTableTextModeStore,
 } from "@/shared/ui";
 import { useUrlParams } from "@/shared/hooks/use-url-params";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
+import { cn } from "@/core/utils/http.util";
 import { getModulesList } from "../api/modules.api";
 
 const ModulesDetails = () => {
     const t = useTranslations("Dashboard.modules");
+    const textMode = useDataTableTextModeStore((s) => s.textMode);
+    const wrap = textMode === "wrap";
+    const cellTextClass = wrap ? "whitespace-normal break-words" : "truncate";
     const [params, setParam, setPageSize] = useUrlParams({
         page_size: 10,
     });
@@ -174,44 +180,51 @@ const ModulesDetails = () => {
                     </div>
                 ) : (
                     <>
-                        <DataTableScroll>
-                            <DataTable>
-                                <DataTableHead>
-                                    <tr>
-                                        <DataTableTh>{t("table.displayName")}</DataTableTh>
-                                        <DataTableTh>{t("table.moduleName")}</DataTableTh>
-                                        <DataTableTh>{t("table.createdBy")}</DataTableTh>
-                                        <DataTableTh className="hidden sm:table-cell">{t("table.lastModified")}</DataTableTh>
-                                    </tr>
-                                </DataTableHead>
-                                <DataTableBody>
-                                    {paginatedItems.map((row) => {
-                                        const id = row.id;
-                                        const displayName = row.singular_label || row.name || row.displayName || row.api_name || "Untitled";
-                                        const moduleName = row.api_name || row.moduleName || "";
-                                        const createdBy = row.created_by?.username || "Unknown";
-                                        const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
+                        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                            <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
+                                <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
+                                    <DataTableTextModeToggle variant="header" className="shrink-0" />
+                                </div>
+                            </div>
+                            <DataTableScroll>
+                                <DataTable className="[&_thead_th:last-child]:pr-12" textWrap={wrap}>
+                                    <DataTableHead>
+                                        <tr>
+                                            <DataTableTh>{t("table.displayName")}</DataTableTh>
+                                            <DataTableTh>{t("table.moduleName")}</DataTableTh>
+                                            <DataTableTh>{t("table.createdBy")}</DataTableTh>
+                                            <DataTableTh className="hidden sm:table-cell">{t("table.lastModified")}</DataTableTh>
+                                        </tr>
+                                    </DataTableHead>
+                                    <DataTableBody>
+                                        {paginatedItems.map((row) => {
+                                            const id = row.id;
+                                            const displayName = row.singular_label || row.name || row.displayName || row.api_name || "Untitled";
+                                            const moduleName = row.api_name || row.moduleName || "";
+                                            const createdBy = row.created_by?.username || "Unknown";
+                                            const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
 
-                                        return (
-                                            <DataTableRow key={id} onClick={() => route.push(`${routes.dashboard.settingsModules}/${id}/layout`)}>
-                                                <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100">
-                                                    {displayName}
-                                                </DataTableTd>
-                                                <DataTableTd className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                                                    {moduleName}
-                                                </DataTableTd>
-                                                <DataTableTd className="text-slate-500 dark:text-slate-400">
-                                                    {createdBy}
-                                                </DataTableTd>
-                                                <DataTableTd className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">
-                                                    {formatDate(lastModified)}
-                                                </DataTableTd>
-                                            </DataTableRow>
-                                        );
-                                    })}
-                                </DataTableBody>
-                            </DataTable>
-                        </DataTableScroll>
+                                            return (
+                                                <DataTableRow key={id} onClick={() => route.push(`${routes.dashboard.settingsModules}/${id}/layout`)}>
+                                                    <DataTableTd className={cn("font-semibold text-slate-800 dark:text-slate-100", cellTextClass)} title={!wrap ? displayName : undefined}>
+                                                        {displayName}
+                                                    </DataTableTd>
+                                                    <DataTableTd className={cn("font-mono text-xs text-slate-500 dark:text-slate-400", cellTextClass)} title={!wrap ? moduleName : undefined}>
+                                                        {moduleName}
+                                                    </DataTableTd>
+                                                    <DataTableTd className={cn("text-slate-500 dark:text-slate-400", cellTextClass)} title={!wrap ? createdBy : undefined}>
+                                                        {createdBy}
+                                                    </DataTableTd>
+                                                    <DataTableTd className="hidden whitespace-nowrap text-slate-500 dark:text-slate-400 sm:table-cell">
+                                                        {formatDate(lastModified)}
+                                                    </DataTableTd>
+                                                </DataTableRow>
+                                            );
+                                        })}
+                                    </DataTableBody>
+                                </DataTable>
+                            </DataTableScroll>
+                        </div>
 
                         {totalRecords > 0 && (
                             <DataTablePaginationBar

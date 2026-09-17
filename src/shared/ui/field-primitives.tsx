@@ -34,7 +34,7 @@ export const surfaceTextareaClassName = cn(
 
 export const surfaceSelectClassName = cn(
   surfaceInputClassName,
-  "cursor-pointer appearance-none bg-slate-50/90 py-2.5 dark:bg-slate-900/70",
+  "cursor-pointer appearance-none bg-slate-50/90 py-0 leading-normal dark:bg-slate-900/70",
 );
 
 export function RequiredMark({ alwaysVisible }: { alwaysVisible?: boolean } = {}) {

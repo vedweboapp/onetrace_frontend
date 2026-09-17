@@ -13,17 +13,23 @@ import {
     DataTableScroll,
     DataTableTd,
     DataTableTh,
+    DataTableTextModeToggle,
     SurfaceShell,
     DashboardEmptyState,
     AppButton,
-    ListPageSearchField
+    ListPageSearchField,
+    useDataTableTextModeStore,
 } from "@/shared/ui";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
+import { cn } from "@/core/utils/http.util";
 
 const LayoutDetails = () => {
     const t = useTranslations("Dashboard.settingsLayouts");
+    const textMode = useDataTableTextModeStore((s) => s.textMode);
+    const wrap = textMode === "wrap";
+    const cellTextClass = wrap ? "whitespace-normal break-words" : "truncate";
     const [searchQuery, setSearchQuery] = useState("");
     const [layouts, setLayouts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -137,61 +143,72 @@ const LayoutDetails = () => {
                         description={searchQuery ? `We couldn't find any layouts matching "${searchQuery}"` : "This module does not have any layouts yet."}
                     />
                 ) : (
-                    <DataTableScroll>
-                        <DataTable>
-                            <DataTableHead>
-                                <tr>
-                                    <DataTableTh>Layout</DataTableTh>
-                                    <DataTableTh>Last Modified</DataTableTh>
-                                    <DataTableTh className="text-right w-24">Active Status</DataTableTh>
-                                </tr>
-                            </DataTableHead>
-                            <DataTableBody>
-                                {filteredLayouts.map((row, idx) => {
-                                    const layoutName = row.name || row.displayName || row.layoutName || "Standard Layout";
-                                    const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
-                                    const activeStatus = row.is_active !== undefined ? row.is_active : true;
+                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
+                            <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
+                                <DataTableTextModeToggle variant="header" className="shrink-0" />
+                            </div>
+                        </div>
+                        <DataTableScroll>
+                            <DataTable className="[&_thead_th:last-child]:pr-12" textWrap={wrap}>
+                                <DataTableHead>
+                                    <tr>
+                                        <DataTableTh>Layout</DataTableTh>
+                                        <DataTableTh>Last Modified</DataTableTh>
+                                        <DataTableTh className="w-24 text-right">Active Status</DataTableTh>
+                                    </tr>
+                                </DataTableHead>
+                                <DataTableBody>
+                                    {filteredLayouts.map((row, idx) => {
+                                        const layoutName = row.name || row.displayName || row.layoutName || "Standard Layout";
+                                        const lastModified = row.updated_at || row.updatedAt || row.created_at || row.lastModified || "";
+                                        const activeStatus = row.is_active !== undefined ? row.is_active : true;
 
-                                    const formattedDate = lastModified ? new Date(lastModified).toLocaleDateString() : "N/A";
-                                    const formattedTime = lastModified ? new Date(lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+                                        const formattedDate = lastModified ? new Date(lastModified).toLocaleDateString() : "N/A";
+                                        const formattedTime = lastModified ? new Date(lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
 
-                                    return (
-                                        <DataTableRow key={row.id || idx} clickable={true}>
-                                            <DataTableTd className="font-semibold text-slate-800 dark:text-slate-100" onClick={() => route.push(`${routes.dashboard.settingsModules}/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}>
-                                                {layoutName}
-                                            </DataTableTd>
-                                            <DataTableTd>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[13px] font-medium text-slate-600">{formattedDate}</span>
-                                                    {formattedTime && <span className="text-[11px] font-medium text-slate-400">{formattedTime}</span>}
-                                                </div>
-                                            </DataTableTd>
-                                            <DataTableTd className="text-right w-24" >
-                                                <div className="flex items-center justify-end">
-                                                    <button
-                                                        type="button"
-                                                        role="switch"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            switchActiveStatus(row.id, activeStatus);
-                                                        }}
-                                                        aria-checked={activeStatus}
-                                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${activeStatus ? 'bg-[#21C588]' : 'bg-slate-200'
-                                                            }`}
-                                                    >
-                                                        <span
-                                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${activeStatus ? 'translate-x-5' : 'translate-x-0'
+                                        return (
+                                            <DataTableRow key={row.id || idx} clickable={true}>
+                                                <DataTableTd
+                                                    className={cn("font-semibold text-slate-800 dark:text-slate-100", cellTextClass)}
+                                                    title={!wrap ? layoutName : undefined}
+                                                    onClick={() => route.push(`${routes.dashboard.settingsModules}/${moduleId}/layout/edit?layout_id=${row.id}&purpose=edit_layout`)}
+                                                >
+                                                    {layoutName}
+                                                </DataTableTd>
+                                                <DataTableTd>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-[13px] font-medium text-slate-600">{formattedDate}</span>
+                                                        {formattedTime && <span className="text-[11px] font-medium text-slate-400">{formattedTime}</span>}
+                                                    </div>
+                                                </DataTableTd>
+                                                <DataTableTd className="w-24 text-right pr-12">
+                                                    <div className="flex items-center justify-end">
+                                                        <button
+                                                            type="button"
+                                                            role="switch"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                switchActiveStatus(row.id, activeStatus);
+                                                            }}
+                                                            aria-checked={activeStatus}
+                                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${activeStatus ? 'bg-[#21C588]' : 'bg-slate-200'
                                                                 }`}
-                                                        />
-                                                    </button>
-                                                </div>
-                                            </DataTableTd>
-                                        </DataTableRow>
-                                    );
-                                })}
-                            </DataTableBody>
-                        </DataTable>
-                    </DataTableScroll>
+                                                        >
+                                                            <span
+                                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${activeStatus ? 'translate-x-5' : 'translate-x-0'
+                                                                    }`}
+                                                            />
+                                                        </button>
+                                                    </div>
+                                                </DataTableTd>
+                                            </DataTableRow>
+                                        );
+                                    })}
+                                </DataTableBody>
+                            </DataTable>
+                        </DataTableScroll>
+                    </div>
                 )}
             </SurfaceShell>
         </div>

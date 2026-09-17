@@ -87,6 +87,8 @@ function toWritePayload(body: UserGroupCreatePayload | UserGroupUpdatePayload): 
 export type UserGroupListFilters = {
   search?: string;
   dropdown?: boolean;
+  /** Follow cursor/next until exhausted (e.g. scheduling groups calendar). */
+  fetchAllPages?: boolean;
 };
 
 export async function fetchUserGroupsPage(
@@ -101,6 +103,7 @@ export async function fetchUserGroupsPage(
 
   return resolveDropdownListPages({
     dropdown: filters?.dropdown,
+    fetchAllPages: filters?.fetchAllPages === true,
     fetchFirst: async () => {
       const { data } = await api.get<UserGroupListResponse>(USER_GROUP_PATHS.list, { params });
       const page = parseListApiPage<UserGroup>(data, pageSize);

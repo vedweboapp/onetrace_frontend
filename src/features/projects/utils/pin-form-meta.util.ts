@@ -50,19 +50,41 @@ export function resolvePinFormMeta(
   const jobFormId = form?.id ?? pinProjectFormId;
   const projectFormId = form?.project_form_id ?? pinProjectFormId;
 
-  const apiSubmissionId = pinProjectForm?.submission_id;
-  const apiSubmissionStatus = pinProjectForm?.submission_status;
+  const pinAny = pin as any;
+  const pinProjectFormAny = pinProjectForm as any;
+
+  const directSubmissionId =
+    (typeof pinProjectFormAny?.submission_id === "number" && pinProjectFormAny.submission_id > 0
+      ? pinProjectFormAny.submission_id
+      : null) ??
+    (typeof pinProjectFormAny?.submitted_form_id === "number" && pinProjectFormAny.submitted_form_id > 0
+      ? pinProjectFormAny.submitted_form_id
+      : null) ??
+    (typeof pinAny?.submission_id === "number" && pinAny.submission_id > 0
+      ? pinAny.submission_id
+      : null) ??
+    (typeof pinAny?.submitted_form_id === "number" && pinAny.submitted_form_id > 0
+      ? pinAny.submitted_form_id
+      : null) ??
+    (typeof pinAny?.submission?.id === "number" && pinAny.submission.id > 0
+      ? pinAny.submission.id
+      : null);
+
+  const apiSubmissionStatus =
+    pinProjectForm?.submission_status ??
+    pinAny?.submission_status ??
+    pinAny?.status_name;
 
   const submissionId =
-    typeof apiSubmissionId === "number" && apiSubmissionId > 0
-      ? apiSubmissionId
-      : typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0
-        ? form.submitted_form_id
-        : null;
+    directSubmissionId ??
+    (typeof form?.submitted_form_id === "number" && form.submitted_form_id > 0
+      ? form.submitted_form_id
+      : null);
 
   const submitted =
     (typeof apiSubmissionStatus === "string" &&
       apiSubmissionStatus.toLowerCase() === "submitted") ||
+    (submissionId != null && submissionId > 0) ||
     (form != null &&
       (typeof form.is_submitted === "boolean"
         ? form.is_submitted
