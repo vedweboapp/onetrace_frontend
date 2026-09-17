@@ -158,7 +158,7 @@ export function ItemDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchItemsPage(1, 500, { isComposite: false });
+        const { items } = await fetchItemsPage(1, 20, { isComposite: false, dropdown: true });
         if (cancelled) return;
         setChildItemsById(new Map(items.map((it) => [it.id, it])));
       } catch {
@@ -193,7 +193,7 @@ export function ItemDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchUnitTypesPage(1, 500, { is_active: true });
+        const { items } = await fetchUnitTypesPage(1, 20, { is_active: true, dropdown: true });
         if (cancelled) return;
         setUnitTypesById(
           Object.fromEntries(items.map((u) => [u.id, { id: u.id, name: u.name, short_form: u.short_form }])),
@@ -215,7 +215,7 @@ export function ItemDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchVendorsPage(1, 500, { is_active: true });
+        const { items } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
         if (cancelled) return;
         const labels: Record<number, string> = {};
         const options: { value: string; label: string }[] = [];
@@ -245,7 +245,7 @@ export function ItemDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchInstallationTypesPage(1, 500, { is_active: true });
+        const { items } = await fetchInstallationTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setInstallationTypeOptions(
             items.map((row) => ({

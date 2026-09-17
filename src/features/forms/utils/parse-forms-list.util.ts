@@ -65,6 +65,41 @@ export function parseFormsPaginationResponse(data: unknown): FormsPagination {
   if (data && typeof data === "object") {
     const envelope = data as Record<string, unknown>;
     if (isPaginationLike(envelope.pagination)) return envelope.pagination;
+
+    // dropdown=true cursor page: { next, previous, results }
+    if (Array.isArray(envelope.results) || "next" in envelope || "previous" in envelope) {
+      const resultsLen = Array.isArray(envelope.results) ? envelope.results.length : 0;
+      const next = typeof envelope.next === "string" ? envelope.next : null;
+      const previous = typeof envelope.previous === "string" ? envelope.previous : null;
+      const pageSize =
+        typeof envelope.page_size === "number" && envelope.page_size > 0
+          ? envelope.page_size
+          : Math.max(resultsLen, 20);
+      return {
+        total_records:
+          typeof envelope.total_records === "number"
+            ? envelope.total_records
+            : typeof envelope.count === "number"
+              ? envelope.count
+              : next
+                ? resultsLen + 1
+                : resultsLen,
+        total_pages:
+          typeof envelope.total_pages === "number" && envelope.total_pages > 0
+            ? envelope.total_pages
+            : next
+              ? 2
+              : 1,
+        current_page:
+          typeof envelope.current_page === "number" && envelope.current_page > 0
+            ? envelope.current_page
+            : 1,
+        page_size: pageSize,
+        next,
+        previous,
+      };
+    }
+
     if (typeof envelope.count === "number") {
       return {
         total_records: envelope.count,

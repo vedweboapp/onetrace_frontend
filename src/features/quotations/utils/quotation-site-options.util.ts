@@ -39,7 +39,7 @@ export async function fetchQuotationSiteRows(args: {
 
   if (isServiceQuotation) {
     if (!clientId || clientId <= 0) return [];
-    const { items } = await fetchSitesPage(1, 500, { client: clientId });
+    const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
     return items.map((row) => ({ id: row.id, site_name: row.site_name }));
   }
 
@@ -53,7 +53,7 @@ export async function fetchQuotationSiteRows(args: {
     /* fall through to site list API */
   }
 
-  const { items } = await fetchSitesPage(1, 500, { project: projectId });
+  const { items } = await fetchSitesPage(1, 20, { project: projectId, dropdown: true });
   return items.map((row) => ({ id: row.id, site_name: row.site_name }));
 }
 

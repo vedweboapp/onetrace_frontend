@@ -121,8 +121,8 @@ export function JobDetailWorkScopeEditor({
     void (async () => {
       try {
         const [groups, items] = await Promise.all([
-          fetchGroupsPage(1, 500),
-          fetchItemsPage(1, 500, { isActive: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));

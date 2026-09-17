@@ -13,7 +13,7 @@ let userLabelCache: Record<number, string> | null = null;
 export async function loadDispatchUserLabelById(): Promise<Record<number, string>> {
   if (userLabelCache) return userLabelCache;
   try {
-    const { items } = await fetchUsersPage(1, 500);
+    const { items } = await fetchUsersPage(1, 20, { dropdown: true });
     const map: Record<number, string> = {};
     for (const u of items) {
       map[resolveUserProfileSelectId(u)] = userProfileLabel(u);

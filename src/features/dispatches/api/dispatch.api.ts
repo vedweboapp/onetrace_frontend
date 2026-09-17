@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { DISPATCH_PATHS } from "./dispatch.paths";
 import { DISPATCH_RETURN_REQUEST_PATHS } from "./dispatch.paths";
 import type {
@@ -108,6 +113,7 @@ export type DispatchListFilters = {
   worker_name?: string | number;
   material_request_id?: number;
   job?: number;
+  dropdown?: boolean;
 };
 
 export async function fetchDispatchesPage(
@@ -115,7 +121,7 @@ export async function fetchDispatchesPage(
   pageSize = 20,
   filters?: DispatchListFilters,
 ): Promise<{ items: DispatchListItem[]; pagination: DispatchListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   if (filters?.search?.trim()) params.search = filters.search.trim();
   if (filters?.status?.trim()) params.status = filters.status.trim();
   if (filters?.worker_name != null && String(filters.worker_name).trim()) {
@@ -123,13 +129,19 @@ export async function fetchDispatchesPage(
   }
   if (filters?.material_request_id != null) params.material_request_id = filters.material_request_id;
   if (filters?.job != null) params.job = filters.job;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<DispatchListResponse>(DISPATCH_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return {
-    items: data.data.map((row) => normalizeDispatchListItem(row)),
-    pagination: data.pagination,
-  };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<DispatchListResponse>(DISPATCH_PATHS.list, { params });
+      const page = parseListApiPage<DispatchListItem>(data, pageSize);
+      return {
+        items: page.items.map((row) => normalizeDispatchListItem(row)),
+        pagination: page.pagination as DispatchListResponse["pagination"],
+      };
+    },
+  });
 }
 
 export async function fetchDispatch(id: number): Promise<DispatchDetail> {

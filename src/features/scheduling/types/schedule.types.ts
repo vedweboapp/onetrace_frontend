@@ -43,7 +43,10 @@ export type ScheduleBulkSkipRow = {
 
 /** Result of create when API may skip unavailable workers in a bulk request. */
 export type CreateScheduleResult = {
-  schedule: Schedule;
+  /** First created schedule (if any) — convenient for calendar focus. */
+  schedule: Schedule | null;
+  /** All schedules created in this request (bulk returns one per worker). */
+  schedules: Schedule[];
   skipped: ScheduleBulkSkipRow[];
   scheduledWorkerIds: number[];
 };

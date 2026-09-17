@@ -179,11 +179,11 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     onReloadOptions: async () => {
       try {
         const [clients, projects, groups, items, contacts] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchGroupsPage(1, 500),
-          fetchItemsPage(1, 500, { isActive: true }),
-          clientId ? fetchContactsPage(1, 500, { client: clientId, is_active: true }) : Promise.resolve({ items: [] }),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
+          clientId ? fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true }) : Promise.resolve({ items: [] }),
         ]);
         setClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
         setContactOptions(
@@ -250,10 +250,10 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     (async () => {
       try {
         const [clients, projects, groups, items] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchGroupsPage(1, 500),
-          fetchItemsPage(1, 500, { isActive: true }),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (!cancelled) {
           setClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
@@ -298,7 +298,7 @@ export function InvoiceFormScreen({ mode, invoiceId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: clientId, is_active: true });
+        const { items } = await fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true });
         if (!cancelled) {
           setContactOptions(
             items.map((c) => ({

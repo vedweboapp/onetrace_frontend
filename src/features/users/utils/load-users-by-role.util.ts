@@ -42,7 +42,7 @@ export async function fetchUsersForAppRole(role: AppRoleKey): Promise<UserProfil
   const roleIds = await resolveAppRoleIdMap();
   const roleId = roleIds.get(role);
   if (roleId == null) return [];
-  const { items } = await fetchUsersPage(1, 500, { role: roleId });
+  const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
   return items;
 }
 
@@ -56,7 +56,7 @@ export async function fetchUsersForAppRoles(
     unique.map(async (role) => {
       const roleId = roleIds.get(role);
       if (roleId == null) return [role, [] as UserProfile[]] as const;
-      const { items } = await fetchUsersPage(1, 500, { role: roleId });
+      const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
       return [role, items] as const;
     }),
   );

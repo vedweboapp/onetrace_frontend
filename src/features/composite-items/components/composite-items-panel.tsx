@@ -123,8 +123,8 @@ export function CompositeItemsPanel() {
     (async () => {
       try {
         const [groupsRes, typesRes] = await Promise.all([
-          fetchGroupsPage(1, 500),
-          fetchInstallationTypesPage(1, 500, { is_active: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchInstallationTypesPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setGroupOptions(groupsRes.items.map((g) => ({ value: String(g.id), label: g.name })));

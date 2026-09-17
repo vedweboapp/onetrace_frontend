@@ -200,6 +200,7 @@ const ProjectTypeFormList = () => {
             try {
                 const response = await fetchProjectTypesPage(1, 50, {
                     is_active: true,
+                    dropdown: true,
                 });
                 if (!cancelled) {
                     setProjectTypes(Array.isArray(response.items) ? response.items : []);
@@ -217,7 +218,10 @@ const ProjectTypeFormList = () => {
             setInstallationTypesLoading(true);
             setInstallationTypesError(null);
             try {
-                const response = await fetchInstallationTypesPage(1, 50, { is_active: true });
+                const response = await fetchInstallationTypesPage(1, 50, {
+                    is_active: true,
+                    dropdown: true,
+                });
                 if (!cancelled) {
                     setInstallationTypes(Array.isArray(response.items) ? response.items : []);
                 }

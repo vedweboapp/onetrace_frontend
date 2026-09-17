@@ -277,8 +277,8 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
       setInstallationTypesError(null);
       try {
         const [itemsRes, installationTypesRes] = await Promise.all([
-          fetchItemsPage(1, 500, { isComposite: false }),
-          fetchInstallationTypesPage(1, 500, { is_active: true }),
+          fetchItemsPage(1, 20, { isComposite: false, dropdown: true }),
+          fetchInstallationTypesPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (!cancelled) {
           setItemOptions(itemsRes.items);

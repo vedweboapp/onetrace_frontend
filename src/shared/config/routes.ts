@@ -32,6 +32,7 @@ export const routes = {
         : base;
     },
     scheduling: "/scheduling",
+    attendance: "/attendance",
     qrCodes: "/qr-codes",
     projects: "/projects",
     projectPinDetail: (projectId: number | string, pinId: number | string, drawingId?: number | string) => {
@@ -70,6 +71,7 @@ export const routes = {
     settingsModules: "/settings/modules",
     settingsProjectForms: "/settings/project-type-forms",
     settingsIntegrations: "/settings/integrations",
+    settingsAuditLogs: "/settings/audit-logs",
     settingsZohoCallback: "/settings/integrations/zoho/callback",
     settingsZohoKeyMapping: "/settings/integrations/zoho/key-mapping",
     settingsZohoConnection: "/settings/integrations/zoho/connection",
