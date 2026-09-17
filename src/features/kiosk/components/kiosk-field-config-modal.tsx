@@ -1,413 +1,579 @@
 "use client";
 
-import React, { useState } from "react";
-import { AppButton as Button } from "@/shared/ui/app-button";
-import { fieldRequiredMarkClassName } from "@/shared/ui/field-primitives";
+import React, { useState, useEffect } from "react";
 import {
-  Sparkles,
-  Image as ImageIcon,
-  CheckCircle2,
   X,
-  Palette,
-  Layers,
-  Code,
-  Tag,
-  Hash,
-  Eye,
-  CreditCard,
+  Save,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import type { KioskField } from "../types/kiosk.types";
+import { AppButton } from "@/shared/ui/app-button";
+import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
+import type {
+  KioskOption,
+  PlacementMode,
+  PositionValue,
+} from "../types/kiosk.types";
+import { cn } from "@/core/utils/http.util";
 
 interface KioskFieldConfigModalProps {
-  field: KioskField;
-  onSave: (updatedField: KioskField) => void;
+  option: KioskOption;
+  questions?: any[];
+  onSave: (updated: KioskOption) => void;
   onClose: () => void;
 }
 
-const PRESET_COLORS = [
-  "#2563EB", // Blue
-  "#0D9488", // Teal
-  "#10B981", // Green
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#8B5CF6", // Purple
-  "#EC4899", // Pink
-  "#0F172A", // Slate
-];
-
-const PRESET_IMAGES = [
-  { label: "Check-in", url: "https://images.unsplash.com/photo-1554415707-9e4966a604f7?w=400&auto=format&fit=crop&q=60" },
-  { label: "Visitor", url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=60" },
-  { label: "Contractor", url: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=60" },
-  { label: "Delivery", url: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&auto=format&fit=crop&q=60" },
-];
-
 export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
-  field,
+  option,
+  questions = [],
   onSave,
   onClose,
 }) => {
-  const [fieldLabel, setFieldLabel] = useState(field.field_label || field.label || "Selection Card");
-  const [apiName, setApiName] = useState(
-    field.api_name || fieldLabel.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+  const fieldType = (option.field_type as string) || "radio";
+  const def = KIOSK_FIELD_TYPES[fieldType] ?? KIOSK_FIELD_TYPES.radio;
+
+  const [formData, setFormData] = useState<KioskOption>(() => ({
+    ...def.defaultConfig(),
+    ...option,
+  }));
+
+  useEffect(() => {
+    setFormData({ ...def.defaultConfig(), ...option });
+  }, [option]);
+
+  // Extract all existing image fields / image options in the kiosk
+  const availableImageFields = React.useMemo(() => {
+    const list: {
+      uid: string;
+      label: string;
+      questionLabel: string;
+      image: string;
+    }[] = [];
+
+    (questions || []).forEach((q: any, qIdx: number) => {
+      (q.options || []).forEach((opt: any, optIdx: number) => {
+        if (opt._uid === option._uid) return; // skip self
+        list.push({
+          uid: opt._uid,
+          label: opt.label || `Option ${optIdx + 1}`,
+          questionLabel: q.label || `Question ${qIdx + 1}`,
+          image: String(opt.image || ""),
+        });
+      });
+    });
+
+    return list;
+  }, [questions, option._uid]);
+
+  const placementMode: PlacementMode =
+    formData.placement_mode || formData.placement?.mode || "group";
+
+  const position: PositionValue | undefined =
+    formData.placement_position ||
+    formData.placement?.position ||
+    (placementMode === "place" ? "center" : undefined);
+
+  const selectedTargetField = availableImageFields.find(
+    (f) =>
+      f.uid ===
+      (formData.target_image_field || formData.placement?.target_field)
   );
-  const [fieldType, setFieldType] = useState(field.field_type || "selection_card");
-  const [inputType, setInputType] = useState(field.input_type || "selection_card");
-  const [value, setValue] = useState(field.value || "");
-  const [color, setColor] = useState(field.color || "#2563EB");
-  const [image, setImage] = useState(field.image || "");
-  const [required, setRequired] = useState(Boolean(field.required));
-  const [description, setDescription] = useState(field.description || "");
-  const [previewSelected, setPreviewSelected] = useState(false);
 
-  const handleLabelChange = (newLabel: string) => {
-    setFieldLabel(newLabel);
-    // Auto sync api_name if user hasn't heavily customized it
-    const slug = newLabel.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    if (!apiName || apiName === fieldLabel.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")) {
-      setApiName(slug);
-    }
-    if (!value || value === fieldLabel) {
-      setValue(newLabel);
-    }
-  };
+  const handlePlacementModeChange = (mode: PlacementMode) => {
+    setFormData((prev) => {
+      if (mode === "group") {
+        return {
+          ...prev,
+          placement_mode: "group",
+          placement_position: undefined,
+          target_image_field: undefined,
+          placement: {
+            mode: "group",
+          },
+        };
+      } else {
+        const nextPos: PositionValue = position || "center";
+        const nextTargetField =
+          prev.target_image_field ||
+          (availableImageFields.length > 0
+            ? availableImageFields[0].uid
+            : undefined);
 
-  const handleSave = () => {
-    onSave({
-      ...field,
-      field_label: fieldLabel.trim() || "Selection Card",
-      label: fieldLabel.trim() || "Selection Card",
-      api_name: apiName.trim() || "selection_card",
-      field_type: fieldType,
-      input_type: inputType,
-      value: value.trim() || fieldLabel.trim(),
-      color,
-      image,
-      required,
-      description: description.trim(),
+        return {
+          ...prev,
+          placement_mode: "place",
+          placement_position: nextPos,
+          target_image_field: nextTargetField,
+          placement: {
+            mode: "place",
+            position: nextPos,
+            target_field: nextTargetField,
+          },
+        };
+      }
     });
   };
 
+  const handlePositionChange = (pos: PositionValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      placement_mode: "place",
+      placement_position: pos,
+      placement: {
+        mode: "place",
+        position: pos,
+        target_field: prev.target_image_field,
+      },
+    }));
+  };
+
+  const handleSelectImageField = (targetUid: string) => {
+    if (targetUid === "__upload__") {
+      setFormData((prev) => ({
+        ...prev,
+        target_image_field: "__upload__",
+      }));
+      return;
+    }
+
+    const found = availableImageFields.find((f) => f.uid === targetUid);
+    if (found) {
+      setFormData((prev) => ({
+        ...prev,
+        target_image_field: found.uid,
+        image: found.image || prev.image,
+        placement: {
+          mode: "place",
+          position: position || "center",
+          target_field: found.uid,
+        },
+      }));
+    }
+  };
+
+  const handleChange = (key: keyof KioskOption, val: any) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [key]: val };
+      // Keep value in sync with color for color-type options
+      if (
+        key === "color" &&
+        (fieldType === "color" || fieldType === "color_swatch")
+      ) {
+        updated.value = val;
+      }
+      return updated;
+    });
+  };
+
+  const handleSave = () => {
+    onSave({ ...formData });
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex h-full max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex size-9 items-center justify-center rounded-lg shadow-sm"
-              style={{ backgroundColor: color, color: "#fff" }}
-            >
-              <CreditCard className="size-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                Configure Selection Card Field
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Customize keys, visual attributes, and preview live state
-              </p>
-            </div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="relative w-full max-w-md overflow-hidden rounded-sm border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 shrink-0">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Configure {def.label}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {def.description}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="flex size-7 items-center justify-center rounded-sm text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           >
-            <X className="size-5" />
+            <X className="size-4" />
           </button>
         </div>
 
-        {/* Modal Body: Left Inputs + Right Live Preview */}
-        <div className="grid flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-12 custom-scrollbar">
-          {/* Left Form Controls (7 cols) */}
-          <div className="p-6 space-y-5 lg:col-span-7 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
-            {/* Label */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                <Tag className="size-3.5 text-slate-400" />
-                Label <span className={fieldRequiredMarkClassName}>*</span>
-              </label>
-              <input
-                type="text"
-                value={fieldLabel}
-                onChange={(e) => handleLabelChange(e.target.value)}
-                placeholder="e.g. Visitor Check-In"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-
-            {/* API Name & Field Type */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Fields */}
+        <div className="space-y-4 p-5 overflow-y-auto flex-1 custom-scrollbar">
+          {/* Placement Section for Image Radio Option */}
+          {fieldType === "image_radio" && (
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-900/50">
               <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  <Code className="size-3.5 text-slate-400" />
-                  API Name <span className={fieldRequiredMarkClassName}>*</span>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Placement
                 </label>
-                <input
-                  type="text"
-                  value={apiName}
-                  onChange={(e) => setApiName(e.target.value)}
-                  placeholder="e.g. visitor_check_in"
-                  className="w-full font-mono text-xs rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
+                <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => handlePlacementModeChange("place")}
+                    className={cn(
+                      "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
+                      placementMode === "place"
+                        ? "bg-blue-600 text-white shadow-xs font-semibold"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    )}
+                  >
+                    Place / Overlap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePlacementModeChange("group")}
+                    className={cn(
+                      "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
+                      placementMode === "group"
+                        ? "bg-blue-600 text-white shadow-xs font-semibold"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    )}
+                  >
+                    Group
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  {placementMode === "place"
+                    ? "Place mode: Select which image field in the kiosk to place onto and set its position"
+                    : "Group mode: Standard grouped option without placement positioning"}
+                </p>
               </div>
 
-              <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  <Layers className="size-3.5 text-slate-400" />
-                  Input Type
-                </label>
-                <select
-                  value={inputType}
-                  onChange={(e) => setInputType(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="selection_card">Selection Card</option>
-                  <option value="radio">Radio Selection</option>
-                  <option value="checkbox">Multi-Select Card</option>
-                  <option value="button">Action Button</option>
-                </select>
-              </div>
-            </div>
+              {/* When placementMode === 'place': Show Target Field Dropdown + Target Preview + Joystick */}
+              {placementMode === "place" && (
+                <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/80 space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Image field to choose
+                    </label>
 
-            {/* Value & Field Type Hidden / Explicit */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  <Hash className="size-3.5 text-slate-400" />
-                  Value / ID
-                </label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder="e.g. visitor"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
+                    {/* Dropdown to select existing image field from the kiosk */}
+                    <select
+                      value={formData.target_image_field || formData.placement?.target_field || ""}
+                      onChange={(e) => handleSelectImageField(e.target.value)}
+                      className="w-full rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      <option value="">
+                        {availableImageFields.length === 0
+                          ? "-- No other image fields in kiosk --"
+                          : "-- Select target image field --"}
+                      </option>
+                      {availableImageFields.map((field) => (
+                        <option key={field.uid} value={field.uid}>
+                          {field.questionLabel} → {field.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  <Palette className="size-3.5 text-slate-400" />
-                  Color Accent
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="size-9 cursor-pointer rounded-lg border border-slate-300 p-0.5 dark:border-slate-700 bg-transparent"
-                  />
-                  <div className="flex flex-wrap gap-1.5">
-                    {PRESET_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setColor(c)}
-                        className={`size-6 rounded-md transition-transform ${
-                          color === c ? "scale-110 ring-2 ring-blue-500 ring-offset-1" : "hover:scale-105"
-                        }`}
-                        style={{ backgroundColor: c }}
-                        title={c}
-                      />
-                    ))}
+                  <div className="flex items-start gap-3">
+                    {/* Left: Target Image Preview Box */}
+                    <div className="flex-1 min-w-0">
+                      <div className="relative overflow-hidden rounded-md border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 h-24 w-full flex items-center justify-center">
+                        {selectedTargetField?.image ? (
+                          <img
+                            src={String(selectedTargetField.image)}
+                            alt={selectedTargetField.label || "Target image"}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-center p-2">
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                              {selectedTargetField
+                                ? selectedTargetField.label
+                                : "Select an image field above"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                              (Target Canvas)
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Visual Position Target Overlay Indicator */}
+                        <div
+                          className={cn(
+                            "absolute size-7 rounded-sm border-2 border-white bg-blue-600/90 shadow-md backdrop-blur-xs flex items-center justify-center text-[10px] font-bold text-white transition-all duration-150 pointer-events-none",
+                            position === "top" && "top-1.5 inset-x-auto",
+                            position === "bottom" && "bottom-1.5 inset-x-auto",
+                            position === "left" && "left-1.5 inset-y-auto",
+                            position === "right" && "right-1.5 inset-y-auto",
+                            (!position || position === "center") && "inset-0 m-auto"
+                          )}
+                        >
+                          {position === "center" ? "0" : position ? position[0].toUpperCase() : "0"}
+                        </div>
+                      </div>
+                      {selectedTargetField && (
+                        <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          Target: <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedTargetField.label}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right: Joystick Position Controller */}
+                    <div className="shrink-0 flex flex-col items-center">
+                      <span className="mb-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                        Position:{" "}
+                        <span className="font-mono text-blue-600 dark:text-blue-400 font-bold capitalize">
+                          {position || "center"}
+                        </span>
+                      </span>
+
+                      {/* 3x3 Joystick Grid */}
+                      <div className="relative grid grid-cols-3 grid-rows-3 gap-1 size-24 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-inner">
+                        {/* Top */}
+                        <div className="col-start-2 row-start-1 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePositionChange("top")}
+                            className={cn(
+                              "size-6 rounded flex items-center justify-center transition shadow-2xs",
+                              position === "top"
+                                ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
+                                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                            )}
+                            title="Top (▲)"
+                          >
+                            <ChevronUp size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
+
+                        {/* Left */}
+                        <div className="col-start-1 row-start-2 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePositionChange("left")}
+                            className={cn(
+                              "size-6 rounded flex items-center justify-center transition shadow-2xs",
+                              position === "left"
+                                ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
+                                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                            )}
+                            title="Left (◀)"
+                          >
+                            <ChevronLeft size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
+
+                        {/* Center */}
+                        <div className="col-start-2 row-start-2 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePositionChange("center")}
+                            className={cn(
+                              "size-6 rounded flex items-center justify-center text-[10px] font-bold transition shadow-2xs font-mono",
+                              position === "center"
+                                ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
+                                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                            )}
+                            title="Center (0)"
+                          >
+                            0
+                          </button>
+                        </div>
+
+                        {/* Right */}
+                        <div className="col-start-3 row-start-2 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePositionChange("right")}
+                            className={cn(
+                              "size-6 rounded flex items-center justify-center transition shadow-2xs",
+                              position === "right"
+                                ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
+                                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                            )}
+                            title="Right (▶)"
+                          >
+                            <ChevronRight size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
+
+                        {/* Bottom */}
+                        <div className="col-start-2 row-start-3 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePositionChange("bottom")}
+                            className={cn(
+                              "size-6 rounded flex items-center justify-center transition shadow-2xs",
+                              position === "bottom"
+                                ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
+                                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                            )}
+                            title="Bottom (▼)"
+                          >
+                            <ChevronDown size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
+          )}
 
-            {/* Image URL / Selection */}
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  <ImageIcon className="size-3.5 text-slate-400" />
-                  Image / Thumbnail URL
-                </label>
-                {image && (
-                  <button
-                    type="button"
-                    onClick={() => setImage("")}
-                    className="text-[11px] text-red-500 hover:underline"
-                  >
-                    Clear Image
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/photo.jpg or choose preset below"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="text-[11px] text-slate-400 self-center">Presets:</span>
-                {PRESET_IMAGES.map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => setImage(preset.url)}
-                    className={`rounded-md border px-2 py-0.5 text-xs transition-colors ${
-                      image === preset.url
-                        ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Standard Config Fields */}
+          {def.configFields.map((field) => {
+            const val = (formData[field.key] as any) ?? "";
 
-            {/* Description / Subtext */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                Description / Helper Text
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional subtitle for card"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-            </div>
-
-            {/* Required Flag */}
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="kiosk-field-required"
-                checked={required}
-                onChange={(e) => setRequired(e.target.checked)}
-                className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800"
-              />
-              <label htmlFor="kiosk-field-required" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Mark as Mandatory / Required
-              </label>
-            </div>
-          </div>
-
-          {/* Right Live Preview Box (5 cols) */}
-          <div className="flex flex-col bg-slate-50 p-6 dark:bg-slate-900/50 lg:col-span-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <Eye className="size-4 text-blue-500" />
-                Live Card Preview
-              </div>
-              <span className="text-[11px] text-slate-400">Click card to toggle selection</span>
-            </div>
-
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-6 dark:border-slate-700 dark:bg-slate-800/40">
-              {/* Construct of the Selection Card */}
-              <div
-                onClick={() => setPreviewSelected(!previewSelected)}
-                className={`group relative flex w-full max-w-[280px] cursor-pointer flex-col overflow-hidden rounded-2xl border-2 transition-all duration-200 shadow-sm hover:shadow-md ${
-                  previewSelected
-                    ? "scale-[1.02] shadow-lg ring-2 ring-offset-2"
-                    : "hover:border-slate-300 dark:hover:border-slate-600"
-                }`}
-                style={{
-                  borderColor: previewSelected ? color : undefined,
-                  boxShadow: previewSelected ? `0 10px 25px -5px ${color}33` : undefined,
-                }}
-              >
-                {/* Image / Header Banner */}
-                {image ? (
-                  <div className="relative h-32 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    <img
-                      src={image}
-                      alt={fieldLabel}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
+            if (field.type === "color") {
+              return (
+                <div key={String(field.key)}>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {field.label}
+                    {field.required && (
+                      <span className="ml-0.5 text-red-500">*</span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="size-9 flex-shrink-0 rounded-sm border border-slate-200 shadow-xs dark:border-slate-700"
+                      style={{ backgroundColor: String(val) || "#0EA5E9" }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                    <input
+                      type="color"
+                      value={String(val) || "#0EA5E9"}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                      className="h-9 w-full cursor-pointer rounded-sm border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800"
+                    />
                   </div>
-                ) : (
-                  <div
-                    className="flex h-24 w-full items-center justify-center transition-colors"
-                    style={{ backgroundColor: `${color}15` }}
-                  >
-                    <div
-                      className="flex size-12 items-center justify-center rounded-xl shadow-sm"
-                      style={{ backgroundColor: color, color: "#ffffff" }}
-                    >
-                      <Sparkles className="size-6" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Card Content */}
-                <div className="flex flex-col p-4 bg-white dark:bg-slate-800">
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="font-semibold text-slate-900 dark:text-white line-clamp-1">
-                      {fieldLabel || "Untitled Option"}
-                    </h4>
-                    <div
-                      className={`flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                        previewSelected
-                          ? "border-transparent text-white"
-                          : "border-slate-300 text-transparent dark:border-slate-600"
-                      }`}
-                      style={{
-                        backgroundColor: previewSelected ? color : "transparent",
-                      }}
-                    >
-                      <CheckCircle2 className="size-4" />
-                    </div>
-                  </div>
-
-                  {description && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                      {description}
+                  {field.description && (
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                      {field.description}
                     </p>
                   )}
-
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-700/50">
-                    <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider">
-                      {apiName || "key_name"}
-                    </span>
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                      style={{ backgroundColor: `${color}18`, color }}
-                    >
-                      {value || "val"}
-                    </span>
-                  </div>
                 </div>
+              );
+            }
 
-                {/* Required Indicator Strip */}
-                {required && (
-                  <div className="absolute top-2 left-2 rounded bg-red-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                    Required
-                  </div>
+            if (field.type === "textarea") {
+              return (
+                <div key={String(field.key)}>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {field.label}
+                  </label>
+                  <textarea
+                    value={String(val)}
+                    placeholder={field.placeholder}
+                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    rows={2}
+                    className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              );
+            }
+
+            if (field.type === "image") {
+              return (
+                <div key={String(field.key)}>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {field.label}
+                  </label>
+
+                  {/* File picker */}
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-sm border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500 transition hover:border-blue-400 hover:bg-blue-50/30 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-blue-600 dark:hover:text-blue-400">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="size-4 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                      />
+                    </svg>
+                    <span>{val ? "Change image" : "Upload image"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          handleChange(field.key, reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+
+                  {/* Preview */}
+                  {val && (
+                    <div className="mt-2 overflow-hidden rounded-sm border border-slate-200 dark:border-slate-700">
+                      <img
+                        src={String(val)}
+                        alt="Object image preview"
+                        className="h-24 w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Clear button */}
+                  {val && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange(field.key, "")}
+                      className="mt-1.5 text-[11px] text-red-500 hover:underline"
+                    >
+                      Remove image
+                    </button>
+                  )}
+
+                  {field.description && (
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                      {field.description}
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div key={String(field.key)}>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {field.label}
+                  {field.required && (
+                    <span className="ml-0.5 text-red-500">*</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={String(val)}
+                  placeholder={field.placeholder}
+                  onChange={(e) => handleChange(field.key, e.target.value)}
+                  className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+                {field.description && (
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    {field.description}
+                  </p>
                 )}
               </div>
-            </div>
-
-            {/* Preview Summary Note */}
-            <div className="mt-4 rounded-lg bg-blue-50/70 p-3 text-xs text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-              <span className="font-semibold">Live Attribute Snapshot:</span>
-              <div className="mt-1 grid grid-cols-2 gap-1 text-[11px] font-mono">
-                <div>type: {fieldType}</div>
-                <div>input: {inputType}</div>
-                <div>color: {color}</div>
-                <div>val: {value || "none"}</div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-3.5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-          <Button variant="ghost" onClick={onClose}>
+        {/* Footer */}
+        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 shrink-0">
+          <AppButton variant="secondary" size="sm" onClick={onClose}>
             Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSave} className="px-6">
-            Save Field Configuration
-          </Button>
+          </AppButton>
+          <AppButton size="sm" onClick={handleSave}>
+            <Save className="mr-1.5 size-3.5" />
+            Save Option
+          </AppButton>
         </div>
       </div>
     </div>

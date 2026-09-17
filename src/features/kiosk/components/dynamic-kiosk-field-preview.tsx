@@ -1,170 +1,235 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import {
-  CreditCard,
-  MoreVertical,
+  GripVertical,
   Edit2,
   Trash2,
   Copy,
-  Image as ImageIcon,
+  CircleDot,
+  CheckSquare,
+  MoreVertical,
 } from "lucide-react";
-import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
-import type { KioskField } from "../types/kiosk.types";
+import { cn } from "@/core/utils/http.util";
+import type { KioskOption } from "../types/kiosk.types";
 
-interface DynamicKioskFieldPreviewProps {
-  field: KioskField;
-  sectionUid: string;
+interface DynamicKioskOptionPreviewProps {
+  option: KioskOption;
   index: number;
-  onEdit: (field: KioskField, sectionUid: string) => void;
-  onDelete: (sectionUid: string, fieldUid: string) => void;
-  onDuplicate: (sectionUid: string, field: KioskField) => void;
-  onMove: (sectionUid: string, fromUid: string, toIndex: number) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
 }
 
-const DND_KIOSK_FIELD = "KIOSK_FIELD";
+const OPTION_DND_TYPE = "KIOSK_QUESTION_OPTION";
 
-export const DynamicKioskFieldPreview: React.FC<DynamicKioskFieldPreviewProps> = ({
-  field,
-  sectionUid,
+export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> = ({
+  option,
   index,
   onEdit,
   onDelete,
   onDuplicate,
   onMove,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const [{ isDragging }, drag] = useDrag(
-    () => ({
-      type: DND_KIOSK_FIELD,
-      item: { uid: field._uid, sectionUid, index },
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-    }),
-    [field._uid, sectionUid, index]
-  );
+  // Close ellipsis menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   const [, drop] = useDrop(
     () => ({
-      accept: DND_KIOSK_FIELD,
-      hover(item: { uid: string; sectionUid: string; index: number }, monitor) {
-        if (!ref.current || item.sectionUid !== sectionUid || item.uid === field._uid) {
-          return;
-        }
+      accept: OPTION_DND_TYPE,
+      hover: (item: { index: number }, monitor) => {
+        if (!rowRef.current) return;
+        const fromIndex = item.index;
+        const toIndex = index;
+        if (fromIndex === toIndex) return;
 
-        const hoverBoundingRect = ref.current.getBoundingClientRect();
-        const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+        const rect = rowRef.current.getBoundingClientRect();
+        const midpoint = (rect.bottom - rect.top) / 2;
         const clientOffset = monitor.getClientOffset();
         if (!clientOffset) return;
-        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+        const hoverY = clientOffset.y - rect.top;
 
-        if (item.index < index && hoverClientY < hoverMiddleY) return;
-        if (item.index > index && hoverClientY > hoverMiddleY) return;
+        if (fromIndex < toIndex && hoverY < midpoint) return;
+        if (fromIndex > toIndex && hoverY > midpoint) return;
 
-        onMove(sectionUid, item.uid, index);
-        item.index = index;
+        onMove(fromIndex, toIndex);
+        item.index = toIndex;
       },
     }),
-    [sectionUid, field._uid, index, onMove]
+    [index, onMove]
   );
 
-  drag(drop(ref));
+  const [{ isDragging }, drag, preview] = useDrag(
+    () => ({
+      type: OPTION_DND_TYPE,
+      item: { index, uid: option._uid },
+      collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
+    }),
+    [index, option._uid]
+  );
 
-  const colorAccent = field.color || "#2563EB";
+  preview(drop(rowRef));
 
   return (
     <div
-      ref={ref}
-      className={`group relative flex items-center justify-between rounded-md border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:border-slate-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 ${
-        field.required ? "border-l-4" : ""
-      }`}
-      style={{
-        opacity: isDragging ? 0.4 : 1,
-        borderLeftColor: field.required ? "#EF4444" : undefined,
-      }}
+      ref={rowRef}
+      onDoubleClick={onEdit}
+      style={{ opacity: isDragging ? 0.3 : 1 }}
+      className={cn(
+        "group relative rounded-sm border border-slate-200 bg-white p-3.5 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700",
+        menuOpen && "z-30 border-blue-300 dark:border-blue-700 shadow-sm"
+      )}
     >
-      <div
-        className="flex flex-1 cursor-pointer items-center gap-3 min-w-0"
-        onClick={() => onEdit(field, sectionUid)}
-      >
-        {/* Visual icon/thumbnail */}
-        {field.image ? (
-          <div className="size-10 shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700">
-            <img
-              src={field.image}
-              alt={field.field_label || field.label}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
-              }}
-            />
-          </div>
-        ) : (
+      <div className="flex items-start justify-between gap-3">
+        {/* Left: Drag Handle & Radio Icon & Info */}
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <div
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg shadow-xs"
-            style={{ backgroundColor: `${colorAccent}20`, color: colorAccent }}
+            ref={drag as any}
+            className="mt-0.5 cursor-grab text-slate-300 transition-colors hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-300"
+            title="Drag to reorder"
           >
-            <CreditCard className="size-5" />
+            <GripVertical size={16} />
           </div>
-        )}
 
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-slate-800 dark:text-slate-200 truncate">
-              {field.field_label || field.label || "Selection Card"}
-            </span>
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: colorAccent }}
-              title={`Color: ${colorAccent}`}
+          {option.field_type === "color" || option.field_type === "color_swatch" ? (
+            <div
+              className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-xs ring-1 ring-slate-300 dark:border-slate-800 dark:ring-slate-600"
+              style={{
+                backgroundColor:
+                  option.color ||
+                  (typeof option.value === "string" && option.value.startsWith("#")
+                    ? option.value
+                    : "#2563EB"),
+              }}
+              title={`Color: ${option.color || option.value || "#2563EB"}`}
             />
-          </div>
+          ) : (
+            <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+              {option.field_type === "checkbox" ? <CheckSquare size={14} /> : <CircleDot size={14} />}
+            </div>
+          )}
 
-          <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-            <span className="font-mono text-[11px] truncate">{field.api_name || "api_key"}</span>
-            <span>•</span>
-            <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[10px] uppercase font-medium dark:bg-slate-700 dark:text-slate-300">
-              {field.input_type || "card"}
-            </span>
-            {field.value && (
-              <>
-                <span>•</span>
-                <span className="truncate max-w-[120px]">val: {field.value}</span>
-              </>
+          {/* Small option-height matching image preview */}
+          {option.image && (
+            <div className="mt-0.5 size-9 shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-2xs">
+              <img
+                src={String(option.image)}
+                alt={option.label || "Option preview"}
+                className="h-full w-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                {option.label ||
+                  (option.field_type === "color_swatch"
+                    ? "Color Swatch Choice"
+                    : option.field_type === "color"
+                    ? "Color Choice"
+                    : option.field_type === "checkbox"
+                    ? "Checkbox Option"
+                    : option.field_type === "image_radio"
+                    ? "Image Radio Option"
+                    : "Radio Option")}
+              </span>
+
+              {option.price && (
+                <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  ${option.price}
+                </span>
+              )}
+            </div>
+
+            {option.subLabel && (
+              <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
+                {option.subLabel}
+              </p>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Field Actions Menu */}
-      <div className="flex items-center gap-1 pl-2">
-        <DataTableRowActionsMenu
-          menuAriaLabel="Field options"
-          items={[
-            {
-              id: "edit",
-              label: "Configure Field",
-              icon: Edit2,
-              onSelect: () => onEdit(field, sectionUid),
-            },
-            {
-              id: "duplicate",
-              label: "Duplicate",
-              icon: Copy,
-              onSelect: () => onDuplicate(sectionUid, field),
-            },
-            {
-              id: "delete",
-              label: "Delete",
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => onDelete(sectionUid, field._uid),
-            },
-          ]}
-        />
+        {/* Right: Ellipsis Menu (Configure, Duplicate, Delete) */}
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((v) => !v);
+            }}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-md border transition",
+              menuOpen
+                ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-400"
+                : "border-slate-200 bg-white text-slate-500 shadow-2xs hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
+            )}
+            title="Option options"
+          >
+            <MoreVertical size={14} />
+          </button>
+
+          {menuOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-8 z-40 min-w-[145px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-100"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit();
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+              >
+                <Edit2 size={13} className="text-slate-400" />
+                Configure
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDuplicate();
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <Copy size={13} className="text-slate-400" />
+                Duplicate
+              </button>
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                <Trash2 size={13} />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

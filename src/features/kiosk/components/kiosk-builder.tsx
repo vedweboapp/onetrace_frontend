@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { DndProvider, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { AppButton as Button } from "@/shared/ui/app-button";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
 import {
   Monitor,
   Smartphone,
@@ -15,22 +14,24 @@ import {
   Trash2,
   Copy,
   Edit2,
-  CheckCircle2,
   ArrowLeft,
-  Settings2,
-  CreditCard,
   Layers,
+  MoreHorizontal,
+  Check,
+  Columns,
 } from "lucide-react";
-import type {
-  KioskConfig,
-  KioskField,
-  KioskSection,
+import {
+  type KioskConfig,
+  type KioskQuestion,
+  type KioskOption,
+  DEFAULT_KIOSK_CONFIG,
 } from "../types/kiosk.types";
-import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
-import { KioskModuleBar, KIOSK_FIELDS_PALETTE, KioskFieldPaletteItem } from "./kiosk-module-bar";
+import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
+import { KioskModuleBar } from "./kiosk-module-bar";
 import { DynamicKioskFieldPreview } from "./dynamic-kiosk-field-preview";
 import { KioskFieldConfigModal } from "./kiosk-field-config-modal";
 import { KioskRenderer } from "./kiosk-renderer";
+import { cn } from "@/core/utils/http.util";
 
 interface KioskBuilderProps {
   initialConfig?: KioskConfig;
@@ -38,411 +39,610 @@ interface KioskBuilderProps {
   backUrl?: string;
 }
 
-const generateUid = (prefix = "k_") => `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+const generateUid = (prefix = "k_") =>
+  `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
-// Section Dropzone for palette fields and section reordering
-const SectionDropZone: React.FC<{
-  section: KioskSection;
+const deriveApiNameFromLabel = (label: string): string => {
+  return (
+    label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "option"
+  );
+};
+
+const getGridClass = (cols: number = 2) => {
+  switch (cols) {
+    case 1:
+      return "grid-cols-1";
+    case 2:
+      return "grid-cols-1 md:grid-cols-2";
+    case 3:
+      return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    case 4:
+      return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+    default:
+      return "grid-cols-1 md:grid-cols-2";
+  }
+};
+
+// Question Section Dropzone for palette fields & options
+const QuestionDropZone: React.FC<{
+  question: KioskQuestion;
   index: number;
-  onAddField: (sectionUid: string, fieldType: string, inputType?: string, label?: string, color?: string) => void;
-  onEditField: (field: KioskField, sectionUid: string) => void;
-  onDeleteField: (sectionUid: string, fieldUid: string) => void;
-  onDuplicateField: (sectionUid: string, field: KioskField) => void;
-  onMoveField: (sectionUid: string, fromUid: string, toIndex: number) => void;
-  onUpdateSection: (sectionUid: string, updates: Partial<KioskSection>) => void;
-  onDeleteSection: (sectionUid: string) => void;
-  onDuplicateSection: (section: KioskSection) => void;
+  onAddOption: (questionUid: string, item?: any) => void;
+  onEditOption: (option: KioskOption, questionUid: string) => void;
+  onDeleteOption: (questionUid: string, optionUid: string) => void;
+  onDuplicateOption: (questionUid: string, option: KioskOption) => void;
+  onMoveOption: (questionUid: string, fromUid: string, toIndex: number) => void;
+  onUpdateQuestion: (questionUid: string, updates: Partial<KioskQuestion>) => void;
+  onDeleteQuestion: (questionUid: string) => void;
+  onDuplicateQuestion: (question: KioskQuestion) => void;
 }> = ({
-  section,
+  question,
   index,
-  onAddField,
-  onEditField,
-  onDeleteField,
-  onDuplicateField,
-  onMoveField,
-  onUpdateSection,
-  onDeleteSection,
-  onDuplicateSection,
+  onAddOption,
+  onEditOption,
+  onDeleteOption,
+  onDuplicateOption,
+  onMoveOption,
+  onUpdateQuestion,
+  onDeleteQuestion,
+  onDuplicateQuestion,
 }) => {
-  const [isEditingHeading, setIsEditingHeading] = useState(false);
-  const [headingText, setHeadingText] = useState(section.heading || section.name || `Section ${index + 1}`);
-  const [subheadingText, setSubheadingText] = useState(section.subheading || "");
-  const [showSubheadingInput, setShowSubheadingInput] = useState(Boolean(section.subheading));
+  const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [labelText, setLabelText] = useState(question.label || `Question ${index + 1}`);
+  const [subLabelText, setSubLabelText] = useState(question.subLabel || "");
+  const [apiNameText, setApiNameText] = useState(question.api_name || `question_${index + 1}`);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close ellipsis menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: ["KIOSK_PALETTE_FIELD"],
-      drop: (item: { field_type: string; input_type?: string; label?: string; color?: string }) => {
-        onAddField(section._uid, item.field_type, item.input_type, item.label, item.color);
+      drop: (item: any) => {
+        onAddOption(question._uid, item);
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver({ shallow: true }),
       }),
     }),
-    [section._uid, onAddField]
+    [question._uid, onAddOption]
   );
 
-  const saveHeading = () => {
-    setIsEditingHeading(false);
-    onUpdateSection(section._uid, {
-      name: headingText.trim() || `Section ${index + 1}`,
-      heading: headingText.trim() || `Section ${index + 1}`,
-      subheading: subheadingText.trim() || undefined,
+  const saveHeader = () => {
+    setIsEditingHeader(false);
+    onUpdateQuestion(question._uid, {
+      label: labelText.trim() || `Question ${index + 1}`,
+      subLabel: subLabelText.trim() || undefined,
+      api_name: apiNameText.trim() || `question_${index + 1}`,
     });
+  };
+
+  const cancelHeader = () => {
+    setLabelText(question.label || `Question ${index + 1}`);
+    setSubLabelText(question.subLabel || "");
+    setApiNameText(question.api_name || `question_${index + 1}`);
+    setIsEditingHeader(false);
   };
 
   return (
     <div
       ref={drop as any}
-      className={`relative rounded-xl border bg-white shadow-xs transition-all dark:bg-slate-900 ${
+      className={`relative rounded-sm border bg-white shadow-2xs transition-all dark:bg-slate-900 ${
         isOver
-          ? "border-blue-500 bg-blue-50/30 ring-2 ring-blue-500/20 dark:border-blue-400 dark:bg-blue-950/20"
+          ? "border-blue-500 bg-blue-50/20 ring-2 ring-blue-500/20 dark:border-blue-400 dark:bg-blue-950/20"
           : "border-slate-200 dark:border-slate-800"
       }`}
     >
-      {/* Section Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 rounded-t-xl">
-        <div className="flex flex-1 items-center gap-2">
-          {isEditingHeading ? (
-            <div className="flex flex-1 flex-col gap-1.5 max-w-md">
+      {/* Question Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 rounded-t-xl">
+        <div className="flex flex-1 min-w-[240px] items-center gap-2">
+          {isEditingHeader ? (
+            <div className="flex flex-1 flex-col gap-1.5 max-w-lg">
               <input
                 type="text"
-                value={headingText}
+                value={labelText}
                 autoFocus
-                onChange={(e) => setHeadingText(e.target.value)}
-                onBlur={saveHeading}
-                onKeyDown={(e) => e.key === "Enter" && saveHeading()}
+                onChange={(e) => setLabelText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveHeader();
+                  if (e.key === "Escape") cancelHeader();
+                }}
                 className="rounded border border-blue-400 bg-white px-2.5 py-1 text-sm font-semibold text-slate-900 dark:border-blue-500 dark:bg-slate-800 dark:text-white"
-                placeholder="Section heading..."
+                placeholder="Question label..."
               />
-              {showSubheadingInput && (
+              <input
+                type="text"
+                value={subLabelText}
+                onChange={(e) => setSubLabelText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveHeader();
+                  if (e.key === "Escape") cancelHeader();
+                }}
+                className="rounded border border-slate-300 bg-white px-2.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                placeholder="Sub-label or instructions (optional)..."
+              />
+              <div className="sr-only">
+                <span className="text-[10px] font-mono text-slate-400">api_name:</span>
                 <input
                   type="text"
-                  value={subheadingText}
-                  onChange={(e) => setSubheadingText(e.target.value)}
-                  onBlur={saveHeading}
-                  onKeyDown={(e) => e.key === "Enter" && saveHeading()}
-                  className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  placeholder="Optional section subheading..."
+                  value={apiNameText}
+                  onChange={(e) => setApiNameText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveHeader();
+                    if (e.key === "Escape") cancelHeader();
+                  }}
+                  className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-[10px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  placeholder="api_name..."
                 />
-              )}
+              </div>
+              {/* Save / Cancel buttons */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={saveHeader}
+                  className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                >
+                  <Check size={11} /> Save
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelHeader}
+                  className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div
-              className="group/head flex cursor-pointer items-baseline gap-2"
-              onClick={() => setIsEditingHeading(true)}
+              onClick={() => setIsEditingHeader(true)}
+              className="group/title flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 hover:bg-slate-200/50 dark:hover:bg-slate-800"
             >
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white group-hover/head:text-blue-600 dark:group-hover/head:text-blue-400">
-                {section.heading || section.name || `Section ${index + 1}`}
-              </h3>
-              {section.subheading && (
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                  — {section.subheading}
-                </span>
-              )}
-              <Edit2 className="size-3 text-slate-400 opacity-0 group-hover/head:opacity-100 transition-opacity" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {question.label || `Question ${index + 1}`}
+                  </span>
+                  <Edit2 className="size-3 text-slate-400 opacity-0 group-hover/title:opacity-100" />
+                </div>
+                {question.subLabel && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {question.subLabel}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Section Actions Menu */}
-        <div className="flex items-center gap-1">
-          <DataTableRowActionsMenu
-            menuAriaLabel="Section options"
-            items={[
-              {
-                id: "edit_heading",
-                label: "Edit Heading",
-                icon: Edit2,
-                onSelect: () => setIsEditingHeading(true),
-              },
-              {
-                id: "toggle_subheading",
-                label: showSubheadingInput ? "Edit Subheading" : "Add Subheading",
-                icon: Layers,
-                onSelect: () => {
-                  setShowSubheadingInput(true);
-                  setIsEditingHeading(true);
-                },
-              },
-              {
-                id: "duplicate_section",
-                label: "Duplicate Section",
-                icon: Copy,
-                onSelect: () => onDuplicateSection(section),
-              },
-              {
-                id: "delete_section",
-                label: "Delete Section",
-                icon: Trash2,
-                tone: "danger",
-                onSelect: () => onDeleteSection(section._uid),
-              },
-            ]}
-          />
+        {/* Ellipsis Menu: Columns + Duplicate + Delete */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-md border transition",
+              menuOpen
+                ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-400 dark:bg-blue-950/30 dark:text-blue-400"
+                : "border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            )}
+            title="Question options"
+          >
+            <MoreHorizontal size={14} />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-8 z-30 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              {/* Columns section */}
+              <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+                <p className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Columns size={10} /> Columns
+                </p>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => {
+                        onUpdateQuestion(question._uid, { columns: num, column_count: num });
+                        setMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex h-7 w-9 items-center justify-center rounded text-[11px] font-bold transition-all",
+                        (question.columns || question.column_count || 2) === num
+                          ? "bg-black text-white shadow-2xs dark:bg-white dark:text-black"
+                          : "border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      )}
+                      title={`${num} Column${num > 1 ? "s" : ""}`}
+                    >
+                      {num}C
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Duplicate */}
+              <button
+                type="button"
+                onClick={() => { onDuplicateQuestion(question); setMenuOpen(false); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Copy size={13} className="text-slate-400" />
+                Duplicate Question
+              </button>
+
+              {/* Delete */}
+              <button
+                type="button"
+                onClick={() => { onDeleteQuestion(question._uid); setMenuOpen(false); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                <Trash2 size={13} />
+                Delete Question
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Fields Canvas Area */}
+      {/* Options List / Drop Container */}
       <div className="p-5">
-        {section.fields && section.fields.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
-            {section.fields.map((field, fIndex) => (
+        {question.options && question.options.length > 0 ? (
+          <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
+            {question.options.map((option, optIdx) => (
               <DynamicKioskFieldPreview
-                key={field._uid}
-                field={field}
-                sectionUid={section._uid}
-                index={fIndex}
-                onEdit={onEditField}
-                onDelete={onDeleteField}
-                onDuplicate={onDuplicateField}
-                onMove={onMoveField}
+                key={option._uid || optIdx}
+                option={option}
+                index={optIdx}
+                onEdit={() => onEditOption(option, question._uid)}
+                onDelete={() => onDeleteOption(question._uid, option._uid)}
+                onDuplicate={() => onDuplicateOption(question._uid, option)}
+                onMove={(fromIdx, toIdx) => onMoveOption(question._uid, option._uid, toIdx)}
               />
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[90px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center dark:border-slate-800 dark:bg-slate-900/30">
-            <CreditCard className="size-6 text-slate-400 mb-1" />
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Drag and drop Selection Cards here from the left palette
-            </p>
-          </div>
+          <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-slate-200 dark:border-slate-800" />
         )}
       </div>
     </div>
   );
 };
 
-// Inter-section Drop Zone
-const BetweenSectionsDropZone: React.FC<{
-  onDropSection: () => void;
+// Dropzone between question sections
+const BetweenQuestionsDropZone: React.FC<{
+  onDropQuestion: () => void;
   label?: string;
-}> = ({ onDropSection, label = 'Drop "Add New Section" here to insert below' }) => {
-  const [{ isOver }, drop] = useDrop(
-    () => ({
-      accept: ["ADD_SECTION"],
-      drop: () => onDropSection(),
-      collect: (monitor) => ({ isOver: !!monitor.isOver() }),
-    }),
-    [onDropSection]
-  );
+}> = ({ onDropQuestion, label }) => {
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: ["ADD_QUESTION"],
+    drop: () => onDropQuestion(),
+    collect: (monitor) => ({ isOver: !!monitor.isOver() }),
+  }));
 
   return (
     <div
       ref={drop as any}
-      className={`my-3 flex h-12 items-center justify-center rounded-lg border-2 border-dashed transition-all ${
+      className={`flex items-center justify-center rounded-lg border border-dashed py-2.5 text-center text-xs transition-colors ${
         isOver
-          ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30 shadow-xs"
-          : "border-transparent hover:border-slate-200 dark:hover:border-slate-800"
+          ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-400 font-semibold"
+          : "border-transparent text-slate-400 hover:border-slate-300 dark:text-slate-600 dark:hover:border-slate-700"
       }`}
     >
-      <span className="text-xs text-slate-400 dark:text-slate-500">
-        {label}
-      </span>
+      {label || 'Drop "Add New Question" here'}
+    </div>
+  );
+};
+
+const EmptyCanvasDropZone: React.FC<{ onDropQuestion: () => void }> = ({
+  onDropQuestion,
+}) => {
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: ["ADD_QUESTION"],
+    drop: () => onDropQuestion(),
+    collect: (monitor) => ({ isOver: !!monitor.isOver() }),
+  }));
+
+  return (
+    <div
+      ref={drop as any}
+      className={`my-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center shadow-xs transition-colors ${
+        isOver
+          ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
+          : "border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900"
+      }`}
+    >
+      <div
+        className={`flex size-14 items-center justify-center rounded-2xl mb-3 transition-colors ${
+          isOver
+            ? "bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300"
+            : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+        }`}
+      >
+        <Layers className="size-7" />
+      </div>
+      <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+        {isOver ? "Release to add question" : "Empty Kiosk Canvas"}
+      </h3>
+      <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+        Drag &quot;Add New Question&quot; from the left panel to create your first question section.
+      </p>
     </div>
   );
 };
 
 export const KioskBuilder: React.FC<KioskBuilderProps> = ({
-  initialConfig = DEFAULT_KIOSK_CONFIG,
+  initialConfig,
   onSave,
   backUrl = routes.dashboard.settingsKiosks,
 }) => {
   const router = useRouter();
-  const [config, setConfig] = useState<KioskConfig>(initialConfig);
-  const [activeTab, setActiveTab] = useState<"form" | "rules" | "preview">("form");
+
+  // Normalize initial config to questions structure
+  const [config, setConfig] = useState<KioskConfig>(() => {
+    if (!initialConfig) return DEFAULT_KIOSK_CONFIG;
+    const questions: KioskQuestion[] = Array.isArray(initialConfig.questions)
+      ? initialConfig.questions.map((q) => ({
+          ...q,
+          options: (q.options || []).map((opt) => ({ ...opt })),
+        }))
+      : Array.isArray((initialConfig as any).sections)
+        ? (initialConfig as any).sections.map((sec: any) => ({
+            _uid: sec._uid || generateUid("q_"),
+            id: sec.id ?? null,
+            label: sec.heading || sec.name || "Question",
+            subLabel: sec.subheading || "",
+            api_name: sec.api_name || "question",
+            options: (sec.fields || []).map((f: any) => ({
+              _uid: f._uid || generateUid("opt_"),
+              id: f.id ?? null,
+              label: f.field_label || f.label || "Option",
+              subLabel: f.description || "",
+              api_name: deriveApiNameFromLabel(f.field_label || f.label || "option"),
+              value: f.value || "",
+              price: f.price || "",
+              field_type: f.field_type || "radio",
+              color: f.color,
+            })),
+          }))
+        : [];
+
+    return {
+      ...DEFAULT_KIOSK_CONFIG,
+      ...initialConfig,
+      questions,
+    };
+  });
+
+  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
-  const [editingFieldModal, setEditingFieldModal] = useState<{
-    field: KioskField;
-    sectionUid: string;
+  const [editingOptionModal, setEditingOptionModal] = useState<{
+    option: KioskOption;
+    questionUid: string;
   } | null>(null);
 
-  // Add new section
-  const handleAddSection = useCallback((insertAtIndex?: number) => {
-    const newSec: KioskSection = {
-      _uid: generateUid("sec_"),
-      name: `Section ${(config.sections?.length || 0) + 1}`,
-      heading: `Section ${(config.sections?.length || 0) + 1}`,
-      column_count: 2,
-      sequence: (config.sections?.length || 0) + 1,
-      fields: [],
+  // Question Management
+  const handleAddQuestion = useCallback((insertIndex?: number) => {
+    const newQuestion: KioskQuestion = {
+      _uid: generateUid("q_"),
+      id: null,
+      label: `Question ${(config.questions?.length ?? 0) + 1}`,
+      subLabel: "Please select an option below",
+      api_name: `question_${(config.questions?.length ?? 0) + 1}`,
+      options: [],
     };
 
     setConfig((prev) => {
-      const currentSections = [...(prev.sections || [])];
-      if (insertAtIndex !== undefined && insertAtIndex >= 0) {
-        currentSections.splice(insertAtIndex, 0, newSec);
+      const current = prev.questions ? [...prev.questions] : [];
+      if (insertIndex != null && insertIndex >= 0 && insertIndex <= current.length) {
+        current.splice(insertIndex, 0, newQuestion);
       } else {
-        currentSections.push(newSec);
+        current.push(newQuestion);
       }
-      return { ...prev, sections: currentSections };
+      return { ...prev, questions: current };
     });
-  }, [config.sections]);
+  }, [config.questions]);
 
-  // Add field to section
-  const handleAddField = useCallback(
-    (sectionUid: string, fieldType: string, inputType = "selection_card", label = "Selection Card", color = "#2563EB") => {
-      const newField: KioskField = {
-        _uid: generateUid("fld_"),
+  const handleUpdateQuestion = useCallback((questionUid: string, updates: Partial<KioskQuestion>) => {
+    setConfig((prev) => ({
+      ...prev,
+      questions: (prev.questions || []).map((q) =>
+        q._uid === questionUid ? { ...q, ...updates } : q
+      ),
+    }));
+  }, []);
+
+  const handleDeleteQuestion = useCallback((questionUid: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      questions: (prev.questions || []).filter((q) => q._uid !== questionUid),
+    }));
+  }, []);
+
+  const handleDuplicateQuestion = useCallback((question: KioskQuestion) => {
+    const duplicated: KioskQuestion = {
+      ...question,
+      _uid: generateUid("q_"),
+      id: null,
+      label: `${question.label || "Question"} (Copy)`,
+      api_name: `${question.api_name || "question"}_copy`,
+      options: (question.options || []).map((opt) => ({
+        ...opt,
+        _uid: generateUid("opt_"),
+        id: null,
+      })),
+    };
+
+    setConfig((prev) => {
+      const current = [...(prev.questions || [])];
+      const idx = current.findIndex((q) => q._uid === question._uid);
+      if (idx !== -1) {
+        current.splice(idx + 1, 0, duplicated);
+      } else {
+        current.push(duplicated);
+      }
+      return { ...prev, questions: current };
+    });
+  }, []);
+
+  // Option Management (Radio, Checkbox, Color, or Color Swatch Option)
+  const handleAddOption = useCallback(
+    (
+      questionUid: string,
+      droppedItem?: {
+        field_type?: "radio" | "checkbox" | "color" | "color_swatch";
+        defaultConfig?: Partial<KioskOption>;
+      }
+    ) => {
+      const fieldType = (droppedItem?.field_type || "radio") as
+        | "radio"
+        | "checkbox"
+        | "color"
+        | "color_swatch"
+        | "image_radio";
+      const typeDef = KIOSK_FIELD_TYPES[fieldType] ?? KIOSK_FIELD_TYPES.radio;
+      const defaultOpt = droppedItem?.defaultConfig || typeDef.defaultConfig();
+      const isColorType = fieldType === "color" || fieldType === "color_swatch";
+      const label =
+        defaultOpt.label ||
+        (fieldType === "color_swatch"
+          ? "Color Swatch Choice"
+          : fieldType === "color"
+          ? "Color Choice"
+          : fieldType === "checkbox"
+          ? "Checkbox Option"
+          : fieldType === "image_radio"
+          ? "Image Choice"
+          : "Radio Option");
+
+      const newOption: KioskOption = {
+        _uid: generateUid("opt_"),
+        id: null,
+        label,
+        subLabel: defaultOpt.subLabel || "",
+        api_name: defaultOpt.api_name || deriveApiNameFromLabel(label),
+        value:
+          defaultOpt.value ||
+          (isColorType
+            ? defaultOpt.color || (fieldType === "color_swatch" ? "#0EA5E9" : "#2563EB")
+            : `${fieldType}_${Date.now()}`),
+        color:
+          defaultOpt.color ||
+          (isColorType
+            ? fieldType === "color_swatch"
+              ? "#0EA5E9"
+              : "#2563EB"
+            : undefined),
+        price: defaultOpt.price || "",
+        image: defaultOpt.image || "",
+        placement_mode: defaultOpt.placement_mode || "group",
+        placement_position: defaultOpt.placement_position || undefined,
+        placement: defaultOpt.placement || { mode: "group" },
         field_type: fieldType,
-        input_type: inputType,
-        field_label: label,
-        label: label,
-        api_name: `card_${Date.now().toString().slice(-4)}`,
-        value: label.toLowerCase().replace(/\s+/g, "_"),
-        color: color,
-        required: false,
       };
 
       setConfig((prev) => ({
         ...prev,
-        sections: prev.sections.map((sec) =>
-          sec._uid === sectionUid
-            ? { ...sec, fields: [...(sec.fields || []), newField] }
-            : sec
-        ),
+        questions: (prev.questions || []).map((q) => {
+          if (q._uid !== questionUid) return q;
+          return {
+            ...q,
+            options: [...(q.options || []), newOption],
+          };
+        }),
       }));
     },
     []
   );
 
-  // Add field directly from palette click (into first section or create one)
-  const handleAddFieldDirectly = useCallback((paletteItem: KioskFieldPaletteItem) => {
-    if (!config.sections || config.sections.length === 0) {
-      const newSecUid = generateUid("sec_");
-      const newField: KioskField = {
-        _uid: generateUid("fld_"),
-        field_type: paletteItem.field_type,
-        input_type: paletteItem.input_type,
-        field_label: paletteItem.label,
-        label: paletteItem.label,
-        api_name: `card_${Date.now().toString().slice(-4)}`,
-        value: paletteItem.label.toLowerCase().replace(/\s+/g, "_"),
-        color: paletteItem.defaultColor || "#2563EB",
-        required: false,
-      };
-      const newSec: KioskSection = {
-        _uid: newSecUid,
-        name: "Basic Information",
-        heading: "Basic Information",
-        column_count: 2,
-        sequence: 1,
-        fields: [newField],
-      };
-      setConfig((prev) => ({ ...prev, sections: [newSec] }));
-    } else {
-      handleAddField(
-        config.sections[0]._uid,
-        paletteItem.field_type,
-        paletteItem.input_type,
-        paletteItem.label,
-        paletteItem.defaultColor
-      );
-    }
-  }, [config.sections, handleAddField]);
+  const handleEditOption = useCallback((option: KioskOption, questionUid: string) => {
+    setEditingOptionModal({ option, questionUid });
+  }, []);
 
-  // Update Section
-  const handleUpdateSection = useCallback((sectionUid: string, updates: Partial<KioskSection>) => {
+  const handleSaveOptionConfig = useCallback((updatedOption: KioskOption) => {
+    if (!editingOptionModal) return;
+    const { questionUid } = editingOptionModal;
+
     setConfig((prev) => ({
       ...prev,
-      sections: prev.sections.map((sec) =>
-        sec._uid === sectionUid ? { ...sec, ...updates } : sec
-      ),
+      questions: (prev.questions || []).map((q) => {
+        if (q._uid !== questionUid) return q;
+        return {
+          ...q,
+          options: (q.options || []).map((opt) =>
+            opt._uid === updatedOption._uid ? updatedOption : opt
+          ),
+        };
+      }),
+    }));
+    setEditingOptionModal(null);
+  }, [editingOptionModal]);
+
+  const handleDeleteOption = useCallback((questionUid: string, optionUid: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      questions: (prev.questions || []).map((q) => {
+        if (q._uid !== questionUid) return q;
+        return {
+          ...q,
+          options: (q.options || []).filter((opt) => opt._uid !== optionUid),
+        };
+      }),
     }));
   }, []);
 
-  // Delete Section
-  const handleDeleteSection = useCallback((sectionUid: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      sections: prev.sections.filter((sec) => sec._uid !== sectionUid),
-    }));
-  }, []);
-
-  // Duplicate Section
-  const handleDuplicateSection = useCallback((section: KioskSection) => {
-    const duplicatedSec: KioskSection = {
-      ...section,
-      _uid: generateUid("sec_"),
-      name: `${section.name} (Copy)`,
-      heading: `${section.heading || section.name} (Copy)`,
-      fields: (section.fields || []).map((f) => ({
-        ...f,
-        _uid: generateUid("fld_"),
-        api_name: `${f.api_name}_copy`,
-      })),
+  const handleDuplicateOption = useCallback((questionUid: string, option: KioskOption) => {
+    const duplicated: KioskOption = {
+      ...option,
+      _uid: generateUid("opt_"),
+      id: null,
+      label: `${option.label || "Option"} (Copy)`,
+      api_name: `${option.api_name || "option"}_copy`,
+      value: `${option.value || "choice"}_copy`,
     };
 
     setConfig((prev) => ({
       ...prev,
-      sections: [...prev.sections, duplicatedSec],
+      questions: (prev.questions || []).map((q) => {
+        if (q._uid !== questionUid) return q;
+        const opts = [...(q.options || [])];
+        const idx = opts.findIndex((opt) => opt._uid === option._uid);
+        if (idx !== -1) {
+          opts.splice(idx + 1, 0, duplicated);
+        } else {
+          opts.push(duplicated);
+        }
+        return { ...q, options: opts };
+      }),
     }));
   }, []);
 
-  // Field operations
-  const handleEditField = useCallback((field: KioskField, sectionUid: string) => {
-    setEditingFieldModal({ field, sectionUid });
-  }, []);
-
-  const handleSaveFieldConfig = useCallback((updatedField: KioskField) => {
-    if (!editingFieldModal) return;
-    const { sectionUid } = editingFieldModal;
+  const handleMoveOption = useCallback((questionUid: string, fromUid: string, toIndex: number) => {
     setConfig((prev) => ({
       ...prev,
-      sections: prev.sections.map((sec) =>
-        sec._uid === sectionUid
-          ? {
-              ...sec,
-              fields: sec.fields.map((f) =>
-                f._uid === updatedField._uid ? updatedField : f
-              ),
-            }
-          : sec
-      ),
-    }));
-    setEditingFieldModal(null);
-  }, [editingFieldModal]);
-
-  const handleDeleteField = useCallback((sectionUid: string, fieldUid: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      sections: prev.sections.map((sec) =>
-        sec._uid === sectionUid
-          ? { ...sec, fields: sec.fields.filter((f) => f._uid !== fieldUid) }
-          : sec
-      ),
-    }));
-  }, []);
-
-  const handleDuplicateField = useCallback((sectionUid: string, field: KioskField) => {
-    const duplicated: KioskField = {
-      ...field,
-      _uid: generateUid("fld_"),
-      api_name: `${field.api_name}_copy`,
-      field_label: `${field.field_label || field.label} (Copy)`,
-      label: `${field.field_label || field.label} (Copy)`,
-    };
-    setConfig((prev) => ({
-      ...prev,
-      sections: prev.sections.map((sec) =>
-        sec._uid === sectionUid
-          ? { ...sec, fields: [...sec.fields, duplicated] }
-          : sec
-      ),
-    }));
-  }, []);
-
-  const handleMoveField = useCallback((sectionUid: string, fromUid: string, toIndex: number) => {
-    setConfig((prev) => ({
-      ...prev,
-      sections: prev.sections.map((sec) => {
-        if (sec._uid !== sectionUid) return sec;
-        const currentFields = [...sec.fields];
-        const fromIndex = currentFields.findIndex((f) => f._uid === fromUid);
-        if (fromIndex < 0) return sec;
-        const [moved] = currentFields.splice(fromIndex, 1);
-        currentFields.splice(toIndex, 0, moved);
-        return { ...sec, fields: currentFields };
+      questions: (prev.questions || []).map((q) => {
+        if (q._uid !== questionUid) return q;
+        const allOpts = [...(q.options || [])];
+        const fromIndex = allOpts.findIndex((opt) => opt._uid === fromUid);
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return q;
+        const [moved] = allOpts.splice(fromIndex, 1);
+        allOpts.splice(toIndex, 0, moved);
+        return { ...q, options: allOpts };
       }),
     }));
   }, []);
@@ -469,7 +669,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         data-full-bleed-page
         className="dashboard-full-bleed-page flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-slate-100/60 dark:bg-slate-950 font-sans"
       >
-        {/* Top Navigation Bar - Exact layout from Image 1 */}
+        {/* Top Navigation Bar */}
         <header className="sticky top-0 z-30 flex h-14 w-full shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
           {/* Left: Form Name Input */}
           <div className="flex items-center gap-2">
@@ -492,7 +692,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             </div>
           </div>
 
-          {/* Center: Tabs (Form, Rules, Preview) */}
+          {/* Center: Tabs (Form, Preview) */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActiveTab("form")}
@@ -571,77 +771,61 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           <div className="flex flex-1 overflow-hidden">
             {/* Left ModuleBar Palette */}
             <KioskModuleBar
-              onAddSection={() => handleAddSection()}
-              onAddFieldDirectly={handleAddFieldDirectly}
+              onAddQuestion={() => handleAddQuestion()}
             />
 
             {/* Canvas Area */}
             <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <div className="mx-auto max-w-4xl space-y-4 pb-20">
+              <div className="mx-auto w-full space-y-4 pb-20">
                 {/* Top Drop Zone */}
-                <BetweenSectionsDropZone
-                  onDropSection={() => handleAddSection(0)}
-                  label='Drop "Add New Section" here to insert at the top'
+                <BetweenQuestionsDropZone
+                  onDropQuestion={() => handleAddQuestion(0)}
+                  label='Drop "Add New Question" here to insert at the top'
                 />
 
-                {/* Sections List */}
-                {config.sections && config.sections.length > 0 ? (
-                  config.sections.map((section, sIndex) => (
-                    <React.Fragment key={section._uid}>
-                      <SectionDropZone
-                        section={section}
-                        index={sIndex}
-                        onAddField={handleAddField}
-                        onEditField={handleEditField}
-                        onDeleteField={handleDeleteField}
-                        onDuplicateField={handleDuplicateField}
-                        onMoveField={handleMoveField}
-                        onUpdateSection={handleUpdateSection}
-                        onDeleteSection={handleDeleteSection}
-                        onDuplicateSection={handleDuplicateSection}
+                {/* Question Sections List */}
+                {config.questions && config.questions.length > 0 ? (
+                  config.questions.map((question, qIndex) => (
+                    <React.Fragment key={question._uid || qIndex}>
+                      <QuestionDropZone
+                        question={question}
+                        index={qIndex}
+                        onAddOption={handleAddOption}
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onDuplicateOption={handleDuplicateOption}
+                        onMoveOption={handleMoveOption}
+                        onUpdateQuestion={handleUpdateQuestion}
+                        onDeleteQuestion={handleDeleteQuestion}
+                        onDuplicateQuestion={handleDuplicateQuestion}
                       />
 
-                      {/* Dropzone between sections */}
-                      <BetweenSectionsDropZone
-                        onDropSection={() => handleAddSection(sIndex + 1)}
-                        label='Drop "Add New Section" here to insert below'
+                      {/* Dropzone between questions */}
+                      <BetweenQuestionsDropZone
+                        onDropQuestion={() => handleAddQuestion(qIndex + 1)}
+                        label='Drop "Add New Question" here to insert below'
                       />
                     </React.Fragment>
                   ))
                 ) : (
-                  <div className="my-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 mb-3">
-                      <Layers className="size-7" />
-                    </div>
-                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                      Empty Kiosk Canvas
-                    </h3>
-                    <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
-                      Drag and drop "Add New Section" from the left sidebar or click below to start creating your kiosk flow.
-                    </p>
-                    <button
-                      onClick={() => handleAddSection()}
-                      className="mt-4 flex items-center gap-1.5 rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-black/90 dark:bg-white dark:text-black"
-                    >
-                      <Plus className="size-4" />
-                      Add First Section
-                    </button>
-                  </div>
+                  <EmptyCanvasDropZone
+                    onDropQuestion={() => handleAddQuestion(0)}
+                  />
                 )}
               </div>
             </main>
           </div>
         ) : (
           /* Live Preview Mode */
-          <main className="flex flex-1 items-center justify-center overflow-y-auto p-6 custom-scrollbar bg-slate-200/60 dark:bg-slate-950">
+           <main className="flex flex-1 min-h-0 flex-col overflow-y-auto p-4 custom-scrollbar bg-slate-200/60 dark:bg-slate-950">
             <div
-              className={`w-full transition-all duration-300 ${
+              className={`w-full mt-6 transition-all duration-300 ${
                 previewDevice === "mobile"
-                  ? "max-w-sm rounded-3xl border-8 border-slate-800 bg-white shadow-2xl overflow-hidden min-h-[700px] dark:bg-slate-900"
-                  : "max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
+                  ? "mx-auto max-w-sm rounded-sm border-8 border-slate-800 bg-white shadow-2xl overflow-hidden min-h-[700px] dark:bg-slate-900"
+                  : "rounded-sm border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
               }`}
             >
-              <div className="p-6 md:p-8">
+              <div className="p-4 md:p-5">
                 <KioskRenderer
                   config={config}
                   onSubmit={(values) => {
@@ -654,12 +838,13 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           </main>
         )}
 
-        {/* Modal: Configure Field with Live Preview */}
-        {editingFieldModal && (
+        {/* Modal: Configure Option */}
+        {editingOptionModal && (
           <KioskFieldConfigModal
-            field={editingFieldModal.field}
-            onSave={handleSaveFieldConfig}
-            onClose={() => setEditingFieldModal(null)}
+            option={editingOptionModal.option}
+            questions={config.questions || []}
+            onSave={handleSaveOptionConfig}
+            onClose={() => setEditingOptionModal(null)}
           />
         )}
       </div>
