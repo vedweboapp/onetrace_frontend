@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { PROJECT_TYPE_PATHS } from "./project-type.paths";
 import type {
   ProjectType,
@@ -57,6 +62,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type ProjectTypeListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export async function fetchProjectTypesPage(
@@ -64,14 +70,23 @@ export async function fetchProjectTypesPage(
   pageSize = 20,
   filters?: ProjectTypeListFilters,
 ): Promise<{ items: ProjectType[]; pagination: ProjectTypeListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<ProjectTypeListResponse>(PROJECT_TYPE_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data.map((row) => normalizeProjectType(row as ProjectTypeApiRow)), pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<ProjectTypeListResponse>(PROJECT_TYPE_PATHS.list, { params });
+      const page = parseListApiPage<ProjectTypeApiRow>(data, pageSize);
+      return {
+        items: page.items.map((row) => normalizeProjectType(row)),
+        pagination: page.pagination as never,
+      };
+    },
+  });
 }
 
 export async function fetchProjectType(id: number): Promise<ProjectType> {

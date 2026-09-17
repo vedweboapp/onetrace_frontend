@@ -17,10 +17,19 @@ import {
   useSchedulingCatalog,
 } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule } from "@/features/scheduling/types/schedule.types";
+import {
+  getDayAvailabilityWindow,
+  hasAvailabilityData,
+  intersectAvailabilityWindows,
+  timeToMinutes,
+} from "@/features/scheduling/utils/scheduling-availability.util";
+import { resolveGroupMembers } from "@/features/scheduling/utils/scheduling-people-row.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
+import { technicianMatchesWorkerId } from "@/features/scheduling/utils/scheduling-technician.util";
 import {
   combineDateAndTimeEndToIso,
   combineDateAndTimeToIso,
+  parseDateKey,
   splitApiDateTime,
   toDateKey,
 } from "@/features/scheduling/utils/scheduling-week.util";
@@ -69,7 +78,8 @@ type Props = {
   }) => string | null;
   onCreated?: (schedule: Schedule) => void;
   onBulkResult?: (result: {
-    schedule: Schedule;
+    schedule: Schedule | null;
+    schedules: Schedule[];
     scheduledCount: number;
     skipped: Array<{ workerId: number; workerName: string; reason: string }>;
   }) => void;
@@ -78,6 +88,11 @@ type Props = {
 function isUnassignedJob(job: Job): boolean {
   const id = getJobAssignedWorkerId(job);
   return id == null || id <= 0;
+}
+
+function isMidnightTime(value: string | null | undefined): boolean {
+  const t = value?.trim() ?? "";
+  return t === "00:00" || t === "0:00" || t === "00:00:00";
 }
 
 function addMinutesToDateTime(dateKey: string, timeValue: string, minutesToAdd: number): { date: string; time: string } | null {
@@ -118,11 +133,6 @@ export function CreateScheduleModal({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const isReschedule = Boolean(existingSchedule);
-  const bulkWorkers = React.useMemo(() => {
-    if (Array.isArray(technicians) && technicians.length > 0) return technicians;
-    return technician ? [technician] : [];
-  }, [technician, technicians]);
-  const isBulk = bulkWorkers.length > 1;
   const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(
     t("modal.technicianFallbackTitle"),
     {
@@ -143,9 +153,28 @@ export function CreateScheduleModal({
   const [startTime, setStartTime] = React.useState("09:00");
   const [endTime, setEndTime] = React.useState("17:00");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+  /** When creating for one user, optionally expand to all same-group peers. */
+  const [includeGroupPeers, setIncludeGroupPeers] = React.useState(false);
+  const [extraPeerWorkers, setExtraPeerWorkers] = React.useState<CreateScheduleTechnician[]>([]);
 
   const lockClientJob = Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) || isReschedule;
   const includeJobId = existingSchedule?.job_id ?? prefill?.jobId;
+
+  const seedWorkers = React.useMemo(() => {
+    if (Array.isArray(technicians) && technicians.length > 0) return technicians;
+    return technician ? [technician] : [];
+  }, [technician, technicians]);
+
+  const bulkWorkers = React.useMemo(() => {
+    if (includeGroupPeers && extraPeerWorkers.length > 0) {
+      const map = new Map<number, CreateScheduleTechnician>();
+      for (const w of [...seedWorkers, ...extraPeerWorkers]) map.set(w.id, w);
+      return [...map.values()];
+    }
+    return seedWorkers;
+  }, [seedWorkers, includeGroupPeers, extraPeerWorkers]);
+
+  const isBulk = bulkWorkers.length > 1;
 
   const clientOptions = React.useMemo(() => {
     if (!catalog) return [];
@@ -166,8 +195,38 @@ export function CreateScheduleModal({
     return { id: row.id, name: row.name, title: row.title, initials: row.initials };
   }, [bulkWorkers, workerId, catalog]);
 
+  const peerGroup = React.useMemo(() => {
+    if (isReschedule || !catalog || !selectedWorker) return null;
+    if (Array.isArray(technicians) && technicians.length > 1) return null;
+    for (const group of catalog.userGroups ?? []) {
+      const members = resolveGroupMembers(group, catalog.technicians);
+      if (!members.some((m) => technicianMatchesWorkerId(m, selectedWorker.id))) continue;
+      const peers = members.filter((m) => !technicianMatchesWorkerId(m, selectedWorker.id));
+      if (peers.length === 0) continue;
+      return {
+        id: group.id,
+        name: group.name?.trim() || `Group #${group.id}`,
+        members: members.map((m) => ({
+          id: m.id,
+          name: m.name,
+          title: m.title,
+          initials: m.initials,
+        })),
+        peers: peers.map((m) => ({
+          id: m.id,
+          name: m.name,
+          title: m.title,
+          initials: m.initials,
+        })),
+      };
+    }
+    return null;
+  }, [catalog, selectedWorker, technicians, isReschedule]);
+
   React.useEffect(() => {
     if (!open) return;
+    setIncludeGroupPeers(false);
+    setExtraPeerWorkers([]);
     if (existingSchedule) {
       const start = splitApiDateTime(existingSchedule.start_at);
       const end = splitApiDateTime(existingSchedule.end_at);
@@ -250,26 +309,50 @@ export function CreateScheduleModal({
     const job = map[Number(nextJobId)];
     if (!job) return;
     const durationMinutes = parseJobDurationMinutes(job.job_time);
+    const hasPrefillTimes = Boolean(prefill?.startTime || prefill?.endTime);
     const keepCalendarStart = Boolean(prefill?.dateKey || prefill?.startTime || startDate || startTime);
     if (durationMinutes && durationMinutes > 0 && keepCalendarStart) {
       const baseDate = startDate || prefill?.dateKey || defaultDateKey;
-      const baseTime = startTime || prefill?.startTime || "09:00";
-      const next = addMinutesToDateTime(baseDate, baseTime, durationMinutes);
+      const baseTime = (prefill?.startTime || startTime || "09:00").trim();
+      const safeBaseTime = isMidnightTime(baseTime) && !hasPrefillTimes ? "09:00" : baseTime;
+      const next = addMinutesToDateTime(baseDate, safeBaseTime, durationMinutes);
       if (baseDate) setStartDate(baseDate);
-      if (baseTime) setStartTime(baseTime);
+      if (safeBaseTime) setStartTime(safeBaseTime);
       if (next) {
         setEndDate(next.date);
         setEndTime(next.time);
         return;
       }
     }
-    if (prefill?.dateKey || prefill?.startTime) return;
+    // Drag / bulk prefill already chose times — don't overwrite with job midnight.
+    if (hasPrefillTimes || prefill?.dateKey) return;
     const start = splitApiDateTime(job.start_date);
     const end = splitApiDateTime(job.end_date || job.start_date);
     if (start.date) setStartDate(start.date);
     if (end.date) setEndDate(end.date);
-    if (start.time) setStartTime(start.time);
-    if (end.time) setEndTime(end.time);
+    // Ignore bare midnight job stamps — they collide with “available from 9am” workers.
+    if (start.time && !isMidnightTime(start.time)) setStartTime(start.time);
+    if (end.time && !isMidnightTime(end.time)) setEndTime(end.time);
+  }
+
+  function validateBulkAvailability(): string | null {
+    if (!catalog) return null;
+    const day = parseDateKey(startDate.trim() || defaultDateKey);
+    const windows = bulkWorkers.map((w) => {
+      const tech = catalog.technicians.find((row) => technicianMatchesWorkerId(row, w.id));
+      if (!tech || !hasAvailabilityData(tech.availableDays)) return null;
+      return getDayAvailabilityWindow(tech.availableDays, day);
+    });
+    const intersection = intersectAvailabilityWindows(windows);
+    if (!intersection) return t("conflict.noAvailability");
+    const startMin = timeToMinutes(startTime);
+    const endMin = timeToMinutes(endTime);
+    if (startMin == null || endMin == null) return t("conflict.invalidRange");
+    if (!(startMin < endMin)) return t("conflict.invalidRange");
+    if (startMin < intersection.startMinutes || endMin > intersection.endMinutes) {
+      return t("conflict.unavailable");
+    }
+    return null;
   }
 
   function validate(): boolean {
@@ -281,16 +364,21 @@ export function CreateScheduleModal({
     if (!endDate.trim()) next.endDate = t("validation.endDate");
     if (!startTime.trim()) next.startTime = t("validation.startTime");
     if (!endTime.trim()) next.endTime = t("validation.endTime");
-    if (!next.startTime && !next.endTime && selectedWorker && getBookingConflict) {
-      const startIso = combineDateAndTimeToIso(startDate, startTime, false);
-      const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
-      const conflict = getBookingConflict({
-        workerId: selectedWorker.id,
-        startAt: startIso,
-        endAt: endIso,
-        ignoreScheduleId: existingSchedule?.id,
-      });
-      if (conflict) next.time = conflict;
+    if (!next.startTime && !next.endTime && selectedWorker) {
+      if (isBulk) {
+        const conflict = validateBulkAvailability();
+        if (conflict) next.time = conflict;
+      } else if (getBookingConflict) {
+        const startIso = combineDateAndTimeToIso(startDate, startTime, false);
+        const endIso = combineDateAndTimeEndToIso(endDate, endTime, false);
+        const conflict = getBookingConflict({
+          workerId: selectedWorker.id,
+          startAt: startIso,
+          endAt: endIso,
+          ignoreScheduleId: existingSchedule?.id,
+        });
+        if (conflict) next.time = conflict;
+      }
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -317,7 +405,7 @@ export function CreateScheduleModal({
         worker_ids: workerIds.length > 0 ? workerIds : [selectedWorker.id],
         client_id: clientNum,
         project_id: (job ? getJobProjectId(job.project) : null) ?? existingSchedule?.project_id ?? null,
-        group_id: groupId ?? null,
+        group_id: groupId ?? (includeGroupPeers ? peerGroup?.id ?? null : null),
         start_at: startIso,
         end_at: endIso,
       };
@@ -334,19 +422,25 @@ export function CreateScheduleModal({
       if (isBulk || result.skipped.length > 0) {
         onBulkResult?.({
           schedule: result.schedule,
-          scheduledCount: result.scheduledWorkerIds.length,
+          schedules: result.schedules,
+          scheduledCount: result.scheduledWorkerIds.length || result.schedules.length,
           skipped: result.skipped,
         });
-        if (result.scheduledWorkerIds.length > 0) {
-          toastSuccess(t("bulk.partialSuccessToast", { count: result.scheduledWorkerIds.length }));
-          onCreated?.(result.schedule);
-        } else if (result.skipped.length === 0) {
-          toastSuccess(t("modal.successToast"));
-          onCreated?.(result.schedule);
+        if (result.schedules.length > 0 || result.scheduledWorkerIds.length > 0) {
+          toastSuccess(
+            t("bulk.partialSuccessToast", {
+              count: result.scheduledWorkerIds.length || result.schedules.length,
+            }),
+          );
+          if (result.schedule) onCreated?.(result.schedule);
+          else if (result.schedules[0]) onCreated?.(result.schedules[0]);
         }
-      } else {
+      } else if (result.schedule) {
         toastSuccess(t("modal.successToast"));
         onCreated?.(result.schedule);
+      } else if (result.schedules[0]) {
+        toastSuccess(t("modal.successToast"));
+        onCreated?.(result.schedules[0]);
       }
       onClose();
     } catch (error) {
@@ -388,26 +482,64 @@ export function CreateScheduleModal({
       }
     >
       {selectedWorker && (technician || isBulk || bulkWorkers.length > 0) ? (
-        <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold uppercase text-white"
-            aria-hidden
-          >
-            {isBulk ? bulkWorkers.length : selectedWorker.initials}
+        <div className="mb-5 space-y-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-sm font-semibold uppercase text-white"
+              aria-hidden
+            >
+              {isBulk ? bulkWorkers.length : selectedWorker.initials}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {isBulk ? t("bulk.workersSelected", { count: bulkWorkers.length }) : selectedWorker.name}
+              </p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {isBulk
+                  ? bulkWorkers
+                      .slice(0, 4)
+                      .map((w) => w.name)
+                      .join(", ") + (bulkWorkers.length > 4 ? ` +${bulkWorkers.length - 4}` : "")
+                  : t("modal.currentTitle", { title: techTitle })}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-              {isBulk ? t("bulk.workersSelected", { count: bulkWorkers.length }) : selectedWorker.name}
-            </p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {isBulk
-                ? bulkWorkers
-                    .slice(0, 4)
-                    .map((w) => w.name)
-                    .join(", ") + (bulkWorkers.length > 4 ? ` +${bulkWorkers.length - 4}` : "")
-                : t("modal.currentTitle", { title: techTitle })}
-            </p>
-          </div>
+
+          {peerGroup && seedWorkers.length <= 1 && !isReschedule ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                {t("bulk.sameGroupHeading", { group: peerGroup.name })}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {peerGroup.peers
+                  .slice(0, 5)
+                  .map((w) => w.name)
+                  .join(", ") + (peerGroup.peers.length > 5 ? ` +${peerGroup.peers.length - 5}` : "")}
+              </p>
+              <div className="mt-2">
+                <AppButton
+                  type="button"
+                  size="sm"
+                  variant={includeGroupPeers ? "secondary" : "primary"}
+                  className="h-7 px-2.5 text-[11px]"
+                  disabled={saving}
+                  onClick={() => {
+                    if (includeGroupPeers) {
+                      setIncludeGroupPeers(false);
+                      setExtraPeerWorkers([]);
+                      return;
+                    }
+                    setIncludeGroupPeers(true);
+                    setExtraPeerWorkers(peerGroup.peers);
+                  }}
+                >
+                  {includeGroupPeers
+                    ? t("bulk.clearGroupPeers")
+                    : t("bulk.scheduleSameGroup", { count: peerGroup.members.length })}
+                </AppButton>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <FieldGroup label={t("fields.worker")} htmlFor="schedule-worker" required className="mb-4">
@@ -423,6 +555,8 @@ export function CreateScheduleModal({
             invalid={Boolean(errors.worker)}
             onChange={(v) => {
               setWorkerId(v);
+              setIncludeGroupPeers(false);
+              setExtraPeerWorkers([]);
               setErrors((prev) => {
                 const { worker: _, ...rest } = prev;
                 return rest;

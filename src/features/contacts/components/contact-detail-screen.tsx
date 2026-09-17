@@ -4,6 +4,8 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContact, updateContact } from "@/features/contacts/api/contact.api";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
@@ -21,10 +23,11 @@ import {
   EntityDetailLoadingSkeleton,
   EntityDetailScreen,
 } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { buildCurrentPageBackHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton } from "@/shared/ui";
+import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   contactId: number;
@@ -32,20 +35,30 @@ type Props = {
 
 export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [togglingActive, setTogglingActive] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("details");
+
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: tAudit("tabDetails") },
+      { id: "timeline", label: tAudit("tabTimeline") },
+    ],
+    [tAudit],
+  );
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const [{ items: clients }, { items: vendors }] = await Promise.all([
-          fetchClientsPage(1, 500),
-          fetchVendorsPage(1, 500),
+          fetchClientsPage(1, 20, { dropdown: true }),
+          fetchVendorsPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           const clientMapped: Record<number, string> = {};
@@ -124,6 +137,16 @@ export function ContactDetailScreen({ contactId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
+      headerExtension={
+        <AppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          ariaLabel={tAudit("tabTimeline")}
+          panelIdPrefix="contact-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, listBack, retry }) => (
         <div className="flex flex-wrap items-center gap-2">
           <AppButton
@@ -155,26 +178,42 @@ export function ContactDetailScreen({ contactId }: Props) {
           />
         </div>
       )}
-      renderSurface={({ detail, loading, error, retry, dateFmt }) => {
-        if (loading) return <EntityDetailLoadingSkeleton />;
-        if (error) {
-          return <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />;
-        }
-        if (!detail) return null;
-        const { clientName, vendorName } = resolveParentNames(detail);
-        return (
-          <ContactDetailBody
-            detail={detail}
-            clientName={clientName}
-            vendorName={vendorName}
-            clientOptions={clientOptions}
-            vendorOptions={vendorOptions}
-            contactTypeOptions={contactTypeOptions}
-            dateFmt={dateFmt}
-            onSaved={retry}
-          />
-        );
-      }}
+      renderSurface={({ detail, loading, error, retry, dateFmt }) => (
+        <div
+          role="tabpanel"
+          id={`contact-detail-tab-${activeTab}`}
+          aria-labelledby={`contact-detail-tab-trigger-${activeTab}`}
+          className={entityDetailTabPanelClassName}
+        >
+          {loading ? (
+            <EntityDetailLoadingSkeleton />
+          ) : error ? (
+            <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
+          ) : detail && activeTab === "details" ? (
+            (() => {
+              const { clientName, vendorName } = resolveParentNames(detail);
+              return (
+                <ContactDetailBody
+                  detail={detail}
+                  clientName={clientName}
+                  vendorName={vendorName}
+                  clientOptions={clientOptions}
+                  vendorOptions={vendorOptions}
+                  contactTypeOptions={contactTypeOptions}
+                  dateFmt={dateFmt}
+                  onSaved={retry}
+                />
+              );
+            })()
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.contact}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
+          ) : null}
+        </div>
+      )}
     />
   );
 }

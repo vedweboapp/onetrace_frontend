@@ -181,9 +181,7 @@ export function ChecklistTypeSettingsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: projectTypes } = await fetchProjectTypesPage(1, 500, {
-          is_active: true,
-        });
+        const { items: projectTypes } = await fetchProjectTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectTypeOptions(
             projectTypes.map((pt) => ({

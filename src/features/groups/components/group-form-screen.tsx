@@ -124,7 +124,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const reloadComposites = React.useCallback(async () => {
     setCompositeLoadError(null);
     try {
-      const { items } = await fetchCompositeItemsPage(1, 500);
+      const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
       setCompositeOptions(items);
     } catch {
       setCompositeLoadError(tModal("compositeLoadError"));
@@ -172,7 +172,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     (async () => {
       setCompositeLoadError(null);
       try {
-        const { items } = await fetchCompositeItemsPage(1, 500);
+        const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
         if (!cancelled) setCompositeOptions(items);
       } catch {
         if (!cancelled) setCompositeLoadError(tModal("compositeLoadError"));

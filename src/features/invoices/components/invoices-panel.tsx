@@ -110,7 +110,7 @@ export function InvoicesPanel() {
   const [projectOptions, setProjectOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const loadClientOptions = React.useCallback(async () => {
-    const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+    const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true });
     return items.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
@@ -179,8 +179,8 @@ export function InvoicesPanel() {
     (async () => {
       try {
         const [contactsRes, projectsRes] = await Promise.all([
-          fetchContactsPage(1, 500, { is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
+          fetchContactsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setContactOptions(

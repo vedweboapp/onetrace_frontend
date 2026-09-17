@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { TAG_PATHS } from "./tag.paths";
 import type { Tag, TagCreatePayload, TagListResponse, TagUpdatePayload } from "../types/tag.types";
 
@@ -15,6 +20,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type TagListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 function toTagWritePayload(body: TagCreatePayload | TagUpdatePayload): Record<string, unknown> {
@@ -41,14 +47,19 @@ export async function fetchTagsPage(
   pageSize = 20,
   filters?: TagListFilters,
 ): Promise<{ items: Tag[]; pagination: TagListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<TagListResponse>(TAG_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<TagListResponse>(TAG_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function createTag(body: TagCreatePayload): Promise<Tag> {

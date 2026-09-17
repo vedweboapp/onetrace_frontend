@@ -837,7 +837,7 @@ const ProjectPinsListTab = ({
 
   useEffect(() => {
     let cancelled = false;
-    fetchJobStatusesPage(1, 500)
+    fetchJobStatusesPage(1, 20, { dropdown: true })
       .then((res) => {
         if (!cancelled) {
           const options = res.items.map((s: WorkflowColourStatus) => ({
@@ -944,7 +944,7 @@ const ProjectPinsListTab = ({
     if (!id) return;
     let cancelled = false;
     setLoadingForms(true);
-    fetchProjectFormsPage(Number(id), 1, 500)
+    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true })
       .then((res) => {
         if (!cancelled) {
           setProjectForms(res.items);
@@ -976,11 +976,9 @@ const ProjectPinsListTab = ({
 
       try {
         setCheckListLoading(true);
-        const response = await fetchChecklistTypesPage(1, 100, {
-          is_active: true,
+        const response = await fetchChecklistTypesPage(1, 20, { is_active: true,
           project_type: projectTypeId,
-          search: searchTerm || undefined,
-        });
+          search: searchTerm || undefined, dropdown: true });
         setCheckListData(
           response.items.map((item) => ({
             id: item.id,

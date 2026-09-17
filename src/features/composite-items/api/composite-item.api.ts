@@ -13,6 +13,7 @@ import type { CompositeItem, CompositeItemCreatePayload, CompositeItemListRespon
 
 export type CompositeItemListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
  
 export async function fetchCompositeItemsPage(
@@ -23,12 +24,17 @@ export async function fetchCompositeItemsPage(
   const listFilters: ItemListFilters = {
     search: filters?.search,
     isComposite: true,
+    dropdown: filters?.dropdown,
   };
   return await fetchItemsPage(page, pageSize, listFilters);
 }
 
 export async function fetchAllCompositeItemIds(filters?: CompositeItemListFilters): Promise<number[]> {
-  return fetchAllItemIds({ search: filters?.search, isComposite: true });
+  return fetchAllItemIds({
+    search: filters?.search,
+    isComposite: true,
+    dropdown: filters?.dropdown,
+  });
 }
 
 export async function fetchCompositeItem(id: number): Promise<CompositeItem> {

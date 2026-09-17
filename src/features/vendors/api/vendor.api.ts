@@ -3,6 +3,11 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { VENDOR_PATHS } from "./vendor.paths";
 import type {
   Vendor,
@@ -21,6 +26,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export type VendorListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export type VendorRequestOptions = {
@@ -33,17 +39,23 @@ export async function fetchVendorsPage(
   filters?: VendorListFilters,
   options?: VendorRequestOptions,
 ): Promise<{ items: Vendor[]; pagination: VendorListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<VendorListResponse>(VENDOR_PATHS.list, {
-    params,
-    skipErrorToast: options?.silent === true,
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    silent: options?.silent,
+    fetchFirst: async () => {
+      const { data } = await api.get<VendorListResponse>(VENDOR_PATHS.list, {
+        params,
+        skipErrorToast: options?.silent === true,
+      });
+      return parseListApiPage(data, pageSize);
+    },
   });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
 }
 
 export async function fetchAllVendorIds(

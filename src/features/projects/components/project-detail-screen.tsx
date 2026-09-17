@@ -4,6 +4,8 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
@@ -51,6 +53,7 @@ type Props = {
 export function ProjectDetailScreen({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
   const tHome = useTranslations("Dashboard.home");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -79,7 +82,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
+        const { items } = await fetchProjectStatusesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) setStatusOptions(items);
       } catch {
         if (!cancelled) setStatusOptions([]);
@@ -92,7 +95,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchClientsPage(1, 500, { is_active: true });
+        const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
         }
@@ -114,7 +117,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchSitesPage(1, 500, { client: clientId });
+        const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
         if (!cancelled) {
           setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name?.trim() || `#${s.id}` })));
         }
@@ -146,13 +149,14 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
       { id: "jobs", label: t("detail.tabs.jobs") },
-      {id:"location",label: t("detail.tabs.location")},
+      { id: "location", label: t("detail.tabs.location") },
       { id: "quotations", label: t("detail.tabs.quotations") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
@@ -196,7 +200,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchProjectTypesPage(1, 500);
+        const { items } = await fetchProjectTypesPage(1, 20, { dropdown: true });
         if (!cancelled) setProjectTypeById(projectTypesById(items));
       } catch {
         if (!cancelled) setProjectTypeById({});
@@ -440,6 +444,12 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectQuotationsTab projectId={detail.id} />
           ) : detail && activeTab === "location" ? (
             <ProjectPinsListTab sites={detail.sites} />
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.project}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
           ) : activeTab !== "details" ? (
             <DashboardUnderDevelopmentState
               className="rounded-none"

@@ -124,7 +124,7 @@ export function ProjectFormModal({
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true, search: projectTypeSearchQuery });
+        const { items } = await fetchProjectTypesPage(1, 20, { is_active: true, search: projectTypeSearchQuery, dropdown: true });
         if (!cancelled) {
           const newOptions = items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) }));
           newOptions.forEach((opt) => {
@@ -153,7 +153,7 @@ export function ProjectFormModal({
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick, search: searchQuery });
+      const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, search: searchQuery, dropdown: true });
       const newOptions = items.map((s) => ({ value: String(s.id), label: s.site_name }));
       newOptions.forEach((opt) => {
         accumulatedSiteLabels.current[opt.value] = opt.label;
@@ -184,7 +184,7 @@ export function ProjectFormModal({
 
   const reloadClients = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchClientsPage(1, 100, { is_active: true, search: searchQuery }, { silent: true });
+      const { items } = await fetchClientsPage(1, 20, { is_active: true, search: searchQuery, dropdown: true }, { silent: true });
       const newOptions = items.map((c) => ({ value: String(c.id), label: c.name }));
       newOptions.forEach((opt) => {
         accumulatedClientLabels.current[opt.value] = opt.label;
@@ -197,7 +197,7 @@ export function ProjectFormModal({
 
   const reloadManagers = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchUsersPage(1, 100, { search: searchQuery });
+      const { items } = await fetchUsersPage(1, 20, { search: searchQuery, dropdown: true });
       const newOptions = items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) }));
       newOptions.forEach((opt) => {
         accumulatedManagerLabels.current[opt.value] = opt.label;

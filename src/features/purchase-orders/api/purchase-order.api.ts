@@ -3,6 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { PURCHASE_ORDER_PATHS } from "./purchase-order.paths";
 import type {
   PurchaseOrderCreatePayload,
@@ -44,8 +45,7 @@ export async function fetchPurchaseOrdersPage(
     PURCHASE_ORDER_PATHS.list,
     { params },
   );
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return parseListApiPage(data, pageSize);
 }
 
 export async function fetchAllPurchaseOrderIds(filters?: PurchaseOrderListFilters): Promise<number[]> {

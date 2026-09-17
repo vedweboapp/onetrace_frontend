@@ -21,12 +21,20 @@ import {
   normalizeWorkerTimeOffList,
   scheduleWorkerIds,
 } from "@/features/scheduling/utils/schedule-map.util";
+import {
+  applyDropdownListParam,
+  DROPDOWN_LIST_PAGE_SIZE,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 
 type ListEnvelope<T> = {
   success: boolean;
   message?: string;
   data: T[];
   pagination?: {
+    next?: string | null;
+    previous?: string | null;
     total_pages?: number;
     current_page?: number;
     page_size?: number;
@@ -43,8 +51,8 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 function toQueryParams(
   filters?: ScheduleListFilters | WorkerTimeOffListFilters,
-): Record<string, string | number> {
-  const params: Record<string, string | number> = {};
+): Record<string, string | number | boolean> {
+  const params: Record<string, string | number | boolean> = {};
   if (!filters) return params;
   if ("worker" in filters && typeof filters.worker === "number") params.worker = filters.worker;
   else if ("worker_id" in filters && typeof filters.worker_id === "number") params.worker_id = filters.worker_id;
@@ -62,24 +70,25 @@ async function fetchAllListRows<T>(
   options?: { silent?: boolean },
 ): Promise<T[]> {
   const base = toQueryParams(filters);
-  const pageSize = 500;
-  const all: T[] = [];
-  let page = 1;
+  const params: Record<string, string | number | boolean> = {
+    ...base,
+    page: 1,
+    page_size: DROPDOWN_LIST_PAGE_SIZE,
+  };
+  applyDropdownListParam(params, true);
 
-  while (true) {
-    const { data } = await api.get<ListEnvelope<T>>(path, {
-      params: { ...base, page, page_size: pageSize },
-      skipErrorToast: options?.silent === true,
-    });
-    assertEnvelopeSuccess(data);
-    const rows = Array.isArray(data.data) ? data.data : [];
-    all.push(...rows);
-    const totalPages = data.pagination?.total_pages ?? 1;
-    if (page >= totalPages || rows.length === 0) break;
-    page += 1;
-  }
-
-  return all;
+  const { items } = await resolveDropdownListPages<T>({
+    dropdown: true,
+    silent: options?.silent,
+    fetchFirst: async () => {
+      const { data } = await api.get<ListEnvelope<T>>(path, {
+        params,
+        skipErrorToast: options?.silent === true,
+      });
+      return parseListApiPage<T>(data, DROPDOWN_LIST_PAGE_SIZE);
+    },
+  });
+  return items;
 }
 
 export async function fetchSchedules(filters?: ScheduleListFilters): Promise<Schedule[]> {
@@ -186,19 +195,48 @@ export function parseScheduleSkippedWorkers(payload: unknown): ScheduleBulkSkipR
   return out;
 }
 
+function extractCreatedSchedules(payload: unknown): Schedule[] {
+  if (Array.isArray(payload)) return normalizeScheduleList(payload);
+  const root = asRecord(payload);
+  if (!root) return [];
+
+  if (Array.isArray(root.schedules)) return normalizeScheduleList(root.schedules);
+  if (Array.isArray(root.results)) return normalizeScheduleList(root.results);
+  if (Array.isArray(root.items)) return normalizeScheduleList(root.items);
+
+  const data = asRecord(root.data);
+  if (data) {
+    if (Array.isArray(data.schedules)) return normalizeScheduleList(data.schedules);
+    if (Array.isArray(data.results)) return normalizeScheduleList(data.results);
+    const nested = normalizeSchedule(data);
+    if (nested) return [nested];
+  }
+
+  const single = normalizeSchedule(root);
+  return single ? [single] : [];
+}
+
 export async function createSchedule(payload: CreateSchedulePayload): Promise<CreateScheduleResult> {
   const { data } = await api.post<ApiEnvelope<unknown>>(SCHEDULE_PATHS.list, payload);
   assertApiSuccess(data);
-  const row = normalizeSchedule(data.data);
-  if (!row) throw new ApiBusinessError("Request failed");
-  const skipped = parseScheduleSkippedWorkers(data);
+  const schedules = extractCreatedSchedules(data.data);
+  const skipped = parseScheduleSkippedWorkers(data.data ?? data);
+  if (schedules.length === 0 && skipped.length === 0) {
+    throw new ApiBusinessError("Request failed");
+  }
   const requested = Array.isArray(payload.worker_ids) ? payload.worker_ids.filter((id) => id > 0) : [];
   const skippedIds = new Set(skipped.map((s) => s.workerId).filter((id) => id > 0));
+  const fromSchedules = [...new Set(schedules.flatMap((row) => scheduleWorkerIds(row)))];
   const scheduledWorkerIds =
     requested.length > 0
       ? requested.filter((id) => !skippedIds.has(id))
-      : scheduleWorkerIds(row);
-  return { schedule: row, skipped, scheduledWorkerIds };
+      : fromSchedules;
+  return {
+    schedule: schedules[0] ?? null,
+    schedules,
+    skipped,
+    scheduledWorkerIds,
+  };
 }
 
 export async function updateSchedule(id: number, payload: UpdateSchedulePayload): Promise<Schedule> {

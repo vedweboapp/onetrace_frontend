@@ -136,7 +136,7 @@ export function ProjectDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchUsersPage(1, 100);
+        const { items } = await fetchUsersPage(1, 20, { dropdown: true });
         if (!cancelled) {
           setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
         }

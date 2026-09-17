@@ -3,12 +3,19 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, GripVertical, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserCheck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import {
+  dashboardNavUserKey,
+  useDashboardNavOrderStore,
+  type MainNavId,
+  type SettingsNavId,
+} from "@/features/dashboard/store/dashboard-nav-order.store";
 import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-sidebar.store";
 import { resolveDashboardAccent } from "@/features/dashboard/utils/accent-resolve.util";
 import {
@@ -25,6 +32,66 @@ import { routes } from "@/shared/config/routes";
 import { cn } from "@/core/utils/http.util";
 import { useShallow } from "zustand/react/shallow";
 import { DashboardAppBrand } from "./dashboard-app-brand";
+
+const SIDEBAR_DND_TYPE = "application/x-dashboard-nav-order";
+
+function SidebarSortableRow({
+  index,
+  dragFromIndex,
+  onDragFromIndexChange,
+  onReorder,
+  showHandle = true,
+  children,
+}: {
+  index: number;
+  dragFromIndex: number | null;
+  onDragFromIndexChange: (index: number | null) => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
+  showHandle?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(SIDEBAR_DND_TYPE, String(index));
+        onDragFromIndexChange(index);
+      }}
+      onDragEnd={() => onDragFromIndexChange(null)}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const raw = e.dataTransfer.getData(SIDEBAR_DND_TYPE);
+        const from = Number.parseInt(raw, 10);
+        if (Number.isFinite(from)) onReorder(from, index);
+        onDragFromIndexChange(null);
+      }}
+      className={cn(
+        "group/sort relative",
+        dragFromIndex === index && "opacity-45",
+      )}
+    >
+      {showHandle ? (
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute right-1 top-1/2 z-[1] -translate-y-1/2",
+            "opacity-0 transition-opacity duration-150 group-hover/sort:opacity-100",
+            "text-slate-400 dark:text-slate-500",
+          )}
+        >
+          <GripVertical className="size-3.5" strokeWidth={2} />
+        </span>
+      ) : null}
+      {children}
+    </div>
+  );
+}
 
 function isSettingsArea(pathname: string) {
   return (
@@ -408,6 +475,15 @@ function DashboardMainSidebar({
   const t = useTranslations("Dashboard.sidebar");
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const userKey = dashboardNavUserKey(userId);
+  const mainByUser = useDashboardNavOrderStore((s) => s.mainByUser);
+  const reorderMain = useDashboardNavOrderStore((s) => s.reorderMain);
+  const navOrder = React.useMemo(
+    () => useDashboardNavOrderStore.getState().resolveMainOrder(userKey),
+    [userKey, mainByUser],
+  );
+  const [dragFromIndex, setDragFromIndex] = React.useState<number | null>(null);
   const clientsHref = routes.dashboard.clients;
   const vendorsHref = routes.dashboard.vendors;
   const contactsHref = routes.dashboard.contacts;
@@ -421,6 +497,7 @@ function DashboardMainSidebar({
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
   const jobsHref = routes.dashboard.jobs;
   const schedulingHref = routes.dashboard.scheduling;
+  const attendanceHref = routes.dashboard.attendance;
   const qrCodesHref = routes.dashboard.qrCodes;
   const formsHref = routes.dashboard.forms;
   const homeHref = routes.dashboard.root;
@@ -468,6 +545,8 @@ function DashboardMainSidebar({
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
+  const attendanceActive =
+    pathname === attendanceHref || pathname.startsWith(`${attendanceHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
   const projectsActive =
@@ -508,195 +587,281 @@ function DashboardMainSidebar({
             : "items-stretch gap-0.5 px-0 py-3 pb-8 scrollbar-hide",
         )}
       >
-        <SidebarNavLink
-          href={homeHref}
-          active={homeActive}
-          label={t("home")}
-          icon={Home}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={clientsHref}
-          active={clientsActive}
-          label={t("clients")}
-          icon={Building2}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={vendorsHref}
-          active={vendorsActive}
-          label={t("vendors")}
-          icon={Store}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNestedNav
-          label={t("contacts")}
-          icon={BookUser}
-          active={contactsActive}
-          expanded={expanded}
-          resolved={resolved}
-          items={[
-            {
-              href: contactClientHref,
-              label: t("flyoutClient"),
-              active: contactClientActive,
-            },
-            {
-              href: contactVendorHref,
-              label: t("flyoutVendor"),
-              active: contactVendorActive,
-            },
-          ]}
-        />
-        <SidebarNavLink
-          href={sitesHref}
-          active={sitesActive}
-          label={t("sites")}
-          icon={MapPinHouse}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNestedNav
-          label={t("quotations")}
-          icon={FileText}
-          active={quotationsActive}
-          expanded={expanded}
-          resolved={resolved}
-          items={[
-            {
-              href: quotationServiceHref,
-              label: t("flyoutService"),
-              active: quotationServiceActive,
-            },
-            {
-              href: quotationProjectHref,
-              label: t("flyoutProject"),
-              active: quotationProjectActive,
-            },
-          ]}
-        />
-        <SidebarNavLink
-          href={invoicesHref}
-          active={invoicesActive}
-          label={t("invoices")}
-          icon={Receipt}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={purchaseOrdersHref}
-          active={purchaseOrdersActive}
-          label={t("purchaseOrders")}
-          icon={ClipboardList}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNestedNav
-          label={t("jobs")}
-          icon={ListTodo}
-          active={jobsActive}
-          expanded={expanded}
-          resolved={resolved}
-          items={[
-            {
-              href: serviceJobHref,
-              label: t("flyoutService"),
-              active: serviceJobActive,
-            },
-            {
-              href: projectJobHref,
-              label: t("flyoutProject"),
-              active: projectJobActive,
-            },
-          ]}
-        />
-        <SidebarNavLink
-          href={schedulingHref}
-          active={schedulingActive}
-          label={t("scheduling")}
-          icon={CalendarDays}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={qrCodesHref}
-          active={qrCodesActive}
-          label={t("qrCodes")}
-          icon={QrCode}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={formsHref}
-          active={formsActive}
-          label={t("forms")}
-          icon={ClipboardPen}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={projectsHref}
-          active={projectsActive}
-          label={t("projects")}
-          icon={FolderKanban}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={groupsHref}
-          active={groupsActive}
-          label={t("groups")}
-          icon={Layers}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={materialRequestsHref}
-          active={materialRequestsActive}
-          label={t("materialRequests")}
-          icon={ClipboardList}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={dispatchesHref}
-          active={dispatchesActive}
-          label={t("dispatches")}
-          icon={Truck}
-          expanded={expanded}
-          resolved={resolved}
-          dataNav="dispatches"
-        />
-        <SidebarNavLink
-          href={returnToStockHref}
-          active={returnToStockActive}
-          label={t("returnToStock")}
-          icon={RotateCcw}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNestedNav
-          label={t("products")}
-          icon={Package}
-          active={itemsSectionActive}
-          expanded={expanded}
-          resolved={resolved}
-          items={[
-            {
-              href: itemsHref,
-              label: t("itemsPlain"),
-              active: itemsActive,
-            },
-            {
-              href: compositeHref,
-              label: t("compositeItems"),
-              active: compositeActive,
-            },
-          ]}
-        />
+        {navOrder.map((id, index) => {
+          const entry = (() => {
+            switch (id as MainNavId) {
+              case "home":
+                return (
+                  <SidebarNavLink
+                    href={homeHref}
+                    active={homeActive}
+                    label={t("home")}
+                    icon={Home}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "clients":
+                return (
+                  <SidebarNavLink
+                    href={clientsHref}
+                    active={clientsActive}
+                    label={t("clients")}
+                    icon={Building2}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "vendors":
+                return (
+                  <SidebarNavLink
+                    href={vendorsHref}
+                    active={vendorsActive}
+                    label={t("vendors")}
+                    icon={Store}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "contacts":
+                return (
+                  <SidebarNestedNav
+                    label={t("contacts")}
+                    icon={BookUser}
+                    active={contactsActive}
+                    expanded={expanded}
+                    resolved={resolved}
+                    items={[
+                      {
+                        href: contactClientHref,
+                        label: t("flyoutClient"),
+                        active: contactClientActive,
+                      },
+                      {
+                        href: contactVendorHref,
+                        label: t("flyoutVendor"),
+                        active: contactVendorActive,
+                      },
+                    ]}
+                  />
+                );
+              case "sites":
+                return (
+                  <SidebarNavLink
+                    href={sitesHref}
+                    active={sitesActive}
+                    label={t("sites")}
+                    icon={MapPinHouse}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "quotations":
+                return (
+                  <SidebarNestedNav
+                    label={t("quotations")}
+                    icon={FileText}
+                    active={quotationsActive}
+                    expanded={expanded}
+                    resolved={resolved}
+                    items={[
+                      {
+                        href: quotationServiceHref,
+                        label: t("flyoutService"),
+                        active: quotationServiceActive,
+                      },
+                      {
+                        href: quotationProjectHref,
+                        label: t("flyoutProject"),
+                        active: quotationProjectActive,
+                      },
+                    ]}
+                  />
+                );
+              case "invoices":
+                return (
+                  <SidebarNavLink
+                    href={invoicesHref}
+                    active={invoicesActive}
+                    label={t("invoices")}
+                    icon={Receipt}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "purchaseOrders":
+                return (
+                  <SidebarNavLink
+                    href={purchaseOrdersHref}
+                    active={purchaseOrdersActive}
+                    label={t("purchaseOrders")}
+                    icon={ClipboardList}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "jobs":
+                return (
+                  <SidebarNestedNav
+                    label={t("jobs")}
+                    icon={ListTodo}
+                    active={jobsActive}
+                    expanded={expanded}
+                    resolved={resolved}
+                    items={[
+                      {
+                        href: serviceJobHref,
+                        label: t("flyoutService"),
+                        active: serviceJobActive,
+                      },
+                      {
+                        href: projectJobHref,
+                        label: t("flyoutProject"),
+                        active: projectJobActive,
+                      },
+                    ]}
+                  />
+                );
+              case "scheduling":
+                return (
+                  <SidebarNavLink
+                    href={schedulingHref}
+                    active={schedulingActive}
+                    label={t("scheduling")}
+                    icon={CalendarDays}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "attendance":
+                return (
+                  <SidebarNavLink
+                    href={attendanceHref}
+                    active={attendanceActive}
+                    label={t("attendance")}
+                    icon={UserCheck}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "qrCodes":
+                return (
+                  <SidebarNavLink
+                    href={qrCodesHref}
+                    active={qrCodesActive}
+                    label={t("qrCodes")}
+                    icon={QrCode}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "forms":
+                return (
+                  <SidebarNavLink
+                    href={formsHref}
+                    active={formsActive}
+                    label={t("forms")}
+                    icon={ClipboardPen}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "projects":
+                return (
+                  <SidebarNavLink
+                    href={projectsHref}
+                    active={projectsActive}
+                    label={t("projects")}
+                    icon={FolderKanban}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "groups":
+                return (
+                  <SidebarNavLink
+                    href={groupsHref}
+                    active={groupsActive}
+                    label={t("groups")}
+                    icon={Layers}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "materialRequests":
+                return (
+                  <SidebarNavLink
+                    href={materialRequestsHref}
+                    active={materialRequestsActive}
+                    label={t("materialRequests")}
+                    icon={ClipboardList}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "dispatches":
+                return (
+                  <SidebarNavLink
+                    href={dispatchesHref}
+                    active={dispatchesActive}
+                    label={t("dispatches")}
+                    icon={Truck}
+                    expanded={expanded}
+                    resolved={resolved}
+                    dataNav="dispatches"
+                  />
+                );
+              case "returnToStock":
+                return (
+                  <SidebarNavLink
+                    href={returnToStockHref}
+                    active={returnToStockActive}
+                    label={t("returnToStock")}
+                    icon={RotateCcw}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "products":
+                return (
+                  <SidebarNestedNav
+                    label={t("products")}
+                    icon={Package}
+                    active={itemsSectionActive}
+                    expanded={expanded}
+                    resolved={resolved}
+                    items={[
+                      {
+                        href: itemsHref,
+                        label: t("itemsPlain"),
+                        active: itemsActive,
+                      },
+                      {
+                        href: compositeHref,
+                        label: t("compositeItems"),
+                        active: compositeActive,
+                      },
+                    ]}
+                  />
+                );
+              default:
+                return null;
+            }
+          })();
+          if (!entry) return null;
+          return (
+            <SidebarSortableRow
+              key={id}
+              index={index}
+              dragFromIndex={dragFromIndex}
+              onDragFromIndexChange={setDragFromIndex}
+              onReorder={(from, to) => reorderMain(userKey, from, to)}
+              showHandle={expanded}
+            >
+              {entry}
+            </SidebarSortableRow>
+          );
+        })}
       </nav>
     </>
   );
@@ -711,6 +876,15 @@ function DashboardSettingsSidebar({
 }) {
   const t = useTranslations("Dashboard.settingsNav");
   const pathname = usePathname();
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const userKey = dashboardNavUserKey(userId);
+  const settingsByUser = useDashboardNavOrderStore((s) => s.settingsByUser);
+  const reorderSettings = useDashboardNavOrderStore((s) => s.reorderSettings);
+  const navOrder = React.useMemo(
+    () => useDashboardNavOrderStore.getState().resolveSettingsOrder(userKey),
+    [userKey, settingsByUser],
+  );
+  const [dragFromIndex, setDragFromIndex] = React.useState<number | null>(null);
   const customizationHref = routes.dashboard.settingsCustomization;
   const usersHref = routes.dashboard.settingsUsers;
   const userGroupsHref = routes.dashboard.settingsUserGroups;
@@ -721,6 +895,7 @@ function DashboardSettingsSidebar({
   const modulesHref = routes.dashboard.settingsModules;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const customizationActive = isCustomizationSettingsPath(pathname);
 
@@ -741,6 +916,8 @@ function DashboardSettingsSidebar({
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const auditLogsActive =
+    pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
   return (
     <>
@@ -760,78 +937,137 @@ function DashboardSettingsSidebar({
             : "items-stretch gap-0.5 px-0 py-3 pb-8 scrollbar-hide",
         )}
       >
-        <SidebarNavLink
-          href={personalProfileHref}
-          active={personalProfileActive}
-          label={t("personalProfile")}
-          icon={UserRound}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={companySettingsHref}
-          active={companySettingsActive}
-          label={t("companySettings")}
-          icon={Building2}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={modulesHref}
-          active={modulesActive}
-          label={t("modules")}
-          icon={Settings}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={projectFormsHref}
-          active={projectFormsActive}
-          label={t("projectForms")}
-          icon={FileText}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={customizationHref}
-          active={customizationActive}
-          label={t("customization.label")}
-          icon={Palette}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={usersHref}
-          active={usersActive}
-          label={t("users")}
-          icon={UserRound}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={rolesHref}
-          active={rolesActive}
-          label={t("roles")}
-          icon={ShieldCheck}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={profilesHref}
-          active={profilesActive}
-          label={t("profiles")}
-          icon={Layers}
-          expanded={expanded}
-          resolved={resolved}
-        />
-        <SidebarNavLink
-          href={integrationsHref}
-          active={integrationsActive}
-          label={t("integrations")}
-          icon={Plug}
-          expanded={expanded}
-          resolved={resolved}
-        />
+        {navOrder.map((id, index) => {
+          const entry = (() => {
+            switch (id as SettingsNavId) {
+              case "personalProfile":
+                return (
+                  <SidebarNavLink
+                    href={personalProfileHref}
+                    active={personalProfileActive}
+                    label={t("personalProfile")}
+                    icon={UserRound}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "companySettings":
+                return (
+                  <SidebarNavLink
+                    href={companySettingsHref}
+                    active={companySettingsActive}
+                    label={t("companySettings")}
+                    icon={Building2}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "modules":
+                return (
+                  <SidebarNavLink
+                    href={modulesHref}
+                    active={modulesActive}
+                    label={t("modules")}
+                    icon={Settings}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "projectForms":
+                return (
+                  <SidebarNavLink
+                    href={projectFormsHref}
+                    active={projectFormsActive}
+                    label={t("projectForms")}
+                    icon={FileText}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "customization":
+                return (
+                  <SidebarNavLink
+                    href={customizationHref}
+                    active={customizationActive}
+                    label={t("customization.label")}
+                    icon={Palette}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "users":
+                return (
+                  <SidebarNavLink
+                    href={usersHref}
+                    active={usersActive}
+                    label={t("users")}
+                    icon={UserRound}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "roles":
+                return (
+                  <SidebarNavLink
+                    href={rolesHref}
+                    active={rolesActive}
+                    label={t("roles")}
+                    icon={ShieldCheck}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "profiles":
+                return (
+                  <SidebarNavLink
+                    href={profilesHref}
+                    active={profilesActive}
+                    label={t("profiles")}
+                    icon={Layers}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "integrations":
+                return (
+                  <SidebarNavLink
+                    href={integrationsHref}
+                    active={integrationsActive}
+                    label={t("integrations")}
+                    icon={Plug}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              case "auditLogs":
+                return (
+                  <SidebarNavLink
+                    href={auditLogsHref}
+                    active={auditLogsActive}
+                    label={t("auditLogs")}
+                    icon={ClipboardList}
+                    expanded={expanded}
+                    resolved={resolved}
+                  />
+                );
+              default:
+                return null;
+            }
+          })();
+          if (!entry) return null;
+          return (
+            <SidebarSortableRow
+              key={id}
+              index={index}
+              dragFromIndex={dragFromIndex}
+              onDragFromIndexChange={setDragFromIndex}
+              onReorder={(from, to) => reorderSettings(userKey, from, to)}
+              showHandle={expanded}
+            >
+              {entry}
+            </SidebarSortableRow>
+          );
+        })}
       </nav>
     </>
   );

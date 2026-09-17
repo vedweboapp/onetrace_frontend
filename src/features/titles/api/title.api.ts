@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { TITLE_PATHS } from "./title.paths";
 import type { Title, TitleCreatePayload, TitleListResponse, TitleUpdatePayload } from "../types/title.types";
 import { titleNameFromRow } from "../utils/title-display.util";
@@ -37,6 +42,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 export type TitleListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
 
 export async function fetchTitlesPage(
@@ -44,13 +50,22 @@ export async function fetchTitlesPage(
   pageSize = 20,
   filters?: TitleListFilters,
 ): Promise<{ items: Title[]; pagination: TitleListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<TitleListResponse>(TITLE_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data.map((row) => normalizeTitle(row as TitleApiRow)), pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<TitleListResponse>(TITLE_PATHS.list, { params });
+      const page = parseListApiPage<TitleApiRow>(data, pageSize);
+      return {
+        items: page.items.map((row) => normalizeTitle(row)),
+        pagination: page.pagination as never,
+      };
+    },
+  });
 }
 
 export async function fetchTitle(id: number): Promise<Title> {

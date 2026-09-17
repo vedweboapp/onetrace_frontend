@@ -4,6 +4,11 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { JOB_PATHS } from "./job.paths";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import type {
   Job,
   JobChecklistUpdateItem,
@@ -30,6 +35,7 @@ export type JobListFilters = {
   job_category?: string;
 
   job_type?: string;
+  dropdown?: boolean;
 };
 
 type JobRequestOptions = {
@@ -43,7 +49,7 @@ export async function fetchJobsPage(
   options?: JobRequestOptions,
   
 ): Promise<{ items: Job[]; pagination: JobListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
@@ -63,13 +69,19 @@ export async function fetchJobsPage(
   if (filters?.job_type) {
     params.job_type = filters.job_type;
   }
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<JobListResponse>(JOB_PATHS.list, {
-    params,
-    skipErrorToast: options?.silent === true,
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    silent: options?.silent,
+    fetchFirst: async () => {
+      const { data } = await api.get<JobListResponse>(JOB_PATHS.list, {
+        params,
+        skipErrorToast: options?.silent === true,
+      });
+      return parseListApiPage(data, pageSize);
+    },
   });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
 }
 
 /** Collect every job id matching list filters (all pages). */

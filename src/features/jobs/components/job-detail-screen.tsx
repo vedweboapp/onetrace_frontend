@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
@@ -40,7 +42,7 @@ type Props = {
   jobId: number;
 };
 
-type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns" | "forms";
+type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns" | "forms" | "timeline";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
   return (
@@ -49,7 +51,8 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
     value === "materials" ||
     value === "dispatch" ||
     value === "returns" ||
-    value === "forms"
+    value === "forms" ||
+    value === "timeline"
   );
 }
 
@@ -61,6 +64,7 @@ function isServiceJobDetail(detail: Job | null, jobCategoryParam: string | null)
 
 export function JobDetailScreen({ jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -85,8 +89,9 @@ export function JobDetailScreen({ jobId }: Props) {
     if (showFormsTab) {
       tabs.push({ id: "forms", label: t("detail.tabs.forms") });
     }
+    tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [showFormsTab, t]);
+  }, [showFormsTab, t, tAudit]);
 
   function handleTabChange(tab: string) {
     if (!isJobDetailTabId(tab)) return;
@@ -260,6 +265,12 @@ function JobDetailTabPanel({
             <JobReturnsTab detail={detail} />
           ) : detail && activeTab === "forms" ? (
             <JobFormsTab detail={detail} />
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.job}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
           ) : null}
         </div>
   );

@@ -114,7 +114,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   const reloadClients = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchClientsPage(1, 100, { is_active: true, search: searchQuery }, { silent: true });
+      const { items } = await fetchClientsPage(1, 20, { is_active: true, search: searchQuery, dropdown: true }, { silent: true });
       setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
@@ -123,7 +123,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   const reloadManagers = React.useCallback(async (searchQuery?: string) => {
     try {
-      const { items } = await fetchUsersPage(1, 100, { search: searchQuery });
+      const { items } = await fetchUsersPage(1, 20, { search: searchQuery, dropdown: true });
       setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
     } catch {
       setManagerOptions([]);
@@ -185,7 +185,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientIdForQuick });
+      const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, dropdown: true });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);
@@ -228,7 +228,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+        const { items } = await fetchProjectTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectTypeOptions(items.map((pt) => ({ value: String(pt.id), label: formatProjectTypeLabel(pt) })));
         }
@@ -262,7 +262,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchFormsPage(1, 500, { project_type: selectedProjectType }, { silent: true });
+        const { items } = await fetchFormsPage(1, 20, { project_type: selectedProjectType, dropdown: true }, { silent: true });
         if (!cancelled) {
           setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
         }
@@ -281,7 +281,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchProjectStatusesPage(1, 500, { is_active: true });
+        const { items } = await fetchProjectStatusesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
           if (!isEdit) {

@@ -375,7 +375,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+        const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       } catch {
         if (!cancelled) setClientOptions([]);
@@ -390,7 +390,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchTagsPage(1, 500, { is_active: true });
+        const { items } = await fetchTagsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const toLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
           setTagOptions(items.map((row) => ({ value: String(row.id), label: toLabel(row) })));
@@ -410,7 +410,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       try {
         const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
-        const { items: projects } = await fetchProjectsPage(1, 500, filters);
+        const { items: projects } = await fetchProjectsPage(1, 20, { ...filters, dropdown: true });
         if (!cancelled) setProjectRows(projects);
       } catch {
         if (!cancelled) setProjectRows([]);
@@ -478,7 +478,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId });
+        const { items } = await fetchContactsPage(1, 20, { client: customerId, dropdown: true });
         if (!cancelled) {
           setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
         }
@@ -687,12 +687,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
       const reloadProjectId = parseFormIdField(values.project);
-      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
       if (reloadCustomerId) {
         const [projects, contacts] = await Promise.all([
-          fetchProjectsPage(1, 500, { client: reloadCustomerId }),
-          fetchContactsPage(1, 500, { client: reloadCustomerId }),
+          fetchProjectsPage(1, 20, { client: reloadCustomerId, dropdown: true }),
+          fetchContactsPage(1, 20, { client: reloadCustomerId, dropdown: true }),
         ]);
         setProjectRows(projects.items);
         setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));

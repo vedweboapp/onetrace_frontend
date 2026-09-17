@@ -178,12 +178,12 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     onReloadOptions: async () => {
       try {
         const [vendors, projects, groups, items, contacts] = await Promise.all([
-          fetchVendorsPage(1, 500, { is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchGroupsPage(1, 500),
-          fetchItemsPage(1, 500, { isActive: true }),
+          fetchVendorsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
           vendorId
-            ? fetchContactsPage(1, 500, { vendor: vendorId, contact_type: "vendor", is_active: true })
+            ? fetchContactsPage(1, 20, { vendor: vendorId, contact_type: "vendor", is_active: true, dropdown: true })
             : Promise.resolve({ items: [] }),
         ]);
         setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
@@ -251,10 +251,10 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     (async () => {
       try {
         const [vendors, projects, groups, items] = await Promise.all([
-          fetchVendorsPage(1, 500, { is_active: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchGroupsPage(1, 500),
-          fetchItemsPage(1, 500, { isActive: true }),
+          fetchVendorsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (!cancelled) {
           setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
@@ -299,11 +299,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, {
-          vendor: vendorId,
+        const { items } = await fetchContactsPage(1, 20, { vendor: vendorId,
           contact_type: "vendor",
-          is_active: true,
-        });
+          is_active: true, dropdown: true });
         if (!cancelled) {
           setContactOptions(
             items.map((c) => ({

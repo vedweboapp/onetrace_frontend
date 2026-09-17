@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { USER_GROUP_PATHS } from "./user-group.paths";
 import type {
   UserGroup,
@@ -81,6 +86,7 @@ function toWritePayload(body: UserGroupCreatePayload | UserGroupUpdatePayload): 
 
 export type UserGroupListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
 
 export async function fetchUserGroupsPage(
@@ -88,24 +94,22 @@ export async function fetchUserGroupsPage(
   pageSize = 20,
   filters?: UserGroupListFilters,
 ): Promise<{ items: UserGroup[]; pagination: UserGroupListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<UserGroupListResponse>(USER_GROUP_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  const payload = data.data as unknown;
-  const rows: UserGroup[] = Array.isArray(payload)
-    ? payload
-    : payload &&
-        typeof payload === "object" &&
-        Array.isArray((payload as { results?: unknown }).results)
-      ? ((payload as { results: UserGroup[] }).results)
-      : [];
-  return {
-    items: rows.map((row) => normalizeUserGroup(row)),
-    pagination: data.pagination,
-  };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<UserGroupListResponse>(USER_GROUP_PATHS.list, { params });
+      const page = parseListApiPage<UserGroup>(data, pageSize);
+      return {
+        items: page.items.map((row) => normalizeUserGroup(row)),
+        pagination: page.pagination as UserGroupListResponse["pagination"],
+      };
+    },
+  });
 }
 
 export async function fetchUserGroup(id: number): Promise<UserGroup> {

@@ -124,7 +124,10 @@ const UsersSelect = React.forwardRef<HTMLDivElement, UsersSelectProps>(
       const loadUsers = async () => {
         setLoading(true);
         try {
-          const { items } = await fetchUsersPage(1, 50, { search: searchQuery || undefined });
+          const { items } = await fetchUsersPage(1, 50, {
+            search: searchQuery || undefined,
+            dropdown: true,
+          });
           setUsersList(items);
           
           // Cache loaded users in resolvedUsers for instant selected-display resolution

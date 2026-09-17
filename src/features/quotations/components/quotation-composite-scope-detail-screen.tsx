@@ -143,7 +143,7 @@ export function QuotationCompositeScopeDetailScreen({
           setChildItemsById(new Map());
           return;
         }
-        const { items } = await fetchItemsPage(1, 500, { isComposite: false });
+        const { items } = await fetchItemsPage(1, 20, { isComposite: false, dropdown: true });
         if (cancelled) return;
         setChildItemsById(new Map(items.map((it) => [it.id, it])));
       } catch {

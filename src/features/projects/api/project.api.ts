@@ -4,6 +4,11 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { PROJECT_PATHS } from "./project.paths";
 import type {
   LocationToJobPayload,
@@ -31,6 +36,7 @@ export type ProjectListFilters = {
   search?: string;
   is_active?: boolean;
   client?: number;
+  dropdown?: boolean;
 };
 
 export async function fetchProjectsPage(
@@ -49,10 +55,15 @@ export async function fetchProjectsPage(
   if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
     params.client = filters.client;
   }
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<ProjectListResponse>(PROJECT_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<ProjectListResponse>(PROJECT_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function fetchAllProjectIds(filters?: ProjectListFilters): Promise<number[]> {
@@ -120,13 +131,28 @@ export async function fetchProjectFormsPage(
   pageSize = 500,
   params?: Record<string, string | number | boolean | undefined>,
 ): Promise<{ items: FormListItem[]; pagination: FormsPagination }> {
-  const { data } = await api.get(PROJECT_PATHS.projectFormsList(projectId), {
-    params: { page, page_size: pageSize, ...params },
-  });
-  return {
-    items: parseFormsListResponse(data),
-    pagination: parseFormsPaginationResponse(data),
+  const { dropdown, ...rest } = params ?? {};
+  const requestParams: Record<string, string | number | boolean> = {
+    page,
+    page_size: pageSize,
   };
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) requestParams[key] = value;
+  }
+  applyDropdownListParam(requestParams, dropdown === true);
+
+  return resolveDropdownListPages({
+    dropdown: dropdown === true,
+    fetchFirst: async () => {
+      const { data } = await api.get(PROJECT_PATHS.projectFormsList(projectId), {
+        params: requestParams,
+      });
+      return {
+        items: parseFormsListResponse(data),
+        pagination: parseFormsPaginationResponse(data),
+      };
+    },
+  });
 }
 
 export type ProjectMassUpdatePayload = {

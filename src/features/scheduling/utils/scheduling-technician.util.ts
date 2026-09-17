@@ -81,7 +81,7 @@ export function initialsFromName(name: string): string {
 }
 
 export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<SchedulingTechnician[]> {
-  const { items } = await fetchUsersPage(1, 500);
+  const { items } = await fetchUsersPage(1, 20, { dropdown: true });
   const seen = new Set<number>();
   const rows: SchedulingTechnician[] = [];
   for (const user of items) {

@@ -35,7 +35,7 @@ export function JobUpdateStatusDialog({
     (async () => {
       setLoading(true);
       try {
-        const { items } = await fetchJobStatusesPage(1, 500);
+        const { items } = await fetchJobStatusesPage(1, 20, { dropdown: true });
         if (!cancelled) setStatuses(items);
       } catch {
         if (!cancelled) setStatuses([]);

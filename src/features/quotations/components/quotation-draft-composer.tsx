@@ -407,7 +407,7 @@ export function QuotationDraftComposer({
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
-      const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500)]);
+      const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 20, { dropdown: true }), fetchItemsPage(1, 20, { dropdown: true })]);
       setGroups(gRes.items);
       setItemRows(iRes.items);
     } catch {
@@ -508,7 +508,7 @@ export function QuotationDraftComposer({
     let cancelled = false;
     (async () => {
       try {
-        const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500)]);
+        const [gRes, iRes] = await Promise.all([fetchGroupsPage(1, 20, { dropdown: true }), fetchItemsPage(1, 20, { dropdown: true })]);
         if (!cancelled) {
           setGroups(gRes.items);
           setItemRows(iRes.items);

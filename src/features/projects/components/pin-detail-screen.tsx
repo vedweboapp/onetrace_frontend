@@ -125,7 +125,7 @@ async function resolvePinFromProjectDrawings(
     if (found) return { ...found, projectId };
   }
 
-  const page = await fetchDrawingsPage(projectId, 1, 200);
+  const page = await fetchDrawingsPage(projectId, 1, 200, undefined, { dropdown: true });
   for (const drawing of page.items) {
     const detail =
       drawing.plots && drawing.plots.length > 0

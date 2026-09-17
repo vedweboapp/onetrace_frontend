@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Store,
   Truck,
+  UserCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -112,6 +113,7 @@ export function DashboardHeader() {
   const serviceJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.service}`;
   const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
   const schedulingHref = routes.dashboard.scheduling;
+  const attendanceHref = routes.dashboard.attendance;
   const qrCodesHref = routes.dashboard.qrCodes;
   const formsHref = routes.dashboard.forms;
   const homeHref = routes.dashboard.root;
@@ -144,6 +146,7 @@ export function DashboardHeader() {
   const rolesHref = routes.dashboard.settingsRoles;
   const profilesHref = routes.dashboard.settingsProfiles;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -182,6 +185,8 @@ export function DashboardHeader() {
   const projectJobActive = jobsActive && jobCategory === JOB_CATEGORY.project;
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
+  const attendanceActive =
+    pathname === attendanceHref || pathname.startsWith(`${attendanceHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
   const projectsActive =
@@ -241,6 +246,8 @@ export function DashboardHeader() {
     pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const auditLogsActive =
+    pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
   const sectionTitle = homeActive
     ? tNav("home")
@@ -272,6 +279,8 @@ export function DashboardHeader() {
                         : tNav("serviceJob")
                       : schedulingActive
                         ? tNav("scheduling")
+                        : attendanceActive
+                          ? tNav("attendance")
                         : qrCodesActive
                         ? tNav("qrCodes")
                         : formsActive
@@ -328,9 +337,11 @@ export function DashboardHeader() {
                                                                           ? tSettingsNav("profiles")
                                                                           : integrationsActive
                                                                             ? tSettingsNav("integrations")
-                                                                            : projectFormsActive
-                                                                              ? tSettingsNav("projectForms")
-                                                                              : tNav("home");
+                                                                            : auditLogsActive
+                                                                              ? tSettingsNav("auditLogs")
+                                                                              : projectFormsActive
+                                                                                ? tSettingsNav("projectForms")
+                                                                                : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -435,6 +446,7 @@ export function DashboardHeader() {
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />
             <TopNavLink href={profilesHref} label={tSettingsNav("profiles")} icon={Layers} active={profilesActive} resolved={resolved} />
             <TopNavLink href={integrationsHref} label={tSettingsNav("integrations")} icon={Plug} active={integrationsActive} resolved={resolved} />
+            <TopNavLink href={auditLogsHref} label={tSettingsNav("auditLogs")} icon={ClipboardList} active={auditLogsActive} resolved={resolved} />
           </>
         ) : (
           <>
@@ -475,6 +487,7 @@ export function DashboardHeader() {
               ]}
             />
             <TopNavLink href={schedulingHref} label={tNav("scheduling")} icon={CalendarDays} active={schedulingActive} resolved={resolved} />
+            <TopNavLink href={attendanceHref} label={tNav("attendance")} icon={UserCheck} active={attendanceActive} resolved={resolved} />
             <TopNavLink href={qrCodesHref} label={tNav("qrCodes")} icon={QrCode} active={qrCodesActive} resolved={resolved} />
             <TopNavLink href={formsHref} label={tNav("forms")} icon={ClipboardPen} active={formsActive} resolved={resolved} />
             <TopNavLink href={projectsHref} label={tNav("projects")} icon={FolderKanban} active={projectsActive} resolved={resolved} />

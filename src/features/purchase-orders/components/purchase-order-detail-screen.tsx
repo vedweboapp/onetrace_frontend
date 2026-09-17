@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchPurchaseOrder } from "@/features/purchase-orders/api/purchase-order.api";
@@ -20,6 +22,7 @@ type Props = {
 
 export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
   const t = useTranslations("Dashboard.purchaseOrders");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -30,7 +33,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     [],
   );
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "timeline">("overview");
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [contactNames, setContactNames] = React.useState<Record<number, string>>({});
 
@@ -38,7 +41,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+        const { items: vendors } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of vendors) mapped[row.id] = row.name;
@@ -57,7 +60,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: contacts } = await fetchContactsPage(1, 500, { is_active: true, contact_type: "vendor" });
+        const { items: contacts } = await fetchContactsPage(1, 20, { is_active: true, contact_type: "vendor", dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of contacts) {
@@ -92,8 +95,9 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     () => [
       { id: "overview", label: t("tabs.overview") },
       { id: "lineItems", label: t("tabs.lineItems") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   return (
@@ -113,7 +117,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
         <AppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems")}
+          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
         />
       }
       actions={({ listBack }) => (
@@ -125,6 +129,22 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
       )}
       renderSurface={({ detail, dateFmt, retry }) => {
         if (!detail) return null;
+        if (activeTab === "timeline") {
+          return (
+            <div
+              role="tabpanel"
+              id={`purchase-order-detail-tab-${activeTab}`}
+              aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAuditTimeline
+                module={AUDIT_TRAIL_MODULES.purchaseOrder}
+                objectId={detail.id}
+                dateFmt={dateFmt}
+              />
+            </div>
+          );
+        }
         const vendorId = nestedId(detail.vendor);
         const contactId = nestedId(detail.contact as number | PurchaseOrderContactRef | null | undefined);
         return (

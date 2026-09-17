@@ -676,10 +676,10 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
     try {
       const results = await Promise.allSettled([
         fetchDrawingDetail(projectId, drawingId),
-        fetchGroupsPage(1, 500),
-        fetchCompositeItemsPage(1, 500),
-        fetchPinStatusesPage(1, 500),
-        fetchProjectFormsPage(projectId, 1, 500),
+        fetchGroupsPage(1, 20, { dropdown: true }),
+        fetchCompositeItemsPage(1, 20, { dropdown: true }),
+        fetchPinStatusesPage(1, 20, { dropdown: true }),
+        fetchProjectFormsPage(projectId, 1, 20, { dropdown: true }),
 
       ]);
 

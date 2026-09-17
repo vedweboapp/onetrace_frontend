@@ -70,7 +70,7 @@ export function useMaterialStatusCatalog(enabled = true): MaterialStatusCatalog 
     setLoading(true);
     void (async () => {
       try {
-        const { items } = await fetchMaterialStatusesPage(1, 500);
+        const { items } = await fetchMaterialStatusesPage(1, 20, { dropdown: true });
         if (!cancelled) setCatalog(buildMaterialStatusCatalog(items));
       } catch {
         if (!cancelled) setCatalog(buildMaterialStatusCatalog([]));

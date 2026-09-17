@@ -146,7 +146,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   const reloadClients = React.useCallback(async () => {
     try {
-      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
@@ -155,7 +155,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   const reloadVendors = React.useCallback(async () => {
     try {
-      const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+      const { items: vendors } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
       setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
     } catch {
       setVendorOptions([]);

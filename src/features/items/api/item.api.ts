@@ -3,6 +3,11 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { Item, ItemCreatePayload, ItemListResponse, ItemUpdatePayload } from "@/features/items/types/item.types";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
@@ -22,6 +27,7 @@ export type ItemListFilters = {
   groupId?: number;
   /** Filter items linked to a vendor (`item/?vendor_id=`). */
   vendorId?: number;
+  dropdown?: boolean;
 };
 
 export async function fetchItemsPage(
@@ -42,10 +48,15 @@ export async function fetchItemsPage(
   if (typeof filters?.vendorId === "number" && Number.isFinite(filters.vendorId) && filters.vendorId > 0) {
     params.vendor_id = filters.vendorId;
   }
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<ItemListResponse>(ITEM_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<ItemListResponse>(ITEM_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function fetchAllItemIds(filters?: ItemListFilters): Promise<number[]> {

@@ -88,7 +88,7 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchUsersPage(1, 500);
+        const { items } = await fetchUsersPage(1, 20, { dropdown: true });
         if (cancelled) return;
         setUserOptions((prev) => mergeMemberOptions(items.map(userOption), prev));
       } catch {

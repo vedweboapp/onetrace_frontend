@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
@@ -22,6 +24,7 @@ type Props = {
 
 export function InvoiceDetailScreen({ invoiceId }: Props) {
   const t = useTranslations("Dashboard.invoices");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -32,7 +35,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     [],
   );
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "timeline">("overview");
   const [previewing, setPreviewing] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
@@ -42,7 +45,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+        const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of clients) mapped[row.id] = row.name;
@@ -61,7 +64,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: contacts } = await fetchContactsPage(1, 500, { is_active: true });
+        const { items: contacts } = await fetchContactsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of contacts) {
@@ -96,8 +99,9 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     () => [
       { id: "overview", label: t("tabs.overview") },
       { id: "lineItems", label: t("tabs.lineItems") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   return (
@@ -117,7 +121,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
         <AppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems")}
+          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
         />
       }
       actions={({ detail, listBack }) => (
@@ -165,6 +169,22 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
       )}
       renderSurface={({ detail, dateFmt, retry }) => {
         if (!detail) return null;
+        if (activeTab === "timeline") {
+          return (
+            <div
+              role="tabpanel"
+              id={`invoice-detail-tab-${activeTab}`}
+              aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAuditTimeline
+                module={AUDIT_TRAIL_MODULES.invoice}
+                objectId={detail.id}
+                dateFmt={dateFmt}
+              />
+            </div>
+          );
+        }
         const clientId = nestedId(detail.client);
         const contactRef = (detail.contact ?? detail.contact_person) as
           | number

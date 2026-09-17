@@ -67,7 +67,7 @@ export function GroupDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchCompositeItemsPage(1, 500);
+        const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
         if (cancelled) return;
         setCompositeById(new Map(items.map((it) => [it.id, it])));
       } catch {

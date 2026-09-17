@@ -100,7 +100,7 @@ export function SitesPanel() {
   const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
 
   const loadClientOptions = React.useCallback(async () => {
-    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
     return clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 

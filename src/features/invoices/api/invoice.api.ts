@@ -3,6 +3,7 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { INVOICE_PATHS } from "./invoice.paths";
 import type {
   InvoiceCreatePayload,
@@ -41,8 +42,7 @@ export async function fetchInvoicesPage(
   if (filters?.due_date?.trim()) params.due_date = filters.due_date.trim();
 
   const { data } = await api.get<InvoiceListResponse>(INVOICE_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return parseListApiPage(data, pageSize);
 }
 
 export async function fetchAllInvoiceIds(filters?: InvoiceListFilters): Promise<number[]> {
