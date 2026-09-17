@@ -1,17 +1,20 @@
 import type { QuotationCreatePayload, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationFormValues } from "@/features/quotations/schemas/quotation-form-schema";
+import { QUOTE_CATEGORY, type QuoteCategoryApi } from "@/features/quotations/constants/quotation-category";
 import {
+  getQuotationAdditionalContactIds,
   getQuotationContactId,
   getQuotationCustomerId,
   getQuotationLevelIds,
   getQuotationOptionalUserId,
   getQuotationProjectId,
-  getQuotationSiteId,
+  getQuotationSiteIds,
   getQuotationTagIds,
   getQuotationTechnicianIds,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import { formatApiDateForHtmlDateInput } from "@/shared/utils/api-date-parse.util";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
+import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
 
 export function parseOptionalId(raw: string): number | null {
   const s = raw.trim();
@@ -34,17 +37,47 @@ function parseTags(raw: string): number[] {
   return out;
 }
 
-export function mapQuotationFormToPayload(values: QuotationFormValues): QuotationCreatePayload {
+function parseAdditionalContactIds(rows: QuotationFormValues["additional_customer_contacts"] | undefined): number[] {
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const row of rows ?? []) {
+    const id = parseOptionalId(row.contact);
+    if (id != null && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/** Ensures manual create/update payloads always send `additional_customer_contact` as id list. */
+export function quotationAdditionalContactIdsForApi(
+  rows: QuotationFormValues["additional_customer_contacts"] | undefined,
+): number[] {
+  return parseAdditionalContactIds(rows);
+}
+
+export function mapQuotationFormToPayload(
+  values: QuotationFormValues,
+  options?: { quote_category?: QuoteCategoryApi },
+): QuotationCreatePayload {
   const due = values.due_date.trim();
   const orderNum = values.order_number.trim();
   const desc = values.description.trim();
+  const status = normalizeQuotationStatusValue(values.status) || null;
+  const sites = (values.sites ?? [])
+    .map((raw) => Number.parseInt(raw, 10))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const projectId = parseOptionalId(values.project);
+  const quote_category =
+    options?.quote_category ?? (projectId != null ? QUOTE_CATEGORY.project : QUOTE_CATEGORY.service);
 
   return {
     customer: Number.parseInt(values.customer, 10),
-    site: Number.parseInt(values.site, 10),
-    quote_name: capitalizeFirstLetter(values.quote_name.trim()),
+    sites,
+    quote_name: sanitizeTitleInput(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
-    additional_customer_contact: parseOptionalId(values.additional_customer_contact),
+    additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
     tags: Array.isArray(values.tag_ids) && values.tag_ids.length > 0 ? values.tag_ids : parseTags(values.tags_raw),
     order_number: orderNum || null,
     due_date: due || null,
@@ -52,9 +85,11 @@ export function mapQuotationFormToPayload(values: QuotationFormValues): Quotatio
     project_manager: parseOptionalId(values.project_manager),
     technicians: values.technician_ids,
     description: desc || null,
-    project: Number.parseInt(values.project, 10),
+    project: quote_category === QUOTE_CATEGORY.service ? null : projectId,
+    quote_category,
     levels: values.select_all_levels ? [] : values.level_ids,
     select_all_levels: values.select_all_levels,
+    ...(status ? { status } : {}),
   };
 }
 
@@ -62,15 +97,16 @@ export function emptyQuotationFormDefaults(): QuotationFormValues {
   return {
     quote_name: "",
     customer: "",
-    site: "",
+    sites: [],
     project: "",
     primary_customer_contact: "",
-    additional_customer_contact: "",
+    additional_customer_contacts: [],
     site_contact: "",
     tags_raw: "",
     tag_ids: [],
     order_number: "",
     due_date: "",
+    status: "draft",
     salesperson: "",
     project_manager: "",
     technician_ids: [],
@@ -91,10 +127,12 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
   return {
     quote_name: detail.quote_name ?? "",
     customer: asIdString(getQuotationCustomerId(detail.customer)),
-    site: asIdString(getQuotationSiteId(detail.site)),
+    sites: getQuotationSiteIds(detail).map(String),
     project: asIdString(getQuotationProjectId(detail.project)),
     primary_customer_contact: asIdString(getQuotationContactId(detail.primary_customer_contact)),
-    additional_customer_contact: asIdString(getQuotationContactId(detail.additional_customer_contact)),
+    additional_customer_contacts: getQuotationAdditionalContactIds(detail.additional_customer_contact).map((id) => ({
+      contact: String(id),
+    })),
     site_contact: asIdString(
       typeof detail.site_snapshot?.site_contact === "number"
         ? detail.site_snapshot.site_contact
@@ -104,6 +142,7 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     tag_ids: tagIds,
     order_number: detail.order_number ?? "",
     due_date: formatApiDateForHtmlDateInput(detail.due_date),
+    status: normalizeQuotationStatusValue(detail.status) || "draft",
     salesperson: asIdString(getQuotationOptionalUserId(detail.salesperson)),
     project_manager: asIdString(getQuotationOptionalUserId(detail.project_manager)),
     technician_ids: getQuotationTechnicianIds(detail),

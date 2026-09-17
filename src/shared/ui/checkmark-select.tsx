@@ -3,8 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { FieldGroup } from "./field-primitives";
+import { LockedSurfaceField } from "./locked-surface-field";
 
 /** Portaled lists are under `document.body` and skip inherited theme vars; copy from trigger. */
 function readDashAccent(el: HTMLElement | null): string {
@@ -37,12 +39,16 @@ type Props = {
 
   onTriggerBlur?: (e: React.FocusEvent<HTMLButtonElement>) => void;
   className?: string;
+  /** Minimum width of the portaled option list (px). Useful for icon-only triggers. */
+  menuMinWidth?: number;
   listLabel?: string;
   disabled?: boolean;
 
   invalid?: boolean;
 
   emptyLabel?: string;
+  /** Message when the open list has no matching options (default: "No results"). */
+  listEmptyLabel?: string;
   portaled?: boolean;
   /** Compact trigger (e.g. pagination page size). */
   size?: "md" | "sm";
@@ -62,6 +68,24 @@ type Props = {
   clearable?: boolean;
   /** Accessible label for the clear control (recommended when `clearable` is true). */
   clearAriaLabel?: string;
+  /** Opens the related create form (shows a + control on the trigger and in the dropdown). */
+  onAdd?: () => void;
+  /** Accessible label for the add control (recommended when `onAdd` is set). */
+  addAriaLabel?: string;
+  /** Visible label for the add action in the dropdown footer. */
+  addLabel?: string;
+  /** Shows a red asterisk after the field label. */
+  required?: boolean;
+  /** Label when `value` is set but missing from `options` (e.g. after async reload). */
+  fallbackLabel?: string;
+  /** When true, the field cannot be opened or changed (parent context). */
+  locked?: boolean;
+  /** Tooltip shown on hover/focus when `locked` is true. */
+  lockedHint?: string;
+  /** Called when the dropdown opens or closes (e.g. to lazy-load options). */
+  onOpenChange?: (open: boolean) => void;
+  /** Called when the search query changes inside the dropdown. */
+  onSearchChange?: (search: string) => void;
 };
 
 const DROPDOWN_GAP = 4;
@@ -80,27 +104,43 @@ type DropdownPlacement = {
 function measureDropdownPlacement(
   anchor: HTMLElement,
   side: "top" | "bottom" | "auto",
+  menuMinWidth = 0,
 ): DropdownPlacement {
   const r = anchor.getBoundingClientRect();
   const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const pad = 8;
   const spaceBelow = vh - r.bottom - DROPDOWN_GAP;
   const spaceAbove = r.top - DROPDOWN_GAP;
 
   let openUp = false;
   if (side === "top") openUp = true;
   else if (side === "bottom") openUp = false;
-  else openUp = spaceBelow < DROPDOWN_MIN_SPACE && spaceAbove > spaceBelow;
+  else openUp = spaceBelow < DROPDOWN_PREFERRED_MAX && spaceAbove > spaceBelow;
 
   const maxHeight = Math.max(
-    DROPDOWN_MIN_SPACE,
+    80,
     Math.min(DROPDOWN_PREFERRED_MAX, (openUp ? spaceAbove : spaceBelow) - 8),
   );
+
+  const width = Math.min(
+    Math.max(r.width, menuMinWidth),
+    Math.max(80, vw - pad * 2),
+  );
+
+  // Prefer left-align to the trigger; if that overflows the viewport, right-align
+  // to the trigger, then clamp into the padded viewport.
+  let left = r.left;
+  if (left + width > vw - pad) {
+    left = r.right - width;
+  }
+  left = Math.min(Math.max(pad, left), vw - pad - width);
 
   if (openUp) {
     return {
       top: r.top - DROPDOWN_GAP,
-      left: r.left,
-      width: r.width,
+      left,
+      width,
       transform: "translateY(-100%)",
       maxHeight,
       openUp: true,
@@ -109,8 +149,8 @@ function measureDropdownPlacement(
 
   return {
     top: r.bottom + DROPDOWN_GAP,
-    left: r.left,
-    width: r.width,
+    left,
+    width,
     transform: "none",
     maxHeight,
     openUp: false,
@@ -121,6 +161,7 @@ function useDropdownPlacement(
   open: boolean,
   anchorRef: React.RefObject<HTMLElement | null>,
   side: "top" | "bottom" | "auto" = "auto",
+  menuMinWidth = 0,
 ) {
   const [placement, setPlacement] = React.useState<DropdownPlacement>({
     top: 0,
@@ -134,8 +175,8 @@ function useDropdownPlacement(
   const update = React.useCallback(() => {
     const el = anchorRef.current;
     if (!el || !open) return;
-    setPlacement(measureDropdownPlacement(el, side));
-  }, [open, anchorRef, side]);
+    setPlacement(measureDropdownPlacement(el, side, menuMinWidth));
+  }, [open, anchorRef, side, menuMinWidth]);
 
   React.useLayoutEffect(() => {
     update();
@@ -161,10 +202,12 @@ export function CheckmarkSelect({
   onTriggerFocus,
   onTriggerBlur,
   className,
+  menuMinWidth,
   listLabel = "Options",
   disabled,
   invalid,
   emptyLabel = "—",
+  listEmptyLabel = "No results",
   portaled = true,
   size = "md",
   showCheckmarks = true,
@@ -174,16 +217,48 @@ export function CheckmarkSelect({
   searchPlaceholder = "Search...",
   clearable = false,
   clearAriaLabel,
+  onAdd,
+  addAriaLabel,
+  addLabel,
+  required,
+  fallbackLabel,
+  locked = false,
+  lockedHint,
+  onOpenChange,
+  onSearchChange,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const openChangeReadyRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!openChangeReadyRef.current) {
+      openChangeReadyRef.current = true;
+      return;
+    }
+    onOpenChangeRef.current?.(open);
+  }, [open]);
   const [search, setSearch] = React.useState("");
   const rootRef = React.useRef<HTMLDivElement>(null);
   const anchorRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const selected = options.find((o) => o.value === value);
-  const canClear = Boolean(clearable && !disabled && value.trim() !== "");
-  const dropdownPlacement = useDropdownPlacement(open, anchorRef, side);
+  // Defensively coerce value — callers may pass a number or object from the API
+  const safeValue = typeof value === "string" ? value : String(value ?? "");
+  const resolvedOptions = React.useMemo(() => {
+    const id = safeValue.trim();
+    if (!id || options.some((opt) => opt.value === id)) return options;
+    const label = fallbackLabel?.trim() || id;
+    return [{ value: id, label }, ...options];
+  }, [options, safeValue, fallbackLabel]);
+  const selected = resolvedOptions.find((o) => o.value === safeValue);
+  const canClear = Boolean(clearable && !disabled && !locked && safeValue.trim() !== "");
+  const showAdd = Boolean(onAdd && !disabled && !locked);
+  // Show add action only in dropdown footer, not on trigger.
+  const useSplitTrigger = canClear;
+  const resolvedMenuMinWidth = menuMinWidth ?? (size === "sm" ? 200 : 240);
+  const dropdownPlacement = useDropdownPlacement(open, anchorRef, side, resolvedMenuMinWidth);
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
 
@@ -209,7 +284,13 @@ export function CheckmarkSelect({
     if (open) setSearch("");
   }, [open]);
 
-  const displayLabel = value && selected ? selected.label : emptyLabel;
+  React.useEffect(() => {
+    if (open) {
+      onSearchChange?.(search);
+    }
+  }, [search, open, onSearchChange]);
+
+  const displayLabel = selected ? selected.label : emptyLabel;
 
   const listClasses = cn(
     "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
@@ -218,10 +299,15 @@ export function CheckmarkSelect({
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";
   const filteredOptions = React.useMemo(() => {
+    if (onSearchChange && search.trim()) {
+      const q = search.trim().toLowerCase();
+      return options.filter((opt) => opt.label.toLowerCase().includes(q));
+    }
+    if (onSearchChange) return resolvedOptions;
     const q = search.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((opt) => opt.label.toLowerCase().includes(q));
-  }, [options, search]);
+    if (!q) return resolvedOptions;
+    return resolvedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+  }, [resolvedOptions, options, search, onSearchChange]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
     const listMaxHeight = open ? dropdownPlacement.maxHeight : DROPDOWN_PREFERRED_MAX;
@@ -258,7 +344,7 @@ export function CheckmarkSelect({
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
               className={cn(
-                "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none",
+                "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[length:var(--dash-text-sm,0.875rem)] outline-none",
                 "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
                 "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
               )}
@@ -267,7 +353,7 @@ export function CheckmarkSelect({
         ) : null}
         <ul role="listbox" aria-label={listLabel} className="min-h-0 flex-1 overflow-auto py-1">
           {filteredOptions.map((opt) => {
-            const isSelected = opt.value === value;
+            const isSelected = opt.value === safeValue;
             return (
               <li key={opt.value === "" ? "__empty__" : opt.value} role="presentation">
                 <button
@@ -312,18 +398,38 @@ export function CheckmarkSelect({
             );
           })}
           {filteredOptions.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
+            <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{listEmptyLabel}</li>
           ) : null}
         </ul>
+        {showAdd ? (
+          <div className="shrink-0 border-t border-slate-200 p-2 dark:border-slate-600">
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center justify-center gap-1.5 rounded-lg font-semibold text-[color:var(--dash-accent,#111111)] transition",
+                "hover:bg-slate-50 dark:hover:bg-slate-800",
+                size === "sm" ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm",
+              )}
+              aria-label={addAriaLabel}
+              onClick={() => {
+                setOpen(false);
+                onAdd?.();
+              }}
+            >
+              <Plus className={size === "sm" ? "size-3.5" : "size-4"} strokeWidth={2.5} aria-hidden />
+              <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
 
   const triggerClass = cn(
-    "flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
+    "field-control flex w-full items-center justify-between gap-1.5 border text-left font-medium outline-none transition",
     size === "sm"
-      ? "h-8 min-h-8 rounded-md px-2 text-xs shadow-sm"
-      : "h-11 gap-2 rounded-xl px-3.5 text-sm shadow-sm",
+      ? "h-8 min-h-8 rounded-md px-2 text-[length:var(--dash-text-xs,0.75rem)] shadow-sm"
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -337,8 +443,10 @@ export function CheckmarkSelect({
   );
 
   const splitFrameClass = cn(
-    "flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
-    size === "sm" ? "h-8 min-h-8 rounded-md text-xs" : "h-11 min-h-11 rounded-xl text-sm",
+    "field-control flex w-full min-w-0 items-stretch overflow-hidden border text-left font-medium shadow-sm outline-none transition",
+    size === "sm"
+      ? "h-8 min-h-8 rounded-md text-[length:var(--dash-text-xs,0.75rem)]"
+      : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
@@ -352,7 +460,9 @@ export function CheckmarkSelect({
 
   const openSplitButtonClass = cn(
     "flex min-w-0 flex-1 items-center justify-between gap-1.5 border-0 bg-transparent text-left font-medium outline-none transition",
-    size === "sm" ? "px-2 text-xs" : "gap-2 px-3.5 text-sm",
+    size === "sm"
+      ? "px-2 text-[length:var(--dash-text-xs,0.75rem)]"
+      : "gap-2 px-3.5 text-[length:var(--dash-body-size,0.875rem)]",
     disabled
       ? "cursor-not-allowed"
       : cn(
@@ -362,7 +472,7 @@ export function CheckmarkSelect({
         ),
   );
 
-  const clearSplitButtonClass = cn(
+  const sideActionButtonClass = cn(
     "flex shrink-0 items-center justify-center border-l border-slate-200 bg-transparent outline-none transition dark:border-slate-600",
     size === "sm" ? "w-7" : "w-8",
     disabled
@@ -374,14 +484,9 @@ export function CheckmarkSelect({
         ),
   );
 
-  return (
-    <div ref={rootRef} className={cn("relative", className)}>
-      {label ? (
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--dash-accent,#111111)]">
-          {label}
-        </span>
-      ) : null}
-      {canClear ? (
+  const controlBody = (
+    <>
+      {useSplitTrigger ? (
         <div ref={anchorRef} className={splitFrameClass} data-invalid={invalid ? true : undefined}>
           <button
             ref={triggerRef}
@@ -399,7 +504,7 @@ export function CheckmarkSelect({
             onClick={() => !disabled && setOpen((o) => !o)}
             className={openSplitButtonClass}
           >
-            <span className={cn("min-w-0 flex-1 truncate", !value && "text-slate-400 dark:text-slate-500")}>
+            <span className={cn("min-w-0 flex-1 truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>
               {displayLabel}
             </span>
             <ChevronDown
@@ -411,21 +516,23 @@ export function CheckmarkSelect({
               aria-hidden
             />
           </button>
-          <button
-            type="button"
-            aria-label={clearAriaLabel ?? "Clear"}
-            disabled={disabled}
-            className={clearSplitButtonClass}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (disabled) return;
-              onChange("");
-              setOpen(false);
-            }}
-          >
-            <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
-          </button>
+          {canClear ? (
+            <button
+              type="button"
+              aria-label={clearAriaLabel ?? "Clear"}
+              disabled={disabled}
+              className={sideActionButtonClass}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (disabled) return;
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <X className={size === "sm" ? "size-3" : "size-3.5"} strokeWidth={2} aria-hidden />
+            </button>
+          ) : null}
         </div>
       ) : (
         <div ref={anchorRef} className="w-full min-w-0">
@@ -446,7 +553,7 @@ export function CheckmarkSelect({
             onClick={() => !disabled && setOpen((o) => !o)}
             className={triggerClass}
           >
-            <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
+            <span className={cn("truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
             <ChevronDown
               className={cn(
                 "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
@@ -474,17 +581,44 @@ export function CheckmarkSelect({
                 position: "fixed",
                 top: dropdownPlacement.top,
                 left: dropdownPlacement.left,
-                width: Math.max(dropdownPlacement.width, size === "sm" ? 120 : 200),
+                width: dropdownPlacement.width,
                 transform: dropdownPlacement.transform,
                 zIndex: 200,
                 ["--dash-accent" as string]: portalAccent,
                 ["--dash-on-accent" as string]: portalOnAccent,
               },
-              "max-w-[calc(100vw-1rem)]",
             ),
             document.body,
           )
         : null}
+    </>
+  );
+
+  if (locked) {
+    const lockedControl = <LockedSurfaceField id={id} value={displayLabel} hint={lockedHint} />;
+    if (label) {
+      return (
+        <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+          {lockedControl}
+        </FieldGroup>
+      );
+    }
+    return <div className={cn("relative", className)}>{lockedControl}</div>;
+  }
+
+  const root = (
+    <div ref={rootRef} className={cn("relative", label ? "w-full min-w-0" : className)}>
+      {controlBody}
     </div>
   );
+
+  if (label) {
+    return (
+      <FieldGroup label={label} htmlFor={id} required={required} className={className}>
+        {root}
+      </FieldGroup>
+    );
+  }
+
+  return root;
 }

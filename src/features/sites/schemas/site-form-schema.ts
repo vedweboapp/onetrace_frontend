@@ -10,6 +10,9 @@ export type SiteFormMessages = {
   state: string;
   city: string;
   pincode: string;
+  contactPersonTitle: string;
+  contactPerson: string;
+  contactPersonDuplicate: string;
 };
 
 export function createSiteFormSchema(messages: SiteFormMessages) {
@@ -35,6 +38,16 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
       what3words: z.string(),
       latitude: z.string(),
       longitude: z.string(),
+      contacts: z.array(
+        z.object({
+          title: zTrimmedNonEmpty(messages.contactPersonTitle),
+          contact: z
+            .string()
+            .trim()
+            .regex(/^\d+$/, messages.contactPerson)
+            .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.contactPerson }),
+        }),
+      ),
     })
     .superRefine((data, ctx) => {
       const subdivisions = State.getStatesOfCountry(data.country_iso);
@@ -56,6 +69,24 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
           path: ["city"],
           message: messages.city,
         });
+      }
+
+      const pairToFirstIndex = new Map<string, number>();
+      for (let i = 0; i < data.contacts.length; i++) {
+        const title = data.contacts[i]?.title?.trim() ?? "";
+        const contact = data.contacts[i]?.contact?.trim() ?? "";
+        if (!title || !contact) continue;
+        const pairKey = `${title}\0${contact}`;
+        const firstIndex = pairToFirstIndex.get(pairKey);
+        if (firstIndex !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["contacts", i, "contact"],
+            message: messages.contactPersonDuplicate,
+          });
+        } else {
+          pairToFirstIndex.set(pairKey, i);
+        }
       }
     });
 }

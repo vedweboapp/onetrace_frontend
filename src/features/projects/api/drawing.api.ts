@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { DRAWING_PATHS } from "./drawing.paths";
 import type {
   Drawing,
@@ -16,13 +21,6 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
     const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
     throw new ApiBusinessError(msg);
   }
-}
-
-function sortDrawings(items: Drawing[]): Drawing[] {
-  return [...items].sort((a, b) => {
-    if (a.order !== b.order) return a.order - b.order;
-    return a.name.localeCompare(b.name);
-  });
 }
 
 function defaultPagination(items: Drawing[]): ProjectPagination {
@@ -41,18 +39,31 @@ export async function fetchDrawingsPage(
   page = 1,
   pageSize = 100,
   search?: string,
+  params?: Record<string, unknown> & { dropdown?: boolean },
 ): Promise<{ items: Drawing[]; pagination: ProjectPagination }> {
-  const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
-    params: {
-      page,
-      page_size: pageSize,
-      ...(search?.trim() ? { search: search.trim() } : {}),
+  const { dropdown, ...rest } = params ?? {};
+  const requestParams: Record<string, string | number | boolean> = {
+    page,
+    page_size: pageSize,
+    ...(search?.trim() ? { search: search.trim() } : {}),
+  };
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined && value !== null) {
+      requestParams[key] = value as string | number | boolean;
+    }
+  }
+  applyDropdownListParam(requestParams, dropdown === true);
+
+  return resolveDropdownListPages({
+    dropdown: dropdown === true,
+    fetchFirst: async () => {
+      const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
+        params: requestParams,
+      });
+      // Keep API list order (do not re-sort by `order` — that reverses levels relative to the response).
+      return parseListApiPage(data, Number(requestParams.page_size) || 20);
     },
   });
-  assertEnvelopeSuccess(data);
-  const items = sortDrawings(data.data);
-  const pagination = data.pagination ?? defaultPagination(items);
-  return { items, pagination };
 }
 
 export async function fetchDrawing(projectId: number, drawingId: number): Promise<Drawing> {
@@ -102,11 +113,38 @@ export async function fetchDrawingDetail(projectId: number, drawingId: number): 
 export async function updateDrawingPlots(
   projectId: number,
   drawingId: number,
-  body: { plots: DrawingPlotUpsert[] },
+  body: FormData,
 ): Promise<DrawingDetail> {
   const { data } = await api.put<ApiEnvelope<DrawingDetail> | DrawingDetail>(
     DRAWING_PATHS.detail(projectId, drawingId),
     body,
   );
   return readDrawingDetailFromResponse(data);
+}
+
+/** Rename a drawing/level without touching plots or the file. */
+export async function updateDrawingName(
+  projectId: number,
+  drawingId: number,
+  name: string,
+): Promise<Drawing> {
+  const trimmed = name.trim();
+  const fd = new FormData();
+  fd.append("name", trimmed);
+  fd.append("payload", JSON.stringify({ name: trimmed }));
+  const { data } = await api.patch<ApiEnvelope<Drawing> | Drawing>(
+    DRAWING_PATHS.detail(projectId, drawingId),
+    fd,
+  );
+  if (
+    data &&
+    typeof data === "object" &&
+    "success" in data &&
+    "data" in data
+  ) {
+    const envelope = data as ApiEnvelope<Drawing>;
+    assertApiSuccess(envelope);
+    return envelope.data;
+  }
+  return data as Drawing;
 }

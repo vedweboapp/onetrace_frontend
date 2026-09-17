@@ -1,0 +1,41 @@
+import { toastError } from "@/shared/feedback/app-toast";
+import { parseApiFailurePayload, resolveApiErrorUserText, isHtmlOrDebugDump, sanitizeApiErrorLine } from "./api-error-text";
+
+const TOASTED = Symbol("apiErrorToastShown");
+
+export function markApiErrorToasted(error: unknown): void {
+  if (error && typeof error === "object") {
+    Object.defineProperty(error, TOASTED, { value: true, enumerable: false, configurable: true });
+  }
+}
+
+export function wasApiErrorToasted(error: unknown): boolean {
+  return !!(error && typeof error === "object" && (error as Record<symbol, unknown>)[TOASTED] === true);
+}
+
+export function getApiErrorDisplayMessage(error: unknown, fallback?: string): string {
+  const text = resolveApiErrorUserText(parseApiFailurePayload(error)).trim();
+  if (text && text !== "Request failed" && !isHtmlOrDebugDump(text)) return text;
+  return fallback?.trim() || "Something went wrong. Please try again.";
+}
+
+/**
+ * Show a backend API error once. Skips when the axios interceptor already toasted.
+ * Uses `fallback` only when no API message/details are available.
+ */
+export function toastApiError(error: unknown, fallback?: string): void {
+  if (wasApiErrorToasted(error)) return;
+
+  const payload = parseApiFailurePayload(error);
+  const fromApi = resolveApiErrorUserText(payload);
+  const hasApiDetails =
+    Boolean(sanitizeApiErrorLine(payload.message)) ||
+    (payload.errors?.some((e) => sanitizeApiErrorLine(e)) ?? false);
+  const text =
+    hasApiDetails && !isHtmlOrDebugDump(fromApi)
+      ? fromApi
+      : fallback?.trim() || fromApi;
+
+  toastError(text);
+  markApiErrorToasted(error);
+}

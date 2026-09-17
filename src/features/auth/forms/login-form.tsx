@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import * as React from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import {
   loginSchema,
@@ -14,12 +14,29 @@ import {
 } from "@/features/auth/schemas/login-schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { cn } from "@/core/utils/http.util";
-import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap, reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 
 export function LoginForm() {
   const t = useTranslations("Auth");
   const tVal = useTranslations("validation");
   const { submit, isSubmitting, sendOtp, submitOtp, isOtpSubmitting, isOtpVerifying } = useLogin();
+
+  const router = useRouter();
+  React.useEffect(() => {
+    const auth = localStorage.getItem("auth-storage")
+    if (auth) {
+      try {
+        const authToken = JSON.parse(auth)
+        if (authToken?.state?.accessToken) {
+          router.push(routes.dashboard.root);
+        }
+      }
+      catch (err) {
+        console.error(err)
+      }
+    }
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -76,7 +93,12 @@ export function LoginForm() {
       setResendIn(59);
       toastSuccess(t("otpSent", { email: maskEmail(email) }));
       window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
-    } catch { toastError(t("otpSendError")); }
+    } catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.email || getApiErrorDisplayMessage(error, t("otpSendError"));
+      setOtpEmailError(msg);
+      toastApiError(error, msg);
+    }
   }
 
   async function handleVerifyOtp() {
@@ -87,13 +109,31 @@ export function LoginForm() {
     }
     setOtpCodeError(null);
     try { await submitOtp(otpEmail.trim(), otp); }
-    catch { toastError(t("otpVerifyError")); }
+    catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.otp || fieldErrors.code || getApiErrorDisplayMessage(error, t("otpVerifyError"));
+      setOtpCodeError(msg);
+      toastApiError(error, msg);
+    }
   }
 
   async function handleResendOtp() {
     if (resendIn > 0) return;
     try { await sendOtp(otpEmail.trim()); setResendIn(59); toastSuccess(t("otpResent")); }
-    catch { toastError(t("otpSendError")); }
+    catch (error) {
+      const fieldErrors = getApiFieldErrorMap(error);
+      const msg = fieldErrors.email || getApiErrorDisplayMessage(error, t("otpSendError"));
+      setOtpEmailError(msg);
+      toastApiError(error, msg);
+    }
+  }
+
+  async function handlePasswordSubmit(values: LoginFormValues) {
+    try {
+      await submit(values);
+    } catch (error) {
+      reportFormSubmitApiError(error, form.setError, "Failed to sign in");
+    }
   }
 
   function setOtpDigit(index: number, raw: string) {
@@ -110,7 +150,7 @@ export function LoginForm() {
     <form
       className="w-full"
       style={{ fontFamily: "'Inter', sans-serif" }}
-      onSubmit={form.handleSubmit(submit)}
+      onSubmit={form.handleSubmit(handlePasswordSubmit)}
       noValidate
     >
       {/* ── Title (outside card) ── */}
@@ -356,6 +396,10 @@ export function LoginForm() {
           )}
 
         </div>
+      </div>
+      <div className="flex items-center justify-center p-4 gap-3">
+        <span className="mt-1.5 text-[14px] text-slate-500">{t("dontHaveAccount")}</span>
+        <Link href={routes.auth.signUp} className="flex items-center "><span className="mt-1.5 text-[14px] hover:underline text-slate-900 font-bold">{t("signUp")}</span></Link>
       </div>
     </form>
   );

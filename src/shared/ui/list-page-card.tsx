@@ -3,17 +3,72 @@
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
 
+/**
+ * List card grid — denser on large screens so cards stay readable,
+ * not stretched sparse islands.
+ */
 export function ListPageCardGrid({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5",
+        "grid grid-cols-1 items-stretch gap-3 sm:gap-4",
+        "sm:grid-cols-2 xl:grid-cols-3",
         className,
       )}
     >
       {children}
     </div>
   );
+}
+
+/** Compact secondary line under the title (client · site, email, etc.). */
+export function ListPageCardMetaLine({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-5 text-slate-500 dark:text-slate-400",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Aligned footer: status/chips left, date/amount right. */
+export function ListPageCardFooter({
+  start,
+  end,
+  className,
+}: {
+  start?: ReactNode;
+  end?: ReactNode;
+  className?: string;
+}) {
+  if (!start && !end) return null;
+  return (
+    <div className={cn("flex w-full min-w-0 items-center justify-between gap-3", className)}>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
+        {start}
+      </div>
+      {end ? (
+        <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+          {end}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function listPageCardPlainText(node: ReactNode): string | undefined {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  return undefined;
 }
 
 type ListPageCardProps = {
@@ -24,9 +79,12 @@ type ListPageCardProps = {
   description?: string;
   footer?: ReactNode;
   onCardClick?: () => void;
-  menu: ReactNode;
+  menu?: ReactNode;
   className?: string;
   dataListRowId?: number;
+  /** Top-right chip (status, type) — kept clear of the title. */
+  installationType?: ReactNode;
+  badge?: ReactNode;
 };
 
 export function ListPageCard({
@@ -35,12 +93,18 @@ export function ListPageCard({
   subtitle,
   meta,
   description,
+  installationType,
+  badge,
   footer,
   onCardClick,
   menu,
   className,
   dataListRowId,
 }: ListPageCardProps) {
+  const topBadge = badge ?? installationType;
+  const titleTooltip = listPageCardPlainText(title);
+  const subtitleTooltip = listPageCardPlainText(subtitle);
+
   return (
     <div
       data-list-row-id={dataListRowId != null ? String(dataListRowId) : undefined}
@@ -55,46 +119,78 @@ export function ListPageCard({
         }
       }}
       className={cn(
-        "relative flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-950/[0.03] dark:border-slate-800 dark:bg-slate-950 dark:ring-white/[0.04]",
-        footer && "min-h-[8.5rem]",
+        "group/card relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl",
+        "border border-slate-200/90 bg-white",
+        "dark:border-slate-800 dark:bg-slate-950",
         onCardClick &&
-          "cursor-pointer transition hover:border-slate-300 hover:bg-slate-50/90 dark:hover:border-slate-600 dark:hover:bg-slate-900/80",
+          "cursor-pointer transition-[border-color,box-shadow,background-color] duration-150",
+        onCardClick &&
+          "hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-sm dark:hover:border-slate-600 dark:hover:bg-slate-900/60",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5 pr-2">
-          {leading ? (
-            <div
-              className="shrink-0 pt-0.5"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              {leading}
-            </div>
-          ) : null}
-          <div className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
-            {title}
+      <div className="flex min-w-0 flex-1 items-start gap-2 px-3.5 py-3.5 sm:gap-2.5 sm:px-4 sm:py-4">
+        {leading ? (
+          <div
+            className="flex shrink-0 items-center self-start pt-0.5"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {leading}
           </div>
+        ) : null}
+
+        <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1 space-y-0.5 overflow-hidden">
+              <div
+                className="truncate text-sm font-semibold leading-5 tracking-tight text-slate-900 dark:text-slate-50 [&>*]:block [&>*]:truncate"
+                title={titleTooltip}
+              >
+                {title}
+              </div>
+              {subtitle ? (
+                <div
+                  className="truncate text-[13px] font-medium leading-5 text-slate-600 dark:text-slate-300 [&>*]:block [&>*]:truncate"
+                  title={subtitleTooltip}
+                >
+                  {subtitle}
+                </div>
+              ) : null}
+            </div>
+            {topBadge ? (
+              <div className="max-w-[38%] shrink-0 overflow-hidden">{topBadge}</div>
+            ) : null}
+          </div>
+          {meta ? <div className="min-w-0 overflow-hidden pt-0.5">{meta}</div> : null}
+          {description ? (
+            <p
+              className="truncate pt-0.5 text-[13px] leading-5 text-slate-500 dark:text-slate-400"
+              title={description}
+            >
+              {description}
+            </p>
+          ) : null}
         </div>
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-          {menu}
-        </div>
+
+        {menu ? (
+          <div
+            className="relative z-10 -mr-1 -mt-1 shrink-0 self-start"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {menu}
+          </div>
+        ) : null}
       </div>
-      {subtitle ? (
-        <p className="mt-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">{subtitle}</p>
-      ) : null}
-      {meta ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{meta}</p> : null}
-      {description ? (
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
-      ) : null}
+
       {footer ? (
         <div
-          className="mt-auto border-t border-slate-100 pt-3 dark:border-slate-800/80"
+          className="mt-auto border-t border-slate-100 px-3.5 py-2.5 sm:px-4 dark:border-slate-800/80"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          {footer}
+          <div className="min-w-0 overflow-hidden">{footer}</div>
         </div>
       ) : null}
     </div>
@@ -105,19 +201,19 @@ export function ListPageCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950",
+        "min-w-0 overflow-hidden rounded-xl border border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-950",
         className,
       )}
     >
-      <div className="flex justify-between gap-2">
-        <div className="h-5 flex-1 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
-        <div className="size-8 shrink-0 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
+      <div className="flex items-start gap-2.5 px-3.5 py-3.5 sm:px-4">
+        <div className="min-w-0 flex-1 space-y-2 overflow-hidden">
+          <div className="h-4 w-3/5 max-w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3.5 w-2/5 max-w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+        </div>
+        <div className="size-7 shrink-0 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
       </div>
-      <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-      <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-      <div className="mt-4 space-y-2">
-        <div className="h-3 w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-        <div className="h-3 w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+      <div className="border-t border-slate-100 px-3.5 py-2.5 sm:px-4 dark:border-slate-800/80">
+        <div className="h-3.5 w-1/3 max-w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
       </div>
     </div>
   );

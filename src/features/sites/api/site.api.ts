@@ -2,6 +2,12 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { SITE_PATHS } from "./site.paths";
 import type {
   Site,
@@ -19,9 +25,9 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 export type SiteListFilters = {
   search?: string;
-  is_active?: boolean;
   client?: number;
   project?: number;
+  dropdown?: boolean;
 };
 
 export async function fetchSitesPage(
@@ -29,19 +35,28 @@ export async function fetchSitesPage(
   pageSize = 20,
   filters?: SiteListFilters,
 ): Promise<{ items: Site[]; pagination: SiteListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
-  if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
   if (typeof filters?.client === "number" && Number.isFinite(filters.client) && filters.client > 0) {
     params.client = filters.client;
   }
   if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
     params.project = filters.project;
   }
-  const { data } = await api.get<SiteListResponse>(SITE_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  applyDropdownListParam(params, filters?.dropdown);
+
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<SiteListResponse>(SITE_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
+}
+
+export async function fetchAllSiteIds(filters?: SiteListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchSitesPage(page, pageSize, filters));
 }
 
 export async function fetchSite(id: number): Promise<Site> {
@@ -57,12 +72,6 @@ export async function createSite(body: SiteCreatePayload): Promise<Site> {
 }
 
 export async function updateSite(id: number, body: SiteUpdatePayload): Promise<Site> {
-  const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
-  assertApiSuccess(data);
-  return data.data;
-}
-
-export async function patchSite(id: number, body: { is_active: boolean }): Promise<Site> {
   const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;

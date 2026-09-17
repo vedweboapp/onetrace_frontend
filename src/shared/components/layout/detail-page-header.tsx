@@ -8,8 +8,32 @@ import { useDashboardChromeStore } from "@/features/dashboard/store/dashboard-ch
 import { dashboardContentHorizontalGutterClassName } from "@/shared/config/dashboard-shell";
 import { cn } from "@/core/utils/http.util";
 
+/** Pulse bar shown in the detail chrome title while the record loads. */
+export function DetailPageHeaderTitleSkeleton() {
+  return (
+    <span
+      className="block h-4 max-w-[12rem] animate-pulse rounded bg-slate-200 dark:bg-slate-700 sm:max-w-[16rem]"
+      aria-hidden
+    />
+  );
+}
+
+function DetailPageHeaderLoadingBar() {
+  return (
+    <div className={cn(dashboardContentHorizontalGutterClassName, "pb-1")} aria-hidden>
+      <div className="h-0.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          className="h-full w-2/5 rounded-full bg-[color:var(--dash-accent,#111)] motion-safe:animate-pulse"
+        />
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   title: ReactNode;
+  /** When true, title shows a skeleton bar instead of visible title text (use `title` for sr-only label). */
+  titleLoading?: boolean;
   backHref?: string | null;
   backAriaLabel: string;
   actions?: ReactNode;
@@ -20,6 +44,7 @@ type Props = {
 
 export function DetailPageHeader({
   title,
+  titleLoading = false,
   backHref,
   backAriaLabel,
   actions,
@@ -54,8 +79,9 @@ export function DetailPageHeader({
             ) : null}
             <div className="min-w-0 flex-1">
               <h1 className="min-w-0 truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
-                {title}
+                {titleLoading ? <DetailPageHeaderTitleSkeleton /> : title}
               </h1>
+              {titleLoading && title ? <span className="sr-only">{title}</span> : null}
               {subtitle ? (
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">
                   {subtitle}
@@ -65,20 +91,16 @@ export function DetailPageHeader({
           </div>
           {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
+        {titleLoading ? <DetailPageHeaderLoadingBar /> : null}
         {extension ? (
-          <div
-            className={cn(
-              dashboardContentHorizontalGutterClassName,
-              "border-t border-slate-200 py-2 dark:border-slate-800",
-            )}
-          >
+          <div className={cn(dashboardContentHorizontalGutterClassName, "pt-0")}>
             {extension}
           </div>
         ) : null}
       </div>,
     );
     return () => setSecondaryRow(null);
-  }, [title, backHref, backAriaLabel, actions, subtitle, extension, className, setSecondaryRow]);
+  }, [title, titleLoading, backHref, backAriaLabel, actions, subtitle, extension, className, setSecondaryRow]);
 
   return null;
 }

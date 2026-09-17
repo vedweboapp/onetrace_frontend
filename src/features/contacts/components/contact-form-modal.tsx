@@ -3,27 +3,31 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Controller, useForm } from "react-hook-form";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-import { getSessionOrganizationId } from "@/features/auth/utils/get-session-organization-id";
 import { createContact } from "@/features/contacts/api/contact.api";
+import type { Contact } from "@/features/contacts/types/contact.types";
 import { createContactFormSchema, type ContactFormValues } from "@/features/contacts/schemas/contact-form-schema";
 import {
   emptyContactFormDefaults,
   mapContactFormToPayload,
 } from "@/features/contacts/utils/contact-form-map";
-import { cn } from "@/core/utils/http.util";
+import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { routes } from "@/shared/config/routes";
+import { buildEntityDetailHrefAfterSave, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
 import {
   AppButton,
   AppModal,
-  CascadingLocationFields,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
   FormFieldRow,
-  surfaceInputClassName,
+  SurfacePhoneField,
+  SurfaceTextField,
 } from "@/shared/ui";
 
 const FORM_DOM_ID = "contact-create-form";
@@ -34,25 +38,42 @@ type Props = {
   onClose: () => void;
   clientOptions: ContactClientOption[];
   onSaved: () => void;
+  initialClientId?: string;
+  onCreated?: (contact: Contact) => void;
+  /** When true, client is fixed (e.g. opened from a client detail tab). */
+  lockClient?: boolean;
 };
 
-export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Props) {
+export function ContactFormModal({
+  open,
+  onClose,
+  clientOptions,
+  onSaved,
+  initialClientId,
+  onCreated,
+  lockClient = false,
+}: Props) {
   const t = useTranslations("Dashboard.contacts");
-  const organizations = useAuthStore((s) => s.organizations);
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
 
   const schema = React.useMemo(
     () =>
       createContactFormSchema({
-        name: t("validation.name"),
+        firstName: t("validation.firstName"),
+        lastName: t("validation.lastName"),
         email: t("validation.email"),
-        phone: t("validation.phone"),
+        phoneInvalid: t("validation.phoneInvalid"),
+        contactType: t("validation.contactType"),
         client: t("validation.client"),
+        vendor: t("validation.vendor"),
         addressLine1: t("validation.addressLine1"),
         country: t("validation.country"),
         state: t("validation.state"),
         city: t("validation.city"),
         pincode: t("validation.pincode"),
+        addressType: t("validation.addressType"),
+        addressesMin: t("validation.addressesMin"),
       }),
     [t],
   );
@@ -62,6 +83,8 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
     register,
     reset,
     setValue,
+    clearErrors,
+    setError,
     handleSubmit,
     formState: { errors },
   } = useForm<ContactFormValues>({
@@ -69,34 +92,56 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
     defaultValues: emptyContactFormDefaults(),
   });
 
+  const phoneCountry = usePhoneCountryFromAddresses(control);
+
   React.useEffect(() => {
     if (!open) return;
-    reset(emptyContactFormDefaults());
-  }, [open, reset]);
+    reset({
+      ...emptyContactFormDefaults(),
+      ...(initialClientId ? { client: initialClientId } : {}),
+    });
+  }, [open, reset, initialClientId]);
 
   async function submit(values: ContactFormValues) {
-    const organizationId = getSessionOrganizationId(organizations);
-    if (organizationId == null) {
-      toastError(t("missingOrganization"));
-      return;
-    }
-    const payload = mapContactFormToPayload(values, organizationId);
-    if (!Number.isFinite(payload.client) || payload.client <= 0) {
+    const payload = mapContactFormToPayload(values);
+    if (values.contact_type === "vendor") {
+      if (!Number.isFinite(payload.vendor) || (payload.vendor ?? 0) <= 0) {
+        toastError(t("validation.vendor"));
+        return;
+      }
+    } else if (!Number.isFinite(payload.client) || (payload.client ?? 0) <= 0) {
       toastError(t("validation.client"));
       return;
     }
     setSaving(true);
     try {
-      await createContact(payload);
+      const created = await createContact(payload);
       toastSuccess(t("createdToast"));
+      onCreated?.(created);
       onSaved();
       onClose();
+      router.push(
+        mergeUrlQueryParam(
+          buildEntityDetailHrefAfterSave(routes.dashboard.contacts, created.id, routes.dashboard.contacts),
+          "contact_type",
+          values.contact_type,
+        ),
+      );
+    } catch (error) {
+      reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
     }
   }
 
-  const noClients = clientOptions.length === 0;
+  const [localClientOptions, setLocalClientOptions] = React.useState(clientOptions);
+  React.useEffect(() => {
+    setLocalClientOptions(clientOptions);
+  }, [clientOptions]);
+
+  const noClients = !lockClient && localClientOptions.length === 0;
+
+  const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
 
   return (
     <AppModal
@@ -118,6 +163,7 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
         </>
       }
     >
+      <>
       <form id={FORM_DOM_ID} className="space-y-6" noValidate onSubmit={handleSubmit(submit)}>
         {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -126,114 +172,119 @@ export function ContactFormModal({ open, onClose, clientOptions, onSaved }: Prop
         ) : null}
 
         <FormFieldRow cols="2">
-          <FieldGroup label={t("fields.name")} htmlFor="contact-name" required>
-            <input
-              id="contact-name"
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={errors.name ? "contact-name-err" : undefined}
-              className={cn(surfaceInputClassName, errors.name && "border-red-500 dark:border-red-500")}
-              {...register("name", {
-                onChange: (e) => {
-                  e.target.value = capitalizeFirstLetter(e.target.value);
-                },
-              })}
-            />
-            <FieldErrorText id="contact-name-err">{errors.name?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
-            <Controller
-              control={control}
-              name="client"
-              render={({ field }) => (
-                <CheckmarkSelect
-                  id="contact-client"
-                  portaled
-                  searchable
-                  listLabel={t("fields.client")}
-                  options={clientOptions}
-                  value={field.value}
-                  emptyLabel={t("placeholders.client")}
-                  disabled={saving || noClients}
-                  invalid={!!errors.client}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <FieldErrorText>{errors.client?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.email")} htmlFor="contact-email" required>
-            <input
-              id="contact-email"
-              type="email"
-              aria-invalid={errors.email ? true : undefined}
-              aria-describedby={errors.email ? "contact-email-err" : undefined}
-              className={cn(surfaceInputClassName, errors.email && "border-red-500 dark:border-red-500")}
-              {...register("email")}
-            />
-            <FieldErrorText id="contact-email-err">{errors.email?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.phone")} htmlFor="contact-phone" required>
-            <input
-              id="contact-phone"
-              aria-invalid={errors.phone ? true : undefined}
-              aria-describedby={errors.phone ? "contact-phone-err" : undefined}
-              className={cn(surfaceInputClassName, errors.phone && "border-red-500 dark:border-red-500")}
-              {...register("phone")}
-            />
-            <FieldErrorText id="contact-phone-err">{errors.phone?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.addressLine1")} htmlFor="contact-line1" required>
-            <input
-              id="contact-line1"
-              aria-invalid={errors.address_line_1 ? true : undefined}
-              aria-describedby={errors.address_line_1 ? "contact-line1-err" : undefined}
-              className={cn(surfaceInputClassName, errors.address_line_1 && "border-red-500 dark:border-red-500")}
-              {...register("address_line_1")}
-            />
-            <FieldErrorText id="contact-line1-err">{errors.address_line_1?.message}</FieldErrorText>
-          </FieldGroup>
-          <FieldGroup label={t("fields.addressLine2")} htmlFor="contact-line2">
-            <input id="contact-line2" className={surfaceInputClassName} {...register("address_line_2")} />
-          </FieldGroup>
+          <SurfaceTextField
+            register={register}
+            name="first_name"
+            id="contact-first-name"
+            label={t("fields.firstName")}
+            kind="name"
+            required
+            autoComplete="given-name"
+            error={errors.first_name?.message}
+          />
+          <SurfaceTextField
+            register={register}
+            name="last_name"
+            id="contact-last-name"
+            label={t("fields.lastName")}
+            kind="name"
+            required
+            autoComplete="family-name"
+            error={errors.last_name?.message}
+          />
+          {lockClient ? (
+            <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
+              <CheckmarkSelect
+                id="contact-client"
+                portaled
+                listLabel={t("fields.client")}
+                options={localClientOptions}
+                value={initialClientId ?? ""}
+                emptyLabel={t("placeholders.client")}
+                locked
+                onChange={() => undefined}
+              />
+            </FieldGroup>
+          ) : (
+            <FieldGroup label={t("fields.client")} htmlFor="contact-client" required>
+              <Controller
+                control={control}
+                name="client"
+                render={({ field }) => (
+                  <CheckmarkSelect
+                    id="contact-client"
+                    portaled
+                    searchable
+                    listLabel={t("fields.client")}
+                    options={localClientOptions}
+                    value={field.value}
+                    emptyLabel={t("placeholders.client")}
+                    disabled={saving || noClients}
+                    invalid={!!errors.client}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                    onAdd={clientQuickCreate.onAdd}
+                    addAriaLabel={clientQuickCreate.addAriaLabel}
+                    addLabel={clientQuickCreate.addLabel}
+                  />
+                )}
+              />
+              <FieldErrorText>{errors.client?.message}</FieldErrorText>
+            </FieldGroup>
+          )}
+          <SurfaceTextField
+            register={register}
+            name="email"
+            id="contact-email"
+            label={t("fields.email")}
+            kind="email"
+            required
+            autoComplete="email"
+            error={errors.email?.message}
+          />
+          <SurfacePhoneField
+            control={control}
+            name="phone"
+            id="contact-phone"
+            label={t("fields.phone")}
+            required
+            error={errors.phone?.message}
+            disabled={saving}
+            countryIso={phoneCountry}
+          />
         </FormFieldRow>
 
-        <CascadingLocationFields<ContactFormValues>
+        <EntityAddressesFields
           control={control}
+          register={register}
           setValue={setValue}
-          countryIsoName="country_iso"
-          stateIsoName="state_iso"
-          cityName="city"
+          clearErrors={clearErrors}
+          errors={errors}
+          disabled={saving}
+          idPrefix="contact-address"
+          includeGeo={false}
           labels={{
+            sectionTitle: t("fields.addresses"),
+            add: t("addresses.add"),
+            remove: t("addresses.remove"),
+            rowLabel: (index) => t("addresses.rowLabel", { number: index }),
+            addressType: t("fields.addressType"),
+            addressLine1: t("fields.addressLine1"),
+            addressLine2: t("fields.addressLine2"),
             country: t("fields.country"),
             state: t("fields.stateProvince"),
             city: t("fields.city"),
+            pincode: t("fields.pincode"),
+            countryPlaceholder: t("placeholders.country"),
+            statePlaceholder: t("placeholders.state"),
+            cityPlaceholder: t("placeholders.city"),
+            addressTypeBilling: t("addressType.billing"),
+            addressTypeShipping: t("addressType.shipping"),
+            addressTypeOther: t("addressType.other"),
           }}
-          placeholders={{
-            country: t("placeholders.country"),
-            state: t("placeholders.state"),
-            city: t("placeholders.city"),
-          }}
-          disabled={saving}
-          errors={{
-            country: errors.country_iso?.message,
-            state: errors.state_iso?.message,
-            city: errors.city?.message,
-          }}
-          trailingSlot={
-            <FieldGroup label={t("fields.pincode")} htmlFor="contact-pincode" required>
-              <input
-                id="contact-pincode"
-                aria-invalid={errors.pincode ? true : undefined}
-                aria-describedby={errors.pincode ? "contact-pincode-err" : undefined}
-                className={cn(surfaceInputClassName, errors.pincode && "border-red-500 dark:border-red-500")}
-                {...register("pincode")}
-              />
-              <FieldErrorText id="contact-pincode-err">{errors.pincode?.message}</FieldErrorText>
-            </FieldGroup>
-          }
         />
       </form>
+      </>
     </AppModal>
   );
 }

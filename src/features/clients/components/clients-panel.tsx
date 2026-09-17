@@ -5,34 +5,41 @@ import { Pencil, Phone, Power, PowerOff, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { deleteClient, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
+import { deleteClient, fetchAllClientIds, fetchClientsPage, updateClient } from "@/features/clients/api/client.api";
 import type { Client } from "@/features/clients/types/client.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { settingsDetailUserLabel } from "@/shared/components/settings/settings-detail-view";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { hasListActiveFilters, parseIsActiveParam, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
-  ActiveStatusBadge,
   AddButton,
-  AppButton,
   ConfirmDialog,
-  DashboardEmptyState,
   DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
+  listPageCardScrollClassName,
   DataTableRowActionsMenu,
   ListPageCard,
+  ListPageCardFooter,
   ListPageCardGrid,
   ListPageCardSkeleton,
-  ListPageActiveFilter,
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
-import { cn } from "@/core/utils/http.util";
-import { toastSuccess } from "@/shared/feedback/app-toast";
-import { toastError } from "@/shared/feedback/app-toast";
+import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import {
+  MassActionBar,
+  buildClientMassUpdateFields,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 
 export function ClientsPanel() {
   const t = useTranslations("Dashboard.clients");
@@ -62,13 +69,11 @@ export function ClientsPanel() {
     pageSize,
     listViewMode,
     search,
-    isActiveParam,
     setUrl,
     setPage,
     setPageSize,
     setListViewMode,
   } = useListUrlState();
-  const isActiveFilter = parseIsActiveParam(isActiveParam) ?? true;
 
   const [items, setItems] = React.useState<Client[]>([]);
   const [pagination, setPagination] = React.useState({
@@ -90,6 +95,45 @@ export function ClientsPanel() {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
+  const listFilters = React.useMemo(
+    () => ({
+      search: search || undefined,
+    }),
+    [search],
+  );
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildClientMassUpdateFields({
+        name: t("fields.name"),
+        addressLine1: t("fields.addressLine1"),
+        addressLine2: t("fields.addressLine2"),
+        country: t("fields.country"),
+        state: t("fields.stateProvince"),
+        city: t("fields.city"),
+        pincode: t("fields.pincode"),
+        isActive: t("table.status"),
+        activeLabel: t("status.active"),
+        inactiveLabel: t("status.inactive"),
+      }),
+    [t],
+  );
+
+  const fetchAllIds = React.useCallback(
+    () => fetchAllClientIds(listFilters, { silent: true }),
+    [listFilters],
+  );
+
+  const mass = useEntityListMassActions({
+    resource: "clients",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
   const commitSearch = React.useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -106,15 +150,14 @@ export function ClientsPanel() {
       try {
         const { items: nextItems, pagination: p } = await fetchClientsPage(page, pageSize, {
           search: search || undefined,
-          is_active: isActiveFilter,
         });
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -124,14 +167,14 @@ export function ClientsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, search, isActiveFilter, refreshNonce, t]);
+  }, [page, pageSize, search, refreshNonce, t]);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Client) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   async function confirmDelete() {
@@ -154,8 +197,8 @@ export function ClientsPanel() {
       await updateClient(row.id, { is_active: next });
       toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
       setRefreshNonce((n) => n + 1);
-    } catch {
-      toastError(t("toggleActiveError"));
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
     } finally {
       setTogglingId(null);
     }
@@ -164,56 +207,91 @@ export function ClientsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Client>();
     return [
+      c.selection(
+        "select",
+        (
+          <input
+            ref={mass.selection.selectAllRef}
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.allMatchingSelected}
+            disabled={mass.selection.selectingAll || items.length === 0}
+            aria-label={mass.selectAllAriaLabel}
+            onChange={() => void mass.selection.toggleSelectAll()}
+          />
+        ),
+        (row) => (
+          <input
+            type="checkbox"
+            className={mass.selection.rowCheckboxClassName}
+            checked={mass.selection.isSelected(row.id)}
+            aria-label={mass.selectRowAriaLabel}
+            onChange={() => mass.selection.toggleRowSelected(row.id)}
+          />
+        ),
+        { narrow: true },
+      ),
       c.primary("name", t("table.name"), (r) => r.name),
       c.truncate("email", t("table.email"), (r) => r.email),
       c.phone("phone", t("table.phone"), (r) => r.phone),
-      c.status("status", t("table.status"), (r) => r.is_active, t("status.active"), t("status.inactive")),
-      c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDeletingClient(row);
-                setDeleteOpen(true);
-              },
-            },
-            row.is_active
-              ? {
-                  id: "deactivate",
-                  label: t("deactivate"),
-                  icon: PowerOff,
-                  onSelect: () => void handleToggleActive(row, false),
-                  disabled: togglingId === row.id,
-                }
-              : {
-                  id: "activate",
-                  label: t("activate"),
-                  icon: Power,
-                  onSelect: () => void handleToggleActive(row, true),
-                  disabled: togglingId === row.id,
-                },
-          ]}
-        />
-      )),
+      c.truncate("createdBy", t("table.createdBy"), (r) => settingsDetailUserLabel(r.created_by), {
+        title: (r) => {
+          const label = settingsDetailUserLabel(r.created_by);
+          return label === "—" ? undefined : label;
+        },
+        responsive: "md",
+      }),
+      c.date("created", t("table.created"), (r) => r.created_at, dateFmt, { responsive: "lg" }),
+      // c.actions("actions", t("table.actions"), (row) => (
+      //   <DataTableRowActionsMenu
+      //     menuAriaLabel={tList("openRowActions")}
+      //     items={[
+      //       { id: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(row) },
+      //       {
+      //         id: "delete",
+      //         label: t("delete"),
+      //         icon: Trash2,
+      //         tone: "danger",
+      //         onSelect: () => {
+      //           setDeletingClient(row);
+      //           setDeleteOpen(true);
+      //         },
+      //       },
+      //       row.is_active
+      //         ? {
+      //             id: "deactivate",
+      //             label: t("deactivate"),
+      //             icon: PowerOff,
+      //             onSelect: () => void handleToggleActive(row, false),
+      //             disabled: togglingId === row.id,
+      //           }
+      //         : {
+      //             id: "activate",
+      //             label: t("activate"),
+      //             icon: Power,
+      //             onSelect: () => void handleToggleActive(row, true),
+      //             disabled: togglingId === row.id,
+      //           },
+      //     ]}
+      //   />
+      // )),
     ];
-  }, [t, tList, dateFmt, togglingId]);
+  }, [t, tList, dateFmt, togglingId, mass, items.length]);
 
-  const hasActiveFilters = hasListActiveFilters({ search, isActiveParam });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const hasActiveFilters = hasListActiveFilters({ search });
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -228,27 +306,26 @@ export function ClientsPanel() {
                 ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
-              <ListPageActiveFilter
-                activeLabel={t("status.active")}
-                inactiveLabel={t("status.inactive")}
-                filterLabel={t("filterState")}
-                filterAriaLabel={t("filterState")}
-                isActiveParam={isActiveParam}
-                onChange={(isActive) =>
-                  setUrl({ is_active: isActive ? null : "false", page: null }, { replace: true })
-                }
-              />
             </div>
           }
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
-            <div className="p-4 sm:p-6">
+            <div className={listPageCardScrollClassName()}>
               <ListPageCardGrid>
                 {Array.from({ length: 6 }, (_, i) => (
                   <ListPageCardSkeleton key={i} />
@@ -263,60 +340,62 @@ export function ClientsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, is_active: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="clients"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "clients",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() =>
+              setUrl({ search: null, is_active: null, page: null }, { replace: true })
+            }
+          />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className={listPageCardScrollClassName()}>
             <ListPageCardGrid>
               {items.map((row) => (
                 <ListPageCard
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={
+                    <input
+                      type="checkbox"
+                      className={mass.selection.rowCheckboxClassName}
+                      checked={mass.selection.isSelected(row.id)}
+                      aria-label={mass.selectRowAriaLabel}
+                      onChange={() => mass.selection.toggleRowSelected(row.id)}
+                    />
+                  }
                   title={row.name}
-                  subtitle={row.email}
+                  subtitle={row.email?.trim() || undefined}
                   footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {row.phone?.trim() ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                            <Phone className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                            <span className="tabular-nums">{row.phone.trim()}</span>
+                    <ListPageCardFooter
+                      start={
+                        row.phone?.trim() ? (
+                          <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-600 dark:text-slate-400">
+                            <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                            <span className="truncate tabular-nums">{row.phone.trim()}</span>
                           </span>
-                        ) : null}
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
-                      </span>
-                    </div>
+                        ) : undefined
+                      }
+                      end={
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {[
+                            settingsDetailUserLabel(row.created_by) !== "—"
+                              ? settingsDetailUserLabel(row.created_by)
+                              : null,
+                            formatFlexibleApiDate(row.created_at, dateFmt) !== "—"
+                              ? formatFlexibleApiDate(row.created_at, dateFmt)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                      }
+                    />
                   }
                   onCardClick={() => openClientDetail(row.id)}
                   menu={
@@ -362,15 +441,17 @@ export function ClientsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <EntityDataTable
-            columns={tableColumns}
-            rows={items}
-            onRowClick={(row) => openClientDetail(row.id)}
-            getRowClassName={(row) => highlightClassName(row.id)}
-          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <EntityDataTable
+              columns={tableColumns}
+              rows={items}
+              onRowClick={(row) => openClientDetail(row.id)}
+              getRowClassName={(row) => highlightClassName(row.id)}
+            />
+          </div>
         )}
 
-        {!loading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

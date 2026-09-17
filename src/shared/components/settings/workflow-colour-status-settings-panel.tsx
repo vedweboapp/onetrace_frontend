@@ -2,24 +2,40 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailColourValue,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailStatusValue,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  formatSettingsDetailDate,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import { cn } from "@/core/utils/http.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
-  DashboardEmptyState,
+  CheckmarkSelect,
+  type CheckmarkSelectOption,
+  ListPageEmptyStates,
+  listPageRootClassName,
+  listPageSurfaceShellClassName,
   type DashboardEmptyStateIconName,
   DataTablePaginationBar,
-  DataTableRowActionsMenu,
   DetailPanel,
   FieldGroup,
   ListPageCard,
@@ -28,13 +44,12 @@ import {
   ListPageHeader,
   ListPageSearchField,
   SurfaceShell,
-  fieldLabelClassName,
   surfaceInputClassName,
 } from "@/shared/ui";
-import { zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
-import { capitalizeFirstLetter } from "@/shared/utils/capitalize-first-letter.util";
+import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import { routes } from "@/shared/config/routes";
 
 const DEFAULT_BG = "#E5E7EB";
 const DEFAULT_TEXT = "#374151";
@@ -81,24 +96,40 @@ function StatusChip({
   );
 }
 
-export type WorkflowColourStatusMessagesNamespace = "Dashboard.pinStatus" | "Dashboard.jobStatus";
+export type WorkflowColourStatusMessagesNamespace =
+  | "Dashboard.pinStatus"
+  | "Dashboard.projectStatus"
+  | "Dashboard.jobStatus"
+  | "Dashboard.materialStatus";
 
 export type WorkflowColourStatusSettingsConfig = {
   translationNamespace: WorkflowColourStatusMessagesNamespace;
   emptyStateIconName: DashboardEmptyStateIconName;
   formTitleId: string;
   api: ReturnType<typeof createWorkflowColourStatusApi>;
+  showCategory?: boolean;
 };
 
 export function WorkflowColourStatusSettingsPanel({ config }: { config: WorkflowColourStatusSettingsConfig }) {
-  const { translationNamespace, emptyStateIconName, formTitleId, api } = config;
+  const { translationNamespace, emptyStateIconName, formTitleId, api, showCategory } = config;
   const t = useTranslations(translationNamespace);
   const tList = useTranslations("Dashboard.list");
+  const tCustomization = useTranslations("Dashboard.settingsNav.customization");
   const dateFmt = useDashboardDateFormat();
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } =
     useListUrlState();
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+  const categoryOptions = React.useMemo<CheckmarkSelectOption[]>(
+    () =>
+      showCategory
+        ? [
+            { value: "open", label: t("modal.categoryOptions.open") },
+            { value: "closed", label: t("modal.categoryOptions.closed") },
+          ]
+        : [],
+    [showCategory, t],
+  );
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -127,15 +158,18 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
   const [statusName, setStatusName] = React.useState("");
   const [bgColour, setBgColour] = React.useState(DEFAULT_BG);
   const [textColour, setTextColour] = React.useState(DEFAULT_TEXT);
+  const [category, setCategory] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{
     status_name?: string;
     bg_colour?: string;
     text_colour?: string;
+    category?: string;
   }>({});
 
   const [deleteTarget, setDeleteTarget] = React.useState<WorkflowColourStatus | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const openEdit = React.useCallback((row: WorkflowColourStatus) => {
     setDetailRow(null);
@@ -143,6 +177,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setStatusName(row.status_name);
     setBgColour(normalizeHex(row.bg_colour));
     setTextColour(normalizeHex(row.text_colour));
+    setCategory(row.category ?? "");
     setErrors({});
     setFormOpen(true);
   }, []);
@@ -160,9 +195,9 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -180,6 +215,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setStatusName("");
     setBgColour(DEFAULT_BG);
     setTextColour(DEFAULT_TEXT);
+    setCategory("");
     setErrors({});
     setFormOpen(true);
   }
@@ -191,28 +227,32 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       status_name: zTrimmedNonEmpty(t("validationName")),
       bg_colour: zHexColour6(hexMsg),
       text_colour: zHexColour6(hexMsg),
+      category: z.string().trim().optional(),
     });
 
     const parsed = formSchema.safeParse({
       status_name: statusName,
       bg_colour: bgColour,
       text_colour: textColour,
+      category,
     });
 
     if (!parsed.success) {
-      const nextErrors: { status_name?: string; bg_colour?: string; text_colour?: string } = {};
+      const nextErrors: { status_name?: string; bg_colour?: string; text_colour?: string; category?: string } = {};
       for (const issue of parsed.error.issues) {
         const field = String(issue.path[0] ?? "");
         if (field === "status_name") nextErrors.status_name = String(issue.message);
         if (field === "bg_colour") nextErrors.bg_colour = String(issue.message);
         if (field === "text_colour") nextErrors.text_colour = String(issue.message);
+        if (field === "category") nextErrors.category = String(issue.message);
       }
       setErrors(nextErrors);
       return;
     }
 
     setErrors({});
-    const { status_name: name, bg_colour: bg, text_colour: fg } = parsed.data;
+    const { status_name: name, bg_colour: bg, text_colour: fg, category: rawCategory } = parsed.data;
+    const trimmedCategory = rawCategory?.trim() ?? "";
 
     setSaving(true);
     try {
@@ -221,15 +261,34 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
           status_name: name,
           bg_colour: bg,
           text_colour: fg,
+          category: trimmedCategory,
         });
         toastSuccess(t("saved"));
       } else {
-        await api.create({ status_name: name, bg_colour: bg, text_colour: fg });
+        await api.create({
+          status_name: name,
+          bg_colour: bg,
+          text_colour: fg,
+          ...(trimmedCategory ? { category: trimmedCategory } : {}),
+        });
         toastSuccess(t("created"));
       }
       setFormOpen(false);
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
+        undefined,
+        {
+          fieldMap: {
+            bg_color: "bg_colour",
+            text_color: "text_colour",
+            name: "status_name",
+          },
+        },
+      );
     } finally {
       setSaving(false);
     }
@@ -248,8 +307,27 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     }
   }
 
+  async function handleToggleActive(row: WorkflowColourStatus, next: boolean) {
+    setTogglingId(row.id);
+    try {
+      await api.update(row.id, { is_active: next });
+      toastSuccess(next ? t("activatedToast") : t("deactivatedToast"));
+      setDetailRow((prev) => (prev?.id === row.id ? { ...prev, is_active: next } : prev));
+      setRefreshNonce((n) => n + 1);
+    } catch (error) {
+      toastApiError(error, t("toggleActiveError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   const tableColumns = React.useMemo(() => {
@@ -260,37 +338,16 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
         title: (row) => statusUserLabel(row.created_by),
       }),
       c.date("createdAt", t("table.createdAt"), (row) => row.created_at, dateFmt),
-      c.actions("actions", t("table.actions"), (row) => (
-        <DataTableRowActionsMenu
-          menuAriaLabel={tList("openRowActions")}
-          items={[
-            {
-              id: "edit",
-              label: t("edit"),
-              icon: Pencil,
-              onSelect: () => openEdit(row),
-            },
-            {
-              id: "delete",
-              label: t("delete"),
-              icon: Trash2,
-              tone: "danger",
-              onSelect: () => {
-                setDetailRow(null);
-                setDeleteTarget(row);
-              },
-            },
-          ]}
-        />
-      )),
     ];
-  }, [t, tList, dateFmt, openEdit]);
+  }, [t, dateFmt]);
 
   return (
-    <div className="space-y-6">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          backHref={routes.dashboard.settingsCustomization}
+          backAriaLabel={tCustomization("backToHub")}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -312,10 +369,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
               <ListPageCardGrid>
@@ -332,32 +389,16 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName={emptyStateIconName}
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: emptyStateIconName,
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
@@ -367,33 +408,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                   title={<StatusChip row={row} className="text-sm font-semibold" />}
                   meta={
                     <>
-                      {statusUserLabel(row.created_by)} · {dateFmt.format(new Date(row.created_at))}
+                      {statusUserLabel(row.created_by)} · {formatSettingsDetailDate(dateFmt, row.created_at)}
                     </>
                   }
                   onCardClick={() => setDetailRow(row)}
-                  menu={
-                    <DataTableRowActionsMenu
-                      menuAriaLabel={tList("openRowActions")}
-                      items={[
-                        {
-                          id: "edit",
-                          label: t("edit"),
-                          icon: Pencil,
-                          onSelect: () => openEdit(row),
-                        },
-                        {
-                          id: "delete",
-                          label: t("delete"),
-                          icon: Trash2,
-                          tone: "danger",
-                          onSelect: () => {
-                            setDetailRow(null);
-                            setDeleteTarget(row);
-                          },
-                        },
-                      ]}
-                    />
-                  }
                 />
               ))}
             </ListPageCardGrid>
@@ -430,100 +448,91 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       <DetailPanel
         open={detailRow !== null}
         onClose={() => setDetailRow(null)}
-        title={detailRow ? <StatusChip row={detailRow} className="text-base font-semibold" /> : null}
-        subtitle={
+        title={
           detailRow ? (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              {t("detail.idLabel", { id: detailRow.id })}
-            </span>
-          ) : undefined
+            <SettingsDetailTitle
+              name={detailRow.status_name}
+              bgColour={normalizeHex(detailRow.bg_colour)}
+              textColour={normalizeHex(detailRow.text_colour)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+            />
+          ) : null
         }
         footer={
           detailRow ? (
-            <>
-              <AppButton type="button" variant="secondary" size="sm" onClick={() => setDetailRow(null)}>
-                {t("modal.cancel")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  openEdit(row);
-                }}
-              >
-                {t("edit")}
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  const row = detailRow;
-                  setDetailRow(null);
-                  setDeleteTarget(row);
-                }}
-              >
-                {t("delete")}
-              </AppButton>
-            </>
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+              toggleLabel={detailRow.is_active === true ? t("deactivate") : t("activate")}
+              toggleLoading={togglingId === detailRow.id}
+              toggleDisabled={togglingId === detailRow.id}
+              onToggle={() => void handleToggleActive(detailRow, detailRow.is_active !== true)}
+            />
           ) : undefined
         }
       >
         {detailRow ? (
-          <div className="space-y-5">
-            <FieldGroup label={t("modal.bgColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="size-8 shrink-0 rounded-none border border-slate-200 dark:border-slate-600"
-                  style={{ backgroundColor: normalizeHex(detailRow.bg_colour) }}
-                  aria-hidden
-                />
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
-                  {normalizeHex(detailRow.bg_colour).toUpperCase()}
-                </p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("modal.textColour")}>
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-none border border-slate-200 text-xs font-bold dark:border-slate-600"
-                  style={{
-                    backgroundColor: normalizeHex(detailRow.bg_colour),
-                    color: normalizeHex(detailRow.text_colour),
-                  }}
-                  aria-hidden
-                >
-                  Aa
-                </span>
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
-                  {normalizeHex(detailRow.text_colour).toUpperCase()}
-                </p>
-              </div>
-            </FieldGroup>
-            <FieldGroup label={t("detail.createdAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.created_at))}
-              </p>
-              {statusUserLabel(detailRow.created_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: statusUserLabel(detailRow.created_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup label={t("detail.updatedAt")}>
-              <p className="text-sm text-slate-800 dark:text-slate-200">
-                {dateFmt.format(new Date(detailRow.modified_at))}
-              </p>
-              {statusUserLabel(detailRow.modified_by) !== "—" ? (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {t("detail.byUser", { user: statusUserLabel(detailRow.modified_by) })}
-                </p>
-              ) : null}
-            </FieldGroup>
-          </div>
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.status")}>
+              <SettingsDetailStatusValue
+                active={detailRow.is_active === true}
+                activeLabel={t("status.active")}
+                inactiveLabel={t("status.inactive")}
+              />
+            </SettingsDetailRow>
+            {detailRow.category ? (
+              <SettingsDetailRow label={t("modal.category")}>
+                <SettingsDetailTextValue>{detailRow.category}</SettingsDetailTextValue>
+              </SettingsDetailRow>
+            ) : null}
+            <SettingsDetailRow label={t("modal.bgColour")}>
+              <SettingsDetailColourValue hex={normalizeHex(detailRow.bg_colour)} />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("modal.textColour")}>
+              <SettingsDetailColourValue
+                hex={normalizeHex(detailRow.text_colour)}
+                previewBg={normalizeHex(detailRow.bg_colour)}
+                previewText={normalizeHex(detailRow.text_colour)}
+                sample
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
         ) : null}
       </DetailPanel>
 
@@ -558,7 +567,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               id={`${formTitleId}-name`}
               value={statusName}
               onChange={(e) => {
-                setStatusName(capitalizeFirstLetter(e.target.value));
+                setStatusName(sanitizeTitleInput(e.target.value));
                 if (errors.status_name) setErrors((prev) => ({ ...prev, status_name: undefined }));
               }}
               className={cn(surfaceInputClassName, errors.status_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
@@ -566,9 +575,15 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
             />
             {errors.status_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.status_name}</p> : null}
           </FieldGroup>
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.bgColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.bgColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor={`${formTitleId}-bg`}
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeHex(bgColour).slice(0, 7)}
@@ -577,6 +592,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                 aria-label={t("modal.bgColour")}
               />
               <input
+                id={`${formTitleId}-bg`}
                 value={bgColour}
                 onChange={(e) => {
                   setBgColour(e.target.value);
@@ -588,10 +604,42 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               />
             </div>
             {errors.bg_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.bg_colour}</p> : null}
-          </div>
-          <div>
-            <span className={fieldLabelClassName}>{t("modal.textColour")} <span className="text-red-500">*</span></span>
-            <div className="mt-1.5 flex items-center gap-2">
+          </FieldGroup>
+          {showCategory ? (
+            <FieldGroup
+              label={
+                <span>
+                  {t("modal.category")}
+                </span>
+              }
+              htmlFor={`${formTitleId}-category`}
+            >
+              <CheckmarkSelect
+                id={`${formTitleId}-category`}
+                options={categoryOptions}
+                value={category}
+                onChange={(next) => {
+                  setCategory(next);
+                  if (errors.category) setErrors((prev) => ({ ...prev, category: undefined }));
+                }}
+                emptyLabel={t("modal.categoryPlaceholder")}
+                fallbackLabel={t("modal.categoryPlaceholder")}
+                className={cn(errors.category && "ring-1 ring-red-500 focus:ring-red-500/20")}
+                disabled={saving}
+                onBlur={() => undefined}
+              />
+              {errors.category ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p> : null}
+            </FieldGroup>
+          ) : null}
+          <FieldGroup
+            label={
+              <span>
+                {t("modal.textColour")} <span className="text-red-500">*</span>
+              </span>
+            }
+            htmlFor={`${formTitleId}-text`}
+          >
+            <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={normalizeHex(textColour).slice(0, 7)}
@@ -600,6 +648,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
                 aria-label={t("modal.textColour")}
               />
               <input
+                id={`${formTitleId}-text`}
                 value={textColour}
                 onChange={(e) => {
                   setTextColour(e.target.value);
@@ -611,7 +660,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               />
             </div>
             {errors.text_colour ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.text_colour}</p> : null}
-          </div>
+          </FieldGroup>
         </div>
       </AppModal>
 

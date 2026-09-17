@@ -1,9 +1,10 @@
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import type { GroupItemRef } from "@/features/groups/types/group.types";
+import { formatOrgMoneyValue } from "@/shared/money/format-money.util";
+import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
 
 export function moneyDisplay(v: unknown): string {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN;
-  return Number.isFinite(n) ? n.toFixed(2) : "—";
+  return formatOrgMoneyValue(v, getOrgCurrencySettings());
 }
 
 export function groupLinkedItemDisplayName(entry: GroupItemRef, composite?: CompositeItem): string {

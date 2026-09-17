@@ -2,28 +2,53 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useLocale, useTranslations } from "next-intl";
+import { Pencil } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { formatContactName } from "@/features/contacts/utils/contact-name.util";
+import { updateQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  QUOTE_CATEGORY,
+  resolveQuotationQuoteCategory,
+} from "@/features/quotations/constants/quotation-category";
 import type {
   QuotationContactNested,
+  QuotationCreatePayload,
   QuotationDetail,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
+import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
-  getQuotationNestedSite,
-  getQuotationSiteId,
-  getQuotationTechnicianEntries,
+  getQuotationAdditionalContactEntries,
+  getQuotationAdditionalContactIds,
+  getQuotationContactId,
+  getQuotationCustomerId,
+  getQuotationOptionalUserId,
+  getQuotationProjectId,
+  getQuotationSiteIds,
+  getQuotationTagIds,
   quotationCustomerLabel,
-  quotationSiteLabel,
-  quotationTagsLabels,
+  quotationProjectLabel,
+  quotationSiteListRows,
+  quotationTagLabel,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
-import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
-import type { Site } from "@/features/sites/types/site.types";
 import {
-  DetailSystemMetadataSection,
-  DetailUserAttribution,
-  normalizeDetailAuditUser,
-} from "@/shared/components/entity";
+  quotationSiteSnapshotToAddressMapPoint,
+  siteToAddressMapPoint,
+} from "@/features/quotations/utils/quotation-site-map.util";
+import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
+import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
+import {
+  QUOTATION_STATUS_OPTIONS,
+  normalizeQuotationStatusValue,
+  quotationStatusLabel,
+} from "@/features/quotations/utils/quotation-status.util";
+import type { Site } from "@/features/sites/types/site.types";
+import { DetailEntityLink, DetailSystemMetadataSection, DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity";
+import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
+import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import { DetailFormattedAddress, hasDetailAddress } from "@/shared/components/layout/detail-formatted-address";
 import { What3WordsInline } from "@/shared/components/layout/what3words-inline";
 import {
@@ -32,13 +57,18 @@ import {
   detailMapViewportClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import {
-  DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
-import { AppTabs } from "@/shared/ui";
-import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
+import { AppButton, AppTabs } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { routes } from "@/shared/config/routes";
+import {
+  formatApiDateForHtmlDateInput,
+  formatFlexibleApiDate,
+} from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 
 function quotationAssigneeToAudit(
@@ -60,63 +90,114 @@ function quotationContactToAudit(
   if (typeof contact === "number") return normalizeDetailAuditUser(contact);
   return normalizeDetailAuditUser({
     id: contact.id,
-    name: contact.name,
+    name: formatContactName(contact),
     email: contact.email,
     phone: contact.phone,
   });
 }
 
-type TechnicianEntry = ReturnType<typeof getQuotationTechnicianEntries>[number];
+type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
+
 
 function QuotationDetailPeopleSection({
   detail,
-  technicianEntries,
+  additionalContactEntries = [],
   t,
+  tActions,
+  contactOptions,
+  salespersonOptions,
+  onSaveField,
 }: {
   detail: QuotationDetail;
-  technicianEntries: TechnicianEntry[];
+  additionalContactEntries?: AdditionalContactEntry[];
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
+  tActions: ReturnType<typeof useTranslations<"Dashboard.common.actions">>;
+  contactOptions: CheckmarkSelectOption[];
+  salespersonOptions: CheckmarkSelectOption[];
+  onSaveField: (body: Parameters<typeof updateQuotation>[1]) => Promise<void>;
 }) {
+  const salespersonId = getQuotationOptionalUserId(detail.salesperson);
+  const primaryContactId = getQuotationContactId(detail.primary_customer_contact);
+  const additionalIds = getQuotationAdditionalContactIds(detail.additional_customer_contact);
+
   return (
     <DetailPanelCard title={t("detail.sectionPeople")}>
-      <DetailMetricsGrid className="sm:grid-cols-2">
-        <DetailMetricCard label={t("fields.salesperson")}>
+      <DetailMetricsGrid>
+        <DetailEditableField
+          label={t("fields.salesperson")}
+          value={salespersonId != null ? String(salespersonId) : ""}
+          kind="select"
+          options={salespersonOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) =>
+            onSaveField({ salesperson: next.trim() ? Number(next) : null })
+          }
+        >
           <DetailUserAttribution user={quotationAssigneeToAudit(detail.salesperson)} />
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.projectManager")}>
-          <DetailUserAttribution user={quotationAssigneeToAudit(detail.project_manager)} />
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.primaryContact")}>
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.primaryContact")}
+          value={primaryContactId != null ? String(primaryContactId) : ""}
+          kind="select"
+          options={contactOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) =>
+            onSaveField({
+              primary_customer_contact: next.trim() ? Number(next) : null,
+            })
+          }
+        >
           <DetailUserAttribution user={quotationContactToAudit(detail.primary_customer_contact)} />
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.additionalContact")}>
-          <DetailUserAttribution user={quotationContactToAudit(detail.additional_customer_contact)} />
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.technicians")} className="sm:col-span-2">
-          {technicianEntries.length === 0 ? (
-            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">—</span>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {technicianEntries.map((entry, ti) =>
-                entry.kind === "id" ? (
-                  <DetailUserAttribution key={`tech-id-${entry.id}-${ti}`} user={{ id: entry.id }} />
-                ) : (
-                  <DetailUserAttribution
-                    key={`tech-${entry.user.id}-${ti}`}
-                    user={quotationAssigneeToAudit(entry.user)}
-                  />
-                ),
-              )}
-            </div>
-          )}
-        </DetailMetricCard>
+        </DetailEditableField>
+        <DetailEditableField
+          span="full"
+          label={t("fields.additionalContacts")}
+          kind="multiselect"
+          values={additionalIds.map(String)}
+          options={contactOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            onSaveField({
+              additional_customer_contact: next.map((id) => Number(id)).filter(Number.isFinite),
+            })
+          }
+        >
+          <DetailMultiValue>
+            {additionalContactEntries.map((entry, index) => {
+              if (entry.kind === "id") {
+                return (
+                  <DetailMultiValueItem
+                    key={`addl-id-${entry.id}-${index}`}
+                    href={`${routes.dashboard.contacts}/${entry.id}`}
+                    title={`#${entry.id}`}
+                  >
+                    {`#${entry.id}`}
+                  </DetailMultiValueItem>
+                );
+              }
+              const label = formatContactName(entry.contact) || `#${entry.contact.id}`;
+              return (
+                <DetailMultiValueItem
+                  key={`addl-${entry.contact.id}-${index}`}
+                  href={`${routes.dashboard.contacts}/${entry.contact.id}`}
+                  title={label}
+                >
+                  {label}
+                </DetailMultiValueItem>
+              );
+            })}
+          </DetailMultiValue>
+        </DetailEditableField>
       </DetailMetricsGrid>
     </DetailPanelCard>
   );
 }
 
-const AddressMiniMap = dynamic(
-  () => import("@/shared/components/maps/address-mini-map").then((m) => m.AddressMiniMap),
+const AddressMultiMiniMap = dynamic(
+  () => import("@/shared/components/maps/address-multi-mini-map").then((m) => m.AddressMultiMiniMap),
   {
     ssr: false,
     loading: () => (
@@ -125,62 +206,107 @@ const AddressMiniMap = dynamic(
   },
 );
 
+const detailEntityLinkClassName =
+  "font-medium text-blue-600 underline-offset-2 hover:underline";
+
 type Props = {
   detail: QuotationDetail;
   /** When `customer` is a bare id, resolve the name from your clients cache. */
   customerName?: string;
-  /** When `site` is a bare id, resolve the label from your sites cache. */
-  siteName?: string;
+  /** When `project` is a bare id, resolve the name from your projects cache. */
+  projectName?: string;
+  /** Resolve site labels when API returns bare ids. */
+  siteNames?: Record<number, string>;
   /** When `tags` are bare ids, resolve display names from your tags cache. */
   tagLookup?: Record<number, string>;
-  siteDetail: Site | null;
-  siteDetailLoading: boolean;
+  siteDetails: Site[];
+  siteDetailsLoading: boolean;
   dateFmt: Intl.DateTimeFormat;
   dueFmt: Intl.DateTimeFormat;
+  /** Refresh detail after a successful quick-edit PATCH. */
+  onSaved?: () => void;
+  clientOptions?: CheckmarkSelectOption[];
+  projectOptions?: CheckmarkSelectOption[];
+  siteOptions?: CheckmarkSelectOption[];
+  tagOptions?: CheckmarkSelectOption[];
+  contactOptions?: CheckmarkSelectOption[];
+  salespersonOptions?: CheckmarkSelectOption[];
 };
 
 export function QuotationDetailBody({
   detail,
   customerName,
-  siteName,
+  projectName,
+  siteNames,
   tagLookup,
-  siteDetail,
-  siteDetailLoading,
+  siteDetails,
+  siteDetailsLoading,
   dateFmt,
   dueFmt,
+  onSaved,
+  clientOptions = [],
+  projectOptions = [],
+  siteOptions = [],
+  tagOptions = [],
+  contactOptions = [],
+  salespersonOptions = [],
 }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tMeta = useTranslations("Dashboard.common.detail");
-  const locale = useLocale();
-  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">("project");
+  const tActions = useTranslations("Dashboard.common.actions");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() =>
+    searchParams.get("tab") === "pricing" ? "pricing" : "project",
+  );
+
+  const statusOptions = React.useMemo(
+    () =>
+      QUOTATION_STATUS_OPTIONS.map((row) => ({
+        value: row.value,
+        label: t(row.labelKey),
+      })),
+    [t],
+  );
+
+  const patchField = useDetailPatch(
+    (body: Parameters<typeof updateQuotation>[1]) => updateQuotation(detail.id, body),
+    { success: t("updatedToast"), error: t("saveError") },
+    onSaved,
+  );
+
+  const goToTab = React.useCallback(
+    (tab: "project" | "pricing") => {
+      setDetailTab(tab);
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === "pricing") params.set("tab", "pricing");
+      else params.delete("tab");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [pathname, router, searchParams],
+  );
 
   React.useEffect(() => {
-    setDetailTab("project");
-  }, [detail.id]);
+    setDetailTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
+  }, [detail.id, searchParams]);
 
-  const snap = detail.site_snapshot;
-  const snapshotAddressUsable =
-    !!snap &&
-    hasDetailAddress({
-      line1: snap.address_line_1,
-      line2: snap.address_line_2,
-      city: snap.city,
-      state: snap.state,
-      pincode: snap.pincode,
-      country: snap.country,
-    });
+  const siteRows = React.useMemo(() => quotationSiteListRows(detail, siteNames), [detail, siteNames]);
 
-  const nestedSite = getQuotationNestedSite(detail.site);
-  const nestedSiteAddressUsable =
-    !!nestedSite &&
-    hasDetailAddress({
-      line1: nestedSite.address_line_1,
-      line2: nestedSite.address_line_2,
-      city: nestedSite.city,
-      state: nestedSite.state,
-      pincode: nestedSite.pincode,
-      country: nestedSite.country,
-    });
+  const siteMapPoints = React.useMemo(() => {
+    if (siteDetails.length > 0) {
+      return siteDetails.map((site) => siteToAddressMapPoint(site));
+    }
+    const snapshots = [
+      ...(detail.site_snapshots ?? []),
+      ...(detail.site_snapshot ? [detail.site_snapshot] : []),
+    ];
+    return snapshots.map((snap) => quotationSiteSnapshotToAddressMapPoint(snap));
+  }, [detail.site_snapshot, detail.site_snapshots, siteDetails]);
 
   const quoteSectionsSorted = React.useMemo(() => {
     const rows = detail.quote_sections;
@@ -188,186 +314,298 @@ export function QuotationDetailBody({
     return [...rows].sort((a, b) => a.section_order - b.section_order);
   }, [detail.quote_sections]);
 
-  const viewDraft = React.useMemo(
-    () => (quoteSectionsSorted.length > 0 ? seedDraftFromQuoteSections(quoteSectionsSorted) : null),
-    [quoteSectionsSorted],
+  const quoteCategory = resolveQuotationQuoteCategory(detail);
+  const isServiceQuotation = quoteCategory === QUOTE_CATEGORY.service;
+
+  const quoteSectionsSeedKey = React.useMemo(
+    () => `${detail.id}:${detail.modified_at ?? detail.created_at}:${quoteSectionsSorted.length}`,
+    [detail.id, detail.modified_at, detail.created_at, quoteSectionsSorted.length],
   );
 
-  const siteIdResolved = getQuotationSiteId(detail.site);
-  const siteWhat3Words =
-    snap?.what3words?.trim() || nestedSite?.what3words?.trim() || siteDetail?.what3words?.trim() || "";
+  const [scopeDraft, setScopeDraft] = React.useState<QuotationDraft | null>(null);
+  const [scopeDirty, setScopeDirty] = React.useState(false);
+  const [scopeSaving, setScopeSaving] = React.useState(false);
+  const [scopeEditing, setScopeEditing] = React.useState(false);
 
-  const tagsLabel = quotationTagsLabels(detail.tags, tagLookup);
-  const technicianEntries = React.useMemo(() => getQuotationTechnicianEntries(detail), [detail]);
+  React.useEffect(() => {
+    setScopeEditing(false);
+    setScopeDirty(false);
+  }, [detail.id]);
+
+  React.useEffect(() => {
+    if (scopeDirty) return;
+    if (quoteSectionsSorted.length > 0) {
+      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
+    } else if (isServiceQuotation) {
+      setScopeDraft({ sections: [] });
+    } else {
+      setScopeDraft(null);
+    }
+  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation, scopeDirty]);
+
+  const handleScopeDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
+    (action) => {
+      setScopeDraft(action);
+      setScopeDirty(true);
+    },
+    [],
+  );
+
+  function resetScopeDraft() {
+    if (quoteSectionsSorted.length > 0) {
+      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
+    } else if (isServiceQuotation) {
+      setScopeDraft({ sections: [] });
+    } else {
+      setScopeDraft(null);
+    }
+    setScopeDirty(false);
+  }
+
+  function cancelScopeEdit() {
+    resetScopeDraft();
+    setScopeEditing(false);
+  }
+
+  async function saveScopeDraft() {
+    if (!scopeDraft) return;
+    setScopeSaving(true);
+    try {
+      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft);
+      await patchField({
+        quote_sections: merged.quote_sections,
+        grand_total: merged.grand_total,
+        levels: merged.levels,
+        select_all_levels: false,
+      });
+      setScopeDirty(false);
+      setScopeEditing(false);
+    } finally {
+      setScopeSaving(false);
+    }
+  }
+
+  const additionalContactEntries = React.useMemo(
+    () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
+    [detail.additional_customer_contact],
+  );
+  const customerId = getQuotationCustomerId(detail.customer);
+  const projectId = getQuotationProjectId(detail.project);
 
   const dueLabel = formatFlexibleApiDate(detail.due_date, dueFmt);
+  const statusValue = normalizeQuotationStatusValue(detail.status);
 
   const desc = detail.description?.trim() ?? "";
   const modifiedAt = detail.modified_at ?? detail.created_at;
 
-  function quoteStatusLabel(code: string | null | undefined) {
-    const raw = code == null ? "" : String(code).trim();
-    if (!raw) return "—";
-    const c = raw.toLowerCase();
-    if (c === "draft") return t("quoteStatus.draft");
-    if (c === "sent") return t("quoteStatus.sent");
-    if (c === "accepted") return t("quoteStatus.accepted");
-    if (c === "rejected") return t("quoteStatus.rejected");
-    return raw;
-  }
-
   const overviewCard = (
     <DetailPanelCard title={t("detail.sectionOverview")}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DetailMetricCard label={t("table.status")}>{quoteStatusLabel(detail.status)}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.quoteName")}>{detail.quote_name}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.customer")}>
-          {quotationCustomerLabel(detail.customer, customerName ?? null)}
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.site")}>
-          {quotationSiteLabel(detail.site, snap?.site_name?.trim() || siteName?.trim() || null)}
-        </DetailMetricCard>
-        <DetailMetricCard label={t("fields.tags")}>{tagsLabel}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.orderNumber")}>{detail.order_number?.trim() || "—"}</DetailMetricCard>
-        <DetailMetricCard label={t("fields.dueDate")}>{dueLabel}</DetailMetricCard>
-        </div>
-    </DetailPanelCard>
-  );
+      <DetailMetricsGrid>
+        <DetailEditableField
+          label={t("table.status")}
+          value={statusValue}
+          kind="select"
+          options={statusOptions}
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ status: next })}
+        >
+          {quotationStatusLabel(detail.status, t)}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.quoteName")}
+          value={detail.quote_name}
+          kind="text"
+          required
+          requiredMessage={t("validation.quoteName")}
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ quote_name: next })}
+        >
+          {detail.quote_name}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.customer")}
+          value={customerId != null ? String(customerId) : ""}
+          kind="select"
+          options={clientOptions}
+          required
+          requiredMessage={t("validation.customer")}
+          editAriaLabel={tActions("edit")}
+          onSave={(next) => patchField({ customer: Number(next) })}
+        >
+          {customerId != null ? (
+            <DetailEntityLink href={`${routes.dashboard.clients}/${customerId}`} className={detailEntityLinkClassName}>
+              {quotationCustomerLabel(detail.customer, customerName ?? null)}
+            </DetailEntityLink>
+          ) : (
+            quotationCustomerLabel(detail.customer, customerName ?? null)
+          )}
+        </DetailEditableField>
+        {(detail.quote_category === QUOTE_CATEGORY.project || projectId != null) ? (
+          <DetailEditableField
+            label={t("fields.project")}
+            value={projectId != null ? String(projectId) : ""}
+            kind="select"
+            options={projectOptions}
+            required
+            requiredMessage={t("validation.project")}
+            editAriaLabel={tActions("edit")}
+            onSave={(next) => patchField({ project: Number(next) })}
+          >
+            {projectId != null ? (
+              <DetailEntityLink href={`${routes.dashboard.projects}/${projectId}`} className={detailEntityLinkClassName}>
+                {quotationProjectLabel(detail.project, projectName ?? null)}
+              </DetailEntityLink>
+            ) : (
+              quotationProjectLabel(detail.project, projectName ?? null)
+            )}
+          </DetailEditableField>
+        ) : null}
 
-  const descriptionCard = (
-    <DetailPanelCard title={t("fields.description")} bodyClassName="min-w-0">
-      {desc ? (
-        <p className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
-          {desc}
-        </p>
-      ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("detail.noDescription")}</p>
-      )}
+        <DetailEditableField
+          label={t("fields.sites")}
+          kind="multiselect"
+          values={getQuotationSiteIds(detail).map(String)}
+          options={siteOptions}
+          required
+          requiredMessage={t("validation.sites")}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            patchField({ sites: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
+          }
+        >
+          <DetailMultiValue>
+            {siteRows.map((row) => (
+              <DetailMultiValueItem
+                key={row.id}
+                href={`${routes.dashboard.sites}/${row.id}`}
+                title={row.label}
+              >
+                {row.label}
+              </DetailMultiValueItem>
+            ))}
+          </DetailMultiValue>
+        </DetailEditableField>
+
+        <DetailEditableField
+          label={t("fields.tags")}
+          kind="multiselect"
+          values={getQuotationTagIds(detail.tags).map(String)}
+          options={tagOptions}
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSaveValues={(next) =>
+            patchField({ tags: next.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0) })
+          }
+        >
+          <DetailMultiValue>
+            {(Array.isArray(detail.tags) ? detail.tags : []).map((tag, index) => {
+              const id = typeof tag === "number" ? tag : tag && typeof tag === "object" && typeof tag.id === "number" ? tag.id : null;
+              if (id == null || id <= 0) return null;
+              const label = quotationTagLabel(tag, tagLookup?.[id] ?? null);
+              if (!label || label === "—") return null;
+              return (
+                <DetailMultiValueItem key={`${id}-${index}`} title={label}>
+                  {label}
+                </DetailMultiValueItem>
+              );
+            })}
+          </DetailMultiValue>
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.orderNumber")}
+          value={detail.order_number ?? ""}
+          kind="text"
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) => patchField({ order_number: next || null })}
+        >
+          {detail.order_number?.trim() ? detail.order_number : null}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.dueDate")}
+          value={formatApiDateForHtmlDateInput(detail.due_date)}
+          kind="date"
+          editAriaLabel={tActions("edit")}
+          empty="—"
+          onSave={(next) => patchField({ due_date: next || null })}
+        >
+          {dueLabel !== "—" ? dueLabel : null}
+        </DetailEditableField>
+        <DetailEditableField
+          label={t("fields.clientResponse")}
+          empty="—"
+        >
+          {detail.comment?.trim() ? (
+            <p className="min-w-0 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-slate-300">
+              {detail.comment}
+            </p>
+          ) : "-"}
+        </DetailEditableField>
+        <DetailEditableField
+          span="full"
+          label={t("fields.description")}
+          value={desc}
+          kind="text"
+          multiline
+          textareaBox
+          editAriaLabel={tActions("edit")}
+          empty={t("detail.noDescription")}
+          onSave={(next) => patchField({ description: next || null })}
+        />
+      </DetailMetricsGrid>
     </DetailPanelCard>
   );
 
   const siteLocationSplit = React.useMemo(() => {
-    if (siteIdResolved == null) return null;
-    if (!(snapshotAddressUsable || nestedSiteAddressUsable || siteDetailLoading || siteDetail)) return null;
+    if (siteRows.length === 0 && siteMapPoints.length === 0 && !siteDetailsLoading) return null;
 
-    const mapShell = (addressParts: {
-      line1?: string | null;
-      line2?: string | null;
-      city?: string | null;
-      state?: string | null;
-      pincode?: string | null;
-      country?: string | null;
-    }) => (
-      <AddressMiniMap
-        addressParts={addressParts}
-        className={detailMapFillClassName}
-        mapClassName="h-full min-h-0 flex-1"
-      />
-    );
+    const addressNodes =
+      siteDetails.length > 0 ? (
+        <ul className="space-y-4">
+          {siteDetails.map((site) => (
+            <li key={site.id} className="space-y-2 border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0 dark:border-slate-800">
+              {hasDetailAddress({
+                line1: site.address_line_1,
+                line2: site.address_line_2,
+                city: site.city,
+                state: site.state,
+                pincode: site.pincode,
+                country: site.country,
+              }) ? (
+                <DetailFormattedAddress
+                  line1={site.address_line_1}
+                  line2={site.address_line_2}
+                  city={site.city}
+                  state={site.state}
+                  pincode={site.pincode}
+                  country={site.country}
+                  emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
+                />
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+              )}
+              <What3WordsInline value={site.what3words} label={t("fields.what3words")} />
+            </li>
+          ))}
+        </ul>
+      ) : siteDetailsLoading ? null : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+      );
 
-    if (snapshotAddressUsable && snap) {
-      const parts = {
-        line1: snap.address_line_1,
-        line2: snap.address_line_2,
-        city: snap.city,
-        state: snap.state,
-        pincode: snap.pincode,
-        country: snap.country,
-      };
-      return {
-        address: (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ),
-        map: mapShell(parts),
-      };
-    }
+    const mapNode =
+      siteDetailsLoading && siteMapPoints.length === 0 ? (
+        <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+      ) : (
+        <AddressMultiMiniMap
+          points={siteMapPoints}
+          className={detailMapFillClassName}
+          mapClassName="h-full min-h-0 flex-1"
+        />
+      );
 
-    if (nestedSiteAddressUsable && nestedSite) {
-      const parts = {
-        line1: nestedSite.address_line_1,
-        line2: nestedSite.address_line_2,
-        city: nestedSite.city,
-        state: nestedSite.state,
-        pincode: nestedSite.pincode,
-        country: nestedSite.country,
-      };
-      return {
-        address: (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ),
-        map: mapShell(parts),
-      };
-    }
-
-    if (siteDetailLoading) {
-      return {
-        address: null as React.ReactNode,
-        map: <div className="h-full w-full animate-pulse bg-slate-100 dark:bg-slate-800" />,
-      };
-    }
-
-    if (siteDetail) {
-      const parts = {
-        line1: siteDetail.address_line_1,
-        line2: siteDetail.address_line_2,
-        city: siteDetail.city,
-        state: siteDetail.state,
-        pincode: siteDetail.pincode,
-        country: siteDetail.country,
-      };
-      const hasAddr = hasDetailAddress({
-        line1: parts.line1,
-        line2: parts.line2,
-        city: parts.city,
-        state: parts.state,
-        pincode: parts.pincode,
-        country: parts.country,
-      });
-      return {
-        address: hasAddr ? (
-          <DetailFormattedAddress
-            line1={parts.line1}
-            line2={parts.line2}
-            city={parts.city}
-            state={parts.state}
-            pincode={parts.pincode}
-            country={parts.country}
-            emptyMessage={<p className="text-sm text-slate-500 dark:text-slate-400">—</p>}
-          />
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-        ),
-        map: mapShell(parts),
-      };
-    }
-
-    return null;
-  }, [
-    nestedSite,
-    nestedSiteAddressUsable,
-    siteDetail,
-    siteDetailLoading,
-    siteIdResolved,
-    snap,
-    snapshotAddressUsable,
-    t,
-  ]);
+    return { address: addressNodes, map: mapNode };
+  }, [siteDetails, siteDetailsLoading, siteMapPoints, siteRows.length, t]);
 
   const showMapColumn = siteLocationSplit != null;
 
@@ -379,7 +617,7 @@ export function QuotationDetailBody({
           { id: "pricing", label: t("formTabs.pricing") },
         ]}
         value={detailTab}
-        onValueChange={(id) => setDetailTab(id === "pricing" ? "pricing" : "project")}
+        onValueChange={(id) => goToTab(id === "pricing" ? "pricing" : "project")}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
         className="mb-1"
@@ -392,42 +630,45 @@ export function QuotationDetailBody({
       >
         <DetailPageMapLayout
           showMap={showMapColumn}
+          mapFillHeight={showMapColumn}
           mapTitle={t("detail.sectionMap")}
           map={siteLocationSplit?.map ?? null}
         >
-            {overviewCard}
-            {descriptionCard}
+          {overviewCard}
 
-            {showMapColumn ? (
-              <DetailPanelCard title={t("detail.sectionSiteAddress")}>
-                {siteLocationSplit?.address ?? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
-                )}
-                <What3WordsInline
-                  value={siteWhat3Words}
-                  label={t("fields.what3words")}
-                  className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800"
-                />
-              </DetailPanelCard>
-            ) : null}
+          {showMapColumn ? (
+            <DetailPanelCard title={t("detail.sectionSiteAddress")}>
+              {siteLocationSplit?.address ?? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t("mapNoStructuredAddress")}</p>
+              )}
+            </DetailPanelCard>
+          ) : null}
 
-            <QuotationDetailPeopleSection detail={detail} technicianEntries={technicianEntries} t={t} />
+          <QuotationDetailPeopleSection
+            detail={detail}
+            additionalContactEntries={additionalContactEntries}
+            t={t}
+            tActions={tActions}
+            contactOptions={contactOptions}
+            salespersonOptions={salespersonOptions}
+            onSaveField={patchField}
+          />
 
-            <DetailSystemMetadataSection
-              createdAt={detail.created_at}
-              modifiedAt={modifiedAt}
-              dateFmt={dateFmt}
-              createdBy={detail.created_by}
-              modifiedBy={detail.modified_by}
-              labels={{
-                sectionTitle: tMeta("systemMetadata"),
-                createdAt: t("fields.createdAt"),
-                updatedAt: t("fields.updatedAt"),
-                createdBy: t("fields.createdBy"),
-                modifiedBy: tMeta("modifiedBy"),
-                notModifiedYet: tMeta("notModifiedYet"),
-              }}
-            />
+          <DetailSystemMetadataSection
+            createdAt={detail.created_at}
+            modifiedAt={modifiedAt}
+            dateFmt={dateFmt}
+            createdBy={detail.created_by}
+            modifiedBy={detail.modified_by}
+            labels={{
+              sectionTitle: tMeta("systemMetadata"),
+              createdAt: t("fields.createdAt"),
+              updatedAt: t("fields.updatedAt"),
+              createdBy: t("fields.createdBy"),
+              modifiedBy: tMeta("modifiedBy"),
+              notModifiedYet: tMeta("notModifiedYet"),
+            }}
+          />
         </DetailPageMapLayout>
       </div>
 
@@ -437,14 +678,56 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-pricing"
         className={cn(detailTab !== "pricing" && "hidden")}
       >
-        <DetailPanelCard title={t("levels.sectionsTitle")}>
-          {viewDraft ? (
+        <DetailPanelCard
+          title={t("levels.sectionsTitle")}
+          headerRight={
+            isServiceQuotation ? (
+              scopeEditing ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <AppButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={scopeSaving}
+                    onClick={cancelScopeEdit}
+                  >
+                    {tActions("cancel")}
+                  </AppButton>
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    loading={scopeSaving}
+                    disabled={!scopeDirty || scopeSaving}
+                    onClick={() => void saveScopeDraft()}
+                  >
+                    {t("page.saveEdit")}
+                  </AppButton>
+                </div>
+              ) : (
+                <AppButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={tActions("edit")}
+                  title={tActions("edit")}
+                  className="h-8 w-8 px-0"
+                  onClick={() => setScopeEditing(true)}
+                >
+                  <Pencil className="size-4" strokeWidth={1.75} />
+                </AppButton>
+              )
+            ) : undefined
+          }
+        >
+          {scopeDraft ? (
             <QuotationDraftComposer
-              draft={viewDraft}
-              onDraftChange={() => {}}
-              saving={false}
+              draft={scopeDraft}
+              onDraftChange={handleScopeDraftChange}
+              saving={scopeSaving}
               canShow
-              readOnly
+              readOnly={!isServiceQuotation || !scopeEditing}
+              allowManualLines
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>

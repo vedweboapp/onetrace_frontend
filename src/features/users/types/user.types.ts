@@ -1,11 +1,17 @@
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+import type { UserAvailabilityPayloadRow } from "@/features/users/types/user-availability.types";
+
 export type AppUserRef = {
   id: number;
   email: string;
   username: string;
 };
 
+export type UserBasePayType = "fixed_amount" | "rate_per_hr";
+
 export type UserDetail = {
-  id: number;
+  /** Present on some API shapes; list endpoints often omit this and only return profile `id`. */
+  id?: number;
   uuid: string;
   first_name: string | null;
   last_name: string | null;
@@ -16,6 +22,23 @@ export type UserDetail = {
   invite_status: string | null;
   invitation_sent_at: string | null;
   invitation_expired: boolean;
+  date_of_birth?: string | null;
+  addresses?: EntityAddress[] | null;
+  base_pay?: string | number | null;
+  base_pay_type?: UserBasePayType | string | null;
+  available_days?: UserAvailabilityPayloadRow[] | null;
+};
+
+export type UserContactEmail = {
+  id?: number;
+  email: string;
+  is_primary?: boolean;
+};
+
+export type UserContactPhone = {
+  id?: number;
+  phone: string;
+  is_primary?: boolean;
 };
 
 export type Role = {
@@ -30,6 +53,12 @@ export type UserProfile = {
   role_detail: Role | null;
   organization_detail: { id: number; uuid: string; name: string } | null;
   created_at: string;
+  addresses?: EntityAddress[] | null;
+  emails?: UserContactEmail[] | null;
+  phones?: UserContactPhone[] | null;
+  base_pay?: string | number | null;
+  base_pay_type?: UserBasePayType | string | null;
+  available_days?: UserAvailabilityPayloadRow[] | null;
 };
 
 export type UserPagination = {
@@ -55,25 +84,30 @@ export type InviteUserPayload = {
   phone_number: string;
   gender: string;
   role: number;
-  address1?: string;
-  address2?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  pincode?: string;
+  addresses?: EntityAddressPayload[];
+  base_pay?: number | null;
+  base_pay_type?: UserBasePayType | null;
+  available_days?: UserAvailabilityPayloadRow[];
 };
 
-export type UpdateUserProfilePayload = Partial<{
-  email: string;
+export type UpdateUserDetailPayload = Partial<{
   first_name: string;
   last_name: string;
+  email: string;
   phone_number: string;
   gender: string;
-  role: number;
-  address1: string;
-  address2: string;
-  country: string;
-  state: string;
-  city: string;
-  pincode: string;
+  date_of_birth: string | null;
+  available_days: UserAvailabilityPayloadRow[];
+  base_pay: number | null;
+  base_pay_type: UserBasePayType | null;
 }>;
+
+export type UpdateUserProfilePayload = {
+  user_detail?: UpdateUserDetailPayload;
+  role?: number;
+  addresses?: EntityAddressPayload[];
+  emails?: UserContactEmail[];
+  phones?: UserContactPhone[];
+  deleted_email_ids?: number[];
+  deleted_phone_ids?: number[];
+};

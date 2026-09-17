@@ -16,6 +16,7 @@ import {
   writeBlockScopeSession,
 } from "@/features/quotations/utils/quotation-block-scope.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
+import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { DetailPagePadding } from "@/shared/components/layout/detail-metric-card";
 import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
@@ -82,9 +83,16 @@ export function QuotationBlockScopeDetailScreen({ defaultBackHref }: Props) {
   if (!ready) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <DetailPageHeader title={t("loadingTitle")} backHref={backHref} backAriaLabel={t("backAria")} />
+        <DetailPageHeader
+          title={t("missingTitle")}
+          titleLoading
+          backHref={backHref}
+          backAriaLabel={t("backAria")}
+        />
         <DetailPagePadding>
-          <SurfaceShell className="p-6 text-sm text-slate-500 dark:text-slate-400">{t("loadingTitle")}</SurfaceShell>
+          <SurfaceShell>
+            <EntityDetailLoadingSkeleton />
+          </SurfaceShell>
         </DetailPagePadding>
       </div>
     );

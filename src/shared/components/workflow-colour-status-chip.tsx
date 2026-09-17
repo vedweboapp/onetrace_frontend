@@ -1,9 +1,9 @@
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { cn } from "@/core/utils/http.util";
 
-function normalizeHex(raw: string): string {
-  const t = raw.trim();
-  if (!t) return "#64748b";
+function normalizeHex(raw: string | null | undefined, fallback: string): string {
+  const t = raw?.trim() ?? "";
+  if (!t) return fallback;
   return t.startsWith("#") ? t : `#${t}`;
 }
 
@@ -25,12 +25,12 @@ export function WorkflowColourStatusChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full truncate rounded-full border border-black/10 px-3 py-1 text-xs font-semibold shadow-sm",
+        "inline-flex w-fit max-w-full shrink-0 self-start truncate rounded-full border border-black/10 px-3 py-1 text-xs font-semibold shadow-sm",
         className,
       )}
       style={{
-        backgroundColor: normalizeHex(row.bg_colour),
-        color: normalizeHex(row.text_colour),
+        backgroundColor: normalizeHex(row.bg_colour, "#e2e8f0"),
+        color: normalizeHex(row.text_colour, "#334155"),
       }}
     >
       {row.status_name}

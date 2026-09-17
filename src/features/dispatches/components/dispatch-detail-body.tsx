@@ -1,0 +1,136 @@
+"use client";
+
+import * as React from "react";
+import { useTranslations } from "next-intl";
+import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import { DetailUserAttribution, normalizeDetailAuditUser } from "@/shared/components/entity/entity-detail-fields";
+import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
+import { dispatchWorkerLabel } from "@/features/dispatches/utils/dispatch-display.util";
+import {
+  quantityTableCellClass,
+  quantityTableHeaderClass,
+  QuantityWithUnits,
+} from "@/shared/components/quantity/quantity-table-columns";
+import {
+  DetailMetricCard,
+  DetailMetricsGrid,
+  DetailPagePadding,
+  DetailPanelCard,
+  detailPageStackClassName,
+} from "@/shared/components/layout/detail-metric-card";
+import { routes } from "@/shared/config/routes";
+import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+
+type Props = {
+  detail: DispatchDetail;
+  dateFmt: Intl.DateTimeFormat;
+  dueFmt: Intl.DateTimeFormat;
+};
+
+export function DispatchDetailBody({ detail, dateFmt, dueFmt }: Props) {
+  const t = useTranslations("Dashboard.dispatches");
+
+  return (
+    <DetailPagePadding>
+      <div className={detailPageStackClassName}>
+      <DetailPanelCard title={t("detail.sectionOverview")}>
+        <DetailMetricsGrid>
+          <DetailMetricCard label={t("fields.dispatchId")}>
+            <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              {detail.dispatch_order_number}
+            </span>
+          </DetailMetricCard>
+          <DetailMetricCard label={t("fields.dispatchTo")}>
+            {detail.dispatch_to?.trim() || dispatchWorkerLabel(detail.worker_name)}
+          </DetailMetricCard>
+          <DetailMetricCard label={t("fields.dispatchedBy")}>
+            <DetailUserAttribution
+              user={normalizeDetailAuditUser(detail.dispatched_by ?? detail.created_by)}
+              emptyLabel="—"
+            />
+          </DetailMetricCard>
+          <DetailMetricCard label={t("fields.dispatchDate")}>
+            {formatFlexibleApiDate(detail.dispatch_date, dueFmt)}
+          </DetailMetricCard>
+          <DetailMetricCard label={t("fields.materialRequest")}>
+            {detail.material_request_id > 0 ? (
+              <DetailEntityLink
+                href={`${routes.dashboard.materialRequests}/${detail.material_request_id}`}
+                className="font-semibold text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+              >
+                {detail.material_request_number?.trim() || `#${detail.material_request_id}`}
+              </DetailEntityLink>
+            ) : (
+              "—"
+            )}
+          </DetailMetricCard>
+        </DetailMetricsGrid>
+      </DetailPanelCard>
+
+      <DetailPanelCard title={t("detail.sectionItems")}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">
+                <th className="px-3 py-2">{t("table.materialItem")}</th>
+                <th className="px-3 py-2">{t("table.sku")}</th>
+                <th className={quantityTableHeaderClass}>{t("table.qty")}</th>
+                <th className="px-3 py-2 text-right sm:pr-6">{t("table.isExtra")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {detail.lines.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                    {t("detail.noItems")}
+                  </td>
+                </tr>
+              ) : (
+                detail.lines.map((row) => {
+                  const itemName = row.item_name || (typeof row.item === "object" ? row.item?.name : "") || "—";
+                  const itemSku = row.item_sku || (typeof row.item === "object" ? row.item?.sku : "") || "—";
+                  const quantity = row.quantity ?? row.dispatched_quantity ?? 0;
+                  const isExtra = row.is_extra;
+
+                  return (
+                    <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="px-3 py-3">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{itemName}</span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400 tabular-nums">
+                        {itemSku}
+                      </td>
+                      <td className={quantityTableCellClass}>
+                        <QuantityWithUnits value={quantity} unitsLabel={t("units")} />
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium sm:pr-6 text-slate-900 dark:text-slate-100">
+                        {isExtra ? t("table.yes") : t("table.no")}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DetailPanelCard>
+
+      <DetailSystemMetadataSection
+        createdAt={detail.created_at ?? new Date().toISOString()}
+        modifiedAt={detail.modified_at}
+        dateFmt={dateFmt}
+        createdBy={detail.created_by}
+        modifiedBy={detail.modified_by}
+        labels={{
+          sectionTitle: t("detail.sectionSystemMetadata"),
+          createdAt: t("fields.createdAt"),
+          updatedAt: t("fields.updatedAt"),
+          createdBy: t("fields.createdBy"),
+          modifiedBy: t("fields.modifiedBy"),
+          notModifiedYet: t("detail.notModifiedYet"),
+        }}
+      />
+      </div>
+    </DetailPagePadding>
+  );
+}

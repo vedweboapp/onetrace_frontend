@@ -5,25 +5,26 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
-import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
-import { deleteGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
+import { deleteGroup, fetchAllGroupIds, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import {
   groupLinkedItemsNamesSummary,
   groupLinkedItemsSummaryText,
 } from "@/features/groups/utils/group-linked-item-display.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   ActiveStatusBadge,
-  AddButton, AppButton,
+  AddButton,
   ConfirmDialog,
-  DashboardEmptyState,
   DataTablePaginationBar,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTableRowActionsMenu,
   ListPageCard,
   ListPageCardGrid,
@@ -33,9 +34,17 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
+import {
+  MassActionBar,
+  buildGroupMassUpdateFields,
+  massSelectionColumn,
+  useEntityListMassActions,
+} from "@/shared/mass-actions";
+
+const EMPTY_COMPOSITE_BY_ID = new Map<number, never>();
 
 export function GroupsPanel() {
   const t = useTranslations("Dashboard.groups");
@@ -75,13 +84,39 @@ export function GroupsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
-  const [compositeById, setCompositeById] = React.useState<Map<number, CompositeItem>>(new Map());
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deletingGroup, setDeletingGroup] = React.useState<Group | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
+
+  const listFilters = React.useMemo(() => ({ search: search || undefined }), [search]);
+
+  const massUpdateFields = React.useMemo(
+    () =>
+      buildGroupMassUpdateFields({
+        name: t("modal.name"),
+        isActive: t("table.status"),
+        activeLabel: t("statusActive"),
+        inactiveLabel: t("statusInactive"),
+      }),
+    [t],
+  );
+
+  const fetchAllIds = React.useCallback(() => fetchAllGroupIds(listFilters), [listFilters]);
+
+  const mass = useEntityListMassActions({
+    resource: "groups",
+    totalRecords: pagination.total_records,
+    pageItems: items,
+    fetchAllIds,
+    resetDeps: [pageSize, search],
+    updateFields: massUpdateFields,
+    onApplied: () => setRefreshNonce((n) => n + 1),
+  });
+
+  const massSel = React.useMemo(() => massSelectionColumn(mass, items.length), [mass, items.length]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -104,9 +139,9 @@ export function GroupsPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -118,32 +153,21 @@ export function GroupsPanel() {
     };
   }, [page, pageSize, search, refreshNonce, t]);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items: composites } = await fetchCompositeItemsPage(1, 500);
-        if (cancelled) return;
-        setCompositeById(new Map(composites.map((it) => [it.id, it])));
-      } catch {
-        if (!cancelled) setCompositeById(new Map());
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshNonce]);
-
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   function openCreate() {
-    router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
   }
 
   function openEdit(row: Group) {
-    router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`);
+    router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref));
   }
 
   function handleSaved() {
@@ -169,6 +193,7 @@ export function GroupsPanel() {
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Group>();
     return [
+      massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
       c.tabular("itemCount", t("table.itemCount"), (r) => r.items?.length ?? 0, {
         cellClassName: "text-slate-600 dark:text-slate-400",
@@ -176,11 +201,11 @@ export function GroupsPanel() {
       c.truncate(
         "composite",
         t("table.compositeItems"),
-        (r) => groupLinkedItemsNamesSummary(r.items ?? [], compositeById),
+        (r) => groupLinkedItemsNamesSummary(r.items ?? [], EMPTY_COMPOSITE_BY_ID),
         {
           maxWidth: "lg",
           title: (r) =>
-            r.items?.length ? groupLinkedItemsSummaryText(r.items, compositeById) : undefined,
+            r.items?.length ? groupLinkedItemsSummaryText(r.items, EMPTY_COMPOSITE_BY_ID) : undefined,
         },
       ),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt, {
@@ -188,42 +213,42 @@ export function GroupsPanel() {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
     
-      c.actions(
-        "actions",
-        t("table.actions"),
-        (row) => (
-          <DataTableRowActionsMenu
-            menuAriaLabel={tList("openRowActions")}
-            items={[
-              {
-                id: "edit",
-                label: t("edit"),
-                icon: Pencil,
-                onSelect: () => void openEdit(row),
-              },
-              {
-                id: "delete",
-                label: t("delete"),
-                icon: Trash2,
-                tone: "danger",
-                onSelect: () => {
-                  setDeletingGroup(row);
-                  setDeleteOpen(true);
-                },
-              },
-            ]}
-          />
-        ),
-        { headerSrOnly: false },
-      ),
+      // c.actions(
+      //   "actions",
+      //   t("table.actions"),
+      //   (row) => (
+      //     <DataTableRowActionsMenu
+      //       menuAriaLabel={tList("openRowActions")}
+      //       items={[
+      //         {
+      //           id: "edit",
+      //           label: t("edit"),
+      //           icon: Pencil,
+      //           onSelect: () => void openEdit(row),
+      //         },
+      //         {
+      //           id: "delete",
+      //           label: t("delete"),
+      //           icon: Trash2,
+      //           tone: "danger",
+      //           onSelect: () => {
+      //             setDeletingGroup(row);
+      //             setDeleteOpen(true);
+      //           },
+      //         },
+      //       ]}
+      //     />
+      //   ),
+      //   { headerSrOnly: false },
+      // ),
     ];
-  }, [compositeById, t, tList, dateFmt]);
+  }, [t, tList, dateFmt, massSel.tableColumn]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
         <ListPageHeader
-          filtersActive={hasActiveFilters}
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -245,10 +270,19 @@ export function GroupsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      {mass.selectedCount > 0 && !listLoading && !loadError ? (
+        <MassActionBar
+          selectedIds={mass.selectedIds}
+          config={mass.config}
+          updateFields={mass.updateFields}
+          onSuccess={mass.handleMassSuccess}
+        />
+      ) : null}
+
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? (
             
             <div className="p-4 sm:p-6">
@@ -266,32 +300,16 @@ export function GroupsPanel() {
             </div>
           )
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState
-              iconName="noResults"
-              title={tList("noResultsTitle")}
-              description={tList("noResultsDescription")}
-              action={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setUrl({ search: null, page: null }, { replace: true })}
-                >
-                  {tList("clearFilters")}
-                </AppButton>
-              }
-            />
-          ) : (
-            <DashboardEmptyState
-              iconName="groups"
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
-              action={
-                <AddButton type="button" onClick={openCreate} />
-              }
-            />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "groups",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: <AddButton type="button" onClick={openCreate} />,
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
@@ -300,6 +318,7 @@ export function GroupsPanel() {
                   key={row.id}
                   dataListRowId={row.id}
                   className={highlightClassName(row.id)}
+                  leading={massSel.cardLeading(row)}
                   title={row.name}
                   subtitle={
                     row.items && row.items.length > 0
@@ -308,7 +327,7 @@ export function GroupsPanel() {
                   }
                   description={
                     row.items && row.items.length > 0
-                      ? groupLinkedItemsSummaryText(row.items, compositeById, 2)
+                      ? groupLinkedItemsSummaryText(row.items, EMPTY_COMPOSITE_BY_ID, 2)
                       : undefined
                   }
                   footer={

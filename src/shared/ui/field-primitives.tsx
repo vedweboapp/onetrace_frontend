@@ -5,15 +5,26 @@ export const fieldRequiredMarkClassName = "ml-0.5 text-red-600 dark:text-red-400
 
 export const fieldErrorTextClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
+/** Reserves one line below controls so paired fields stay aligned when only one shows an error. */
+export const fieldErrorSlotClassName = "field-error-slot min-h-[1.625rem]";
+
 export const fieldLabelClassName = cn(
-  "mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300",
+  "field-label block font-semibold text-gray-600 dark:text-gray-300 tracking-normal",
+  "text-[length:var(--dash-label-size,0.875rem)]",
 );
 
 export const surfaceInputClassName = cn(
-  "h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition",
+  "field-control min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900 outline-none transition",
+  "text-[length:var(--dash-body-size,0.875rem)]",
   "placeholder:text-slate-400 focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
   "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
 );
+
+/** Apply on custom controls (select triggers, phone roots) so required red-line works when nested. */
+export const fieldControlClassName = "field-control";
+
+/** Multi-value / wrapping triggers (chips) — must not use fixed control height. */
+export const fieldControlGrowClassName = "field-control field-control--grow";
 
 /** Multiline fields: no fixed height; caret and text start at the top. */
 export const surfaceTextareaClassName = cn(
@@ -21,51 +32,71 @@ export const surfaceTextareaClassName = cn(
   "h-auto min-h-[5rem] resize-y py-2 leading-relaxed [field-sizing:content]",
 );
 
-
 export const surfaceSelectClassName = cn(
   surfaceInputClassName,
   "cursor-pointer appearance-none bg-slate-50/90 py-2.5 dark:bg-slate-900/70",
 );
 
+export function RequiredMark({ alwaysVisible }: { alwaysVisible?: boolean } = {}) {
+  return (
+    <span
+      className={cn(
+        fieldRequiredMarkClassName,
+        !alwaysVisible && "field-required-asterisk",
+      )}
+      aria-hidden
+    >
+      *
+    </span>
+  );
+}
+
 export function FieldLabel({
   children,
   htmlFor,
   required,
+  className,
 }: {
   children: ReactNode;
   htmlFor?: string;
-  
   required?: boolean;
+  className?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className={fieldLabelClassName}>
+    <label htmlFor={htmlFor} className={cn(fieldLabelClassName, className)}>
       {children}
-      {required ? (
-        <span className={fieldRequiredMarkClassName} aria-hidden>
-          *
-        </span>
-      ) : null}
+      {required ? <RequiredMark /> : null}
     </label>
   );
 }
 
+/**
+ * Labeled field wrapper. Layout (top/left/right) and required style
+ * (asterisk / red line) follow Appearance settings via CSS data attributes
+ * on `.dash-appearance-scope`.
+ */
 export function FieldGroup({
   label,
   htmlFor,
   required,
   children,
+  className,
 }: {
   label: ReactNode;
   htmlFor?: string;
   required?: boolean;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
+    <div
+      className={cn("field-group", required && "field-group--required", className)}
+      data-required={required ? "true" : undefined}
+    >
       <FieldLabel htmlFor={htmlFor} required={required}>
         {label}
       </FieldLabel>
-      {children}
+      <div className="field-control-wrap min-w-0 flex-1">{children}</div>
     </div>
   );
 }
@@ -76,5 +107,14 @@ export function FieldErrorText({ id, children }: { id?: string; children?: React
     <p id={id} className={fieldErrorTextClassName} role="alert">
       {children}
     </p>
+  );
+}
+
+/** Wrap {@link FieldErrorText} so side-by-side fields keep inputs aligned when one field errors. */
+export function FieldErrorSlot({ id, children }: { id?: string; children?: ReactNode }) {
+  return (
+    <div className={fieldErrorSlotClassName}>
+      <FieldErrorText id={id}>{children}</FieldErrorText>
+    </div>
   );
 }
