@@ -25,6 +25,7 @@ import {
   type KioskConfig,
   type KioskQuestion,
   type KioskOption,
+  type KioskGroup,
   DEFAULT_KIOSK_CONFIG,
 } from "../types/kiosk.types";
 import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
@@ -68,11 +69,182 @@ const getGridClass = (cols: number = 2) => {
   }
 };
 
+// Inner Frame Group Component inside a Question
+const QuestionInnerGroupFrame: React.FC<{
+  group: KioskGroup;
+  groupIndex: number;
+  totalGroups: number;
+  questionUid: string;
+  columns: number;
+  onUpdateGroupName: (name: string) => void;
+  onUpdateGroupColumns: (cols: number) => void;
+  onDeleteGroup: () => void;
+  onDropOption: (item: any) => void;
+  onEditOption: (option: KioskOption, questionUid: string) => void;
+  onDeleteOption: (questionUid: string, optionUid: string) => void;
+  onDuplicateOption: (questionUid: string, option: KioskOption) => void;
+  onMoveOption: (questionUid: string, fromUid: string, toIndex: number) => void;
+}> = ({
+  group,
+  groupIndex,
+  totalGroups,
+  questionUid,
+  columns,
+  onUpdateGroupName,
+  onUpdateGroupColumns,
+  onDeleteGroup,
+  onDropOption,
+  onEditOption,
+  onDeleteOption,
+  onDuplicateOption,
+  onMoveOption,
+}) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameText, setNameText] = useState(group.name || `Group ${groupIndex + 1}`);
+
+  const [{ isOver }, drop] = useDrop(
+    () => ({
+      accept: ["KIOSK_PALETTE_FIELD"],
+      drop: (item: any) => {
+        onDropOption(item);
+        return { handled: true };
+      },
+      collect: (monitor) => ({
+        isOver: !!monitor.isOver({ shallow: true }),
+      }),
+    }),
+    [onDropOption]
+  );
+
+  const saveName = () => {
+    setIsEditingName(false);
+    onUpdateGroupName(nameText.trim() || `Group ${groupIndex + 1}`);
+  };
+
+  return (
+    <div
+      ref={drop as any}
+      className={cn(
+        "rounded-lg border border-dashed p-4 transition-all duration-150 space-y-3",
+        isOver
+          ? "border-blue-500 bg-blue-50/30 ring-2 ring-blue-500/20 dark:border-blue-400 dark:bg-blue-950/20"
+          : "border-slate-300 bg-slate-50/50 hover:border-slate-400/80 dark:border-slate-700 dark:bg-slate-900/40"
+      )}
+    >
+      {/* Inner Frame Group Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-2.5 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            Group
+          </span>
+
+          {isEditingName ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                autoFocus
+                value={nameText}
+                onChange={(e) => setNameText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveName();
+                  if (e.key === "Escape") {
+                    setNameText(group.name || `Group ${groupIndex + 1}`);
+                    setIsEditingName(false);
+                  }
+                }}
+                className="rounded border border-blue-400 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 dark:border-blue-500 dark:bg-slate-800 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={saveName}
+                className="rounded bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => setIsEditingName(true)}
+              className="group/grp flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-slate-200/60 dark:hover:bg-slate-800"
+            >
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                {group.name || `Group ${groupIndex + 1}`}
+              </span>
+              <Edit2 className="size-2.5 text-slate-400 opacity-0 group-hover/grp:opacity-100" />
+            </div>
+          )}
+
+          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+            ({group.options.length} {group.options.length === 1 ? "field" : "fields"})
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Columns selector */}
+          <div className="flex items-center gap-0.5 rounded border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800">
+            {[1, 2, 3, 4].map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => onUpdateGroupColumns(num)}
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold transition",
+                  columns === num
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                )}
+                title={`${num} column${num > 1 ? "s" : ""}`}
+              >
+                {num}c
+              </button>
+            ))}
+          </div>
+
+          {/* Delete group */}
+          <button
+            type="button"
+            onClick={onDeleteGroup}
+            className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+            title="Delete group"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Options / Fields inside this Group */}
+      {group.options && group.options.length > 0 ? (
+        <div className={cn("grid gap-2.5", getGridClass(columns))}>
+          {group.options.map((option, optIdx) => {
+            const optId = option.uid || option._uid || String(optIdx);
+            return (
+              <DynamicKioskFieldPreview
+                key={optId}
+                option={option}
+                index={optIdx}
+                onEdit={() => onEditOption(option, questionUid)}
+                onDelete={() => onDeleteOption(questionUid, optId)}
+                onDuplicate={() => onDuplicateOption(questionUid, option)}
+                onMove={(fromIdx, toIdx) => onMoveOption(questionUid, optId, toIdx)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
+          Drag fields here into {group.name || "this group"}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Question Section Dropzone for palette fields & options
 const QuestionDropZone: React.FC<{
   question: KioskQuestion;
   index: number;
   onAddOption: (questionUid: string, item?: any) => void;
+  onAddGroupToQuestion: (questionUid: string) => void;
   onEditOption: (option: KioskOption, questionUid: string) => void;
   onDeleteOption: (questionUid: string, optionUid: string) => void;
   onDuplicateOption: (questionUid: string, option: KioskOption) => void;
@@ -84,6 +256,7 @@ const QuestionDropZone: React.FC<{
   question,
   index,
   onAddOption,
+  onAddGroupToQuestion,
   onEditOption,
   onDeleteOption,
   onDuplicateOption,
@@ -92,6 +265,7 @@ const QuestionDropZone: React.FC<{
   onDeleteQuestion,
   onDuplicateQuestion,
 }) => {
+  const qId = question.q_id || question._uid || `q_${index}`;
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [labelText, setLabelText] = useState(question.label || `Question ${index + 1}`);
   const [subLabelText, setSubLabelText] = useState(question.subLabel || "");
@@ -111,22 +285,80 @@ const QuestionDropZone: React.FC<{
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
+  // Resolve inner groups — NO default group auto-creation
+  const resolvedGroups = useMemo((): KioskGroup[] => {
+    return question.groups && question.groups.length > 0 ? question.groups : [];
+  }, [question.groups]);
+
+  const hasGroups = resolvedGroups.length > 0;
+
   const [{ isOver }, drop] = useDrop(
     () => ({
-      accept: ["KIOSK_PALETTE_FIELD"],
-      drop: (item: any) => {
-        onAddOption(question._uid, item);
+      accept: ["KIOSK_PALETTE_FIELD", "ADD_GROUP"],
+      drop: (item: any, monitor) => {
+        if (monitor.didDrop()) {
+          return;
+        }
+        const itemType = monitor.getItemType();
+        if (itemType === "ADD_GROUP" || item?.type === "ADD_GROUP") {
+          onAddGroupToQuestion(qId);
+          return;
+        }
+        if (hasGroups) {
+          // Drop into the last group
+          const lastGroup = resolvedGroups[resolvedGroups.length - 1];
+          const lastGid = lastGroup.gid || lastGroup._uid || "";
+          onAddOption(qId, { ...item, targetGroupUid: lastGid });
+        } else {
+          // No groups — add directly to question.options
+          onAddOption(qId, item);
+        }
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver({ shallow: true }),
       }),
     }),
-    [question._uid, onAddOption]
+    [qId, onAddOption, onAddGroupToQuestion, resolvedGroups, hasGroups]
   );
+
+  const handleUpdateGroupName = (groupUid: string, name: string) => {
+    const updated = resolvedGroups.map((g) =>
+      (g.gid || g._uid) === groupUid ? { ...g, name } : g
+    );
+    onUpdateQuestion(question.q_id || question._uid || "", {
+      groups: updated,
+    });
+  };
+
+  const handleUpdateGroupColumns = (groupUid: string, cols: number) => {
+    const updated = resolvedGroups.map((g) =>
+      (g.gid || g._uid) === groupUid ? { ...g, columns: cols } : g
+    );
+    onUpdateQuestion(question.q_id || question._uid || "", {
+      groups: updated,
+    });
+  };
+
+  const handleDeleteGroup = (groupUid: string) => {
+    const groupToDelete = resolvedGroups.find((g) => (g.gid || g._uid) === groupUid);
+    const updated = resolvedGroups.filter((g) => (g.gid || g._uid) !== groupUid);
+    // Merge the deleted group's options back into flat question.options if no groups remain
+    if (updated.length === 0) {
+      const deletedOptions = groupToDelete?.options || [];
+      onUpdateQuestion(question.q_id || question._uid || "", {
+        groups: undefined,
+        options: deletedOptions,
+      });
+    } else {
+      onUpdateQuestion(question.q_id || question._uid || "", {
+        groups: updated,
+      });
+    }
+  };
 
   const saveHeader = () => {
     setIsEditingHeader(false);
-    onUpdateQuestion(question._uid, {
+    onUpdateQuestion(question.q_id || question._uid || "", {
       label: labelText.trim() || `Question ${index + 1}`,
       subLabel: subLabelText.trim() || undefined,
       api_name: apiNameText.trim() || `question_${index + 1}`,
@@ -260,7 +492,7 @@ const QuestionDropZone: React.FC<{
                       key={num}
                       type="button"
                       onClick={() => {
-                        onUpdateQuestion(question._uid, { columns: num, column_count: num });
+                        onUpdateQuestion(qId, { columns: num, column_count: num });
                         setMenuOpen(false);
                       }}
                       className={cn(
@@ -290,7 +522,7 @@ const QuestionDropZone: React.FC<{
               {/* Delete */}
               <button
                 type="button"
-                onClick={() => { onDeleteQuestion(question._uid); setMenuOpen(false); }}
+                onClick={() => { onDeleteQuestion(qId); setMenuOpen(false); }}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
               >
                 <Trash2 size={13} />
@@ -301,24 +533,57 @@ const QuestionDropZone: React.FC<{
         </div>
       </div>
 
-      {/* Options List / Drop Container */}
-      <div className="p-5">
-        {question.options && question.options.length > 0 ? (
-          <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
-            {question.options.map((option, optIdx) => (
-              <DynamicKioskFieldPreview
-                key={option._uid || optIdx}
-                option={option}
-                index={optIdx}
-                onEdit={() => onEditOption(option, question._uid)}
-                onDelete={() => onDeleteOption(question._uid, option._uid)}
-                onDuplicate={() => onDuplicateOption(question._uid, option)}
-                onMove={(fromIdx, toIdx) => onMoveOption(question._uid, option._uid, toIdx)}
+      {/* Options List / Inner Group Frames */}
+      <div className="p-5 space-y-3.5">
+        {hasGroups ? (
+          // Render explicit group frames
+          resolvedGroups.map((grp, grpIdx) => {
+            const grpId = grp.gid || grp._uid || `grp_${grpIdx}`;
+            return (
+              <QuestionInnerGroupFrame
+                key={grpId}
+                group={grp}
+                groupIndex={grpIdx}
+                totalGroups={resolvedGroups.length}
+                questionUid={qId}
+                columns={grp.columns || question.columns || question.column_count || 2}
+                onUpdateGroupName={(name) => handleUpdateGroupName(grpId, name)}
+                onUpdateGroupColumns={(cols) => handleUpdateGroupColumns(grpId, cols)}
+                onDeleteGroup={() => handleDeleteGroup(grpId)}
+                onDropOption={(item) => onAddOption(qId, { ...item, targetGroupUid: grpId })}
+                onEditOption={onEditOption}
+                onDeleteOption={onDeleteOption}
+                onDuplicateOption={onDuplicateOption}
+                onMoveOption={onMoveOption}
               />
-            ))}
-          </div>
+            );
+          })
         ) : (
-          <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-slate-200 dark:border-slate-800" />
+          // No groups — render options directly in a flat grid
+          <div>
+            {(question.options || []).length > 0 ? (
+              <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
+                {(question.options || []).map((option, optIdx) => {
+                  const optId = option.uid || option._uid || String(optIdx);
+                  return (
+                    <DynamicKioskFieldPreview
+                      key={optId}
+                      option={option}
+                      index={optIdx}
+                      onEdit={() => onEditOption(option, qId)}
+                      onDelete={() => onDeleteOption(qId, optId)}
+                      onDuplicate={() => onDuplicateOption(qId, option)}
+                      onMove={(fromIdx, toIdx) => onMoveOption(qId, optId, toIdx)}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
+                Drag fields here to add options
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -387,6 +652,111 @@ const EmptyCanvasDropZone: React.FC<{ onDropQuestion: () => void }> = ({
   );
 };
 
+// Helper to sanitize options and payload hierarchy strictly
+export const sanitizeOption = (opt: KioskOption): KioskOption => {
+  const isImageRadio = opt.field_type === "image_radio";
+  const isColor = opt.field_type === "color" || opt.field_type === "color_swatch";
+  const optUid = opt.uid || opt._uid || generateUid("opt_");
+
+  const clean: KioskOption = {
+    uid: optUid,
+    id: opt.id ?? null,
+    field_type: opt.field_type || "radio",
+    label: opt.label || "",
+    subLabel: opt.subLabel || "",
+    api_name: opt.api_name || "",
+    value: opt.value ?? "",
+    price: opt.price || "",
+    image: opt.image || "",
+    required: opt.required ?? false,
+  };
+
+  if (opt.placeholder !== undefined) clean.placeholder = opt.placeholder;
+  if (opt.input_type !== undefined) clean.input_type = opt.input_type;
+  if (opt.color !== undefined) clean.color = opt.color;
+  if (opt.fill_color !== undefined) clean.fill_color = opt.fill_color;
+  if (opt.gid !== undefined) clean.gid = opt.gid;
+
+  if (isImageRadio) {
+    if (opt.placement_mode) clean.placement_mode = opt.placement_mode;
+    if (opt.placement_position) clean.placement_position = opt.placement_position;
+    if (opt.placement) clean.placement = opt.placement;
+  }
+
+  if (isColor) {
+    if (opt.fill_targets && opt.fill_targets.length > 0) {
+      clean.fill_targets = opt.fill_targets;
+    }
+    if (opt.target_image_field) {
+      clean.target_image_field = opt.target_image_field;
+    }
+    if (opt.color_fill) {
+      clean.color_fill = opt.color_fill;
+    }
+  }
+
+  return clean;
+};
+
+export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
+  return {
+    name: rawConfig.name || "",
+    id: rawConfig.id,
+    api_name: rawConfig.api_name,
+    description: rawConfig.description,
+    submitting: rawConfig.submitting,
+    is_active: rawConfig.is_active,
+    questions: (rawConfig.questions || []).map((q) => {
+      const q_id = q.q_id || q._uid || generateUid("q_");
+
+      if (q.groups && q.groups.length > 0) {
+        const sanitizedGroups = q.groups.map((g) => {
+          const gid = g.gid || g._uid || generateUid("gid_");
+          const groupOptions = (g.options || []).map((opt) => {
+            const cleaned = sanitizeOption(opt);
+            cleaned.gid = gid;
+            return cleaned;
+          });
+          const cleanGroup: KioskGroup = {
+            gid,
+            id: g.id ?? null,
+            name: g.name,
+            columns: g.columns,
+            options: groupOptions,
+          };
+          if (g.description) cleanGroup.description = g.description;
+          if (g.api_name) cleanGroup.api_name = g.api_name;
+          return cleanGroup;
+        });
+
+        // Question with groups strictly HAS NO "options" key and NO "_uid" key
+        return {
+          q_id,
+          id: q.id ?? null,
+          label: q.label,
+          subLabel: q.subLabel,
+          api_name: q.api_name,
+          columns: q.columns,
+          column_count: q.column_count,
+          groups: sanitizedGroups,
+        };
+      } else {
+        const sanitizedOptions = (q.options || []).map(sanitizeOption);
+        return {
+          q_id,
+          id: q.id ?? null,
+          label: q.label,
+          subLabel: q.subLabel,
+          api_name: q.api_name,
+          columns: q.columns,
+          column_count: q.column_count,
+          options: sanitizedOptions,
+        };
+      }
+    }),
+  };
+};
+
 export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   initialConfig,
   onSave,
@@ -394,40 +764,10 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 }) => {
   const router = useRouter();
 
-  // Normalize initial config to questions structure
+  // Normalize initial config to sanitized questions structure
   const [config, setConfig] = useState<KioskConfig>(() => {
     if (!initialConfig) return DEFAULT_KIOSK_CONFIG;
-    const questions: KioskQuestion[] = Array.isArray(initialConfig.questions)
-      ? initialConfig.questions.map((q) => ({
-          ...q,
-          options: (q.options || []).map((opt) => ({ ...opt })),
-        }))
-      : Array.isArray((initialConfig as any).sections)
-        ? (initialConfig as any).sections.map((sec: any) => ({
-            _uid: sec._uid || generateUid("q_"),
-            id: sec.id ?? null,
-            label: sec.heading || sec.name || "Question",
-            subLabel: sec.subheading || "",
-            api_name: sec.api_name || "question",
-            options: (sec.fields || []).map((f: any) => ({
-              _uid: f._uid || generateUid("opt_"),
-              id: f.id ?? null,
-              label: f.field_label || f.label || "Option",
-              subLabel: f.description || "",
-              api_name: deriveApiNameFromLabel(f.field_label || f.label || "option"),
-              value: f.value || "",
-              price: f.price || "",
-              field_type: f.field_type || "radio",
-              color: f.color,
-            })),
-          }))
-        : [];
-
-    return {
-      ...DEFAULT_KIOSK_CONFIG,
-      ...initialConfig,
-      questions,
-    };
+    return sanitizeConfig(initialConfig);
   });
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
@@ -445,15 +785,30 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
   const previewConfig = useMemo((): KioskConfig => {
     if (!draftOption || !editingOptionModal) return config;
+    const { questionUid } = editingOptionModal;
+    const draftOptId = draftOption.uid || draftOption._uid;
     return {
       ...config,
       questions: (config.questions || []).map((q) => {
-        if (q._uid !== editingOptionModal.questionUid) return q;
+        const qId = q.q_id || q._uid;
+        if (qId !== questionUid) return q;
+        const updatedOpts = q.options
+          ? q.options.map((opt) =>
+              (opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
+            )
+          : undefined;
+        const updatedGroups = q.groups
+          ? q.groups.map((g) => ({
+              ...g,
+              options: (g.options || []).map((opt) =>
+                (opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
+              ),
+            }))
+          : undefined;
         return {
           ...q,
-          options: (q.options || []).map((opt) =>
-            opt._uid === draftOption._uid ? { ...draftOption } : opt,
-          ),
+          options: updatedOpts,
+          groups: updatedGroups,
         };
       }),
     };
@@ -461,8 +816,10 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
   // Question Management
   const handleAddQuestion = useCallback((insertIndex?: number) => {
+    const qUid = generateUid("q_");
     const newQuestion: KioskQuestion = {
-      _uid: generateUid("q_"),
+      q_id: qUid,
+      _uid: qUid,
       id: null,
       label: `Question ${(config.questions?.length ?? 0) + 1}`,
       subLabel: "Please select an option below",
@@ -481,11 +838,79 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     });
   }, [config.questions]);
 
+  // Add a new group frame to a specific question (called on drag-and-drop of ADD_GROUP)
+  const handleAddGroupToQuestion = useCallback((questionUid: string) => {
+    setConfig((prev) => {
+      const questions = [...(prev.questions || [])];
+      const targetQIdx = questions.findIndex((q) => (q.q_id || q._uid) === questionUid);
+      if (targetQIdx === -1) return prev;
+
+      const targetQ = { ...questions[targetQIdx] };
+      const existingGroups = targetQ.groups || [];
+      const isFirstGroup = existingGroups.length === 0;
+
+      const gUid = generateUid("grp_");
+      const gid = generateUid("gid_");
+
+      const newGroup: KioskGroup = {
+        gid,
+        _uid: gUid,
+        name: `Group ${existingGroups.length + 1}`,
+        columns: targetQ.columns || targetQ.column_count || 2,
+        options: isFirstGroup ? (targetQ.options || []).map(sanitizeOption) : [],
+      };
+
+      const updatedGroups = [...existingGroups, newGroup];
+      questions[targetQIdx] = {
+        ...targetQ,
+        q_id: targetQ.q_id || targetQ._uid || generateUid("q_"),
+        groups: updatedGroups,
+        options: undefined, // do not duplicate options on question
+      };
+      return { ...prev, questions };
+    });
+  }, []);
+
+  // Add a new group frame to the last question (called from the module bar sidebar button)
+  const handleAddGroupToLastQuestion = useCallback(() => {
+    setConfig((prev) => {
+      const questions = [...(prev.questions || [])];
+      if (questions.length === 0) return prev; // no question to add group to
+      const lastIdx = questions.length - 1;
+      const lastQ = questions[lastIdx];
+
+      // Use existing explicit groups only — no auto-wrapping
+      const currentGroups: KioskGroup[] =
+        lastQ.groups && lastQ.groups.length > 0 ? lastQ.groups : [];
+
+      const isFirstGroup = currentGroups.length === 0;
+      const gUid = generateUid("grp_");
+      const gid = generateUid("gid_");
+
+      const newGroup: KioskGroup = {
+        gid,
+        _uid: gUid,
+        name: `Group ${currentGroups.length + 1}`,
+        columns: lastQ.columns || lastQ.column_count || 2,
+        options: isFirstGroup ? (lastQ.options || []).map(sanitizeOption) : [],
+      };
+
+      const updatedGroups = [...currentGroups, newGroup];
+      questions[lastIdx] = {
+        ...lastQ,
+        q_id: lastQ.q_id || lastQ._uid || generateUid("q_"),
+        groups: updatedGroups,
+        options: undefined, // do not duplicate options on question
+      };
+      return { ...prev, questions };
+    });
+  }, []);
+
   const handleUpdateQuestion = useCallback((questionUid: string, updates: Partial<KioskQuestion>) => {
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) =>
-        q._uid === questionUid ? { ...q, ...updates } : q
+        (q.q_id || q._uid) === questionUid ? { ...q, ...updates } : q
       ),
     }));
   }, []);
@@ -493,27 +918,56 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   const handleDeleteQuestion = useCallback((questionUid: string) => {
     setConfig((prev) => ({
       ...prev,
-      questions: (prev.questions || []).filter((q) => q._uid !== questionUid),
+      questions: (prev.questions || []).filter((q) => (q.q_id || q._uid) !== questionUid),
     }));
   }, []);
 
   const handleDuplicateQuestion = useCallback((question: KioskQuestion) => {
+    const newQId = generateUid("q_");
+    const duplicatedGroups = question.groups
+      ? question.groups.map((g) => {
+          const newGid = generateUid("gid_");
+          const newGrpUid = generateUid("grp_");
+          const opts = (g.options || []).map((opt) => ({
+            ...opt,
+            uid: generateUid("opt_"),
+            _uid: generateUid("opt_"),
+            id: null,
+            gid: newGid,
+            group_uid: newGrpUid,
+          }));
+          return {
+            ...g,
+            gid: newGid,
+            _uid: newGrpUid,
+            options: opts,
+          };
+        })
+      : undefined;
+
+    const duplicatedOptions = duplicatedGroups
+      ? undefined
+      : (question.options || []).map((opt) => ({
+          ...opt,
+          uid: generateUid("opt_"),
+          _uid: generateUid("opt_"),
+          id: null,
+        }));
+
     const duplicated: KioskQuestion = {
       ...question,
-      _uid: generateUid("q_"),
+      q_id: newQId,
+      _uid: newQId,
       id: null,
       label: `${question.label || "Question"} (Copy)`,
       api_name: `${question.api_name || "question"}_copy`,
-      options: (question.options || []).map((opt) => ({
-        ...opt,
-        _uid: generateUid("opt_"),
-        id: null,
-      })),
+      groups: duplicatedGroups,
+      options: duplicatedOptions,
     };
 
     setConfig((prev) => {
       const current = [...(prev.questions || [])];
-      const idx = current.findIndex((q) => q._uid === question._uid);
+      const idx = current.findIndex((q) => (q.q_id || q._uid) === (question.q_id || question._uid));
       if (idx !== -1) {
         current.splice(idx + 1, 0, duplicated);
       } else {
@@ -523,13 +977,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     });
   }, []);
 
-  // Option Management (Radio, Checkbox, Color, or Color Swatch Option)
+  // Option Management (Radio, Checkbox, Color, Color Swatch, Image Radio, or Input Field)
   const handleAddOption = useCallback(
     (
       questionUid: string,
       droppedItem?: {
-        field_type?: "radio" | "checkbox" | "color" | "color_swatch";
+        field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input";
         defaultConfig?: Partial<KioskOption>;
+        targetGroupUid?: string;
       }
     ) => {
       const fieldType = (droppedItem?.field_type || "radio") as
@@ -537,10 +992,15 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         | "checkbox"
         | "color"
         | "color_swatch"
-        | "image_radio";
+        | "image_radio"
+        | "input";
       const typeDef = KIOSK_FIELD_TYPES[fieldType] ?? KIOSK_FIELD_TYPES.radio;
       const defaultOpt = droppedItem?.defaultConfig || typeDef.defaultConfig();
       const isColorType = fieldType === "color" || fieldType === "color_swatch";
+      const isRadioOrCheckbox =
+        fieldType === "radio" || fieldType === "checkbox" || fieldType === "image_radio";
+      const isImageRadio = fieldType === "image_radio";
+
       const label =
         defaultOpt.label ||
         (fieldType === "color_swatch"
@@ -551,19 +1011,30 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           ? "Checkbox Option"
           : fieldType === "image_radio"
           ? "Image Choice"
+          : fieldType === "input"
+          ? "Input Field"
           : "Radio Option");
 
+      const apiName = defaultOpt.api_name || deriveApiNameFromLabel(label);
+
+      let initialValue = defaultOpt.value;
+      if (isRadioOrCheckbox) {
+        initialValue = apiName;
+      } else if (isColorType) {
+        initialValue = defaultOpt.color || (fieldType === "color_swatch" ? "#0EA5E9" : "#2563EB");
+      } else if (fieldType === "input") {
+        initialValue = "";
+      }
+
+      const optUid = generateUid("opt_");
       const newOption: KioskOption = {
-        _uid: generateUid("opt_"),
+        uid: optUid,
+        _uid: optUid,
         id: null,
         label,
         subLabel: defaultOpt.subLabel || "",
-        api_name: defaultOpt.api_name || deriveApiNameFromLabel(label),
-        value:
-          defaultOpt.value ||
-          (isColorType
-            ? defaultOpt.color || (fieldType === "color_swatch" ? "#0EA5E9" : "#2563EB")
-            : `${fieldType}_${Date.now()}`),
+        api_name: apiName,
+        value: initialValue || apiName,
         color:
           defaultOpt.color ||
           (isColorType
@@ -573,20 +1044,56 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             : undefined),
         price: defaultOpt.price || "",
         image: defaultOpt.image || "",
-        placement_mode: defaultOpt.placement_mode || "group",
-        placement_position: defaultOpt.placement_position || undefined,
-        placement: defaultOpt.placement || { mode: "group" },
+        ...(isImageRadio
+          ? {
+              placement_mode: defaultOpt.placement_mode || "group",
+              placement_position: defaultOpt.placement_position || undefined,
+              placement: defaultOpt.placement || { mode: "group" },
+            }
+          : {}),
         field_type: fieldType,
+        input_type: defaultOpt.input_type || (fieldType === "input" ? "text" : undefined),
+        placeholder: defaultOpt.placeholder || (fieldType === "input" ? "Enter value here..." : undefined),
+        required: defaultOpt.required ?? false,
       };
 
       setConfig((prev) => ({
         ...prev,
         questions: (prev.questions || []).map((q) => {
-          if (q._uid !== questionUid) return q;
-          return {
-            ...q,
-            options: [...(q.options || []), newOption],
-          };
+          if ((q.q_id || q._uid) !== questionUid) return q;
+
+          const hasExplicitGroups = q.groups && q.groups.length > 0;
+          const targetGroupUid = droppedItem?.targetGroupUid;
+
+          if (hasExplicitGroups) {
+            // Add into a specific group (or last group if none specified)
+            const groups = q.groups!;
+            const targetGroup = targetGroupUid
+              ? groups.find((g) => (g.gid || g._uid) === targetGroupUid) || groups[groups.length - 1]
+              : groups[groups.length - 1];
+
+            newOption.gid = targetGroup.gid || targetGroup._uid;
+            newOption.group_uid = targetGroup._uid || targetGroup.gid;
+            newOption.group_name = targetGroup.name;
+
+            const updatedGroups = groups.map((g) =>
+              (g.gid || g._uid) === (targetGroup.gid || targetGroup._uid)
+                ? { ...g, options: [...(g.options || []), newOption] }
+                : g
+            );
+
+            return {
+              ...q,
+              groups: updatedGroups,
+              options: undefined, // DO NOT duplicate options on question when groups exist
+            };
+          } else {
+            // No groups — add directly to question.options
+            return {
+              ...q,
+              options: [...(q.options || []), newOption],
+            };
+          }
         }),
       }));
     },
@@ -602,15 +1109,37 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     if (!editingOptionModal) return;
     const { questionUid } = editingOptionModal;
 
+    const ft = updatedOption.field_type || "radio";
+    const normalizedOption = sanitizeOption({ ...updatedOption });
+    if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
+      normalizedOption.value = normalizedOption.api_name || normalizedOption.value || "";
+    } else if (ft === "color" || ft === "color_swatch") {
+      normalizedOption.value = normalizedOption.color || normalizedOption.value || "#2563EB";
+    }
+
+    const optId = normalizedOption.uid || normalizedOption._uid;
+
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
-        if (q._uid !== questionUid) return q;
+        if ((q.q_id || q._uid) !== questionUid) return q;
+        const updatedOptions = q.options
+          ? q.options.map((opt) =>
+              (opt.uid || opt._uid) === optId ? normalizedOption : opt
+            )
+          : undefined;
+        const updatedGroups = q.groups
+          ? q.groups.map((g) => ({
+              ...g,
+              options: (g.options || []).map((opt) =>
+                (opt.uid || opt._uid) === optId ? normalizedOption : opt
+              ),
+            }))
+          : undefined;
         return {
           ...q,
-          options: (q.options || []).map((opt) =>
-            opt._uid === updatedOption._uid ? updatedOption : opt
-          ),
+          options: updatedOptions,
+          groups: updatedGroups,
         };
       }),
     }));
@@ -622,37 +1151,75 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
-        if (q._uid !== questionUid) return q;
+        if ((q.q_id || q._uid) !== questionUid) return q;
+        const updatedOptions = q.options
+          ? q.options.filter((opt) => (opt.uid || opt._uid) !== optionUid)
+          : undefined;
+        const updatedGroups = q.groups
+          ? q.groups.map((g) => ({
+              ...g,
+              options: (g.options || []).filter((opt) => (opt.uid || opt._uid) !== optionUid),
+            }))
+          : undefined;
         return {
           ...q,
-          options: (q.options || []).filter((opt) => opt._uid !== optionUid),
+          options: updatedOptions,
+          groups: updatedGroups,
         };
       }),
     }));
   }, []);
 
   const handleDuplicateOption = useCallback((questionUid: string, option: KioskOption) => {
-    const duplicated: KioskOption = {
+    const isRadioOrCb =
+      option.field_type === "radio" ||
+      option.field_type === "checkbox" ||
+      option.field_type === "image_radio";
+    const newApiName = `${option.api_name || "option"}_copy`;
+    const newOptUid = generateUid("opt_");
+
+    const duplicated: KioskOption = sanitizeOption({
       ...option,
-      _uid: generateUid("opt_"),
+      uid: newOptUid,
+      _uid: newOptUid,
       id: null,
       label: `${option.label || "Option"} (Copy)`,
-      api_name: `${option.api_name || "option"}_copy`,
-      value: `${option.value || "choice"}_copy`,
-    };
+      api_name: newApiName,
+      value: isRadioOrCb
+        ? newApiName
+        : option.field_type === "input"
+        ? ""
+        : option.value || option.color || "choice",
+    });
+
+    const targetOptId = option.uid || option._uid;
 
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
-        if (q._uid !== questionUid) return q;
-        const opts = [...(q.options || [])];
-        const idx = opts.findIndex((opt) => opt._uid === option._uid);
-        if (idx !== -1) {
-          opts.splice(idx + 1, 0, duplicated);
-        } else {
-          opts.push(duplicated);
+        if ((q.q_id || q._uid) !== questionUid) return q;
+        const opts = q.options ? [...q.options] : undefined;
+        if (opts) {
+          const idx = opts.findIndex((opt) => (opt.uid || opt._uid) === targetOptId);
+          if (idx !== -1) {
+            opts.splice(idx + 1, 0, duplicated);
+          } else {
+            opts.push(duplicated);
+          }
         }
-        return { ...q, options: opts };
+
+        const updatedGroups = q.groups
+          ? q.groups.map((g) => {
+              const grpOpts = [...(g.options || [])];
+              const gIdx = grpOpts.findIndex((opt) => (opt.uid || opt._uid) === targetOptId);
+              if (gIdx !== -1) {
+                grpOpts.splice(gIdx + 1, 0, duplicated);
+              }
+              return { ...g, options: grpOpts };
+            })
+          : undefined;
+
+        return { ...q, options: opts, groups: updatedGroups };
       }),
     }));
   }, []);
@@ -661,25 +1228,53 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
-        if (q._uid !== questionUid) return q;
-        const allOpts = [...(q.options || [])];
-        const fromIndex = allOpts.findIndex((opt) => opt._uid === fromUid);
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return q;
-        const [moved] = allOpts.splice(fromIndex, 1);
-        allOpts.splice(toIndex, 0, moved);
-        return { ...q, options: allOpts };
+        if ((q.q_id || q._uid) !== questionUid) return q;
+        const allOpts = q.options ? [...q.options] : undefined;
+        if (allOpts) {
+          const fromIndex = allOpts.findIndex((opt) => (opt.uid || opt._uid) === fromUid);
+          if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+            const [moved] = allOpts.splice(fromIndex, 1);
+            allOpts.splice(toIndex, 0, moved);
+          }
+        }
+
+        const updatedGroups = q.groups
+          ? q.groups.map((g) => {
+              const hasIt = (g.options || []).some((o) => (o.uid || o._uid) === fromUid);
+              if (!hasIt) return g;
+              const grpOpts = [...(g.options || [])];
+              const gFromIdx = grpOpts.findIndex((o) => (o.uid || o._uid) === fromUid);
+              if (gFromIdx === -1) return g;
+              const [gMoved] = grpOpts.splice(gFromIdx, 1);
+              const clampedTo = Math.max(0, Math.min(toIndex, grpOpts.length));
+              grpOpts.splice(clampedTo, 0, gMoved);
+              return { ...g, options: grpOpts };
+            })
+          : undefined;
+
+        return { ...q, options: allOpts, groups: updatedGroups };
       }),
     }));
   }, []);
 
   // Top Action Handlers
   const handleSaveOnly = () => {
-    onSave?.(config);
+    const finalConfig = sanitizeConfig(config);
+    console.log("==================== KIOSK BUILDER SAVE PAYLOAD ====================");
+    console.log("Kiosk Payload Object:", finalConfig);
+    console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+    console.log("====================================================================");
+    onSave?.(finalConfig);
     toastSuccess("Kiosk saved successfully");
   };
 
   const handleSaveAndClose = () => {
-    onSave?.(config);
+    const finalConfig = sanitizeConfig(config);
+    console.log("==================== KIOSK BUILDER SAVE & CLOSE PAYLOAD ============");
+    console.log("Kiosk Payload Object:", finalConfig);
+    console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+    console.log("====================================================================");
+    onSave?.(finalConfig);
     toastSuccess("Kiosk saved successfully");
     router.push(backUrl as any);
   };
@@ -797,6 +1392,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             {/* Left ModuleBar Palette */}
             <KioskModuleBar
               onAddQuestion={() => handleAddQuestion()}
+              onAddGroup={handleAddGroupToLastQuestion}
             />
 
             {/* Canvas Area */}
@@ -816,6 +1412,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                         question={question}
                         index={qIndex}
                         onAddOption={handleAddOption}
+                        onAddGroupToQuestion={handleAddGroupToQuestion}
                         onEditOption={handleEditOption}
                         onDeleteOption={handleDeleteOption}
                         onDuplicateOption={handleDuplicateOption}

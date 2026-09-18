@@ -73,3 +73,10 @@ export async function deleteKiosk(id: string | number): Promise<any> {
   const res = await api.delete(`/kiosks/${id}/`);
   return res.data;
 }
+
+export async function submitKioskResponse(
+  payload: import("../types/kiosk-submission.types").KioskSubmissionPayload,
+): Promise<any> {
+  const res = await api.post("/kiosks/submissions/", payload);
+  return res.data;
+}

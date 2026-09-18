@@ -114,13 +114,14 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
   return (
     <aside
       className={cn(
-        "shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-[#ececec] shadow-sm dark:border-slate-700 dark:bg-slate-900",
+        "shrink-0 rounded-lg border border-slate-200 bg-[#ececec] shadow-sm dark:border-slate-700 dark:bg-slate-900",
+        "overflow-y-auto max-h-[85vh] custom-scrollbar",
         compact ? "w-full" : "w-full lg:w-[300px] xl:w-[320px]",
         className,
       )}
     >
-      {/* Visual stage */}
-      <div className="border-b border-slate-300/80 bg-[#ececec] px-4 pb-5 pt-4 dark:border-slate-700 dark:bg-slate-900">
+      {/* Visual stage — overflow-hidden keeps the canvas clipping intact */}
+      <div className="overflow-hidden border-b border-slate-300/80 bg-[#ececec] px-4 pb-5 pt-4 dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-800 dark:text-slate-200">
             {config.name ? config.name.slice(0, 24) : "Your build"}
@@ -210,8 +211,8 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="space-y-3 bg-white px-4 py-4 dark:bg-slate-950">
+      {/* Summary — independently scrollable so long feature lists are reachable */}
+      <div className="space-y-3 bg-white px-4 py-4 dark:bg-slate-950 overflow-y-auto max-h-[320px] custom-scrollbar">
         {primarySummary && (
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">

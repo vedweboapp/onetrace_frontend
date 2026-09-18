@@ -14,7 +14,8 @@ export interface ColorFillConfig {
 }
 
 export interface KioskOption {
-  _uid: string;
+  uid?: string;
+  _uid?: string;
   id?: string | number | null;
   label?: string | null;
   subLabel?: string | null;
@@ -34,21 +35,40 @@ export interface KioskOption {
   color_fill?: ColorFillConfig | null;
   fill_color?: string | null;
   fill_image?: string | null;
-  field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | string | null;
+  field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | string | null;
   color?: string | null;
   api?: string | null;
+  gid?: string | null;
+  group_uid?: string | null;
+  group_name?: string | null;
+  input_type?: "text" | "number" | "email" | "tel" | "textarea" | string | null;
+  placeholder?: string | null;
+  required?: boolean;
   [key: string]: any;
 }
 
+export interface KioskGroup {
+  gid: string;
+  _uid?: string;
+  id?: string | number | null;
+  name: string;
+  api_name?: string;
+  description?: string;
+  columns?: number;
+  options: KioskOption[];
+}
+
 export interface KioskQuestion {
-  _uid: string;
+  q_id: string;
+  _uid?: string;
   id?: string | number | null;
   label?: string | null;
   subLabel?: string | null;
   api_name?: string | null;
   columns?: number;
   column_count?: number;
-  options: KioskOption[];
+  options?: KioskOption[];
+  groups?: KioskGroup[];
   is_deleted?: boolean;
   [key: string]: any;
 }
@@ -98,3 +118,5 @@ export const DEFAULT_KIOSK_CONFIG: KioskConfig = {
     button_text: "Submit",
   },
 };
+
+export * from "./kiosk-submission.types";

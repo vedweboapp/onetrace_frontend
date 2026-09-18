@@ -6,7 +6,9 @@ import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
+import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
+import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -181,7 +183,7 @@ export interface KioskRendererRef {
 
 export interface KioskRendererProps {
   config?: KioskConfig;
-  onSubmit?: (values: Record<string, any>) => void;
+  onSubmit?: (payload: KioskSubmissionPayload) => void;
   renderMode?: "desktop" | "phone";
   isSubmitting?: boolean;
   /** Per-question draft option while configuring (live builder sync) */
@@ -232,17 +234,64 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
     const optionByUid = React.useMemo(() => {
       const map = new Map<string, { option: KioskOption; question: KioskQuestion }>();
       activeQuestions.forEach((q) => {
-        (q.options || []).forEach((opt) => {
-          if (opt._uid) map.set(opt._uid, { option: opt, question: q });
+        const allOpts = [
+          ...(q.options || []),
+          ...(q.groups || []).flatMap((g) => g.options || []),
+        ];
+        allOpts.forEach((opt) => {
+          const optId = opt.uid || opt._uid;
+          if (optId) map.set(optId, { option: opt, question: q });
         });
       });
       return map;
     }, [activeQuestions]);
 
+    const handleInputChange = (question: KioskQuestion, option: KioskOption, val: string) => {
+      const qKey = question.api_name || question.q_id || question._uid || "";
+      const optUid = option.uid || option._uid || "";
+
+      setAnswers((prev) => {
+        const current = prev[qKey];
+        let list: any[] = [];
+        if (Array.isArray(current)) {
+          list = [...current];
+        } else if (current && typeof current === "object" && current.uid) {
+          list = [current];
+        }
+
+        const idx = list.findIndex((item) => (typeof item === "object" ? item.uid === optUid : false));
+        if (idx >= 0) {
+          list[idx] = { uid: optUid, value: val, api_name: option.api_name, label: option.label };
+        } else {
+          list.push({ uid: optUid, value: val, api_name: option.api_name, label: option.label });
+        }
+
+        return {
+          ...prev,
+          [qKey]: list,
+        };
+      });
+    };
+
+    const getInputValue = (question: KioskQuestion, option: KioskOption): string => {
+      const qKey = question.api_name || question.q_id || question._uid || "";
+      const optUid = option.uid || option._uid || "";
+      const ans = answers[qKey];
+      if (!ans) return (option.value as string) || "";
+      if (Array.isArray(ans)) {
+        const found = ans.find((item) => (typeof item === "object" ? item.uid === optUid : false));
+        return found ? String(found.value ?? "") : "";
+      }
+      if (typeof ans === "object" && ans.uid === optUid) {
+        return String(ans.value ?? "");
+      }
+      return "";
+    };
+
     const handleSelectOption = (question: KioskQuestion, option: KioskOption) => {
-      const qKey = question.api_name || question._uid;
-      const optUid = option._uid;
-      const payloadVal = option.value || option.color || option.label || option._uid;
+      const qKey = question.api_name || question.q_id || question._uid || "";
+      const optUid = option.uid || option._uid || "";
+      const payloadVal = option.value || option.color || option.label || optUid;
 
       if (option.field_type === "checkbox") {
         setAnswers((prev) => {
@@ -256,10 +305,31 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           };
         });
       } else {
-        setAnswers((prev) => ({
-          ...prev,
-          [qKey]: { uid: optUid, value: payloadVal },
-        }));
+        setAnswers((prev) => {
+          const current = prev[qKey];
+          if (Array.isArray(current)) {
+            // Keep input field answers, replace single choice
+            const allQuestionOpts = [
+              ...(question.options || []),
+              ...(question.groups || []).flatMap((g) => g.options || []),
+            ];
+            const inputOptionUids = new Set(
+              allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.uid || o._uid)
+            );
+            const keptInputs = current.filter((item) => {
+              const u = typeof item === "object" ? item.uid : item;
+              return inputOptionUids.has(u);
+            });
+            return {
+              ...prev,
+              [qKey]: [...keptInputs, { uid: optUid, value: payloadVal }],
+            };
+          }
+          return {
+            ...prev,
+            [qKey]: { uid: optUid, value: payloadVal },
+          };
+        });
       }
     };
 
@@ -267,7 +337,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       if (e) e.preventDefault();
       if (isSubmitting) return;
       if (onSubmit) {
-        onSubmit(answers);
+        // Build the full structured payload the backend expects
+        const payload = buildKioskSubmissionPayload(config, answers);
+        onSubmit(payload);
       } else {
         setSubmitted(true);
       }
@@ -283,6 +355,292 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       getConfig: () => config,
       getValues: () => answers,
     }));
+
+    const renderOptionCard = (
+      option: KioskOption,
+      optIdx: number,
+      question: KioskQuestion,
+    ) => {
+      const qKey = question.api_name || question.q_id || question._uid || "";
+      const selectedVal = answers[qKey];
+      const isInput = option.field_type === "input";
+      const isCheckbox = option.field_type === "checkbox";
+      const isColorSwatch = option.field_type === "color_swatch";
+      const isColor = option.field_type === "color";
+      const isImageRadio = option.field_type === "image_radio";
+      const optUid = option.uid || option._uid || "";
+
+      // Input Field Rendering
+      if (isInput) {
+        const currentVal = getInputValue(question, option);
+        return (
+          <div
+            key={option.uid || option._uid || optIdx}
+            className="rounded-md border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-2"
+          >
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                {option.label || "Input Field"}
+                {option.required && <span className="ml-1 text-red-500">*</span>}
+              </label>
+              {option.price && parseFloat(String(option.price)) > 0 && (
+                <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  +${parseFloat(String(option.price)).toFixed(2)}
+                </span>
+              )}
+            </div>
+            {option.subLabel && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {option.subLabel}
+              </p>
+            )}
+            {option.input_type === "textarea" ? (
+              <textarea
+                rows={2}
+                value={currentVal}
+                placeholder={option.placeholder || "Enter details..."}
+                onChange={(e) =>
+                  handleInputChange(question, option, e.target.value)
+                }
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            ) : (
+              <input
+                type={
+                  option.input_type === "number"
+                    ? "number"
+                    : option.input_type === "email"
+                    ? "email"
+                    : option.input_type === "tel"
+                    ? "tel"
+                    : "text"
+                }
+                value={currentVal}
+                placeholder={option.placeholder || "Enter value..."}
+                onChange={(e) =>
+                  handleInputChange(question, option, e.target.value)
+                }
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+            )}
+          </div>
+        );
+      }
+
+      // answeredColor: only resolve if selectedVal belongs to THIS option (uid match)
+      const answeredColor =
+        isColorSwatch &&
+        typeof selectedVal === "object" &&
+        selectedVal !== null &&
+        selectedVal.uid === optUid &&
+        typeof selectedVal.value === "string" &&
+        selectedVal.value.startsWith("#")
+          ? selectedVal.value
+          : undefined;
+
+      const currentColor =
+        answeredColor ||
+        option.color ||
+        (typeof option.value === "string" && option.value.startsWith("#")
+          ? option.value
+          : "#0EA5E9");
+
+      // Use uid for selection identity — prevents cross-option collision
+      const isSelected = isCheckbox
+        ? Array.isArray(selectedVal) &&
+          selectedVal.some((v) =>
+            typeof v === "object" ? v.uid === optUid : v === optUid,
+          )
+        : isColorSwatch
+        ? (typeof selectedVal === "object" && selectedVal !== null
+            ? selectedVal.uid === optUid
+            : selectedVal === optUid) || !!answeredColor
+        : typeof selectedVal === "object" && selectedVal !== null
+        ? selectedVal.uid === optUid
+        : selectedVal === optUid;
+      const inputId = `opt_${question.q_id || question._uid || ""}_${option.uid || option._uid || optIdx}`;
+
+      const handleCardClick = () => {
+        if (isColorSwatch) {
+          setActiveSwatchPicker({
+            question,
+            option,
+            currentColor: String(currentColor),
+          });
+        } else {
+          handleSelectOption(question, option);
+        }
+      };
+
+      return (
+        <div
+          key={option._uid || optIdx}
+          onClick={handleCardClick}
+          className={cn(
+            "relative flex cursor-pointer rounded-sm border overflow-hidden transition-all duration-150 select-none",
+            isImageRadio || !option.image
+              ? "flex-row items-center justify-between gap-3 p-3.5"
+              : "flex-col gap-0",
+            isSelected
+              ? "border-blue-600 bg-blue-50/40 ring-2 ring-blue-600/20 shadow-xs dark:border-blue-500 dark:bg-blue-950/30"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/40",
+          )}
+        >
+          {/* Hidden input for accessibility */}
+          <input
+            id={inputId}
+            type={isCheckbox ? "checkbox" : "radio"}
+            checked={isSelected}
+            onChange={handleCardClick}
+            className="sr-only"
+          />
+
+          {/* Full banner image for non-image_radio options with image */}
+          {!isImageRadio && option.image && (
+            <div className="w-full overflow-hidden">
+              <img
+                src={String(option.image)}
+                alt={option.label || "Option image"}
+                className="h-32 w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex items-center justify-between gap-3",
+              !isImageRadio && option.image ? "p-4" : "w-full",
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* Indicator: Color Swatch vs Square Checkbox vs Circular Radio */}
+              {isColorSwatch || isColor ? (
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-5.5 shrink-0 items-center justify-center rounded-full border-2 transition-all shadow-xs",
+                    isSelected
+                      ? "border-white ring-2 ring-blue-600 dark:ring-blue-500"
+                      : "border-white ring-1 ring-slate-300 dark:ring-slate-700",
+                  )}
+                  style={{
+                    backgroundColor: String(
+                      isColorSwatch
+                        ? currentColor
+                        : option.color || option.value || "#2563EB",
+                    ),
+                  }}
+                />
+              ) : isCheckbox ? (
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all",
+                    isSelected
+                      ? "border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-500"
+                      : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800",
+                  )}
+                >
+                  {isSelected && <Check size={11} strokeWidth={3} />}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    isSelected
+                      ? "border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500"
+                      : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800",
+                  )}
+                >
+                  {isSelected && (
+                    <div className="size-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+              )}
+
+              {/* Height-matching image thumbnail for image_radio */}
+              {isImageRadio && option.image && (
+                <div className="size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-2xs">
+                  <img
+                    src={String(option.image)}
+                    alt={option.label || "Option preview"}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                    {option.label ||
+                      (isColorSwatch
+                        ? "Color Swatch Option"
+                        : isColor
+                        ? "Color Option"
+                        : isCheckbox
+                        ? "Checkbox Option"
+                        : isImageRadio
+                        ? "Image Radio Option"
+                        : "Radio Option")}
+                  </span>
+                  {answeredColor && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 font-mono text-[10px] font-bold text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-300">
+                      <span
+                        className="size-2 rounded-full border border-black/10"
+                        style={{ backgroundColor: answeredColor }}
+                      />
+                      {answeredColor}
+                    </span>
+                  )}
+                </div>
+                {option.subLabel && (
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                    {option.subLabel}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Price + swatch button */}
+            <div className="flex items-center gap-2 shrink-0">
+              {option.price && (
+                <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  ${option.price}
+                </span>
+              )}
+
+              {isColorSwatch && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSwatchPicker({
+                      question,
+                      option,
+                      currentColor: String(currentColor),
+                    });
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  <Palette
+                    size={12}
+                    className="text-blue-600 dark:text-blue-400"
+                  />
+                  <span>
+                    {answeredColor ? "Change Color" : "Select Color"}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
 
     if (submitted) {
       return (
@@ -342,11 +700,17 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             onSelect={(chosenColor) => {
               const qKey =
                 activeSwatchPicker.question.api_name ||
-                activeSwatchPicker.question._uid;
+                activeSwatchPicker.question.q_id ||
+                activeSwatchPicker.question._uid ||
+                "";
+              const optUid =
+                activeSwatchPicker.option.uid ||
+                activeSwatchPicker.option._uid ||
+                "";
               setAnswers((prev) => ({
                 ...prev,
                 [qKey]: {
-                  uid: activeSwatchPicker.option._uid,
+                  uid: optUid,
                   value: chosenColor,
                 },
               }));
@@ -382,13 +746,13 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           {/* Questions List */}
           <div className="order-2 min-w-0 flex-1 space-y-6 lg:order-1">
           {activeQuestions.map((question, qIdx) => {
-            const qKey = question.api_name || question._uid;
+            const qKey = question.api_name || question.q_id || question._uid || "";
             const selectedVal = answers[qKey];
             const options = question.options || [];
 
             return (
               <div
-                key={question._uid || qIdx}
+                key={question.q_id || question._uid || qIdx}
                 className="rounded-sm border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
               >
                 {/* Question Title & Subtitle */}
@@ -402,230 +766,65 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                     </p>
                   )}
                 </div>
+                {/* Options / Groups Layout */}
+                {(() => {
+                  const hasGroups =
+                    question.groups && question.groups.length > 0;
 
-                {/* Options Grid */}
-                {options.length > 0 ? (
-                  <div className={cn("grid gap-3", getGridClass(question.columns || question.column_count || 2))}>
-                    {options.map((option, optIdx) => {
-                      const isCheckbox = option.field_type === "checkbox";
-                      const isColorSwatch = option.field_type === "color_swatch";
-                      const isColor = option.field_type === "color";
-                      const isImageRadio = option.field_type === "image_radio";
-                      const optUid = option._uid;
-
-
-
-                      // answeredColor: only resolve if selectedVal belongs to THIS option (uid match)
-                      const answeredColor =
-                        isColorSwatch &&
-                        typeof selectedVal === "object" &&
-                        selectedVal !== null &&
-                        selectedVal.uid === optUid &&
-                        typeof selectedVal.value === "string" &&
-                        selectedVal.value.startsWith("#")
-                          ? selectedVal.value
-                          : undefined;
-
-                      const currentColor =
-                        answeredColor ||
-                        option.color ||
-                        (typeof option.value === "string" && option.value.startsWith("#")
-                          ? option.value
-                          : "#0EA5E9");
-
-                      // Use uid for selection identity — prevents cross-option collision
-                      const isSelected = isCheckbox
-                        ? Array.isArray(selectedVal) &&
-                          selectedVal.some((v) =>
-                            typeof v === "object" ? v.uid === optUid : v === optUid,
-                          )
-                        : isColorSwatch
-                        ? (typeof selectedVal === "object" && selectedVal !== null
-                            ? selectedVal.uid === optUid
-                            : selectedVal === optUid) || !!answeredColor
-                        : typeof selectedVal === "object" && selectedVal !== null
-                        ? selectedVal.uid === optUid
-                        : selectedVal === optUid;
-                      const inputId = `opt_${question._uid}_${option._uid || optIdx}`;
-
-                      const handleCardClick = () => {
-                        if (isColorSwatch) {
-                          setActiveSwatchPicker({
-                            question,
-                            option,
-                            currentColor: String(currentColor),
-                          });
-                        } else {
-                          handleSelectOption(question, option);
-                        }
-                      };
-
-                      return (
-                        <div
-                          key={option._uid || optIdx}
-                          onClick={handleCardClick}
-                          className={cn(
-                            "relative flex cursor-pointer rounded-sm border overflow-hidden transition-all duration-150 select-none",
-                            isImageRadio || !option.image
-                              ? "flex-row items-center justify-between gap-3 p-3.5"
-                              : "flex-col gap-0",
-                            isSelected
-                              ? "border-blue-600 bg-blue-50/40 ring-2 ring-blue-600/20 shadow-xs dark:border-blue-500 dark:bg-blue-950/30"
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/40"
-                          )}
-                        >
-                          {/* Hidden input for accessibility */}
-                          <input
-                            id={inputId}
-                            type={isCheckbox ? "checkbox" : "radio"}
-                            checked={isSelected}
-                            onChange={handleCardClick}
-                            className="sr-only"
-                          />
-
-                          {/* Full banner image for non-image_radio options with image */}
-                          {!isImageRadio && option.image && (
-                            <div className="w-full overflow-hidden">
-                              <img
-                                src={String(option.image)}
-                                alt={option.label || "Option image"}
-                                className="h-32 w-full object-cover"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                              />
-                            </div>
-                          )}
-
-                          <div className={cn("flex items-center justify-between gap-3", !isImageRadio && option.image ? "p-4" : "w-full")}>
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              {/* Indicator: Color Swatch vs Square Checkbox vs Circular Radio */}
-                              {isColorSwatch || isColor ? (
-                                <div
-                                  className={cn(
-                                    "mt-0.5 flex size-5.5 shrink-0 items-center justify-center rounded-full border-2 transition-all shadow-xs",
-                                    isSelected
-                                      ? "border-white ring-2 ring-blue-600 dark:ring-blue-500"
-                                      : "border-white ring-1 ring-slate-300 dark:ring-slate-700"
-                                  )}
-                                  style={{
-                                    backgroundColor: String(
-                                      isColorSwatch
-                                        ? currentColor
-                                        : option.color || option.value || "#2563EB"
-                                    ),
-                                  }}
-                                >
-                                  {isSelected && (
-                                    <Check
-                                      size={11}
-                                      strokeWidth={3}
-                                      className="text-white drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.8)]"
-                                    />
-                                  )}
-                                </div>
-                              ) : isCheckbox ? (
-                                <div
-                                  className={cn(
-                                    "mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-all",
-                                    isSelected
-                                      ? "border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-500"
-                                      : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800"
-                                  )}
-                                >
-                                  {isSelected && <Check size={11} strokeWidth={3} />}
-                                </div>
-                              ) : (
-                                <div
-                                  className={cn(
-                                    "mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                                    isSelected
-                                      ? "border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500"
-                                      : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800"
-                                  )}
-                                >
-                                  {isSelected && <div className="size-1.5 rounded-full bg-white" />}
-                                </div>
+                  if (hasGroups) {
+                    return (
+                      <div className="space-y-4">
+                        {question.groups!.map((group, grpIdx) => {
+                          const grpOptions = group.options || [];
+                          if (grpOptions.length === 0) return null;
+                          return (
+                            <div
+                              key={group.gid || group._uid || grpIdx}
+                              className="space-y-2"
+                            >
+                              {group.name && (
+                                <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                  {group.name}
+                                </h4>
                               )}
-
-                              {/* Height-matching image thumbnail for image_radio */}
-                              {isImageRadio && option.image && (
-                                <div className="size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-2xs">
-                                  <img
-                                    src={String(option.image)}
-                                    alt={option.label || "Option preview"}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                  />
-                                </div>
-                              )}
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug">
-                                    {option.label ||
-                                      (isColorSwatch
-                                        ? "Color Swatch Option"
-                                        : isColor
-                                        ? "Color Option"
-                                        : isCheckbox
-                                        ? "Checkbox Option"
-                                        : isImageRadio
-                                        ? "Image Radio Option"
-                                        : "Radio Option")}
-                                  </span>
-                                  {answeredColor && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 font-mono text-[10px] font-bold text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-300">
-                                      <span
-                                        className="size-2 rounded-full border border-black/10"
-                                        style={{ backgroundColor: answeredColor }}
-                                      />
-                                      {answeredColor}
-                                    </span>
-                                  )}
-                                </div>
-                                {option.subLabel && (
-                                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                                    {option.subLabel}
-                                  </p>
+                              <div
+                                className={cn(
+                                  "grid gap-3",
+                                  getGridClass(
+                                    group.columns ||
+                                      question.columns ||
+                                      question.column_count ||
+                                      2,
+                                  ),
+                                )}
+                              >
+                                {grpOptions.map((option, optIdx) =>
+                                  renderOptionCard(option, optIdx, question),
                                 )}
                               </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
 
-                            {/* Price + swatch button */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {option.price && (
-                                <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                  ${option.price}
-                                </span>
-                              )}
-
-                              {isColorSwatch && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveSwatchPicker({
-                                      question,
-                                      option,
-                                      currentColor: String(currentColor),
-                                    });
-                                  }}
-                                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                                >
-                                  <Palette size={12} className="text-blue-600 dark:text-blue-400" />
-                                  <span>{answeredColor ? "Change Color" : "Select Color"}</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs italic text-slate-400 dark:text-slate-500">
-                    No options available for this question.
-                  </p>
-                )}
+                  // Flat options (no groups)
+                  return (
+                    <div
+                      className={cn(
+                        "grid gap-3",
+                        getGridClass(
+                          question.columns || question.column_count || 2,
+                        ),
+                      )}
+                    >
+                      {(question.options || []).map((option, optIdx) =>
+                        renderOptionCard(option, optIdx, question),
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

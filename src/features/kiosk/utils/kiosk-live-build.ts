@@ -42,10 +42,35 @@ export interface LiveBuildScene {
   totalPrice: number;
 }
 
+function getAllQuestionOptions(q: KioskQuestion): KioskOption[] {
+  const seen = new Set<string>();
+  const all: KioskOption[] = [];
+  const pushOpt = (opt: KioskOption) => {
+    if (!opt) return;
+    const key = opt._uid || opt.api_name || String(opt.value);
+    if (!seen.has(key)) {
+      seen.add(key);
+      all.push(opt);
+    }
+  };
+
+  for (const opt of q.options || []) {
+    pushOpt(opt);
+  }
+  if (q.groups) {
+    for (const g of q.groups) {
+      for (const opt of g.options || []) {
+        pushOpt(opt);
+      }
+    }
+  }
+  return all;
+}
+
 function buildOptionIndex(questions: KioskQuestion[]): Map<string, KioskOption> {
   const map = new Map<string, KioskOption>();
   for (const q of questions) {
-    for (const opt of q.options || []) {
+    for (const opt of getAllQuestionOptions(q)) {
       if (opt._uid) map.set(opt._uid, opt);
     }
   }
@@ -58,20 +83,20 @@ function resolveSelectedOption(
   draft?: KioskOption | null,
 ): KioskOption | null {
   if (draft) return draft;
-  const qKey = question.api_name || question._uid;
+  const qKey = question.api_name || question.q_id || question._uid || "";
   const ans = answers[qKey];
-  const options = question.options || [];
+  const options = getAllQuestionOptions(question);
   if (!ans) return null;
 
   if (Array.isArray(ans)) return null;
 
   if (typeof ans === "object" && ans !== null && "uid" in ans) {
-    return options.find((o) => o._uid === ans.uid) ?? null;
+    return options.find((o) => (o.uid || o._uid) === ans.uid) ?? null;
   }
 
   const key = typeof ans === "string" ? ans : String(ans);
   return (
-    options.find((o) => o._uid === key || o.value === key || o.label === key) ??
+    options.find((o) => (o.uid || o._uid) === key || o.value === key || o.label === key) ??
     null
   );
 }
@@ -80,16 +105,45 @@ function resolveCheckboxSelections(
   question: KioskQuestion,
   answers: Record<string, KioskAnswerValue>,
 ): KioskOption[] {
-  const qKey = question.api_name || question._uid;
+  const qKey = question.api_name || question.q_id || question._uid || "";
   const ans = answers[qKey];
   if (!Array.isArray(ans)) return [];
-  const options = question.options || [];
+  const options = getAllQuestionOptions(question);
   return ans
     .map((entry) => {
       const uid = typeof entry === "object" && entry?.uid ? entry.uid : entry;
-      return options.find((o) => o._uid === uid) ?? null;
+      const opt = options.find((o) => (o.uid || o._uid) === uid);
+      return opt && opt.field_type !== "input" ? opt : null;
     })
     .filter(Boolean) as KioskOption[];
+}
+
+function resolveInputSelections(
+  question: KioskQuestion,
+  answers: Record<string, KioskAnswerValue>,
+): { option: KioskOption; value: string }[] {
+  const qKey = question.api_name || question.q_id || question._uid || "";
+  const ans = answers[qKey];
+  const options = getAllQuestionOptions(question);
+  const results: { option: KioskOption; value: string }[] = [];
+
+  if (Array.isArray(ans)) {
+    for (const entry of ans) {
+      if (typeof entry === "object" && entry?.uid) {
+        const opt = options.find((o) => (o.uid || o._uid) === entry.uid && o.field_type === "input");
+        if (opt && String(entry.value ?? "").trim().length > 0) {
+          results.push({ option: opt, value: String(entry.value) });
+        }
+      }
+    }
+  } else if (typeof ans === "object" && ans !== null && "uid" in ans) {
+    const opt = options.find((o) => (o.uid || o._uid) === (ans as any).uid && o.field_type === "input");
+    if (opt && String((ans as any).value ?? "").trim().length > 0) {
+      results.push({ option: opt, value: String((ans as any).value) });
+    }
+  }
+
+  return results;
 }
 
 function resolveOptionColor(
@@ -97,13 +151,14 @@ function resolveOptionColor(
   question: KioskQuestion,
   answers: Record<string, KioskAnswerValue>,
 ): string {
-  const qKey = question.api_name || question._uid;
+  const qKey = question.api_name || question.q_id || question._uid || "";
   const ans = answers[qKey];
+  const optUid = option.uid || option._uid;
   if (
     typeof ans === "object" &&
     ans !== null &&
     !Array.isArray(ans) &&
-    ans.uid === option._uid &&
+    ans.uid === optUid &&
     typeof ans.value === "string" &&
     ans.value.startsWith("#")
   ) {
@@ -138,10 +193,11 @@ export function getTargetOptionUids(
     }
   }
   if (colorOption.fill_target_question) {
-    const q = questions.find((item) => item._uid === colorOption.fill_target_question);
+    const q = questions.find((item) => (item.q_id || item._uid) === colorOption.fill_target_question);
     if (q) {
-      for (const opt of q.options || []) {
-        if (opt.image && opt._uid) targets.add(opt._uid);
+      for (const opt of getAllQuestionOptions(q)) {
+        const optId = opt.uid || opt._uid;
+        if (opt.image && optId) targets.add(optId);
       }
     }
   }
@@ -182,13 +238,23 @@ export function computeLiveBuildScene(
 
   // Pass 1: Collect active selections, prices, and summaries
   for (const question of questions) {
-    const draft = livePreviewOptions?.[question._uid];
+    const qId = question.q_id || question._uid || "";
+    const draft = livePreviewOptions?.[qId];
     const selected = resolveSelectedOption(question, answers, draft ?? undefined);
     const checkboxes = resolveCheckboxSelections(question, answers);
 
     for (const cb of checkboxes) {
       if (cb.label) checkboxFeatures.push(cb.label);
       totalPrice += parsePrice(cb.price);
+    }
+
+    const inputs = resolveInputSelections(question, answers);
+    for (const inp of inputs) {
+      totalPrice += parsePrice(inp.option.price);
+      summaries.push({
+        questionLabel: inp.option.label || "Input",
+        option: inp.option,
+      });
     }
 
     if (!selected) continue;
@@ -214,7 +280,7 @@ export function computeLiveBuildScene(
       continue; // overlays handled below
     }
     if (selected.image) {
-      canvasUid = selected._uid;
+      canvasUid = selected.uid || selected._uid || null;
       canvasImage = String(selected.image);
       canvasQuestion = question;
     }

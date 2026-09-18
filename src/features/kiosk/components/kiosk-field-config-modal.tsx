@@ -99,6 +99,16 @@ const checkerboardPattern: React.CSSProperties = {
   backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0",
 };
 
+function deriveApiNameFromLabel(label: string): string {
+  return (
+    label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "input_field"
+  );
+}
+
 export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   option,
   questionUid,
@@ -346,9 +356,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       const dataUrl = reader.result as string;
       setFormData((prev) => {
         const updated: KioskOption = { ...prev, [targetKey]: dataUrl };
-        if (targetKey === "fill_image") {
+        if (targetKey === "fill_image" && prev.color_fill) {
           updated.color_fill = {
-            imageId: prev._uid || "color_fill",
+            ...prev.color_fill,
             colorValue: String(prev.color || "#2563EB"),
           };
         }
@@ -371,6 +381,12 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           };
         }
       }
+      if (key === "api_name") {
+        const ft = prev.field_type || "radio";
+        if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
+          updated.value = val;
+        }
+      }
       return updated;
     });
   };
@@ -378,22 +394,57 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   const handleSave = () => {
     if (isColorField) {
       const finalColor = formData.color || formData.value || "#2563EB";
-      const finalTargets = Array.isArray(formData.fill_targets) ? formData.fill_targets : [];
-      const finalTargetId = finalTargets[0] || formData.target_image_field || formData._uid || "color_choice";
-      const finalColorFill: ColorFillConfig = {
-        imageId: finalTargetId,
-        colorValue: String(finalColor),
-      };
+      const finalTargets = Array.isArray(formData.fill_targets)
+        ? formData.fill_targets.filter(Boolean)
+        : [];
+      const chosenTargetId = finalTargets[0] || formData.target_image_field || null;
+
+      const finalColorFill: ColorFillConfig | null = chosenTargetId
+        ? {
+            imageId: chosenTargetId,
+            colorValue: String(finalColor),
+          }
+        : null;
+
+      // Clean out placement properties which do not belong to color fields
+      const { placement, placement_mode, placement_position, ...cleanData } = formData;
 
       onSave({
-        ...formData,
+        ...cleanData,
+        value: String(finalColor),
         color: String(finalColor),
         fill_color: String(finalColor),
-        fill_targets: finalTargets,
+        fill_targets: finalTargets.length > 0 ? finalTargets : undefined,
         color_fill: finalColorFill,
+        target_image_field: chosenTargetId,
       });
     } else {
-      onSave({ ...formData });
+      const ft = formData.field_type || "radio";
+      const isImageRadio = ft === "image_radio";
+      const normalizedApiName =
+        ft === "input" && (!formData.api_name || formData.api_name === "input_field")
+          ? deriveApiNameFromLabel(formData.label || "input_field")
+          : formData.api_name;
+
+      const normalizedValue =
+        ft === "radio" || ft === "checkbox" || ft === "image_radio"
+          ? normalizedApiName || formData.value || ""
+          : ft === "input"
+          ? (formData.value ?? "")
+          : formData.value;
+
+      const cleanData = { ...formData };
+      if (!isImageRadio) {
+        delete cleanData.placement;
+        delete cleanData.placement_mode;
+        delete cleanData.placement_position;
+      }
+
+      onSave({
+        ...cleanData,
+        api_name: normalizedApiName,
+        value: normalizedValue,
+      });
     }
     onClose();
   };
@@ -809,8 +860,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
 
             {/* 3. Standard Config Fields (Filtered per field type) */}
             {def.configFields.map((field) => {
-              // Skip fill_image if rendered above
+              // Skip fill_image if rendered above, and skip value attribute from modal
               if (field.key === "fill_image" && isColorField) return null;
+              if (field.key === "value") return null;
 
               const val = (formData[field.key] as any) ?? "";
 
@@ -1036,6 +1088,35 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                 );
               }
 
+              if (field.type === "select") {
+                return (
+                  <div key={String(field.key)}>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      {field.label}
+                      {field.required && (
+                        <span className="ml-0.5 text-red-500">*</span>
+                      )}
+                    </label>
+                    <select
+                      value={String(val || (field.options?.[0]?.value ?? ""))}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                      className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      {(field.options || []).map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {field.description && (
+                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                        {field.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={String(field.key)}>
                   <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -1081,64 +1162,108 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                 <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1.5">
                   Option Card in Kiosk
                 </span>
-                <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-700 dark:bg-slate-900 transition-all">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      {/* Indicator: Color Swatch vs Radio Dot */}
-                      {isColorField ? (
-                        <div
-                          className="size-5 rounded-full border-2 border-white shadow-xs ring-1 ring-slate-300 dark:border-slate-800 dark:ring-slate-600 shrink-0 overflow-hidden relative"
-                          style={checkerboardPattern}
-                        >
-                          <div
-                            className="absolute inset-0 rounded-full"
-                            style={{
-                              backgroundColor:
-                                String(formData.color || formData.value || "#2563EB"),
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="size-4.5 rounded-full border-2 border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500 flex items-center justify-center shrink-0">
-                          <div className="size-1.5 rounded-full bg-white" />
-                        </div>
+                {fieldType === "input" ? (
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-700 dark:bg-slate-900 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {formData.label || "Input Label"}
+                        {formData.required && <span className="ml-1 text-red-500">*</span>}
+                      </label>
+                      {formData.price && parseFloat(String(formData.price)) > 0 && (
+                        <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          +${parseFloat(String(formData.price)).toFixed(2)}
+                        </span>
                       )}
-
-                      {/* Image Thumbnail for Image Radio */}
-                      {isImageRadioField && formData.image && (
-                        <div className="size-12 rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-2xs">
-                          <img
-                            src={String(formData.image)}
-                            alt="Object image"
-                            className="size-full object-cover"
-                          />
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                          {formData.label ||
-                            (isColorField
-                              ? "Color Choice"
-                              : isImageRadioField
-                              ? "Image Choice"
-                              : "Choice")}
-                        </p>
-                        {formData.subLabel && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {formData.subLabel}
-                          </p>
-                        )}
-                      </div>
                     </div>
-
-                    {formData.price && (
-                      <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        ${formData.price}
-                      </span>
+                    {formData.subLabel && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {formData.subLabel}
+                      </p>
                     )}
+                    {formData.input_type === "textarea" ? (
+                      <textarea
+                        disabled
+                        rows={2}
+                        placeholder={formData.placeholder || "Enter value here..."}
+                        className="w-full rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 select-none cursor-not-allowed"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        placeholder={formData.placeholder || "Enter value here..."}
+                        className="h-9 w-full rounded-sm border border-slate-200 bg-slate-50 px-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 select-none cursor-not-allowed"
+                      />
+                    )}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        format: {formData.input_type || "text"}
+                      </span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        key: {formData.api_name || "input_field"}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-700 dark:bg-slate-900 transition-all">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Indicator: Color Swatch vs Radio Dot */}
+                        {isColorField ? (
+                          <div
+                            className="size-5 rounded-full border-2 border-white shadow-xs ring-1 ring-slate-300 dark:border-slate-800 dark:ring-slate-600 shrink-0 overflow-hidden relative"
+                            style={checkerboardPattern}
+                          >
+                            <div
+                              className="absolute inset-0 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  String(formData.color || formData.value || "#2563EB"),
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="size-4.5 rounded-full border-2 border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500 flex items-center justify-center shrink-0">
+                            <div className="size-1.5 rounded-full bg-white" />
+                          </div>
+                        )}
+
+                        {/* Image Thumbnail for Image Radio */}
+                        {isImageRadioField && formData.image && (
+                          <div className="size-12 rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-2xs">
+                            <img
+                              src={String(formData.image)}
+                              alt="Object image"
+                              className="size-full object-cover"
+                            />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                            {formData.label ||
+                              (isColorField
+                                ? "Color Choice"
+                                : isImageRadioField
+                                ? "Image Choice"
+                                : "Choice")}
+                          </p>
+                          {formData.subLabel && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                              {formData.subLabel}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {formData.price && (
+                        <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          ${formData.price}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 2A. LIVE COLOR-FILLED IMAGE PREVIEW: For Color and Color Swatch Options */}
