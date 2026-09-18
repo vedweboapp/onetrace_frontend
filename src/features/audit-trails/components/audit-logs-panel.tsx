@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
@@ -39,10 +38,10 @@ import {
   ListPageEmptyStates,
   ListPageHeader,
   ListPageSearchField,
+  SurfaceDateInput,
   SurfaceShell,
   listPageRootClassName,
   listPageSurfaceShellClassName,
-  surfaceInputClassName,
   useDataTableTextModeStore,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -68,49 +67,28 @@ const EMPTY_PAGINATION: PaginationState = {
 function AuditDateFilter({
   id,
   label,
-  clearLabel,
   value,
   onChange,
-  onClear,
 }: {
   id: string;
   label: string;
-  clearLabel: string;
   value: string;
   onChange: (next: string | null) => void;
-  onClear: () => void;
 }) {
-  const filled = value.trim() !== "";
-
   return (
-    <div className="group relative min-w-0 w-full sm:w-40">
+    <div className="min-w-0 w-full sm:w-[11.5rem]">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <input
+      <SurfaceDateInput
         id={id}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
         aria-label={label}
         title={label}
-        className={cn(surfaceInputClassName, "h-9 w-full", filled && "pr-8")}
+        className="h-9 w-full"
       />
-      {filled ? (
-        <button
-          type="button"
-          onClick={onClear}
-          aria-label={clearLabel}
-          className={cn(
-            "absolute right-1.5 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md",
-            "text-slate-400 opacity-100 transition-opacity hover:bg-slate-100 hover:text-slate-600",
-            "dark:hover:bg-slate-800 dark:hover:text-slate-200",
-            "sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
-          )}
-        >
-          <X className="size-3.5" aria-hidden />
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -280,18 +258,14 @@ export function AuditLogsPanel() {
                 <AuditDateFilter
                   id="audit-from-date"
                   label={t("filters.fromDate")}
-                  clearLabel={t("filters.clearFromDate")}
                   value={fromDate}
                   onChange={(v) => updateFilter({ from: v })}
-                  onClear={() => updateFilter({ from: null })}
                 />
                 <AuditDateFilter
                   id="audit-to-date"
                   label={t("filters.toDate")}
-                  clearLabel={t("filters.clearToDate")}
                   value={toDate}
                   onChange={(v) => updateFilter({ to: v })}
-                  onClear={() => updateFilter({ to: null })}
                 />
                 {hasDateFilter ? (
                   <button

@@ -333,11 +333,8 @@ export function JobsPanel() {
         const isMapView = listViewMode === "map";
         const { items: nextItems, pagination: p } = await fetchJobsPage(
           isMapView ? 1 : page,
-          isMapView ? 500 : pageSize,
-          {
-            ...listFilters,
-            ...(isMapView ? { dropdown: true } : {}),
-          },
+          isMapView ? 10 : pageSize,
+          listFilters,
         );
         if (!cancelled) {
           setItems(nextItems);

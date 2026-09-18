@@ -233,8 +233,29 @@
       "pageDescription": "Public QR code scan page.",
       "eyebrow": "QR code",
       "title": "QR code",
+      "loading": "Loading QR details…",
+      "untitledJob": "Job",
+      "jobSection": "Job details",
+      "statusUnknown": "No status",
+      "pinsSection": "Pins ({count})",
+      "noPins": "No pins on this job.",
+      "pinFallback": "Pin #{id}",
+      "pinLocation": "Loc {location}",
+      "pinQr": "QR {id}",
+      "scanHint": "Scanned from a public QR code link.",
+      "fields": {
+        "client": "Client",
+        "project": "Project",
+        "site": "Site",
+        "address": "Address",
+        "startDate": "Start date",
+        "completedAt": "Completed",
+        "workers": "Workers",
+        "description": "Description",
+        "qualityAssurance": "Quality assurance"
+      },
       "noDataTitle": "No data found",
-      "noDataDescription": "This QR code is not assigned yet, so there is nothing to show."
+      "noDataDescription": "This QR code has no data to show, or the lookup did not return a response."
     }
   },
   "Dashboard": {
@@ -1745,6 +1766,7 @@
         "email": "Email",
         "phone": "Phone",
         "role": "Role",
+        "profile": "Profile",
         "inviteStatus": "Invite Status",
         "created": "Created",
         "actions": "Actions"
@@ -1756,6 +1778,7 @@
         "phone": "Phone Number",
         "gender": "Gender",
         "role": "Role",
+        "profile": "Profile",
         "basePay": "Base Pay",
         "basePayType": "Pay Type",
         "basePayTypeFixed": "Fixed Pay",
@@ -1809,6 +1832,7 @@
       "placeholders": {
         "gender": "Select gender",
         "role": "Select role",
+        "profile": "Select profile",
         "basePay": "Enter amount",
         "country": "Select country",
         "state": "Select state",
@@ -1821,6 +1845,7 @@
         "phone": "Enter a valid phone number.",
         "gender": "Select gender.",
         "role": "Select role.",
+        "profile": "Select profile.",
         "basePay": "Enter a valid base pay amount.",
         "addressLine1": "Enter address line 1.",
         "addressType": "Select address type.",
@@ -3943,6 +3968,7 @@
         "skippedCount": "{count, plural, one {# job has no usable map location and is listed below.} other {# jobs have no usable map location and are listed below.}}",
         "ariaMap": "Jobs map",
         "loadingMap": "Loading map…",
+        "placingPins": "Placing pins…",
         "loadMapError": "Could not load Google Maps. Check your API key and try again.",
         "jobId": "Job ID",
         "address": "Address",
