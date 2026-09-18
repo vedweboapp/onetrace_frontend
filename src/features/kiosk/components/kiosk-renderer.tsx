@@ -9,6 +9,9 @@ import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
 import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
+import { getQuestionOptions } from "../utils/kiosk-lookup";
+import { buildLookupOptions } from "../utils/kiosk-lookup";
+import { fetchGroup } from "@/features/groups/api/group.api";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -223,6 +226,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       option: KioskOption;
       currentColor: string;
     } | null>(null);
+    const [lookupOptionsByQuestion, setLookupOptionsByQuestion] = useState<Record<string, KioskOption[]>>({});
 
     // Must be declared before optionByUid which depends on it
     const isPhone = renderMode === "phone";
@@ -230,13 +234,60 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       (q) => q.is_deleted !== true,
     );
 
+    useEffect(() => {
+      let cancelled = false;
+      const lookupQuestions = (config.questions ?? []).filter(
+        (question) => question.is_lookup && question.item_group_id != null,
+      );
+
+      Promise.all(
+        lookupQuestions.map(async (question) => {
+          const questionUid = question.q_id || question._uid || "";
+          const group = await fetchGroup(Number(question.item_group_id));
+          return [
+            questionUid,
+            buildLookupOptions(
+              group.items || [],
+              question.item_group_id as string | number,
+              question.lookup_option_type || "radio",
+            ),
+          ] as const;
+        }),
+      )
+        .then((entries) => {
+          if (!cancelled) setLookupOptionsByQuestion(Object.fromEntries(entries));
+        })
+        .catch(() => {
+          if (!cancelled) setLookupOptionsByQuestion({});
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [config.questions]);
+
+    const renderedQuestions = React.useMemo(
+      () => activeQuestions.map((question) => {
+        const questionUid = question.q_id || question._uid || "";
+        const lookupOptions = lookupOptionsByQuestion[questionUid];
+        return lookupOptions
+          ? { ...question, options: lookupOptions, groups: undefined }
+          : question;
+      }),
+      [activeQuestions, lookupOptionsByQuestion],
+    );
+
+    const renderedConfig = React.useMemo(
+      () => ({ ...config, questions: renderedQuestions }),
+      [config, renderedQuestions],
+    );
+
     /** Build a flat UID→option index across all active questions */
     const optionByUid = React.useMemo(() => {
       const map = new Map<string, { option: KioskOption; question: KioskQuestion }>();
-      activeQuestions.forEach((q) => {
+      renderedQuestions.forEach((q) => {
         const allOpts = [
-          ...(q.options || []),
-          ...(q.groups || []).flatMap((g) => g.options || []),
+          ...getQuestionOptions(q),
         ];
         allOpts.forEach((opt) => {
           const optId = opt.uid || opt._uid;
@@ -244,7 +295,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         });
       });
       return map;
-    }, [activeQuestions]);
+    }, [renderedQuestions]);
 
     const handleInputChange = (question: KioskQuestion, option: KioskOption, val: string) => {
       const qKey = question.api_name || question.q_id || question._uid || "";
@@ -310,8 +361,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           if (Array.isArray(current)) {
             // Keep input field answers, replace single choice
             const allQuestionOpts = [
-              ...(question.options || []),
-              ...(question.groups || []).flatMap((g) => g.options || []),
+              ...getQuestionOptions(question),
             ];
             const inputOptionUids = new Set(
               allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.uid || o._uid)
@@ -338,7 +388,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       if (isSubmitting) return;
       if (onSubmit) {
         // Build the full structured payload the backend expects
-        const payload = buildKioskSubmissionPayload(config, answers);
+        const payload = buildKioskSubmissionPayload(renderedConfig, answers);
         onSubmit(payload);
       } else {
         setSubmitted(true);
@@ -745,10 +795,10 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
           {/* Questions List */}
           <div className="order-2 min-w-0 flex-1 space-y-6 lg:order-1">
-          {activeQuestions.map((question, qIdx) => {
+          {renderedQuestions.map((question, qIdx) => {
             const qKey = question.api_name || question.q_id || question._uid || "";
             const selectedVal = answers[qKey];
-            const options = question.options || [];
+            const options = getQuestionOptions(question);
 
             return (
               <div
@@ -769,7 +819,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                 {/* Options / Groups Layout */}
                 {(() => {
                   const hasGroups =
-                    question.groups && question.groups.length > 0;
+                    !question.is_lookup && question.groups && question.groups.length > 0;
 
                   if (hasGroups) {
                     return (
@@ -819,7 +869,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                         ),
                       )}
                     >
-                      {(question.options || []).map((option, optIdx) =>
+                      {options.map((option, optIdx) =>
                         renderOptionCard(option, optIdx, question),
                       )}
                     </div>

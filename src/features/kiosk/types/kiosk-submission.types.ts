@@ -99,6 +99,10 @@ export interface KioskResponseItem {
    */
   field_type: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | string;
 
+  /** Lookup metadata when this question loads its options from an item group. */
+  is_lookup?: boolean;
+  item_group_id?: string | number | null;
+
   /**
    * The single selected option.
    * Populated for: radio, color, color_swatch, image_radio.
@@ -163,6 +167,7 @@ export interface KioskSubmissionPayload {
    * Flat summary list — useful for display / email / PDF generation.
    */
   summary: KioskSubmissionSummaryItem[];
+
 }
 
 // ── Flat summary item (derived convenience field) ─────────────────────────────

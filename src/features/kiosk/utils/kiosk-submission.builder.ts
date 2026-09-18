@@ -17,6 +17,7 @@ import type {
   KioskSelectedOption,
   KioskSubmissionSummaryItem,
 } from "../types/kiosk-submission.types";
+import { getQuestionOptions } from "./kiosk-lookup";
 
 // ── Internal answer shapes produced by KioskRenderer ─────────────────────────
 
@@ -103,10 +104,7 @@ function buildOptionMap(
 ): Map<string, { option: KioskOption; question: KioskQuestion }> {
   const map = new Map<string, { option: KioskOption; question: KioskQuestion }>();
   questions.forEach((q) => {
-    const allOptions = [
-      ...(q.options || []),
-      ...(q.groups || []).flatMap((g) => g.options || []),
-    ];
+    const allOptions = getQuestionOptions(q);
     allOptions.forEach((opt) => {
       const optId = opt.uid || opt._uid;
       if (optId) map.set(optId, { option: opt, question: q });
@@ -118,10 +116,7 @@ function buildOptionMap(
 // ── Determine dominant field_type for a question ─────────────────────────────
 
 function getQuestionFieldType(question: KioskQuestion): string {
-  const options = [
-    ...(question.options || []),
-    ...(question.groups || []).flatMap((g) => g.options || []),
-  ];
+  const options = getQuestionOptions(question);
   if (options.length === 0) return "radio";
   // Use the first non-deleted option's field_type as the question's type
   const first = options.find((o) => !o.is_deleted);
@@ -148,10 +143,7 @@ export function buildKioskSubmissionPayload(
     const rawAnswer: RawAnswer | undefined = answers[qKey];
     const fieldType = getQuestionFieldType(question);
     const isCheckbox = fieldType === "checkbox";
-    const allOpts = [
-      ...(question.options || []),
-      ...(question.groups || []).flatMap((g) => g.options || []),
-    ];
+    const allOpts = getQuestionOptions(question);
     const hasInputs = allOpts.some((o) => o.field_type === "input");
     const inputValues: Record<string, string | number> = {};
 
@@ -233,6 +225,8 @@ export function buildKioskSubmissionPayload(
       question_api_name: qKey,
       question_label: question.label || "",
       field_type: hasInputs ? "input" : fieldType,
+      is_lookup: question.is_lookup === true,
+      item_group_id: question.item_group_id ?? null,
       selected_option: isCheckbox || hasInputs ? null : selectedOption,
       selected_options: isCheckbox || hasInputs ? selectedOptions : [],
       input_values: Object.keys(inputValues).length > 0 ? inputValues : undefined,

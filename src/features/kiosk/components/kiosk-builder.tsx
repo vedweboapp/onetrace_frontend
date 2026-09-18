@@ -32,6 +32,7 @@ import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
 import { KioskModuleBar } from "./kiosk-module-bar";
 import { DynamicKioskFieldPreview } from "./dynamic-kiosk-field-preview";
 import { KioskFieldConfigModal } from "./kiosk-field-config-modal";
+import { KioskLookupQuestionModal } from "./kiosk-lookup-question-modal";
 import { KioskRenderer } from "./kiosk-renderer";
 import { cn } from "@/core/utils/http.util";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
@@ -236,6 +237,8 @@ const QuestionDropZone: React.FC<{
   question: KioskQuestion;
   index: number;
   onAddOption: (questionUid: string, item?: any) => void;
+  onAddLookupQuestion: (questionUid: string) => void;
+  onEditLookupQuestion: (question: KioskQuestion) => void;
   onAddGroupToQuestion: (questionUid: string) => void;
   onEditOption: (option: KioskOption, questionUid: string) => void;
   onDeleteOption: (questionUid: string, optionUid: string) => void;
@@ -248,6 +251,8 @@ const QuestionDropZone: React.FC<{
   question,
   index,
   onAddOption,
+  onAddLookupQuestion,
+  onEditLookupQuestion,
   onAddGroupToQuestion,
   onEditOption,
   onDeleteOption,
@@ -302,12 +307,18 @@ const QuestionDropZone: React.FC<{
           onAddGroupToQuestion(qId);
           return;
         }
+        if (item?.field_type === "items_lookup") {
+          if (!question.is_lookup) onAddLookupQuestion(qId);
+          return;
+        }
         if (hasGroups) {
+          if (question.is_lookup) return;
           // Drop into the last group
           const lastGroup = resolvedGroups[resolvedGroups.length - 1];
           const lastGid = lastGroup.gid || lastGroup._uid || "";
           onAddOption(qId, { ...item, targetGroupUid: lastGid });
         } else {
+          if (question.is_lookup) return;
           // No groups — add directly to question.options
           onAddOption(qId, item);
         }
@@ -316,7 +327,7 @@ const QuestionDropZone: React.FC<{
         isOver: !!monitor.isOver({ shallow: true }),
       }),
     }),
-    [qId, onAddOption, onAddGroupToQuestion, resolvedGroups, hasGroups]
+    [qId, onAddOption, onAddGroupToQuestion, onAddLookupQuestion, resolvedGroups, hasGroups, question.is_lookup]
   );
 
   const handleUpdateGroupName = (groupUid: string, name: string) => {
@@ -374,7 +385,7 @@ const QuestionDropZone: React.FC<{
 
   return (
     <div
-      ref={drop as any}
+      ref={question.is_lookup ? undefined : (drop as any)}
       className={`relative rounded-sm border bg-white shadow-2xs transition-all dark:bg-slate-900 ${
         isOver
           ? "border-blue-500 bg-blue-50/20 ring-2 ring-blue-500/20 dark:border-blue-400 dark:bg-blue-950/20"
@@ -496,6 +507,18 @@ const QuestionDropZone: React.FC<{
               </div>
 
               {/* Duplicate */}
+              {question.is_lookup && (
+                <button
+                  type="button"
+                  onClick={() => { onEditLookupQuestion(question); setMenuOpen(false); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                >
+                  <Edit2 size={13} />
+                  Configure Items Lookup
+                </button>
+              )}
+
+              {/* Duplicate */}
               <button
                 type="button"
                 onClick={() => { onDuplicateQuestion(question); setMenuOpen(false); }}
@@ -564,7 +587,7 @@ const QuestionDropZone: React.FC<{
                   );
                 })}
               </div>
-            ) : (
+            ) : question.is_lookup ? null : (
               <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
                 Drag fields here to add options
               </div>
@@ -579,11 +602,18 @@ const QuestionDropZone: React.FC<{
 // Dropzone between question sections
 const BetweenQuestionsDropZone: React.FC<{
   onDropQuestion: () => void;
+  onDropLookupQuestion?: () => void;
   label?: string;
-}> = ({ onDropQuestion, label }) => {
+}> = ({ onDropQuestion, onDropLookupQuestion, label }) => {
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: ["ADD_QUESTION"],
-    drop: () => onDropQuestion(),
+    accept: ["ADD_QUESTION", "KIOSK_PALETTE_FIELD"],
+    drop: (item: { field_type?: string }) => {
+      if (item.field_type === "items_lookup") {
+        onDropLookupQuestion?.();
+      } else {
+        onDropQuestion();
+      }
+    },
     collect: (monitor) => ({ isOver: !!monitor.isOver() }),
   }));
 
@@ -601,12 +631,19 @@ const BetweenQuestionsDropZone: React.FC<{
   );
 };
 
-const EmptyCanvasDropZone: React.FC<{ onDropQuestion: () => void }> = ({
-  onDropQuestion,
-}) => {
+const EmptyCanvasDropZone: React.FC<{
+  onDropQuestion: () => void;
+  onDropLookupQuestion?: () => void;
+}> = ({ onDropQuestion, onDropLookupQuestion }) => {
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: ["ADD_QUESTION"],
-    drop: () => onDropQuestion(),
+    accept: ["ADD_QUESTION", "KIOSK_PALETTE_FIELD"],
+    drop: (item: { field_type?: string }) => {
+      if (item.field_type === "items_lookup") {
+        onDropLookupQuestion?.();
+      } else {
+        onDropQuestion();
+      }
+    },
     collect: (monitor) => ({ isOver: !!monitor.isOver() }),
   }));
 
@@ -632,7 +669,7 @@ const EmptyCanvasDropZone: React.FC<{ onDropQuestion: () => void }> = ({
         {isOver ? "Release to add question" : "Empty Kiosk Canvas"}
       </h3>
       <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
-        Drag &quot;Add New Question&quot; from the left panel to create your first question section.
+        Drag a question or Items Lookup from the left panel to create your first question section.
       </p>
     </div>
   );
@@ -670,6 +707,8 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
   if (opt.color !== undefined) clean.color = opt.color;
   if (opt.fill_color !== undefined) clean.fill_color = opt.fill_color;
   if (opt.gid !== undefined) clean.gid = opt.gid;
+  if (opt.item_group_id !== undefined) clean.item_group_id = opt.item_group_id;
+  if (opt.lookup_option_type !== undefined) clean.lookup_option_type = opt.lookup_option_type;
 
   if (isImageRadio) {
     if (opt.placement_mode) clean.placement_mode = opt.placement_mode;
@@ -751,6 +790,9 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           label: questionLabel,
           subLabel: q.subLabel,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
+          is_lookup: q.is_lookup,
+          item_group_id: q.item_group_id,
+          lookup_option_type: q.lookup_option_type,
           columns: q.columns,
           column_count: q.column_count,
           groups: sanitizedGroups,
@@ -764,6 +806,9 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           label: questionLabel,
           subLabel: q.subLabel,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
+          is_lookup: q.is_lookup,
+          item_group_id: q.item_group_id,
+          lookup_option_type: q.lookup_option_type,
           columns: q.columns,
           column_count: q.column_count,
           options: sanitizedOptions,
@@ -793,6 +838,10 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     questionUid: string;
   } | null>(null);
   const [draftOption, setDraftOption] = useState<KioskOption | null>(null);
+  const [editingLookupQuestion, setEditingLookupQuestion] = useState<{
+    question: KioskQuestion;
+    isNew: boolean;
+  } | null>(null);
 
   const livePreviewOptions = useMemo(() => {
     if (!editingOptionModal || !draftOption) return undefined;
@@ -854,6 +903,54 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       return { ...prev, questions: current };
     });
   }, [config.questions]);
+
+  const handleAddLookupQuestion = useCallback((afterQuestionUid: string) => {
+    const lookupQuestion: KioskQuestion = {
+      q_id: generateUid("q_"),
+      _uid: "",
+      id: null,
+      label: "Items",
+      subLabel: "Select items",
+      api_name: "items",
+      is_lookup: true,
+      item_group_id: undefined,
+      lookup_option_type: "radio",
+      options: [],
+    };
+
+    setConfig((prev) => {
+      const questions = [...(prev.questions || [])];
+      const index = questions.findIndex((q) => (q.q_id || q._uid) === afterQuestionUid);
+      questions.splice(index >= 0 ? index + 1 : 0, 0, lookupQuestion);
+      return { ...prev, questions };
+    });
+    setEditingLookupQuestion({ question: lookupQuestion, isNew: true });
+  }, []);
+
+  const handleSaveLookupQuestion = useCallback((updatedQuestion: KioskQuestion) => {
+    setConfig((prev) => ({
+      ...prev,
+      questions: (prev.questions || []).map((question) =>
+        (question.q_id || question._uid) === (updatedQuestion.q_id || updatedQuestion._uid)
+          ? updatedQuestion
+          : question,
+      ),
+    }));
+    setEditingLookupQuestion(null);
+  }, []);
+
+  const handleCancelLookupQuestion = useCallback(() => {
+    if (editingLookupQuestion?.isNew) {
+      const questionUid = editingLookupQuestion.question.q_id || editingLookupQuestion.question._uid;
+      setConfig((prev) => ({
+        ...prev,
+        questions: (prev.questions || []).filter(
+          (question) => (question.q_id || question._uid) !== questionUid,
+        ),
+      }));
+    }
+    setEditingLookupQuestion(null);
+  }, [editingLookupQuestion]);
 
   // Add a new group frame to a specific question (called on drag-and-drop of ADD_GROUP)
   const handleAddGroupToQuestion = useCallback((questionUid: string) => {
@@ -1025,13 +1122,15 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         | "color"
         | "color_swatch"
         | "image_radio"
-        | "input";
+        | "input"
+        | "items_lookup";
       const typeDef = KIOSK_FIELD_TYPES[fieldType] ?? KIOSK_FIELD_TYPES.radio;
       const defaultOpt = droppedItem?.defaultConfig || typeDef.defaultConfig();
       const isColorType = fieldType === "color" || fieldType === "color_swatch";
       const isRadioOrCheckbox =
         fieldType === "radio" || fieldType === "checkbox" || fieldType === "image_radio";
       const isImageRadio = fieldType === "image_radio";
+      const isItemsLookup = fieldType === "items_lookup";
 
       const label =
         defaultOpt.label ||
@@ -1087,12 +1186,30 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         input_type: defaultOpt.input_type || (fieldType === "input" ? "text" : undefined),
         placeholder: defaultOpt.placeholder || (fieldType === "input" ? "Enter value here..." : undefined),
         required: defaultOpt.required ?? false,
+        ...(isItemsLookup
+          ? {
+              item_group_id: defaultOpt.item_group_id,
+              lookup_option_type: defaultOpt.lookup_option_type || "radio",
+            }
+          : {}),
       };
 
       setConfig((prev) => ({
         ...prev,
         questions: (prev.questions || []).map((q) => {
           if ((q.q_id || q._uid) !== questionUid) return q;
+
+          if (q.is_lookup && !isItemsLookup) return q;
+          if (isItemsLookup) {
+            return {
+              ...q,
+              is_lookup: true,
+              item_group_id: newOption.item_group_id,
+              lookup_option_type: newOption.lookup_option_type,
+              options: [newOption],
+              groups: undefined,
+            };
+          }
 
           const hasExplicitGroups = q.groups && q.groups.length > 0;
           const targetGroupUid = droppedItem?.targetGroupUid;
@@ -1155,6 +1272,17 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
         if ((q.q_id || q._uid) !== questionUid) return q;
+        if (ft === "items_lookup") {
+          return {
+            ...q,
+            is_lookup: true,
+            item_group_id: normalizedOption.item_group_id,
+            lookup_option_type: normalizedOption.lookup_option_type,
+            options: [normalizedOption],
+            groups: undefined,
+          };
+        }
+        if (q.is_lookup) return q;
         const updatedOptions = q.options
           ? q.options.map((opt) =>
               (opt.uid || opt._uid) === optId ? normalizedOption : opt
@@ -1440,6 +1568,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                 {/* Top Drop Zone */}
                 <BetweenQuestionsDropZone
                   onDropQuestion={() => handleAddQuestion(0)}
+                  onDropLookupQuestion={() => handleAddLookupQuestion("")}
                   label='Drop "Add New Question" here to insert at the top'
                 />
 
@@ -1451,6 +1580,10 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                         question={question}
                         index={qIndex}
                         onAddOption={handleAddOption}
+                        onAddLookupQuestion={handleAddLookupQuestion}
+                        onEditLookupQuestion={(lookupQuestion) =>
+                          setEditingLookupQuestion({ question: lookupQuestion, isNew: false })
+                        }
                         onAddGroupToQuestion={handleAddGroupToQuestion}
                         onEditOption={handleEditOption}
                         onDeleteOption={handleDeleteOption}
@@ -1464,6 +1597,9 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                       {/* Dropzone between questions */}
                       <BetweenQuestionsDropZone
                         onDropQuestion={() => handleAddQuestion(qIndex + 1)}
+                        onDropLookupQuestion={() =>
+                          handleAddLookupQuestion(question.q_id || question._uid || "")
+                        }
                         label='Drop "Add New Question" here to insert below'
                       />
                     </React.Fragment>
@@ -1471,6 +1607,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                 ) : (
                   <EmptyCanvasDropZone
                     onDropQuestion={() => handleAddQuestion(0)}
+                    onDropLookupQuestion={() => handleAddLookupQuestion("")}
                   />
                 )}
               </div>
@@ -1512,6 +1649,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
               setDraftOption(null);
             }}
             onDraftChange={setDraftOption}
+          />
+        )}
+
+        {editingLookupQuestion && (
+          <KioskLookupQuestionModal
+            question={editingLookupQuestion.question}
+            onSave={handleSaveLookupQuestion}
+            onClose={handleCancelLookupQuestion}
           />
         )}
       </div>

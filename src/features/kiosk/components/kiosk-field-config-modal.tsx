@@ -163,6 +163,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     );
   }, [option]);
 
+
   useEffect(() => {
     const timer = setTimeout(() => {
       onDraftChange?.(formData);
@@ -1165,6 +1166,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
               if (field.key === "fill_image" && isColorField) return null;
               if (field.key === "value") return null;
               if (field.key === "api_name") return null;
+              if (fieldType === "items_lookup" && field.key === "item_group_id") return null;
 
               const val = (formData[field.key] as any) ?? "";
 

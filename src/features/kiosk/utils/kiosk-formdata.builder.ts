@@ -233,6 +233,15 @@ export function buildKioskFormData(config: KioskConfig): FormData {
     if (q.column_count != null) {
       fd.append(`${qPrefix}[column_count]`, String(q.column_count));
     }
+    if (q.is_lookup != null) {
+      fd.append(`${qPrefix}[is_lookup]`, String(Boolean(q.is_lookup)));
+    }
+    if (q.item_group_id != null) {
+      fd.append(`${qPrefix}[item_group_id]`, String(q.item_group_id));
+    }
+    if (q.lookup_option_type != null) {
+      fd.append(`${qPrefix}[lookup_option_type]`, q.lookup_option_type);
+    }
 
     const hasGroups = q.groups && q.groups.length > 0;
 

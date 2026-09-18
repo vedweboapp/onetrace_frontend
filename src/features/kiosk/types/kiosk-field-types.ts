@@ -1,4 +1,4 @@
-import { CircleDot, CheckSquare, Palette, Image, TextCursorInput, LucideIcon } from "lucide-react";
+import { CircleDot, CheckSquare, Palette, Image, TextCursorInput, List, LucideIcon } from "lucide-react";
 import type { KioskOption } from "./kiosk.types";
 
 export interface KioskFieldConfigField {
@@ -13,7 +13,7 @@ export interface KioskFieldConfigField {
 
 export interface KioskFieldTypeDefinition {
   label: string;
-  field_type: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input";
+  field_type: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | "items_lookup";
   icon: LucideIcon;
   description: string;
   defaultConfig: () => Partial<KioskOption>;
@@ -21,6 +21,41 @@ export interface KioskFieldTypeDefinition {
 }
 
 export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
+  items_lookup: {
+    label: "Items Lookup",
+    field_type: "items_lookup",
+    icon: List,
+    description: "Load items from one API group as a protected radio, checkbox, or image choice question",
+    defaultConfig: () => ({
+      field_type: "items_lookup",
+      label: "Items",
+      subLabel: "Select items",
+      api_name: "items",
+      item_group_id: undefined,
+      lookup_option_type: "radio",
+    }),
+    configFields: [
+      {
+        type: "select",
+        label: "Option presentation",
+        key: "lookup_option_type",
+        options: [
+          { label: "Radio buttons", value: "radio" },
+          { label: "Checkbox buttons", value: "checkbox" },
+          { label: "Image buttons", value: "image_radio" },
+        ],
+        required: true,
+      },
+      {
+        type: "text",
+        label: "Item group ID",
+        key: "item_group_id",
+        placeholder: "e.g. 12",
+        required: true,
+        description: "Items are loaded from this group ID.",
+      },
+    ],
+  },
   radio: {
     label: "Radio Option",
     field_type: "radio",

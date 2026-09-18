@@ -1,6 +1,7 @@
 export type PlacementMode = "place" | "group";
 
 export type PositionValue = "top" | "bottom" | "left" | "right" | "center";
+export type LookupOptionType = "radio" | "checkbox" | "image_radio";
 
 export interface PlacementConfig {
   mode: PlacementMode;
@@ -40,7 +41,9 @@ export interface KioskOption {
   placement_target_question?: string | null;
   fill_color?: string | null;
   fill_image?: string | null;
-  field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | string | null;
+  field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | "items_lookup" | string | null;
+  item_group_id?: string | number | null;
+  lookup_option_type?: LookupOptionType | null;
   color?: string | null;
   api?: string | null;
   gid?: string | null;
@@ -74,6 +77,9 @@ export interface KioskQuestion {
   label?: string | null;
   subLabel?: string | null;
   api_name?: string | null;
+  is_lookup?: boolean;
+  item_group_id?: string | number | null;
+  lookup_option_type?: LookupOptionType | null;
   columns?: number;
   column_count?: number;
   options?: KioskOption[];
