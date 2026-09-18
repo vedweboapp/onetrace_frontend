@@ -12,6 +12,8 @@ import type {
   ZohoPullAllRecordsResponse,
   ZohoSaveKeyMappingPayload,
   ZohoSaveKeyMappingResponse,
+  ZohoSyncHistoryEntry,
+  ZohoSyncHistoryPage,
   ZohoSyncJob,
   ZohoSyncJobStatusResponse,
   ZohoSyncMode,
@@ -254,4 +256,81 @@ export async function fetchZohoConnection(): Promise<ZohoConnectionDetails> {
     ...payload,
     mapping_configured: payload.mapping_configured ?? payload.mapping_completed ?? false,
   };
+}
+
+function parseSyncHistoryEntry(raw: unknown): ZohoSyncHistoryEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const id = typeof row.id === "number" ? row.id : Number(row.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const createdAt = typeof row.created_at === "string" ? row.created_at : "";
+  if (!createdAt) return null;
+  return {
+    id,
+    provider: typeof row.provider === "string" ? row.provider : null,
+    resource: typeof row.resource === "string" ? row.resource : row.resource == null ? null : String(row.resource),
+    event_type: typeof row.event_type === "string" ? row.event_type : null,
+    created_at: createdAt,
+    details_type: typeof row.details_type === "string" ? row.details_type : "unknown",
+    details:
+      row.details && typeof row.details === "object"
+        ? (row.details as ZohoSyncHistoryEntry["details"])
+        : null,
+    failed_record_count:
+      typeof row.failed_record_count === "number"
+        ? row.failed_record_count
+        : Number.isFinite(Number(row.failed_record_count))
+          ? Number(row.failed_record_count)
+          : 0,
+    errors: Array.isArray(row.errors) ? (row.errors as ZohoSyncHistoryEntry["errors"]) : [],
+  };
+}
+
+export async function fetchZohoSyncHistoryPage(
+  limit = 25,
+  offset = 0,
+): Promise<ZohoSyncHistoryPage> {
+  const { data } = await api.get<unknown>(INTEGRATION_PATHS.zohoSyncHistory, {
+    params: { limit, offset },
+  });
+
+  if (data && typeof data === "object" && "success" in data && (data as { success: unknown }).success === false) {
+    assertApiSuccess(data as ApiEnvelope<unknown>);
+  }
+
+  const root = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const nested =
+    root.data && typeof root.data === "object" ? (root.data as Record<string, unknown>) : null;
+  const source = nested && Array.isArray(nested.results) ? nested : root;
+  const resultsRaw = Array.isArray(source.results) ? source.results : [];
+  const items = resultsRaw
+    .map(parseSyncHistoryEntry)
+    .filter((row): row is ZohoSyncHistoryEntry => row != null);
+
+  const countRaw = source.count ?? root.count;
+  const limitRaw = source.limit ?? root.limit ?? limit;
+  const offsetRaw = source.offset ?? root.offset ?? offset;
+
+  return {
+    items,
+    count: typeof countRaw === "number" && Number.isFinite(countRaw) ? countRaw : items.length,
+    limit: typeof limitRaw === "number" && Number.isFinite(limitRaw) ? limitRaw : limit,
+    offset: typeof offsetRaw === "number" && Number.isFinite(offsetRaw) ? offsetRaw : offset,
+  };
+}
+
+export async function retryZohoSyncJobFailedRecords(jobId: number): Promise<string> {
+  const { data } = await api.post<ApiEnvelope<unknown> | Record<string, unknown>>(
+    INTEGRATION_PATHS.zohoRetryFailedRecords(jobId),
+  );
+
+  if (data && typeof data === "object" && "success" in data) {
+    if (data.success === false) {
+      assertApiSuccess(data as ApiEnvelope<unknown>);
+    }
+    const message = typeof data.message === "string" ? data.message.trim() : "";
+    return message || "Retry started";
+  }
+
+  return "Retry started";
 }

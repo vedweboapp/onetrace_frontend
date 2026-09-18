@@ -664,7 +664,63 @@
         "notAvailable": "—",
         "yes": "Sí",
         "no": "No",
-        "disconnected": "Desconectado"
+        "disconnected": "Desconectado",
+        "tabs": {
+          "help": "Ayuda",
+          "configure": "Configuración",
+          "webhook": "Webhooks",
+          "history": "Historial de sincronización"
+        }
+      },
+      "zohoSyncHistory": {
+        "title": "Historial de sincronización",
+        "description": "Revisa sincronizaciones y eventos de webhook anteriores de esta conexión.",
+        "refresh": "Actualizar",
+        "loadError": "No se pudo cargar el historial. Inténtalo de nuevo.",
+        "emptyTitle": "Aún no hay historial",
+        "emptyDescription": "Los trabajos de sincronización y eventos de webhook aparecerán aquí después de importar o recibir datos.",
+        "detailTitle": "Detalles de sincronización",
+        "resourceUnknown": "General",
+        "eventTypeValue": "{value}",
+        "failedCount": "{count} fallidos",
+        "pageOf": "Página {page} de {total} · {count} en total",
+        "prev": "Anterior",
+        "next": "Siguiente",
+        "retryFailed": "Reintentar registros fallidos",
+        "retryUnavailable": "Solo se pueden reintentar trabajos fallidos o parcialmente completados.",
+        "retrySuccess": "Se inició el reintento de registros fallidos.",
+        "retryError": "No se pudieron reintentar los registros fallidos.",
+        "unknownError": "Error desconocido",
+        "kind": {
+          "syncJob": "Trabajo de sincronización",
+          "eventLog": "Evento de webhook",
+          "other": "Evento"
+        },
+        "sections": {
+          "counts": "Resultados",
+          "event": "Detalles del evento",
+          "errors": "Errores"
+        },
+        "fields": {
+          "when": "Cuándo",
+          "kind": "Tipo",
+          "resource": "Recurso",
+          "event": "Evento",
+          "status": "Estado",
+          "failedRecords": "Registros fallidos",
+          "mode": "Modo",
+          "processed": "Procesados",
+          "created": "Creados",
+          "updated": "Actualizados",
+          "restored": "Restaurados",
+          "skipped": "Omitidos",
+          "started": "Inicio",
+          "completed": "Fin",
+          "duration": "Duración",
+          "error": "Error",
+          "retries": "Reintentos",
+          "records": "Registros"
+        }
       },
       "zohoResources": {
         "mappingPageTitle": "Mapear campos de Zoho Inventory",

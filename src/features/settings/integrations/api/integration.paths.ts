@@ -4,6 +4,9 @@ export const INTEGRATION_PATHS = {
   zohoKeyMapping: "integrations/zoho/key-mapping/",
   zohoPullAllRecords: "integrations/zoho/pull-all-records/",
   zohoSyncJobStatus: (jobId: number) => `integrations/zoho/sync-job-status/${jobId}/`,
+  zohoSyncHistory: "integrations/zoho/sync-history/",
+  zohoRetryFailedRecords: (jobId: number) =>
+    `integrations/zoho/sync-job/${jobId}/retry-failed-records/`,
   zohoWebhookSetup: "integrations/zoho/webhook-setup/",
   zohoConnection: "integrations/zoho/connection/",
 } as const;
