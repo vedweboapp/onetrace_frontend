@@ -28,5 +28,5 @@ export default async function PublicQrCodePage({ params }: PageProps) {
   const { orgId, qrUuid } = await params;
   if (!isPublicQrCodeRoute(orgId, qrUuid)) notFound();
 
-  return <PublicQrCodeScreen />;
+  return <PublicQrCodeScreen qrUuid={qrUuid} />;
 }

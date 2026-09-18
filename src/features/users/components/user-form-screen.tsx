@@ -15,6 +15,7 @@ import {
   mapUserFormToUpdatePayload,
   userToFormDefaults,
 } from "@/features/users/utils/user-form-map";
+import { loadUserProfileSelectOptions } from "@/features/users/utils/user-profile-select.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
@@ -44,6 +45,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [roleOptions, setRoleOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [profileOptions, setProfileOptions] = React.useState<{ value: string; label: string }[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -54,6 +56,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         phone: t("validation.phone"),
         gender: t("validation.gender"),
         role: t("validation.role"),
+        profile: t("validation.profile"),
         basePay: t("validation.basePay"),
         availabilityTime: t("validation.availabilityTime"),
         availabilityRange: t("validation.availabilityRange"),
@@ -96,7 +99,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
     let cancelled = false;
     (async () => {
       try {
-        const roles = await fetchRoles();
+        const [roles, profiles] = await Promise.all([fetchRoles(), loadUserProfileSelectOptions()]);
         if (!cancelled) {
           setRoleOptions(
             roles.map((r) => ({
@@ -104,9 +107,13 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
               label: r.role_name?.trim() || r.name?.trim() || `Role #${r.id}`,
             })),
           );
+          setProfileOptions(profiles);
         }
       } catch {
-        if (!cancelled) setRoleOptions([]);
+        if (!cancelled) {
+          setRoleOptions([]);
+          setProfileOptions([]);
+        }
       }
     })();
     return () => {
@@ -298,6 +305,29 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                   )}
                 />
                 <FieldErrorText>{errors.role?.message}</FieldErrorText>
+              </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md">
+              <FieldGroup label={t("fields.profile")} htmlFor="user-profile" required>
+                <Controller
+                  control={control}
+                  name="profile"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="user-profile"
+                      listLabel={t("fields.profile")}
+                      options={profileOptions}
+                      value={field.value}
+                      emptyLabel={t("placeholders.profile")}
+                      disabled={saving || profileOptions.length === 0}
+                      invalid={!!errors.profile}
+                      searchable
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <FieldErrorText>{errors.profile?.message}</FieldErrorText>
               </FieldGroup>
             </FormFieldRow>
 

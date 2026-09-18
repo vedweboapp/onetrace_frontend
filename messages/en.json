@@ -233,8 +233,29 @@
       "pageDescription": "Public QR code scan page.",
       "eyebrow": "QR code",
       "title": "QR code",
+      "loading": "Loading QR details…",
+      "untitledJob": "Job",
+      "jobSection": "Job details",
+      "statusUnknown": "No status",
+      "pinsSection": "Pins ({count})",
+      "noPins": "No pins on this job.",
+      "pinFallback": "Pin #{id}",
+      "pinLocation": "Loc {location}",
+      "pinQr": "QR {id}",
+      "scanHint": "Scanned from a public QR code link.",
+      "fields": {
+        "client": "Client",
+        "project": "Project",
+        "site": "Site",
+        "address": "Address",
+        "startDate": "Start date",
+        "completedAt": "Completed",
+        "workers": "Workers",
+        "description": "Description",
+        "qualityAssurance": "Quality assurance"
+      },
       "noDataTitle": "No data found",
-      "noDataDescription": "This QR code is not assigned yet, so there is nothing to show."
+      "noDataDescription": "This QR code has no data to show, or the lookup did not return a response."
     }
   },
   "Dashboard": {
@@ -654,7 +675,63 @@
         "notAvailable": "—",
         "yes": "Yes",
         "no": "No",
-        "disconnected": "Disconnected"
+        "disconnected": "Disconnected",
+        "tabs": {
+          "help": "Help",
+          "configure": "Configuration",
+          "webhook": "Webhooks",
+          "history": "Sync history"
+        }
+      },
+      "zohoSyncHistory": {
+        "title": "Sync history",
+        "description": "Review past Zoho syncs and webhook events for this connection.",
+        "refresh": "Refresh",
+        "loadError": "Failed to load sync history. Please try again.",
+        "emptyTitle": "No sync history yet",
+        "emptyDescription": "Sync jobs and webhook events will appear here after data is imported or received.",
+        "detailTitle": "Sync details",
+        "resourceUnknown": "General",
+        "eventTypeValue": "{value}",
+        "failedCount": "{count} failed",
+        "pageOf": "Page {page} of {total} · {count} total",
+        "prev": "Previous",
+        "next": "Next",
+        "retryFailed": "Retry failed records",
+        "retryUnavailable": "Only failed or partially completed sync jobs can be retried.",
+        "retrySuccess": "Retry started for failed records.",
+        "retryError": "Could not retry failed records.",
+        "unknownError": "Unknown error",
+        "kind": {
+          "syncJob": "Sync job",
+          "eventLog": "Webhook event",
+          "other": "Event"
+        },
+        "sections": {
+          "counts": "Results",
+          "event": "Event details",
+          "errors": "Errors"
+        },
+        "fields": {
+          "when": "When",
+          "kind": "Type",
+          "resource": "Resource",
+          "event": "Event",
+          "status": "Status",
+          "failedRecords": "Failed records",
+          "mode": "Mode",
+          "processed": "Processed",
+          "created": "Created",
+          "updated": "Updated",
+          "restored": "Restored",
+          "skipped": "Skipped",
+          "started": "Started",
+          "completed": "Completed",
+          "duration": "Duration",
+          "error": "Error",
+          "retries": "Retries",
+          "records": "Records"
+        }
       },
       "zohoResources": {
         "mappingPageTitle": "Map Zoho Inventory Fields",
@@ -1745,6 +1822,7 @@
         "email": "Email",
         "phone": "Phone",
         "role": "Role",
+        "profile": "Profile",
         "inviteStatus": "Invite Status",
         "created": "Created",
         "actions": "Actions"
@@ -1756,6 +1834,7 @@
         "phone": "Phone Number",
         "gender": "Gender",
         "role": "Role",
+        "profile": "Profile",
         "basePay": "Base Pay",
         "basePayType": "Pay Type",
         "basePayTypeFixed": "Fixed Pay",
@@ -1809,6 +1888,7 @@
       "placeholders": {
         "gender": "Select gender",
         "role": "Select role",
+        "profile": "Select profile",
         "basePay": "Enter amount",
         "country": "Select country",
         "state": "Select state",
@@ -1821,6 +1901,7 @@
         "phone": "Enter a valid phone number.",
         "gender": "Select gender.",
         "role": "Select role.",
+        "profile": "Select profile.",
         "basePay": "Enter a valid base pay amount.",
         "addressLine1": "Enter address line 1.",
         "addressType": "Select address type.",
@@ -3943,6 +4024,7 @@
         "skippedCount": "{count, plural, one {# job has no usable map location and is listed below.} other {# jobs have no usable map location and are listed below.}}",
         "ariaMap": "Jobs map",
         "loadingMap": "Loading map…",
+        "placingPins": "Placing pins…",
         "loadMapError": "Could not load Google Maps. Check your API key and try again.",
         "jobId": "Job ID",
         "address": "Address",

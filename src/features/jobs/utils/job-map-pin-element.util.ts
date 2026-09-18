@@ -1,7 +1,32 @@
 /** Shared HTML pin glyph for jobs map markers (pointer cursor on hover). */
 
+const DEFAULT_PIN_COLOR = "#e11d48";
+
+function normalizeHexColor(raw: string | null | undefined, fallback: string): string {
+  const value = raw?.trim() ?? "";
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value;
+  if (/^#[0-9a-fA-F]{3}$/.test(value)) {
+    const r = value[1]!;
+    const g = value[2]!;
+    const b = value[3]!;
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return fallback;
+}
+
+function darkenHex(hex: string, amount = 0.18): string {
+  const n = normalizeHexColor(hex, DEFAULT_PIN_COLOR).slice(1);
+  const num = Number.parseInt(n, 16);
+  const r = Math.max(0, Math.round(((num >> 16) & 255) * (1 - amount)));
+  const g = Math.max(0, Math.round(((num >> 8) & 255) * (1 - amount)));
+  const b = Math.max(0, Math.round((num & 255) * (1 - amount)));
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
 export function createJobMapPinElement(options: {
   title: string;
+  /** Job status bg colour (hex). */
+  color?: string | null;
   selected?: boolean;
 }): HTMLButtonElement {
   const el = document.createElement("button");
@@ -9,44 +34,47 @@ export function createJobMapPinElement(options: {
   el.className = "ot-job-map-pin";
   el.title = options.title;
   el.setAttribute("aria-label", options.title);
+
+  const fill = normalizeHexColor(options.color, DEFAULT_PIN_COLOR);
+  el.dataset.pinColor = fill;
   if (options.selected) el.dataset.selected = "true";
 
+  // Soft shadow only — heavy drop-shadow + dark stroke looked like a black border when pins overlapped.
   el.style.cssText = [
     "all:unset",
     "box-sizing:border-box",
     "display:inline-flex",
     "align-items:flex-end",
     "justify-content:center",
-    "width:36px",
-    "height:44px",
+    "width:28px",
+    "height:36px",
     "cursor:pointer",
     "transform-origin:bottom center",
     "transition:transform 120ms ease",
-    "filter:drop-shadow(0 2px 4px rgba(15,23,42,.28))",
+    "filter:drop-shadow(0 1px 2px rgba(15,23,42,.22))",
   ].join(";");
 
-  const fill = options.selected ? "#0f766e" : "#e11d48";
-  const stroke = options.selected ? "#115e59" : "#9f1239";
+  const stroke = darkenHex(fill, 0.12);
 
   el.innerHTML = `
-    <svg width="32" height="40" viewBox="0 0 32 40" aria-hidden="true" focusable="false">
+    <svg width="28" height="36" viewBox="0 0 28 36" aria-hidden="true" focusable="false">
       <path
-        d="M16 1.5c-7.18 0-13 5.7-13 12.74 0 9.56 11.2 22.86 12.2 24.02a1.1 1.1 0 0 0 1.6 0C17.8 37.1 29 23.8 29 14.24 29 7.2 23.18 1.5 16 1.5z"
+        d="M14 1.25c-6.07 0-11 4.82-11 10.76 0 8.08 9.47 19.34 10.32 20.32a0.95 0.95 0 0 0 1.36 0C15.53 31.35 25 20.09 25 12.01 25 6.07 20.07 1.25 14 1.25z"
         fill="${fill}"
         stroke="${stroke}"
-        stroke-width="1.25"
+        stroke-width="0.75"
       />
-      <circle cx="16" cy="14" r="5.25" fill="#fff" opacity=".95"/>
+      <circle cx="14" cy="12" r="4.25" fill="#fff"/>
     </svg>
   `;
 
   el.addEventListener("mouseenter", () => {
-    el.style.transform = "scale(1.08)";
+    el.style.transform = "scale(1.1)";
   });
   el.addEventListener("mouseleave", () => {
-    el.style.transform = options.selected ? "scale(1.06)" : "scale(1)";
+    el.style.transform = el.dataset.selected === "true" ? "scale(1.08)" : "scale(1)";
   });
-  if (options.selected) el.style.transform = "scale(1.06)";
+  if (options.selected) el.style.transform = "scale(1.08)";
 
   return el;
 }
@@ -54,13 +82,15 @@ export function createJobMapPinElement(options: {
 export function setJobMapPinSelected(el: HTMLElement | null | undefined, selected: boolean) {
   if (!el) return;
   const path = el.querySelector("path");
+  const base = normalizeHexColor(el.dataset.pinColor, DEFAULT_PIN_COLOR);
   if (path) {
-    path.setAttribute("fill", selected ? "#0f766e" : "#e11d48");
-    path.setAttribute("stroke", selected ? "#115e59" : "#9f1239");
+    const fill = selected ? darkenHex(base, 0.08) : base;
+    path.setAttribute("fill", fill);
+    path.setAttribute("stroke", darkenHex(fill, 0.12));
   }
   if (selected) {
     el.dataset.selected = "true";
-    el.style.transform = "scale(1.06)";
+    el.style.transform = "scale(1.08)";
   } else {
     delete el.dataset.selected;
     el.style.transform = "scale(1)";

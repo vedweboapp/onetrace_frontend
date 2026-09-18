@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
-import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
+import { buildJobPinHoverCardHtml } from "@/features/jobs/utils/job-pin-popup.util";
 import { fitGoogleMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
 import {
   createJobMapPinElement,
@@ -23,11 +23,8 @@ type ResolvedPin = JobMapPin & { lat: number; lon: number };
 type Props = {
   pins: JobMapPin[];
   selectedJobId: number | null;
-  /** Opens the map pin popup (job id + address). */
   onPinClick: (jobId: number) => void;
-  /** Opens the side details panel. */
   onOpenDetails: (jobId: number) => void;
-  /** Job ids that successfully resolved to a map coordinate. */
   onResolvedPinsChange?: (jobIds: number[]) => void;
   className?: string;
 };
@@ -45,7 +42,9 @@ export function JobsGoogleMap({
   const mapRef = React.useRef<google.maps.Map | null>(null);
   const markersRef = React.useRef<Map<number, GoogleAdvancedMarker>>(new Map());
   const infoRef = React.useRef<google.maps.InfoWindow | null>(null);
+  const hoverJobIdRef = React.useRef<number | null>(null);
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
+  const pinByIdRef = React.useRef<Map<number, ResolvedPin>>(new Map());
   const onPinClickRef = React.useRef(onPinClick);
   const onOpenDetailsRef = React.useRef(onOpenDetails);
   const onResolvedPinsChangeRef = React.useRef(onResolvedPinsChange);
@@ -56,6 +55,9 @@ export function JobsGoogleMap({
   const [mapReady, setMapReady] = React.useState(false);
   const [mapFailed, setMapFailed] = React.useState(false);
   const [resolved, setResolved] = React.useState<ResolvedPin[]>([]);
+  const [placingPins, setPlacingPins] = React.useState(false);
+
+  pinByIdRef.current = new Map(resolved.map((p) => [p.jobId, p]));
 
   React.useLayoutEffect(() => {
     const el = containerRef.current;
@@ -76,12 +78,14 @@ export function JobsGoogleMap({
         if (cancelled) return;
         geocoderRef.current = new g.maps.Geocoder();
         infoRef.current = new g.maps.InfoWindow({
-          maxWidth: 320,
-          // Strip default header chrome so our card matches Google place popups.
+          maxWidth: 280,
           headerDisabled: true,
         } as google.maps.InfoWindowOptions);
         mapRef.current = map;
-        map.addListener("click", () => infoRef.current?.close());
+        map.addListener("click", () => {
+          infoRef.current?.close();
+          hoverJobIdRef.current = null;
+        });
         setMapFailed(false);
         setMapReady(true);
       })
@@ -105,11 +109,12 @@ export function JobsGoogleMap({
   }, []);
 
   React.useEffect(() => {
-    if (!mapReady || !geocoderRef.current) return;
+    if (!mapReady) return;
     let cancelled = false;
 
     void (async () => {
-      const next: ResolvedPin[] = [];
+      const immediate: ResolvedPin[] = [];
+      const needGeocode: JobMapPin[] = [];
       for (const pin of pins) {
         const coords = pin.coordinates;
         if (
@@ -118,9 +123,26 @@ export function JobsGoogleMap({
           Number.isFinite(coords.lon) &&
           isPlausibleMapCoordinate(coords.lat, coords.lon)
         ) {
-          next.push({ ...pin, lat: coords.lat, lon: coords.lon });
-          continue;
+          immediate.push({ ...pin, lat: coords.lat, lon: coords.lon });
+        } else {
+          needGeocode.push(pin);
         }
+      }
+
+      if (!cancelled) {
+        setResolved(immediate);
+        setPlacingPins(needGeocode.length > 0);
+        onResolvedPinsChangeRef.current?.(immediate.map((p) => p.jobId));
+      }
+
+      if (!geocoderRef.current || needGeocode.length === 0) {
+        if (!cancelled) setPlacingPins(false);
+        return;
+      }
+
+      const collected = [...immediate];
+      for (const pin of needGeocode) {
+        if (cancelled) return;
         const norm = {
           line1: pin.addressParts.line1?.trim() ?? "",
           line2: pin.addressParts.line2?.trim() ?? "",
@@ -135,24 +157,26 @@ export function JobsGoogleMap({
           const qs = buildGeocodeRequestSearchParams(norm);
           const address = qs.get("q") || qs.get("q_locality") || "";
           const iso = norm.countryIso?.trim().toLowerCase() ?? "";
-          const res = await geocoderRef.current!.geocode({
+          const res = await geocoderRef.current.geocode({
             address,
             componentRestrictions: iso.length === 2 ? { country: iso } : undefined,
           });
           const loc = res.results?.[0]?.geometry?.location;
-          if (loc) {
-            const lat = loc.lat();
-            const lon = loc.lng();
-            if (isPlausibleMapCoordinate(lat, lon)) next.push({ ...pin, lat, lon });
+          if (!loc) continue;
+          const lat = loc.lat();
+          const lon = loc.lng();
+          if (!isPlausibleMapCoordinate(lat, lon)) continue;
+          const resolvedPin = { ...pin, lat, lon };
+          collected.push(resolvedPin);
+          if (!cancelled) {
+            setResolved([...collected]);
+            onResolvedPinsChangeRef.current?.(collected.map((p) => p.jobId));
           }
         } catch {
-          /* skip — reported as invalid_address in the unmapped table */
+          /* skip — listed as invalid_address below the map */
         }
       }
-      if (!cancelled) {
-        setResolved(next);
-        onResolvedPinsChangeRef.current?.(next.map((p) => p.jobId));
-      }
+      if (!cancelled) setPlacingPins(false);
     })();
 
     return () => {
@@ -160,39 +184,41 @@ export function JobsGoogleMap({
     };
   }, [mapReady, pins]);
 
-  const openInfo = React.useCallback((pin: ResolvedPin, marker: GoogleAdvancedMarker) => {
+  const openHoverCard = React.useCallback((jobId: number, marker: GoogleAdvancedMarker) => {
     const map = mapRef.current;
     const info = infoRef.current;
-    if (!map || !info) return;
-    info.setContent(
-      buildJobPinPopupHtml(pin, {
-        openAriaLabel: t("viewDetails"),
-      }),
-    );
+    const pin = pinByIdRef.current.get(jobId);
+    if (!map || !info || !pin) return;
+    hoverJobIdRef.current = jobId;
+    info.setContent(buildJobPinHoverCardHtml(pin));
     info.open({ map, anchor: marker });
-    window.setTimeout(() => {
-      const btn = document.querySelector<HTMLButtonElement>(`button[data-job-details="${pin.jobId}"]`);
-      if (!btn) return;
-      btn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpenDetailsRef.current(pin.jobId);
-      };
-    }, 0);
-  }, [t]);
+  }, []);
 
   React.useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    for (const marker of markersRef.current.values()) clearAdvancedMarker(marker);
-    markersRef.current.clear();
+    const known = new Set(resolved.map((p) => p.jobId));
+    for (const [jobId, marker] of markersRef.current) {
+      if (!known.has(jobId)) {
+        clearAdvancedMarker(marker);
+        markersRef.current.delete(jobId);
+      }
+    }
 
-    const listeners: Array<() => void> = [];
+    let added = false;
     for (const pin of resolved) {
+      const existing = markersRef.current.get(pin.jobId);
+      if (existing) {
+        existing.position = { lat: pin.lat, lng: pin.lon };
+        continue;
+      }
+      added = true;
+      const jobId = pin.jobId;
       const content = createJobMapPinElement({
         title: pin.jobLabel,
-        selected: false,
+        color: pin.statusColor,
+        selected: selectedJobId === jobId,
       });
       const marker = createAdvancedMarker({
         map,
@@ -201,22 +227,27 @@ export function JobsGoogleMap({
         title: pin.jobLabel,
         content,
       });
-      markersRef.current.set(pin.jobId, marker);
-      const onClick = () => {
-        onPinClickRef.current(pin.jobId);
-        onOpenDetailsRef.current(pin.jobId);
-        openInfo(pin, marker);
-      };
-      marker.addEventListener("gmp-click", onClick);
-      listeners.push(() => marker.removeEventListener("gmp-click", onClick));
+      markersRef.current.set(jobId, marker);
+
+      marker.addEventListener("gmp-click", () => {
+        infoRef.current?.close();
+        hoverJobIdRef.current = null;
+        onPinClickRef.current(jobId);
+        onOpenDetailsRef.current(jobId);
+      });
+      content.addEventListener("mouseenter", () => openHoverCard(jobId, marker));
+      content.addEventListener("mouseleave", () => {
+        if (hoverJobIdRef.current === jobId) {
+          infoRef.current?.close();
+          hoverJobIdRef.current = null;
+        }
+      });
     }
 
-    fitGoogleMapToPins(map, resolved);
-
-    return () => {
-      for (const remove of listeners) remove();
-    };
-  }, [mapReady, resolved, openInfo]);
+    if (added || resolved.length > 0) {
+      fitGoogleMapToPins(map, resolved);
+    }
+  }, [mapReady, resolved, openHoverCard]);
 
   React.useEffect(() => {
     if (!mapReady) return;
@@ -260,6 +291,13 @@ export function JobsGoogleMap({
               <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("loadingMap")}</p>
             </>
           )}
+        </div>
+      ) : null}
+      {mapReady && placingPins && resolved.length === 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+          <p className="rounded-full border border-slate-200/90 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/90 dark:text-slate-300">
+            {t("placingPins")}
+          </p>
         </div>
       ) : null}
       <div ref={containerRef} className="h-full w-full" role="img" aria-label={t("ariaMap")} />

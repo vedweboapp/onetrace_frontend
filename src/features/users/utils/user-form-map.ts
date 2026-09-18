@@ -11,6 +11,7 @@ import {
   mapUserAvailabilityToPayload,
   normalizeUserAvailabilityFromApi,
 } from "@/features/users/utils/user-availability.util";
+import { userProfileSelectId } from "@/features/users/utils/user-profile-select.util";
 import type { EntityAddress } from "@/shared/types/entity-address.types";
 import {
   emptyEntityAddressFormRow,
@@ -59,6 +60,7 @@ export function emptyUserFormDefaults(): UserFormValues {
     phone_number: "",
     gender: "",
     role: "",
+    profile: "",
     date_of_birth: "",
     base_pay: "",
     base_pay_type: "fixed_amount",
@@ -97,6 +99,7 @@ export function userToFormDefaults(row: UserProfile): UserFormValues {
     phone_number: primaryPhone?.phone?.trim() || row.user_detail.phone_number || "",
     gender: row.user_detail.gender ?? "",
     role: row.role_detail?.id ? String(row.role_detail.id) : "",
+    profile: userProfileSelectId(row),
     date_of_birth: dob,
     email_record_id:
       typeof primaryEmail?.id === "number" && primaryEmail.id > 0 ? primaryEmail.id : undefined,
@@ -130,6 +133,7 @@ function mapUserFormCore(values: UserFormValues) {
     phone_number: values.phone_number.trim(),
     gender: values.gender.trim(),
     role: Number.parseInt(values.role, 10),
+    profile: Number.parseInt(values.profile, 10),
     addresses,
     ...(available_days.length > 0 ? { available_days } : {}),
     ...(basePay != null
@@ -150,6 +154,7 @@ export function mapUserFormToUpdatePayload(values: UserFormValues): UpdateUserPr
   const phone = values.phone_number.trim();
   const dateOfBirth = values.date_of_birth?.trim() || null;
   const role = Number.parseInt(values.role, 10);
+  const profile = Number.parseInt(values.profile, 10);
 
   const emails: UserContactEmail[] = [
     {
@@ -184,6 +189,7 @@ export function mapUserFormToUpdatePayload(values: UserFormValues): UpdateUserPr
         : { base_pay: null, base_pay_type: null }),
     },
     ...(Number.isFinite(role) && role > 0 ? { role } : {}),
+    ...(Number.isFinite(profile) && profile > 0 ? { profile } : {}),
     addresses,
     emails,
     phones,

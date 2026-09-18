@@ -10,6 +10,11 @@ import { fetchRoles, fetchUserProfile, updateUserProfile } from "@/features/user
 import type { UserProfile } from "@/features/users/types/user.types";
 import { resolveUserAddresses } from "@/features/users/utils/user-form-map";
 import { normalizeUserAvailabilityFromApi } from "@/features/users/utils/user-availability.util";
+import {
+  loadUserProfileSelectOptions,
+  userProfileLabel,
+  userProfileSelectId,
+} from "@/features/users/utils/user-profile-select.util";
 import { SchedulingPanel } from "@/features/scheduling/components/scheduling-panel";
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
@@ -107,12 +112,13 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const [error, setError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [roleOptions, setRoleOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [profileOptions, setProfileOptions] = React.useState<CheckmarkSelectOption[]>([]);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const roles = await fetchRoles();
+        const [roles, profiles] = await Promise.all([fetchRoles(), loadUserProfileSelectOptions()]);
         if (!cancelled) {
           setRoleOptions(
             roles.map((r) => ({
@@ -120,9 +126,13 @@ export function UserDetailScreen({ userId }: { userId: number }) {
               label: r.role_name?.trim() || r.name?.trim() || `Role #${r.id}`,
             })),
           );
+          setProfileOptions(profiles);
         }
       } catch {
-        if (!cancelled) setRoleOptions([]);
+        if (!cancelled) {
+          setRoleOptions([]);
+          setProfileOptions([]);
+        }
       }
     })();
     return () => {
@@ -383,6 +393,16 @@ export function UserDetailScreen({ userId }: { userId: number }) {
                       onSave={(next) => patchField({ role: Number.parseInt(next, 10) })}
                     >
                       {userRoleLabel(detail)}
+                    </DetailEditableField>
+                    <DetailEditableField
+                      label={t("fields.profile")}
+                      value={userProfileSelectId(detail)}
+                      kind="select"
+                      options={profileOptions}
+                      editAriaLabel={tActions("edit")}
+                      onSave={(next) => patchField({ profile: Number.parseInt(next, 10) })}
+                    >
+                      {userProfileLabel(detail)}
                     </DetailEditableField>
                     <DetailMetricCard label={t("fields.inviteStatus")}>
                       {detail.user_detail.invite_status || "—"}

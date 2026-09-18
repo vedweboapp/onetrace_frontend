@@ -47,10 +47,20 @@ export type Role = {
   role_name?: string;
 };
 
+/** Nested settings profile on user-profile list/detail responses. */
+export type UserProfileDetailRef = {
+  id: number;
+  profile_name?: string | null;
+  name?: string | null;
+};
+
 export type UserProfile = {
   id: number;
   user_detail: UserDetail;
   role_detail: Role | null;
+  /** Settings profile FK (when API returns id only). */
+  profile?: number | null;
+  profile_detail?: UserProfileDetailRef | null;
   organization_detail: { id: number; uuid: string; name: string } | null;
   created_at: string;
   addresses?: EntityAddress[] | null;
@@ -84,6 +94,7 @@ export type InviteUserPayload = {
   phone_number: string;
   gender: string;
   role: number;
+  profile: number;
   addresses?: EntityAddressPayload[];
   base_pay?: number | null;
   base_pay_type?: UserBasePayType | null;
@@ -105,6 +116,7 @@ export type UpdateUserDetailPayload = Partial<{
 export type UpdateUserProfilePayload = {
   user_detail?: UpdateUserDetailPayload;
   role?: number;
+  profile?: number;
   addresses?: EntityAddressPayload[];
   emails?: UserContactEmail[];
   phones?: UserContactPhone[];

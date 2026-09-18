@@ -25,7 +25,7 @@ import {
 import { ScheduleBulkResultModal } from "@/features/scheduling/components/schedule-bulk-result-modal";
 import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
 import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
-import { SchedulingDayTimeline, type TimelineGroupRangeSelect, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
+import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
 import { SchedulingLegend } from "@/features/scheduling/components/scheduling-legend";
 import { SchedulingMonthCalendar } from "@/features/scheduling/components/scheduling-month-calendar";
 import { SchedulingEmptyUsers } from "@/features/scheduling/components/scheduling-empty-users";
@@ -37,11 +37,6 @@ import { SchedulingWeekCalendar } from "@/features/scheduling/components/schedul
 import { SchedulingWeekDayStrip } from "@/features/scheduling/components/scheduling-week-day-strip";
 import { useSchedulingCatalog } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule, ScheduleBulkSkipRow, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
-import {
-  buildSchedulingGroupRows,
-  type SchedulingGroupRow,
-  type SchedulingPeopleListMode,
-} from "@/features/scheduling/utils/scheduling-people-row.util";
 import {
   availabilityHeaderBarClass,
   availabilityToneClass,
@@ -214,8 +209,6 @@ export function SchedulingPanel({
   const [createPrefill, setCreatePrefill] = React.useState<CreateSchedulePrefill | null>(null);
   const [creatingSchedule, setCreatingSchedule] = React.useState(false);
   const [selectedWorkerIds, setSelectedWorkerIds] = React.useState<Set<number>>(() => new Set());
-  const [selectedGroupIds, setSelectedGroupIds] = React.useState<Set<number>>(() => new Set());
-  const [peopleListMode, setPeopleListMode] = React.useState<SchedulingPeopleListMode>("users");
   const [createGroupId, setCreateGroupId] = React.useState<number | null>(null);
   const [bulkResultOpen, setBulkResultOpen] = React.useState(false);
   const [bulkScheduledCount, setBulkScheduledCount] = React.useState(0);
@@ -240,7 +233,7 @@ export function SchedulingPanel({
   const filterRowRef = React.useRef<HTMLDivElement>(null);
 
   const { catalog, loading: catalogLoading, filtersLoading } = useSchedulingCatalog(t("modal.technicianFallbackTitle"), {
-    // Always load clients/jobs/projects/groups so filters + group calendar mode stay populated.
+    // Always load clients/jobs/projects/groups so filters stay populated.
     includeFilters: true,
   });
 
@@ -497,14 +490,6 @@ export function SchedulingPanel({
     return rows.filter((row) => row.searchText.includes(q));
   }, [catalog, workerFilter, groupFilter, techSearch]);
 
-  const filteredGroupRows = React.useMemo(() => {
-    if (!catalog) return [];
-    return buildSchedulingGroupRows(catalog.userGroups ?? [], catalog.technicians, techSearch);
-  }, [catalog, techSearch]);
-
-  const calendarTechs = peopleListMode === "users" ? filteredTechs : [];
-  const calendarGroups = peopleListMode === "groups" ? filteredGroupRows : null;
-
   const schedulesByWorkerDay = React.useMemo(() => {
     const map = new Map<string, Schedule[]>();
     for (const schedule of visibleSchedules) {
@@ -595,23 +580,22 @@ export function SchedulingPanel({
     day: Date,
     times?: { startTime: string; endTime: string },
   ) {
-    // From job detail: job/client are known — create on drag without the modal.
-    if (jobScopedId) {
-      void createScheduleForScopedJob(tech, day, times);
-      return;
-    }
-
+    // Always open the modal (incl. job tab) so same-group peers + skip results work.
     setCreateTech(tech ? toCreateTech(tech) : null);
     setCreateTechs(null);
+    setCreateGroupId(null);
     setCreateDateKey(toDateKey(day));
-    const jobPrefill: CreateSchedulePrefill = {
+    const scopedPrefill: CreateSchedulePrefill = {
       dateKey: toDateKey(day),
       startTime: times?.startTime,
       endTime: times?.endTime,
       workerId: tech?.id,
+      clientId: jobScopedClientId ?? undefined,
+      jobId: jobScopedId ?? undefined,
+      lockJob: Boolean(jobScopedId),
     };
     if (!tech) {
-      setCreatePrefill(jobPrefill);
+      setCreatePrefill(scopedPrefill);
       setCreateOpen(true);
       return;
     }
@@ -636,109 +620,8 @@ export function SchedulingPanel({
     const startTime = times?.startTime ?? minutesToTime(window.startMinutes);
     const endTime =
       times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
-    setCreatePrefill({ ...jobPrefill, startTime, endTime });
+    setCreatePrefill({ ...scopedPrefill, startTime, endTime });
     setCreateOpen(true);
-  }
-
-  async function createScheduleForScopedJob(
-    tech: SchedulingTechnician | null,
-    day: Date,
-    times?: { startTime: string; endTime: string },
-  ) {
-    if (!jobScopedId || creatingSchedule) return;
-
-    if (!jobScopedClientId) {
-      toastError(t("validation.client"));
-      return;
-    }
-
-    const workerId =
-      tech?.id ??
-      (typeof defaultAssignedWorkerId === "number" && defaultAssignedWorkerId > 0
-        ? defaultAssignedWorkerId
-        : null);
-    if (workerId == null) {
-      toastError(t("validation.worker"));
-      return;
-    }
-
-    const catalogTech =
-      tech ??
-      catalog?.technicians.find(
-        (row) => row.id === workerId || row.profileId === workerId,
-      ) ??
-      null;
-
-    let startTime = times?.startTime;
-    let endTime = times?.endTime;
-
-    if (catalogTech) {
-      const window = getDayAvailabilityWindow(catalogTech.availableDays, day);
-      if (!window) {
-        toastError(t("conflict.noAvailability"));
-        return;
-      }
-      if (times) {
-        const startMin = timeToMinutes(times.startTime);
-        const endMin = timeToMinutes(times.endTime);
-        if (
-          startMin == null ||
-          endMin == null ||
-          startMin < window.startMinutes ||
-          endMin > window.endMinutes
-        ) {
-          toastError(t("conflict.unavailable"));
-          return;
-        }
-      }
-      startTime = times?.startTime ?? minutesToTime(window.startMinutes);
-      endTime =
-        times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
-    }
-
-    if (!startTime?.trim() || !endTime?.trim()) {
-      toastError(t("validation.startTime"));
-      return;
-    }
-
-    const dateKey = toDateKey(day);
-    const startIso = combineDateAndTimeToIso(dateKey, startTime, false);
-    const endIso = combineDateAndTimeEndToIso(dateKey, endTime, false);
-
-    const conflict = getBookingConflict({
-      workerId,
-      startAt: startIso,
-      endAt: endIso,
-    });
-    if (conflict) {
-      toastError(conflict);
-      return;
-    }
-
-    setCreatingSchedule(true);
-    setPendingCreate({
-      techId: workerId,
-      dayKey: dateKey,
-      startTime,
-      endTime,
-    });
-    try {
-      const created = await createSchedule({
-        job_id: jobScopedId,
-        worker_ids: [workerId],
-        client_id: jobScopedClientId,
-        project_id: jobScopedProjectId,
-        start_at: startIso,
-        end_at: endIso,
-      });
-      toastSuccess(t("modal.successToast"));
-      if (created.schedule) onScheduleCreated(created.schedule);
-    } catch (error) {
-      toastApiError(error, t("modal.errorToast"));
-    } finally {
-      setCreatingSchedule(false);
-      setPendingCreate(null);
-    }
   }
 
   function showBulkResult(scheduledCount: number, skipped: ScheduleBulkSkipRow[]) {
@@ -765,37 +648,12 @@ export function SchedulingPanel({
   }
 
   function toggleSelectAllVisible() {
-    if (peopleListMode === "groups") {
-      setSelectedGroupIds((prev) => {
-        const visibleIds = filteredGroupRows.map((g) => g.id);
-        const allSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
-        if (allSelected) return new Set();
-        return new Set(visibleIds);
-      });
-      return;
-    }
     setSelectedWorkerIds((prev) => {
       const visibleIds = filteredTechs.map((tech) => tech.id);
       const allSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
       if (allSelected) return new Set();
       return new Set(visibleIds);
     });
-  }
-
-  function toggleGroupSelected(group: SchedulingGroupRow) {
-    setSelectedGroupIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(group.id)) next.delete(group.id);
-      else next.add(group.id);
-      return next;
-    });
-  }
-
-  function setPeopleMode(mode: SchedulingPeopleListMode) {
-    setPeopleListMode(mode);
-    setSelectedWorkerIds(new Set());
-    setSelectedGroupIds(new Set());
-    setTechSearch("");
   }
 
   function resolveBulkWorkers(ids: number[]): SchedulingTechnician[] {
@@ -830,7 +688,7 @@ export function SchedulingPanel({
       }
     }
 
-    if (jobScopedId) {
+    if (jobScopedId && workers.length > 1) {
       void createBulkForScopedJob(workers.map((w) => w.id), day, groupId, {
         startTime: startTime ?? "09:00",
         endTime: endTime ?? "10:00",
@@ -838,11 +696,20 @@ export function SchedulingPanel({
       return;
     }
 
+    // Single worker (incl. job tab): open modal so same-group peers + skips work.
+    if (workers.length === 1) {
+      setCreateTechs(null);
+      setCreateTech(mapped[0] ?? null);
+    }
+
     setCreatePrefill({
       dateKey,
       workerId: workers[0]?.id,
       startTime,
       endTime,
+      clientId: jobScopedClientId ?? undefined,
+      jobId: jobScopedId ?? undefined,
+      lockJob: Boolean(jobScopedId),
     });
     setCreateOpen(true);
   }
@@ -911,7 +778,6 @@ export function SchedulingPanel({
         result.skipped,
       );
       setSelectedWorkerIds(new Set());
-      setSelectedGroupIds(new Set());
     } catch (error) {
       toastApiError(error, t("modal.errorToast"));
     } finally {
@@ -921,35 +787,8 @@ export function SchedulingPanel({
   }
 
   function scheduleSelectedWorkers() {
-    if (peopleListMode === "groups") {
-      const groups = filteredGroupRows.filter((g) => selectedGroupIds.has(g.id));
-      if (groups.length === 0) {
-        toastError(t("bulk.noneSelected"));
-        return;
-      }
-      const memberMap = new Map<number, SchedulingTechnician>();
-      for (const group of groups) {
-        for (const member of group.members) memberMap.set(member.id, member);
-      }
-      const workers = [...memberMap.values()];
-      const groupId = groups.length === 1 ? groups[0]!.id : null;
-      openBulkCreateSchedule(workers, groupId);
-      return;
-    }
     const workers = resolveBulkWorkers([...selectedWorkerIds]);
     openBulkCreateSchedule(workers);
-  }
-
-  function onGroupTimelineRangeSelect(range: TimelineGroupRangeSelect) {
-    if (dragMode === "timeoff") {
-      toastError(t("bulk.groupTimeOffUnsupported"));
-      return;
-    }
-    openBulkCreateSchedule(range.group.members, range.group.id, {
-      startTime: range.startTime,
-      endTime: range.endTime,
-      dateKey: toDateKey(range.day),
-    });
   }
 
   function getBookingConflict(input: {
@@ -1186,31 +1025,20 @@ export function SchedulingPanel({
     setTechSearch("");
     setGroupFilter("");
     setSelectedWorkerIds(new Set());
-    setSelectedGroupIds(new Set());
     if (!fixedWorkerId) setWorkerFilter("");
   }
 
   const hasPeopleFilters = Boolean(
-    techSearch.trim() ||
-      (peopleListMode === "users" && groupFilter) ||
-      (!fixedWorkerId && workerFilter),
+    techSearch.trim() || groupFilter || (!fixedWorkerId && workerFilter),
   );
 
   const focusedWorker =
-    peopleListMode === "users" && singleWorker && (fixedWorkerId || Boolean(workerFilter))
-      ? singleWorker
-      : null;
+    singleWorker && (fixedWorkerId || Boolean(workerFilter)) ? singleWorker : null;
 
-  const selectedCount =
-    peopleListMode === "groups" ? selectedGroupIds.size : selectedWorkerIds.size;
+  const selectedCount = selectedWorkerIds.size;
   const allVisibleSelected =
-    peopleListMode === "groups"
-      ? filteredGroupRows.length > 0 && filteredGroupRows.every((g) => selectedGroupIds.has(g.id))
-      : filteredTechs.length > 0 && filteredTechs.every((tech) => selectedWorkerIds.has(tech.id));
-  const someVisibleSelected =
-    peopleListMode === "groups"
-      ? filteredGroupRows.some((g) => selectedGroupIds.has(g.id))
-      : filteredTechs.some((tech) => selectedWorkerIds.has(tech.id));
+    filteredTechs.length > 0 && filteredTechs.every((tech) => selectedWorkerIds.has(tech.id));
+  const someVisibleSelected = filteredTechs.some((tech) => selectedWorkerIds.has(tech.id));
 
   const peopleHeader = (
     <SchedulingPeopleHeader
@@ -1218,8 +1046,6 @@ export function SchedulingPanel({
       focusedWorker={focusedWorker}
       onBack={!fixedWorkerId && focusedWorker ? () => setWorkerFilter("") : undefined}
       onSearchChange={setTechSearch}
-      peopleListMode={peopleListMode}
-      onPeopleListModeChange={setPeopleMode}
       selectedCount={selectedCount}
       allVisibleSelected={allVisibleSelected}
       someVisibleSelected={someVisibleSelected}
@@ -1290,7 +1116,7 @@ export function SchedulingPanel({
         searchable
         portaled
         clearable
-        className={cn("min-w-[9.5rem] shrink-0", peopleListMode === "groups" && "hidden")}
+        className="min-w-[9.5rem] shrink-0"
         size="sm"
         listEmptyLabel={
           filtersLoading && catalog.userGroups.length === 0 ? t("filtersLoading") : undefined
@@ -1536,14 +1362,13 @@ export function SchedulingPanel({
             ) : (
               <SchedulingDayTimeline
                 day={days[0]}
-                technicians={calendarTechs}
-                groupRows={calendarGroups}
+                technicians={filteredTechs}
                 schedules={visibleSchedules}
                 timeOffs={timeOffs}
                 peopleHeader={peopleHeader}
                 dragMode={dragMode}
                 allowCreate={allowCreate && !creatingSchedule}
-                copiedSchedule={peopleListMode === "users" ? copiedSchedule : null}
+                copiedSchedule={copiedSchedule}
                 pasteDisabled={pastingSchedule || creatingSchedule}
                 pendingCreate={pendingCreate}
                 createBusy={creatingSchedule}
@@ -1553,21 +1378,14 @@ export function SchedulingPanel({
                 onClearPeopleFilters={hasPeopleFilters ? clearPeopleFilters : undefined}
                 onCreateSchedule={openCreateSchedule}
                 onRangeSelect={allowCreate && !creatingSchedule ? onTimelineRangeSelect : undefined}
-                onGroupRangeSelect={
-                  allowCreate && !creatingSchedule ? onGroupTimelineRangeSelect : undefined
-                }
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
-                onCopySchedule={peopleListMode === "users" ? copySchedule : undefined}
-                onPasteSchedule={
-                  peopleListMode === "users" ? (tech) => void pasteScheduleToWorker(tech) : undefined
-                }
+                onCopySchedule={copySchedule}
+                onPasteSchedule={(tech) => void pasteScheduleToWorker(tech)}
                 onRemoveTimeOff={setDeleteTimeOff}
                 onWorkerClick={openWorkerCalendar}
                 selectedWorkerIds={selectedWorkerIds}
                 onToggleWorkerSelected={allowCreate ? toggleWorkerSelected : undefined}
-                selectedGroupIds={selectedGroupIds}
-                onToggleGroupSelected={allowCreate ? toggleGroupSelected : undefined}
               />
             )}
           </div>
@@ -1578,7 +1396,7 @@ export function SchedulingPanel({
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
             <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
-        ) : (peopleListMode === "users" ? filteredTechs.length === 0 : filteredGroupRows.length === 0) ? (
+        ) : filteredTechs.length === 0 ? (
           <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
         ) : (
           <SchedulingMonthCalendar
@@ -1586,13 +1404,9 @@ export function SchedulingPanel({
             monthDays={days}
             schedulesByDay={schedulesByDay}
             timeOffsByDay={timeOffsByDay}
-            technicians={
-              peopleListMode === "groups"
-                ? filteredGroupRows.flatMap((g) => g.members)
-                : filteredTechs
-            }
+            technicians={filteredTechs}
             loading={false}
-            singleWorker={peopleListMode === "users" ? singleWorker : null}
+            singleWorker={singleWorker}
             onDayClick={setAgendaDay}
           />
         )
@@ -1602,9 +1416,7 @@ export function SchedulingPanel({
           <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
         </div>
-      ) : filteredTechs.length === 0 && peopleListMode === "users" ? (
-        <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
-      ) : filteredGroupRows.length === 0 && peopleListMode === "groups" ? (
+      ) : filteredTechs.length === 0 ? (
         <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
       ) : focusedWorker ? (
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1644,12 +1456,8 @@ export function SchedulingPanel({
               {days.map((day) => {
                 const isToday = isSameLocalDay(day, new Date());
                 const dayKey = toDateKey(day);
-                const toneTechs =
-                  peopleListMode === "groups"
-                    ? filteredGroupRows.flatMap((g) => g.members)
-                    : filteredTechs;
                 const tone = mergeTones(
-                  toneTechs.map((tech) =>
+                  filteredTechs.map((tech) =>
                     dayTone(
                       getDayAvailabilityWindow(tech.availableDays, day),
                       hasAvailabilityData(tech.availableDays),
@@ -1686,100 +1494,7 @@ export function SchedulingPanel({
               })}
             </div>
 
-            {peopleListMode === "groups"
-              ? filteredGroupRows.map((group) => (
-                  <div
-                    key={group.id}
-                    className="grid border-b border-slate-100 py-2 dark:border-slate-800/80"
-                    style={{ gridTemplateColumns: colTemplate }}
-                  >
-                    <div className="flex min-w-0 items-center gap-2 border-r border-slate-200 px-3 py-3 dark:border-slate-800">
-                      {allowCreate ? (
-                        <span className={SCHEDULING_PEOPLE_CHECKBOX_GUTTER_CLASS}>
-                          <input
-                            type="checkbox"
-                            className="size-3.5 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                            checked={selectedGroupIds.has(group.id)}
-                            onChange={() => toggleGroupSelected(group)}
-                            aria-label={t("bulk.selectGroup", { name: group.name })}
-                          />
-                        </span>
-                      ) : null}
-                      <div
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold uppercase text-white dark:bg-slate-200 dark:text-slate-900"
-                        aria-hidden
-                      >
-                        {group.initials}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {group.name}
-                        </p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {t("groupMemberCount", { count: group.memberCount })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {days.map((day) => {
-                      const dayKey = toDateKey(day);
-                      const seen = new Set<number>();
-                      const cellSchedules: Schedule[] = [];
-                      const cellTimeOffs: WorkerTimeOff[] = [];
-                      for (const member of group.members) {
-                        for (const row of workerDayRows(schedulesByWorkerDay, member, dayKey)) {
-                          if (seen.has(row.id)) continue;
-                          seen.add(row.id);
-                          cellSchedules.push(row);
-                        }
-                        for (const row of workerDayRows(timeOffsByWorkerDay, member, dayKey)) {
-                          if (seen.has(row.id)) continue;
-                          seen.add(row.id);
-                          cellTimeOffs.push(row);
-                        }
-                      }
-                      const primary =
-                        group.members.find((m) => hasAvailabilityData(m.availableDays)) ??
-                        group.members[0] ??
-                        null;
-                      return (
-                        <div
-                          key={`${group.id}-${dayKey}`}
-                          className="min-h-[4.75rem] border-r border-slate-100 px-2 py-1.5 last:border-r-0 dark:border-slate-800/60"
-                        >
-                          {primary ? (
-                            <SchedulingWeekDayStrip
-                              tech={primary}
-                              day={day}
-                              schedules={cellSchedules}
-                              timeOffs={cellTimeOffs}
-                              pendingCreate={pendingCreate}
-                              createBusy={creatingSchedule}
-                              onCreate={
-                                creatingSchedule || group.members.length === 0
-                                  ? undefined
-                                  : allowCreate
-                                    ? (startTime, endTime) =>
-                                        openBulkCreateSchedule(group.members, group.id, {
-                                          startTime,
-                                          endTime,
-                                          dateKey: dayKey,
-                                        })
-                                    : undefined
-                              }
-                              onScheduleClick={openJobDetail}
-                              onRemoveSchedule={setDeleteTarget}
-                              onRemoveTimeOff={setDeleteTimeOff}
-                            />
-                          ) : (
-                            <p className="px-1 py-2 text-xs text-slate-400">{t("bulk.groupEmpty")}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              : filteredTechs.map((tech) => (
+            {filteredTechs.map((tech) => (
               <div
                 key={tech.id}
                 className="grid border-b border-slate-100 py-2 dark:border-slate-800/80"
@@ -1875,12 +1590,13 @@ export function SchedulingPanel({
         onCreated={(schedule) => {
           onScheduleCreated(schedule);
           setSelectedWorkerIds(new Set());
-          setSelectedGroupIds(new Set());
           setCreateTechs(null);
           setCreateGroupId(null);
         }}
-        onBulkResult={({ scheduledCount, skipped }) => {
+        onBulkResult={({ scheduledCount, skipped, schedule }) => {
           showBulkResult(scheduledCount, skipped);
+          if (schedule) onScheduleCreated(schedule);
+          else if (scheduledCount > 0) onScheduleCreated();
         }}
       />
       <ScheduleBulkResultModal

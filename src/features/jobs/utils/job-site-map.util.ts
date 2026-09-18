@@ -2,6 +2,7 @@ import type { Job, JobSiteRef } from "@/features/jobs/types/job.types";
 import type { AddressMapPoint } from "@/shared/components/maps/google-address-multi-mini-map";
 import { hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
 import { isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
+import { getJobStatusRow } from "@/features/jobs/utils/job-nested-fields.util";
 
 function parseCoord(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -63,6 +64,10 @@ export type JobMapPin = AddressMapPoint & {
   jobLabel: string;
   addressText: string;
   siteName: string | null;
+  /** Job status display name for hover card. */
+  statusLabel: string | null;
+  /** Job status background colour (hex) for the pin. */
+  statusColor: string | null;
 };
 
 /**
@@ -83,6 +88,9 @@ export function jobToSiteAddressMapPoint(job: Job): JobMapPin | null {
   // Prefer full site address; fall back to site name when address fields are thin.
   const addressText = formatted || siteName || "";
   const label = [jobLabel, addressText || siteName].filter(Boolean).join(" · ");
+  const status = getJobStatusRow(job);
+  const statusLabel = status?.status_name?.trim() || null;
+  const statusColor = status?.bg_colour?.trim() || null;
 
   return {
     id: job.id,
@@ -90,6 +98,8 @@ export function jobToSiteAddressMapPoint(job: Job): JobMapPin | null {
     jobLabel,
     addressText,
     siteName,
+    statusLabel,
+    statusColor,
     label,
     addressParts: {
       line1: site.address_line_1,

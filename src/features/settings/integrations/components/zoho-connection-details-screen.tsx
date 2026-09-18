@@ -13,6 +13,7 @@ import { ZohoWebhooksPanel } from "@/features/settings/integrations/components/z
 import { ZohoIntegrationGuide } from "@/features/settings/integrations/components/zoho-integration-guide";
 import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
 import { ZohoCallbackFinishModal } from "@/features/settings/integrations/components/zoho-callback-finish-modal";
+import { ZohoSyncHistoryPanel } from "@/features/settings/integrations/components/zoho-sync-history-panel";
 import { buildZohoConnectionTabUrl, buildZohoFrontendCallbackUrl, readZohoOAuthCallbackParams } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import type {
   ZohoConnectionDetails,
@@ -61,11 +62,15 @@ export function ZohoConnectionDetailsScreen() {
         ? "configure"
         : tabParam === "webhook"
           ? "webhook"
-          : tabParam === "help"
-            ? "help"
-            : "help";
+          : tabParam === "history" || tabParam === "sync-history"
+            ? "history"
+            : tabParam === "help"
+              ? "help"
+              : "help";
 
-  const [activeTab, setActiveTab] = React.useState<"help" | "configure" | "webhook">(initialTab);
+  const [activeTab, setActiveTab] = React.useState<"help" | "configure" | "webhook" | "history">(
+    initialTab,
+  );
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [connection, setConnection] = React.useState<ZohoConnectionDetails | null>(null);
@@ -76,17 +81,21 @@ export function ZohoConnectionDetailsScreen() {
   const tabs: TabsType[] = [
     {
       key: "help",
-      label: "Help"
+      label: t("tabs.help"),
     },
     {
       key: "configure",
-      label: "Configuration"
+      label: t("tabs.configure"),
     },
     {
       key: "webhook",
-      label: "Webhooks"
-    }
-  ]
+      label: t("tabs.webhook"),
+    },
+    {
+      key: "history",
+      label: t("tabs.history"),
+    },
+  ];
   const loadConnection = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -133,7 +142,7 @@ export function ZohoConnectionDetailsScreen() {
     }
   }, [hasOAuthCallback]);
 
-  function clearOAuthCallbackUrl(tab: "help" | "configure" | "webhook" = "help") {
+  function clearOAuthCallbackUrl(tab: "help" | "configure" | "webhook" | "history" = "help") {
     router.replace(buildZohoConnectionTabUrl(tab), { scroll: false });
   }
 
@@ -166,13 +175,18 @@ export function ZohoConnectionDetailsScreen() {
         tabs={tabs.map((tab) => ({ id: tab.key, label: tab.label }))}
         value={activeTab}
         onValueChange={(tabId) => {
-          setActiveTab(tabId as "help" | "configure" | "webhook");
+          setActiveTab(tabId as "help" | "configure" | "webhook" | "history");
+          router.replace(buildZohoConnectionTabUrl(tabId as "help" | "configure" | "webhook" | "history"), {
+            scroll: false,
+          });
         }}
         ariaLabel="Zoho connection tabs"
         panelIdPrefix="zoho-connection-tab"
       />
 
-      {loading ? (
+      {activeTab === "history" ? (
+        <ZohoSyncHistoryPanel />
+      ) : loading ? (
         <SurfaceShell className="rounded-xl w-full">
           <div className="w-full space-y-6 p-4 sm:p-6">
             <div className="space-y-3">

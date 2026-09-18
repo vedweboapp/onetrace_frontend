@@ -1105,3 +1105,14 @@ input[type="number"] {
 .ot-jobs-map .ot-job-map-leaflet-pin .ot-job-map-pin {
   display: inline-flex;
 }
+.ot-job-map-hover-tooltip.leaflet-tooltip {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  white-space: normal;
+}
+.ot-job-map-hover-tooltip.leaflet-tooltip::before {
+  display: none;
+}
