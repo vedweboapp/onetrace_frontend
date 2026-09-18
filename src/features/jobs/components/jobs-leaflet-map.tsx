@@ -5,7 +5,7 @@ import L from "leaflet";
 import { useTranslations } from "next-intl";
 import "leaflet/dist/leaflet.css";
 import type { JobMapPin } from "@/features/jobs/utils/job-site-map.util";
-import { buildJobPinPopupHtml } from "@/features/jobs/utils/job-pin-popup.util";
+import { buildJobPinHoverCardHtml } from "@/features/jobs/utils/job-pin-popup.util";
 import { fitLeafletMapToPins, isPlausibleMapCoordinate } from "@/features/jobs/utils/job-map-fit.util";
 import { createJobMapPinElement } from "@/features/jobs/utils/job-map-pin-element.util";
 import { buildGeocodeRequestSearchParams, hasGeocodeableAddress } from "@/shared/utils/address-geocode-query";
@@ -57,7 +57,8 @@ export function JobsLeafletMap({
   onResolvedPinsChangeRef.current = onResolvedPinsChange;
 
   const [resolved, setResolved] = React.useState<ResolvedPin[]>([]);
-  const [status, setStatus] = React.useState<"idle" | "ready">("idle");
+  const [mapReady, setMapReady] = React.useState(false);
+  const [placingPins, setPlacingPins] = React.useState(false);
 
   const pinsKey = React.useMemo(
     () =>
@@ -66,6 +67,7 @@ export function JobsLeafletMap({
           id: p.jobId,
           lat: p.coordinates?.lat ?? null,
           lon: p.coordinates?.lon ?? null,
+          color: p.statusColor ?? "",
           line1: p.addressParts.line1 ?? "",
           city: p.addressParts.city ?? "",
           pincode: p.addressParts.pincode ?? "",
@@ -79,12 +81,13 @@ export function JobsLeafletMap({
     let cancelled = false;
     if (pins.length === 0) {
       setResolved([]);
-      setStatus("idle");
+      setPlacingPins(false);
       onResolvedPinsChangeRef.current?.([]);
       return;
     }
     void (async () => {
-      const next: ResolvedPin[] = [];
+      const immediate: ResolvedPin[] = [];
+      const needGeocode: JobMapPin[] = [];
       for (const pin of pins) {
         const coords = pin.coordinates;
         if (
@@ -93,9 +96,20 @@ export function JobsLeafletMap({
           Number.isFinite(coords.lon) &&
           isPlausibleMapCoordinate(coords.lat, coords.lon)
         ) {
-          next.push({ ...pin, lat: coords.lat, lon: coords.lon });
-          continue;
+          immediate.push({ ...pin, lat: coords.lat, lon: coords.lon });
+        } else {
+          needGeocode.push(pin);
         }
+      }
+      if (!cancelled) {
+        setResolved(immediate);
+        setPlacingPins(needGeocode.length > 0);
+        onResolvedPinsChangeRef.current?.(immediate.map((p) => p.jobId));
+      }
+
+      const collected = [...immediate];
+      for (const pin of needGeocode) {
+        if (cancelled) return;
         const norm = {
           line1: pin.addressParts.line1?.trim() ?? "",
           line2: pin.addressParts.line2?.trim() ?? "",
@@ -117,17 +131,17 @@ export function JobsLeafletMap({
             json.lon != null &&
             isPlausibleMapCoordinate(json.lat, json.lon)
           ) {
-            next.push({ ...pin, lat: json.lat, lon: json.lon });
+            collected.push({ ...pin, lat: json.lat, lon: json.lon });
+            if (!cancelled) {
+              setResolved([...collected]);
+              onResolvedPinsChangeRef.current?.(collected.map((p) => p.jobId));
+            }
           }
         } catch {
           /* skip */
         }
       }
-      if (!cancelled) {
-        setResolved(next);
-        setStatus("ready");
-        onResolvedPinsChangeRef.current?.(next.map((p) => p.jobId));
-      }
+      if (!cancelled) setPlacingPins(false);
     })();
     return () => {
       cancelled = true;
@@ -149,62 +163,67 @@ export function JobsLeafletMap({
         noWrap: true,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(mapRef.current);
+      setMapReady(true);
     }
     return () => {
       for (const marker of markersRef.current.values()) marker.remove();
       markersRef.current.clear();
       mapRef.current?.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
   React.useEffect(() => {
     const map = mapRef.current;
-    if (!map || status !== "ready") return;
+    if (!map || !mapReady) return;
 
-    for (const marker of markersRef.current.values()) marker.remove();
-    markersRef.current.clear();
+    const known = new Set(resolved.map((p) => p.jobId));
+    for (const [jobId, marker] of markersRef.current) {
+      if (!known.has(jobId)) {
+        marker.remove();
+        markersRef.current.delete(jobId);
+      }
+    }
 
+    let added = false;
     for (const pin of resolved) {
-      const pinEl = createJobMapPinElement({ title: pin.jobLabel });
+      if (markersRef.current.has(pin.jobId)) continue;
+      added = true;
+      const pinEl = createJobMapPinElement({ title: pin.jobLabel, color: pin.statusColor });
       const icon = L.divIcon({
         className: "ot-job-map-leaflet-pin",
         html: pinEl.outerHTML,
-        iconSize: [36, 44],
-        iconAnchor: [18, 44],
-        popupAnchor: [0, -40],
+        iconSize: [28, 36],
+        iconAnchor: [14, 36],
+        popupAnchor: [0, -34],
       });
       const marker = L.marker([pin.lat, pin.lon], { title: pin.jobLabel, icon }).addTo(map);
-      const html = buildJobPinPopupHtml(pin, { openAriaLabel: t("viewDetails") });
-      marker.bindPopup(html, { maxWidth: 320, className: "ot-job-map-popup", closeButton: true });
+      marker.bindTooltip(buildJobPinHoverCardHtml(pin), {
+        direction: "top",
+        offset: [0, -28],
+        opacity: 1,
+        className: "ot-job-map-popup ot-job-map-hover-tooltip",
+        sticky: false,
+      });
       marker.on("click", () => {
+        marker.closeTooltip();
         onPinClickRef.current(pin.jobId);
         onOpenDetailsRef.current(pin.jobId);
-      });
-      marker.on("popupopen", () => {
-        const btn = document.querySelector<HTMLButtonElement>(
-          `.ot-job-map-details[data-job-id="${pin.jobId}"]`,
-        );
-        if (!btn) return;
-        btn.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onOpenDetailsRef.current(pin.jobId);
-        };
       });
       markersRef.current.set(pin.jobId, marker);
     }
 
-    fitLeafletMapToPins(map, () => L.latLngBounds([]), resolved);
-    requestAnimationFrame(() => map.invalidateSize());
-  }, [status, resolved, t]);
+    if (added || resolved.length > 0) {
+      fitLeafletMapToPins(map, () => L.latLngBounds([]), resolved);
+      requestAnimationFrame(() => map.invalidateSize());
+    }
+  }, [mapReady, resolved]);
 
   React.useEffect(() => {
-    if (selectedJobId == null) return;
-    const marker = markersRef.current.get(selectedJobId);
+    if (selectedJobId == null || !mapRef.current) return;
     const pin = resolved.find((p) => p.jobId === selectedJobId);
-    if (!marker || !pin || !mapRef.current) return;
-    marker.openPopup();
+    if (!pin) return;
     mapRef.current.panTo([pin.lat, pin.lon]);
   }, [selectedJobId, resolved]);
 
@@ -220,7 +239,7 @@ export function JobsLeafletMap({
 
   return (
     <div className={cn("relative h-full w-full", className)}>
-      {pins.length > 0 && status !== "ready" ? (
+      {!mapReady ? (
         <div
           className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800"
           aria-busy="true"
@@ -228,6 +247,13 @@ export function JobsLeafletMap({
         >
           <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-[color:var(--dash-accent,#0f766e)] dark:border-slate-600 dark:border-t-[color:var(--dash-accent,#2dd4bf)]" />
           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("loadingMap")}</p>
+        </div>
+      ) : null}
+      {mapReady && placingPins && resolved.length === 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+          <p className="rounded-full border border-slate-200/90 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/90 dark:text-slate-300">
+            {t("placingPins")}
+          </p>
         </div>
       ) : null}
       <div ref={containerRef} className="h-full w-full" role="img" aria-label={t("ariaMap")} />

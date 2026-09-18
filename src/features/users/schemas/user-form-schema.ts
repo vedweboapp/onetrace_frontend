@@ -18,6 +18,7 @@ export type UserFormMessages = {
   phone: string;
   gender: string;
   role: string;
+  profile: string;
   basePay: string;
   availabilityTime: string;
   availabilityRange: string;
@@ -33,6 +34,7 @@ export function createUserFormSchema(messages: UserFormMessages) {
     }),
     gender: z.string().trim().min(1, messages.gender),
     role: z.string().trim().regex(/^\d+$/, messages.role),
+    profile: z.string().trim().regex(/^\d+$/, messages.profile),
     date_of_birth: z.string().optional(),
     email_record_id: z.number().int().positive().optional(),
     phone_record_id: z.number().int().positive().optional(),

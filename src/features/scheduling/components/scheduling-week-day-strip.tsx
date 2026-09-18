@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
@@ -130,11 +130,20 @@ export function SchedulingWeekDayStrip({
           return (
             <div
               key={`job-${segment.schedule.id}-${segment.startMinutes}`}
-              className={cn("group/job relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5", KIND_CLASS.scheduled)}
+              className={cn(
+                "group/job relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
+                KIND_CLASS.scheduled,
+              )}
               style={{ flexGrow, flexBasis: 0, minHeight }}
             >
-              <button type="button" className="block w-full truncate text-left" onClick={() => onScheduleClick(segment.schedule!)}>
-                <span className="block truncate pr-4 text-[10px] font-semibold leading-tight">{scheduleJobLabel(segment.schedule)}</span>
+              <button
+                type="button"
+                className="block w-full truncate text-left"
+                onClick={() => onScheduleClick(segment.schedule!)}
+              >
+                <span className="block truncate pr-4 text-[10px] font-semibold leading-tight">
+                  {scheduleJobLabel(segment.schedule)}
+                </span>
                 <span className="block truncate text-[9px] leading-tight opacity-80">{label}</span>
               </button>
               {onRemoveSchedule ? (
@@ -159,7 +168,10 @@ export function SchedulingWeekDayStrip({
           return (
             <div
               key={`off-${segment.timeOff.id}-${segment.startMinutes}`}
-              className={cn("relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5", KIND_CLASS.timeoff)}
+              className={cn(
+                "relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
+                KIND_CLASS.timeoff,
+              )}
               style={{ flexGrow, flexBasis: 0, minHeight }}
             >
               <p className="truncate pr-4 text-[10px] font-semibold leading-tight">
@@ -230,7 +242,7 @@ export function SchedulingWeekDayStrip({
           <div
             key={`${segment.kind}-${segment.startMinutes}-${segment.endMinutes}`}
             className={cn(
-              "relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
+              "group/avail relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
               KIND_CLASS[segment.kind],
               canDragBook && "cursor-crosshair touch-none select-none",
             )}
@@ -240,6 +252,7 @@ export function SchedulingWeekDayStrip({
               canDragBook
                 ? (e) => {
                     if (e.button !== 0) return;
+                    if ((e.target as HTMLElement).closest("[data-avail-create]")) return;
                     e.preventDefault();
                     const slot = e.currentTarget;
                     slot.setPointerCapture(e.pointerId);
@@ -283,7 +296,6 @@ export function SchedulingWeekDayStrip({
                     const drag = slotDragRef.current;
                     setSlotDrag(null);
                     if (!drag) return;
-                    // Click (no drag): book a 1h slot from the press point. Stay on week view.
                     const startMin = drag.moved
                       ? Math.min(drag.startMinutes, drag.endMinutes)
                       : drag.startMinutes;
@@ -299,6 +311,35 @@ export function SchedulingWeekDayStrip({
             }
             onPointerCancel={canDragBook ? () => setSlotDrag(null) : undefined}
           >
+            {segment.kind === "available" ? (
+              <p className="pointer-events-none truncate text-[9px] font-semibold leading-tight opacity-80">
+                {label}
+              </p>
+            ) : null}
+
+            {canDragBook && !draggingThis && !pendingOverlapsSegment ? (
+              <button
+                type="button"
+                data-avail-create
+                title={t("createSchedule")}
+                aria-label={t("createSchedule")}
+                className={cn(
+                  "absolute right-0.5 top-0.5 z-[3] inline-flex size-5 items-center justify-center rounded-full bg-sky-600 text-white shadow-sm",
+                  "opacity-0 transition group-hover/avail:opacity-100 focus-visible:opacity-100",
+                  "hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+                )}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const startMin = segment.startMinutes;
+                  const endMin = Math.min(segment.endMinutes, startMin + 60);
+                  onCreate?.(minutesToTime(startMin), minutesToTime(Math.max(endMin, startMin + 15)));
+                }}
+              >
+                <Plus className="size-3" strokeWidth={2.5} aria-hidden />
+              </button>
+            ) : null}
+
             {draggingThis ? (
               <div
                 className="pointer-events-none absolute inset-x-0 z-[1] bg-sky-400/45 ring-1 ring-inset ring-sky-500/40"

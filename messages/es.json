@@ -227,8 +227,29 @@
       "pageDescription": "Página pública de escaneo de código QR.",
       "eyebrow": "Código QR",
       "title": "Código QR",
+      "loading": "Cargando detalles del QR…",
+      "untitledJob": "Trabajo",
+      "jobSection": "Detalles del trabajo",
+      "statusUnknown": "Sin estado",
+      "pinsSection": "Pines ({count})",
+      "noPins": "No hay pines en este trabajo.",
+      "pinFallback": "Pin #{id}",
+      "pinLocation": "Loc {location}",
+      "pinQr": "QR {id}",
+      "scanHint": "Escaneado desde un enlace público de código QR.",
+      "fields": {
+        "client": "Cliente",
+        "project": "Proyecto",
+        "site": "Sitio",
+        "address": "Dirección",
+        "startDate": "Fecha de inicio",
+        "completedAt": "Completado",
+        "workers": "Trabajadores",
+        "description": "Descripción",
+        "qualityAssurance": "Aseguramiento de calidad"
+      },
       "noDataTitle": "No se encontraron datos",
-      "noDataDescription": "Este código QR aún no está asignado, por lo que no hay nada que mostrar."
+      "noDataDescription": "Este código QR no tiene datos para mostrar, o la consulta no devolvió una respuesta."
     }
   },
   "Dashboard": {
@@ -1734,6 +1755,7 @@
         "email": "Correo",
         "phone": "Teléfono",
         "role": "Rol",
+        "profile": "Perfil",
         "inviteStatus": "Estado de invitación",
         "created": "Creado",
         "actions": "Acciones"
@@ -1745,6 +1767,7 @@
         "phone": "Teléfono",
         "gender": "Género",
         "role": "Rol",
+        "profile": "Perfil",
         "basePay": "Salario base",
         "basePayType": "Tipo de pago",
         "basePayTypeFixed": "Pago fijo",
@@ -1798,6 +1821,7 @@
       "placeholders": {
         "gender": "Selecciona género",
         "role": "Selecciona rol",
+        "profile": "Selecciona perfil",
         "basePay": "Introducir importe",
         "country": "Selecciona país",
         "state": "Selecciona estado",
@@ -1810,6 +1834,7 @@
         "phone": "Introduce un teléfono válido.",
         "gender": "Selecciona género.",
         "role": "Selecciona rol.",
+        "profile": "Selecciona perfil.",
         "basePay": "Introduce un importe de salario base válido.",
         "addressLine1": "Introduce la dirección línea 1.",
         "addressType": "Selecciona el tipo de dirección.",
@@ -3928,6 +3953,7 @@
         "skippedCount": "{count, plural, one {# trabajo no tiene ubicación usable y se lista abajo.} other {# trabajos no tienen ubicación usable y se listan abajo.}}",
         "ariaMap": "Mapa de trabajos",
         "loadingMap": "Cargando mapa…",
+        "placingPins": "Colocando pines…",
         "loadMapError": "No se pudo cargar Google Maps. Revisa la clave de API e inténtalo de nuevo.",
         "jobId": "ID del trabajo",
         "address": "Dirección",

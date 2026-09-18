@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ClipboardPaste, Loader2 } from "lucide-react";
+import { ClipboardPaste, Loader2, Plus } from "lucide-react";
 import { ScheduleEventChip } from "@/features/scheduling/components/schedule-event-chip";
 import { TimeOffChip } from "@/features/scheduling/components/time-off-chip";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
@@ -93,6 +93,11 @@ type DragState = {
   valid: boolean;
 };
 
+type HoverHint = {
+  rowKey: string;
+  xPct: number;
+};
+
 type Props = {
   day: Date;
   technicians: SchedulingTechnician[];
@@ -179,6 +184,7 @@ export function SchedulingDayTimeline({
   const rowCount = isGroupsMode ? groupRows.length : technicians.length;
   const singleWorker = !isGroupsMode && technicians.length === 1;
   const [drag, setDrag] = React.useState<DragState | null>(null);
+  const [hoverHint, setHoverHint] = React.useState<HoverHint | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const workerRowRefs = React.useRef(new Map<number, HTMLDivElement>());
 
@@ -817,6 +823,7 @@ export function SchedulingDayTimeline({
                   if (dragMode === "book" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
                   if (dragMode === "timeoff" && !minuteIsBookable(startMin, window, knownAvailability, occupied)) return;
                   const endMin = startMin + 15;
+                  setHoverHint(null);
                   setDrag({
                     rowKey,
                     startMin,
@@ -826,16 +833,33 @@ export function SchedulingDayTimeline({
                   e.currentTarget.setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
-                  if (!drag || drag.rowKey !== rowKey) return;
-                  let endMin = pointerToMinutes(e.clientX, e.currentTarget);
-                  if ((dragMode === "book" || dragMode === "timeoff") && window) {
-                    endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                  if (drag && drag.rowKey === rowKey) {
+                    let endMin = pointerToMinutes(e.clientX, e.currentTarget);
+                    if ((dragMode === "book" || dragMode === "timeoff") && window) {
+                      endMin = Math.min(window.endMinutes, Math.max(window.startMinutes, endMin));
+                    }
+                    setDrag({
+                      ...drag,
+                      endMin,
+                      valid: rangeIsValid(tech, drag.startMin, endMin),
+                    });
+                    return;
                   }
-                  setDrag({
-                    ...drag,
-                    endMin,
-                    valid: rangeIsValid(tech, drag.startMin, endMin),
-                  });
+                  if (!(canBook || canMarkTimeOff) || Boolean(drag) || createBusy) {
+                    setHoverHint((prev) => (prev?.rowKey === rowKey ? null : prev));
+                    return;
+                  }
+                  const atMin = pointerToMinutes(e.clientX, e.currentTarget);
+                  if (!minuteIsBookable(atMin, window, knownAvailability, occupied)) {
+                    setHoverHint((prev) => (prev?.rowKey === rowKey ? null : prev));
+                    return;
+                  }
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const xPct = rect.width > 0 ? ((e.clientX - rect.left) / rect.width) * 100 : 0;
+                  setHoverHint({ rowKey, xPct });
+                }}
+                onPointerLeave={() => {
+                  setHoverHint((prev) => (prev?.rowKey === rowKey ? null : prev));
                 }}
                 onPointerUp={(e) => {
                   if (!drag || drag.rowKey !== rowKey) return;
@@ -867,6 +891,19 @@ export function SchedulingDayTimeline({
                       />
                     );
                   })}
+                  {(canBook || canMarkTimeOff) && hoverHint?.rowKey === rowKey && !activeDrag ? (
+                    <div
+                      className="pointer-events-none absolute top-1/2 z-[3] flex -translate-y-1/2 items-center gap-1"
+                      style={{ left: `${hoverHint.xPct}%` }}
+                      title={dragMode === "timeoff" ? t("markTimeOff") : t("dragToSchedule")}
+                    >
+                      <Plus
+                        className="size-7 shrink-0 -translate-x-1/2 text-slate-900 dark:text-white"
+                        strokeWidth={3}
+                        aria-hidden
+                      />
+                    </div>
+                  ) : null}
                   <div className="pointer-events-none absolute inset-0 flex">
                     {hours.map((hour) => (
                       <div
