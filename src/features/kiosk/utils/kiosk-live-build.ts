@@ -16,6 +16,7 @@ export interface LiveBuildOverlay {
   position: PositionValue;
   label?: string;
   targetUid?: string | null;
+  targetUids?: string[];
 }
 
 export interface LiveBuildColorApply {
@@ -224,6 +225,40 @@ export function getTargetOptionUids(
   return Array.from(targets);
 }
 
+export function getPlacementTargetOptionUids(
+  option: KioskOption,
+  questions: KioskQuestion[],
+): string[] {
+  const targets = new Set<string>();
+  if (Array.isArray(option.placement_targets)) {
+    for (const uid of option.placement_targets) {
+      if (uid) targets.add(uid);
+    }
+  }
+  if (Array.isArray(option.placement?.target_fields)) {
+    for (const uid of option.placement.target_fields) {
+      if (uid) targets.add(uid);
+    }
+  }
+  const targetQ = option.placement_target_question || option.placement?.target_question;
+  if (targetQ) {
+    const q = questions.find((item) => (item.q_id || item._uid) === targetQ);
+    if (q) {
+      for (const opt of getAllQuestionOptions(q)) {
+        const optId = opt.uid || opt._uid;
+        if (opt.image && optId) targets.add(optId);
+      }
+    }
+  }
+  if (option.target_image_field) {
+    targets.add(option.target_image_field);
+  }
+  if (option.placement?.target_field) {
+    targets.add(option.placement.target_field);
+  }
+  return Array.from(targets);
+}
+
 export function computeLiveBuildScene(
   config: KioskConfig,
   answers: Record<string, KioskAnswerValue>,
@@ -303,14 +338,17 @@ export function computeLiveBuildScene(
   // Pass 3: Resolve place-mode overlays
   for (const { selected } of selectedItems) {
     if (selected.field_type === "image_radio" && isPlaceMode(selected) && selected.image) {
-      const targetUid =
-        selected.target_image_field || selected.placement?.target_field || null;
+      const targetUids = getPlacementTargetOptionUids(selected, questions);
+      const primaryTargetUid = targetUids[0] || selected.target_image_field || selected.placement?.target_field || null;
 
-      if (!canvasImage && targetUid) {
-        const targetOpt = optionByUid.get(targetUid);
-        if (targetOpt?.image) {
-          canvasUid = targetUid;
-          canvasImage = String(targetOpt.image);
+      if (!canvasImage && targetUids.length > 0) {
+        for (const tUid of targetUids) {
+          const targetOpt = optionByUid.get(tUid);
+          if (targetOpt?.image) {
+            canvasUid = tUid;
+            canvasImage = String(targetOpt.image);
+            break;
+          }
         }
       }
 
@@ -323,7 +361,8 @@ export function computeLiveBuildScene(
         image: String(selected.image),
         position,
         label: selected.label || undefined,
-        targetUid,
+        targetUid: primaryTargetUid,
+        targetUids,
       });
     }
   }
@@ -339,7 +378,8 @@ export function computeLiveBuildScene(
       const targets = getTargetOptionUids(selected, questions);
       const isTargeted =
         targets.includes(canvasUid) ||
-        (selected.fill_target_question && canvasQuestion?._uid === selected.fill_target_question);
+        (selected.fill_target_question &&
+          (canvasQuestion?.q_id || canvasQuestion?._uid) === selected.fill_target_question);
 
       if (isTargeted) {
         colorApply = {
@@ -359,8 +399,8 @@ export function computeLiveBuildScene(
 
   const filteredOverlays = overlays.filter((layer) => {
     if (!canvasUid) return true;
-    if (!layer.targetUid) return true;
-    return layer.targetUid === canvasUid;
+    if (!layer.targetUids || layer.targetUids.length === 0) return true;
+    return layer.targetUids.includes(canvasUid);
   });
 
   const hasVisual =

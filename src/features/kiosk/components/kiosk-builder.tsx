@@ -682,11 +682,24 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
     if (opt.placement_mode) clean.placement_mode = opt.placement_mode;
     if (opt.placement_position) clean.placement_position = opt.placement_position;
     if (opt.placement) clean.placement = opt.placement;
+    if (opt.placement_targets && opt.placement_targets.length > 0) {
+      clean.placement_targets = opt.placement_targets;
+    }
+    if (opt.placement_target_question) {
+      clean.placement_target_question = opt.placement_target_question;
+    }
+    if (opt.target_image_field) {
+      clean.target_image_field = opt.target_image_field;
+    }
   }
 
   if (isColor) {
+    if (opt.fill_color !== undefined) clean.fill_color = opt.fill_color;
     if (opt.fill_targets && opt.fill_targets.length > 0) {
       clean.fill_targets = opt.fill_targets;
+    }
+    if (opt.fill_target_question) {
+      clean.fill_target_question = opt.fill_target_question;
     }
     if (opt.target_image_field) {
       clean.target_image_field = opt.target_image_field;

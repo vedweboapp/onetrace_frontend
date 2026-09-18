@@ -109,6 +109,17 @@ function deriveApiNameFromLabel(label: string): string {
   );
 }
 
+function getQuestionUid(question: any): string {
+  return question?.q_id || question?._uid || "";
+}
+
+function getQuestionOptions(question: any): any[] {
+  return [
+    ...(question?.options || []),
+    ...(question?.groups || []).flatMap((group: any) => group.options || []),
+  ];
+}
+
 export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   option,
   questionUid,
@@ -134,10 +145,18 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   const [fillScopeMode, setFillScopeMode] = useState<'individual' | 'question'>(
     () => (option.fill_target_question ? 'question' : 'individual'),
   );
+  const [placementScopeMode, setPlacementScopeMode] = useState<'individual' | 'question'>(
+    () => (option.placement_target_question || option.placement?.target_question ? 'question' : 'individual'),
+  );
 
   useEffect(() => {
     setFormData({ ...def.defaultConfig(), ...option });
     setFillScopeMode(option.fill_target_question ? 'question' : 'individual');
+    setPlacementScopeMode(
+      option.placement_target_question || option.placement?.target_question
+        ? 'question'
+        : 'individual',
+    );
   }, [option]);
 
   useEffect(() => {
@@ -150,30 +169,34 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   // ──────────────────────────────────────────────────────────────
   // Derived: all external image options (excluding own question)
   // ──────────────────────────────────────────────────────────────
+  const optId = option.uid || option._uid;
   const ownQuestionUid = React.useMemo(() => {
-    const found = (questions || []).find((q: any) =>
-      (q.options || []).some((opt: any) => opt._uid === option._uid),
-    );
-    return questionUid || found?._uid || null;
-  }, [questions, option._uid, questionUid]);
+    const found = (questions || []).find((q: any) => {
+      const allOpts = getQuestionOptions(q);
+      return allOpts.some((opt: any) => (opt.uid || opt._uid) === optId);
+    });
+    return questionUid || getQuestionUid(found) || null;
+  }, [questions, optId, questionUid]);
 
   // All questions that are NOT this option's own question
   const availableQuestions = React.useMemo(() => {
-    return (questions || []).filter((q: any) => q._uid !== ownQuestionUid);
+    return (questions || []).filter((q: any) => getQuestionUid(q) !== ownQuestionUid);
   }, [questions, ownQuestionUid]);
 
   // All image-bearing options from external questions
   const availableImageFields = React.useMemo(() => {
     const list: { uid: string; label: string; questionUid: string; questionLabel: string; image: string }[] = [];
     availableQuestions.forEach((q: any, qIdx: number) => {
-      (q.options || []).forEach((opt: any, optIdx: number) => {
-        if (opt._uid === option._uid) return;
+      const allOpts = getQuestionOptions(q);
+      allOpts.forEach((opt: any, optIdx: number) => {
+        const itemUid = opt.uid || opt._uid;
+        if (itemUid === optId) return;
         const img = opt.image || opt.fill_image;
         if (img) {
           list.push({
-            uid: opt._uid,
+            uid: itemUid,
             label: opt.label || `Option ${optIdx + 1}`,
-            questionUid: q._uid,
+            questionUid: getQuestionUid(q),
             questionLabel: q.label || `Question ${qIdx + 1}`,
             image: String(img),
           });
@@ -181,7 +204,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       });
     });
     return list;
-  }, [availableQuestions, option._uid]);
+  }, [availableQuestions, optId]);
 
   // Current fill_targets array (UIDs of targeted options)
   const fillTargets: string[] = React.useMemo(
@@ -210,8 +233,23 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     formData.placement?.position ||
     (placementMode === "place" ? "center" : undefined);
 
+  // Current placement_targets array (UIDs of target canvas options)
+  const placementTargets: string[] = React.useMemo(() => {
+    if (Array.isArray(formData.placement_targets)) return formData.placement_targets;
+    if (Array.isArray(formData.placement?.target_fields)) return formData.placement.target_fields;
+    if (formData.target_image_field) return [formData.target_image_field];
+    if (formData.placement?.target_field) return [formData.placement.target_field];
+    return [];
+  }, [
+    formData.placement_targets,
+    formData.placement?.target_fields,
+    formData.target_image_field,
+    formData.placement?.target_field,
+  ]);
+
   const selectedTargetField = availableImageFields.find(
     (f) =>
+      placementTargets.includes(f.uid) ||
       f.uid ===
       (formData.target_image_field || formData.placement?.target_field),
   );
@@ -243,27 +281,32 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           placement_mode: "group",
           placement_position: undefined,
           target_image_field: undefined,
+          placement_targets: undefined,
+          placement_target_question: undefined,
           placement: {
             mode: "group",
           },
         };
       } else {
         const nextPos: PositionValue = position || "center";
-        const nextTargetField =
-          prev.target_image_field ||
-          (availableImageFields.length > 0
-            ? availableImageFields[0].uid
-            : undefined);
+        const currentTargets = placementTargets.length > 0
+          ? placementTargets
+          : availableImageFields.length > 0
+          ? [availableImageFields[0].uid]
+          : [];
+        const nextTargetField = currentTargets[0] || undefined;
 
         return {
           ...prev,
           placement_mode: "place",
           placement_position: nextPos,
           target_image_field: nextTargetField,
+          placement_targets: currentTargets,
           placement: {
             mode: "place",
             position: nextPos,
             target_field: nextTargetField,
+            target_fields: currentTargets,
           },
         };
       }
@@ -279,19 +322,88 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         mode: "place",
         position: pos,
         target_field: prev.target_image_field,
+        target_fields: prev.placement_targets || (prev.target_image_field ? [prev.target_image_field] : []),
+        target_question: prev.placement_target_question || null,
       },
     }));
   };
 
   const handleSelectTargetField = (targetUid: string) => {
     const found = availableImageFields.find((f) => f.uid === targetUid);
+    const chosenUid = found ? found.uid : "";
     setFormData((prev) => ({
       ...prev,
-      target_image_field: found ? found.uid : "",
+      target_image_field: chosenUid,
+      placement_targets: chosenUid ? [chosenUid] : [],
       placement: {
         mode: prev.placement_mode || "place",
         position: position || "center",
-        target_field: found ? found.uid : null,
+        target_field: chosenUid || null,
+        target_fields: chosenUid ? [chosenUid] : [],
+        target_question: null,
+      },
+    }));
+  };
+
+  /** Toggle a single option UID in placement_targets (individual scope) */
+  const handleTogglePlacementTarget = (targetUid: string) => {
+    setFormData((prev) => {
+      const current: string[] = Array.isArray(prev.placement_targets)
+        ? prev.placement_targets
+        : prev.target_image_field
+        ? [prev.target_image_field]
+        : [];
+      const exists = current.includes(targetUid);
+      const next = exists ? current.filter((uid) => uid !== targetUid) : [...current, targetUid];
+      const primary = next[0] || undefined;
+      return {
+        ...prev,
+        placement_targets: next,
+        placement_target_question: null,
+        target_image_field: primary,
+        placement: {
+          mode: prev.placement_mode || "place",
+          position: position || "center",
+          target_field: primary || null,
+          target_fields: next,
+          target_question: null,
+        },
+      };
+    });
+  };
+
+  /** Select a whole question for placement targeting */
+  const handleSelectPlacementQuestion = (targetQuestionUid: string) => {
+    if (!targetQuestionUid) {
+      setFormData((prev) => ({
+        ...prev,
+        placement_target_question: null,
+        placement_targets: [],
+        target_image_field: undefined,
+        placement: {
+          mode: prev.placement_mode || "place",
+          position: position || "center",
+          target_field: null,
+          target_fields: [],
+          target_question: null,
+        },
+      }));
+      return;
+    }
+    const qFields = availableImageFields.filter((f) => f.questionUid === targetQuestionUid);
+    const targetUids = qFields.map((f) => f.uid);
+    const primary = targetUids[0] || undefined;
+    setFormData((prev) => ({
+      ...prev,
+      placement_target_question: targetQuestionUid,
+      placement_targets: targetUids,
+      target_image_field: primary,
+      placement: {
+        mode: prev.placement_mode || "place",
+        position: position || "center",
+        target_field: primary || null,
+        target_fields: targetUids,
+        target_question: targetQuestionUid,
       },
     }));
   };
@@ -317,9 +429,12 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       setFormData((prev) => ({ ...prev, fill_targets: [], fill_target_question: null }));
       return;
     }
-    const q = availableQuestions.find((q: any) => q._uid === qUid);
+    const q = availableQuestions.find((q: any) => getQuestionUid(q) === qUid);
     if (!q) return;
-    const imageUids = (q.options || []).filter((o: any) => o.image).map((o: any) => o._uid as string);
+    const imageUids = getQuestionOptions(q)
+      .filter((o: any) => o.image || o.fill_image)
+      .map((o: any) => (o.uid || o._uid) as string)
+      .filter(Boolean);
     setFormData((prev) => ({
       ...prev,
       fill_targets: imageUids,
@@ -439,11 +554,34 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
+        delete cleanData.placement_targets;
+        delete cleanData.placement_target_question;
       } else if (!cleanData.placement_mode) {
         // User never clicked a placement button — strip the placement props entirely
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
+        delete cleanData.placement_targets;
+        delete cleanData.placement_target_question;
+      } else if (cleanData.placement_mode === "group") {
+        cleanData.placement = { mode: "group" };
+        delete cleanData.placement_position;
+        delete cleanData.placement_targets;
+        delete cleanData.placement_target_question;
+        delete cleanData.target_image_field;
+      } else if (cleanData.placement_mode === "place") {
+        const finalPlacementTargets = placementTargets.filter(Boolean);
+        const primaryTarget = finalPlacementTargets[0] || null;
+        cleanData.placement_targets = finalPlacementTargets.length > 0 ? finalPlacementTargets : undefined;
+        cleanData.target_image_field = primaryTarget;
+        cleanData.placement_position = position || "center";
+        cleanData.placement = {
+          mode: "place",
+          position: position || "center",
+          target_field: primaryTarget,
+          target_fields: finalPlacementTargets.length > 0 ? finalPlacementTargets : null,
+          target_question: formData.placement_target_question || null,
+        };
       }
 
       onSave({
@@ -528,31 +666,161 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                 {/* When placementMode === 'place': Target Field Selection + Joystick */}
                 {placementMode === "place" && (
                   <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/80 space-y-3">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Image field to choose (Target Canvas)
+                    {/* Header with selected count */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Target Canvas Images
                       </label>
-                      <select
-                        value={
-                          formData.target_image_field ||
-                          formData.placement?.target_field ||
-                          ""
-                        }
-                        onChange={(e) => handleSelectTargetField(e.target.value)}
-                        className="w-full rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                      >
-                        <option value="">
-                          {availableImageFields.length === 0
-                            ? "-- No other image fields found in kiosk --"
-                            : "-- Select target image field --"}
-                        </option>
-                        {availableImageFields.map((field) => (
-                          <option key={field.uid} value={field.uid}>
-                            {field.questionLabel} → {field.label}
-                          </option>
-                        ))}
-                      </select>
+                      {placementTargets.length > 0 && (
+                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                          {placementTargets.length} selected
+                        </span>
+                      )}
                     </div>
+
+                    {/* Scope toggle: Individual images vs Whole question */}
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlacementScopeMode('individual');
+                          setFormData((prev) => ({
+                            ...prev,
+                            placement_target_question: null,
+                            placement: {
+                              ...(prev.placement || { mode: "place" }),
+                              target_question: null,
+                            },
+                          }));
+                        }}
+                        className={cn(
+                          "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
+                          placementScopeMode === 'individual'
+                            ? "bg-blue-600 text-white shadow-xs font-semibold"
+                            : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
+                        )}
+                      >
+                        Individual Images
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPlacementScopeMode('question')}
+                        className={cn(
+                          "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
+                          placementScopeMode === 'question'
+                            ? "bg-blue-600 text-white shadow-xs font-semibold"
+                            : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
+                        )}
+                      >
+                        Whole Question
+                      </button>
+                    </div>
+
+                    {/* Individual scope: checklist of image options */}
+                    {placementScopeMode === 'individual' && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Select one or more image options from other questions to place this image onto:
+                        </p>
+                        {availableImageFields.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-slate-300 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                              No image options found in other questions
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-800 custom-scrollbar">
+                            {availableQuestions.map((q: any) => {
+                              const qId = getQuestionUid(q);
+                              const qFields = availableImageFields.filter((f) => f.questionUid === qId);
+                              if (qFields.length === 0) return null;
+                              return (
+                                <div key={qId}>
+                                  <p className="sticky top-0 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 rounded">
+                                    {q.label || 'Question'}
+                                  </p>
+                                  {qFields.map((field) => {
+                                    const checked = placementTargets.includes(field.uid);
+                                    return (
+                                      <button
+                                        key={field.uid}
+                                        type="button"
+                                        onClick={() => handleTogglePlacementTarget(field.uid)}
+                                        className={cn(
+                                          "w-full flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition",
+                                          checked
+                                            ? "bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200"
+                                            : "hover:bg-slate-50 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/40",
+                                        )}
+                                      >
+                                        <span className={cn(
+                                          "size-4 shrink-0 rounded border-2 flex items-center justify-center transition",
+                                          checked
+                                            ? "bg-blue-600 border-blue-600"
+                                            : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800",
+                                        )}>
+                                          {checked && <Check size={10} strokeWidth={3} className="text-white" />}
+                                        </span>
+                                        <span className="size-7 shrink-0 overflow-hidden rounded border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
+                                          <img
+                                            src={field.image}
+                                            alt={field.label}
+                                            className="size-full object-cover"
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                          />
+                                        </span>
+                                        <span className="min-w-0 flex-1 truncate font-medium">{field.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Whole question scope: pick a question */}
+                    {placementScopeMode === 'question' && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Select a question — this image will be placed onto all its image options automatically:
+                        </p>
+                        <select
+                          value={formData.placement_target_question || formData.placement?.target_question || ""}
+                          onChange={(e) => handleSelectPlacementQuestion(e.target.value)}
+                          className="w-full rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          <option value="">
+                            {availableQuestions.length === 0
+                              ? "-- No other questions found --"
+                              : "-- Select a question --"}
+                          </option>
+                          {availableQuestions.map((q: any) => {
+                            const qId = getQuestionUid(q);
+                            const imgCount = getQuestionOptions(q).filter((o: any) => o.image || o.fill_image).length;
+                            return (
+                              <option key={qId} value={qId}>
+                                {q.label || 'Question'} ({imgCount} image{imgCount !== 1 ? 's' : ''})
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {(formData.placement_target_question || formData.placement?.target_question) && (
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            ✓ {placementTargets.length} image option{placementTargets.length !== 1 ? 's' : ''} targeted for overlap placement
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* No targets warning */}
+                    {placementTargets.length === 0 && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        ⚠ No target canvas selected — select an image or question to place this onto
+                      </p>
+                    )}
 
                     <div className="flex items-start gap-3">
                       {/* Target Canvas Preview Box */}
@@ -772,10 +1040,11 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                       <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-800 custom-scrollbar">
                         {/* Group by question */}
                         {availableQuestions.map((q: any) => {
-                          const qFields = availableImageFields.filter((f) => f.questionUid === q._uid);
+                          const qId = getQuestionUid(q);
+                          const qFields = availableImageFields.filter((f) => f.questionUid === qId);
                           if (qFields.length === 0) return null;
                           return (
-                            <div key={q._uid}>
+                            <div key={qId}>
                               <p className="sticky top-0 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 rounded">
                                 {q.label || 'Question'}
                               </p>
@@ -840,9 +1109,10 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                           : "-- Select a question --"}
                       </option>
                       {availableQuestions.map((q: any) => {
-                        const imgCount = (q.options || []).filter((o: any) => o.image).length;
+                        const qId = getQuestionUid(q);
+                        const imgCount = getQuestionOptions(q).filter((o: any) => o.image || o.fill_image).length;
                         return (
-                          <option key={q._uid} value={q._uid}>
+                          <option key={qId} value={qId}>
                             {q.label || 'Question'} ({imgCount} image{imgCount !== 1 ? 's' : ''})
                           </option>
                         );

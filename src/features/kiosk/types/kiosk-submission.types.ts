@@ -60,6 +60,9 @@ export interface KioskSelectedOption {
    */
   placement_target_uid: string | null;
 
+  /** All canvas UIDs this object is configured to place onto. */
+  placement_target_uids?: string[] | null;
+
   // ── Group & Input extras ──────────────────────────────────────────────────
 
   /** UID of the inner frame group inside the question */

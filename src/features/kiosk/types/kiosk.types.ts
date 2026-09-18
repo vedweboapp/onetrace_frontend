@@ -6,6 +6,8 @@ export interface PlacementConfig {
   mode: PlacementMode;
   position?: PositionValue; // only relevant when mode === 'place'
   target_field?: string | null; // UID of the selected kiosk image field to place on
+  target_fields?: string[] | null; // UIDs of multiple selected image fields to place on
+  target_question?: string | null; // UID of a whole question to place on
 }
 
 export interface ColorFillConfig {
@@ -34,7 +36,8 @@ export interface KioskOption {
   placement_mode?: PlacementMode | null;
   placement_position?: PositionValue | null;
   placement?: PlacementConfig | null;
-  color_fill?: ColorFillConfig | null;
+  placement_targets?: string[] | null;
+  placement_target_question?: string | null;
   fill_color?: string | null;
   fill_image?: string | null;
   field_type?: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | string | null;

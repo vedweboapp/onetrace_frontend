@@ -57,6 +57,11 @@ function resolveSelectedOption(
     option.target_image_field ||
     (option.placement?.target_field as string | undefined) ||
     null;
+  const placementTargetUids = [
+    ...(Array.isArray(option.placement_targets) ? option.placement_targets : []),
+    ...(Array.isArray(option.placement?.target_fields) ? option.placement.target_fields : []),
+    ...(placementTargetUid ? [placementTargetUid] : []),
+  ].filter((uid, index, arr): uid is string => Boolean(uid) && arr.indexOf(uid) === index);
 
   return {
     option_uid: option.uid || option._uid || "",
@@ -78,6 +83,10 @@ function resolveSelectedOption(
     placement_mode: isImageRadio ? placementMode : null,
     placement_position: isImageRadio && placementMode === "place" ? placementPosition : null,
     placement_target_uid: isImageRadio && placementMode === "place" ? placementTargetUid : null,
+    placement_target_uids:
+      isImageRadio && placementMode === "place" && placementTargetUids.length > 0
+        ? placementTargetUids
+        : null,
 
     // Group & Input extras
     group_uid: option.gid || option.group_uid || null,

@@ -87,6 +87,23 @@ function appendOptionToFormData(
     if (option.placement?.target_field) {
       fd.append(`${prefix}[target_image_field]`, option.placement.target_field);
     }
+    const placementTargets = Array.isArray(option.placement_targets)
+      ? option.placement_targets
+      : Array.isArray(option.placement?.target_fields)
+      ? option.placement.target_fields
+      : [];
+    placementTargets.forEach((target, tIdx) => {
+      if (target) {
+        fd.append(`${prefix}[placement_targets][${tIdx}]`, target);
+        fd.append(`${prefix}[placement][target_fields][${tIdx}]`, target);
+      }
+    });
+    const placementTargetQuestion =
+      option.placement_target_question || option.placement?.target_question;
+    if (placementTargetQuestion) {
+      fd.append(`${prefix}[placement_target_question]`, placementTargetQuestion);
+      fd.append(`${prefix}[placement][target_question]`, placementTargetQuestion);
+    }
   }
 
   // Color Fill Targets
@@ -98,6 +115,9 @@ function appendOptionToFormData(
     }
     if (option.target_image_field) {
       fd.append(`${prefix}[target_image_field]`, option.target_image_field);
+    }
+    if (option.fill_target_question) {
+      fd.append(`${prefix}[fill_target_question]`, option.fill_target_question);
     }
   }
 
