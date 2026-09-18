@@ -660,6 +660,7 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
 
   const clean: KioskOption = {
     uid: optUid,
+    _uid: optUid,
     id: opt.id ?? null,
     field_type: opt.field_type || "radio",
     label: opt.label || "",
@@ -1044,11 +1045,11 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             : undefined),
         price: defaultOpt.price || "",
         image: defaultOpt.image || "",
-        ...(isImageRadio
+        ...(isImageRadio && defaultOpt.placement_mode
           ? {
-              placement_mode: defaultOpt.placement_mode || "group",
+              placement_mode: defaultOpt.placement_mode,
               placement_position: defaultOpt.placement_position || undefined,
-              placement: defaultOpt.placement || { mode: "group" },
+              placement: defaultOpt.placement || undefined,
             }
           : {}),
         field_type: fieldType,

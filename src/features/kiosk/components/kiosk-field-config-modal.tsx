@@ -201,8 +201,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   const activeFillImageSrc = firstFillTargetImage;
 
   // Placement variables for image_radio
-  const placementMode: PlacementMode =
-    formData.placement_mode || formData.placement?.mode || "group";
+  // Only treat a mode as active if the user explicitly set it
+  const placementMode: PlacementMode | undefined =
+    formData.placement_mode || formData.placement?.mode || undefined;
 
   const position: PositionValue | undefined =
     formData.placement_position ||
@@ -438,6 +439,11 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
+      } else if (!cleanData.placement_mode) {
+        // User never clicked a placement button — strip the placement props entirely
+        delete cleanData.placement;
+        delete cleanData.placement_mode;
+        delete cleanData.placement_position;
       }
 
       onSave({
@@ -513,7 +519,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                   <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                     {placementMode === "place"
                       ? "Place mode: Select target image field in kiosk and choose position"
-                      : "Group mode: Standard grouped option without positioning coordinates"}
+                      : placementMode === "group"
+                      ? "Group mode: Standard grouped option without positioning coordinates"
+                      : "No placement mode set — option will be grouped by default"}
                   </p>
                 </div>
 

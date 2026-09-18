@@ -474,7 +474,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
       return (
         <div
-          key={option._uid || optIdx}
+          key={option.uid || option._uid || optIdx}
           onClick={handleCardClick}
           className={cn(
             "relative flex cursor-pointer rounded-sm border overflow-hidden transition-all duration-150 select-none",

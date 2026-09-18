@@ -230,11 +230,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       value: "image_choice",
       price: "",
       image: "",
-      placement_mode: "group",
-      placement_position: undefined,
-      placement: {
-        mode: "group",
-      },
     }),
     configFields: [
       {

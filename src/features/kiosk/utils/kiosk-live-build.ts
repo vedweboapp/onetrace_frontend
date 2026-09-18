@@ -47,9 +47,13 @@ function getAllQuestionOptions(q: KioskQuestion): KioskOption[] {
   const all: KioskOption[] = [];
   const pushOpt = (opt: KioskOption) => {
     if (!opt) return;
-    const key = opt._uid || opt.api_name || String(opt.value);
-    if (!seen.has(key)) {
-      seen.add(key);
+    const key = opt.uid || opt._uid;
+    if (key) {
+      if (!seen.has(key)) {
+        seen.add(key);
+        all.push(opt);
+      }
+    } else {
       all.push(opt);
     }
   };
@@ -71,7 +75,8 @@ function buildOptionIndex(questions: KioskQuestion[]): Map<string, KioskOption> 
   const map = new Map<string, KioskOption>();
   for (const q of questions) {
     for (const opt of getAllQuestionOptions(q)) {
-      if (opt._uid) map.set(opt._uid, opt);
+      const id = opt.uid || opt._uid;
+      if (id) map.set(id, opt);
     }
   }
   return map;
@@ -88,7 +93,16 @@ function resolveSelectedOption(
   const options = getAllQuestionOptions(question);
   if (!ans) return null;
 
-  if (Array.isArray(ans)) return null;
+  // Array answer: happens when input fields co-exist with single-choice options.
+  // Look for the first non-input uid entry.
+  if (Array.isArray(ans)) {
+    for (const entry of ans) {
+      const uid = typeof entry === "object" && entry?.uid ? entry.uid : entry;
+      const opt = options.find((o) => (o.uid || o._uid) === uid);
+      if (opt && opt.field_type !== "input") return opt;
+    }
+    return null;
+  }
 
   if (typeof ans === "object" && ans !== null && "uid" in ans) {
     return options.find((o) => (o.uid || o._uid) === ans.uid) ?? null;
@@ -168,7 +182,7 @@ function resolveOptionColor(
 }
 
 function isPlaceMode(option: KioskOption): boolean {
-  const mode = option.placement_mode || option.placement?.mode || "group";
+  const mode = option.placement_mode || option.placement?.mode;
   return mode === "place";
 }
 

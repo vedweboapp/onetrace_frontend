@@ -17,6 +17,8 @@ export interface KioskOption {
   uid?: string;
   _uid?: string;
   id?: string | number | null;
+  sequence?: number;
+  order?: number;
   label?: string | null;
   subLabel?: string | null;
   api_name?: string | null;
@@ -51,6 +53,8 @@ export interface KioskGroup {
   gid: string;
   _uid?: string;
   id?: string | number | null;
+  sequence?: number;
+  order?: number;
   name: string;
   api_name?: string;
   description?: string;
@@ -62,6 +66,8 @@ export interface KioskQuestion {
   q_id: string;
   _uid?: string;
   id?: string | number | null;
+  sequence?: number;
+  order?: number;
   label?: string | null;
   subLabel?: string | null;
   api_name?: string | null;
