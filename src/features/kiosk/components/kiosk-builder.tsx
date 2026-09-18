@@ -34,6 +34,7 @@ import { DynamicKioskFieldPreview } from "./dynamic-kiosk-field-preview";
 import { KioskFieldConfigModal } from "./kiosk-field-config-modal";
 import { KioskRenderer } from "./kiosk-renderer";
 import { cn } from "@/core/utils/http.util";
+import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
 
 interface KioskBuilderProps {
   initialConfig?: KioskConfig;
@@ -43,16 +44,6 @@ interface KioskBuilderProps {
 
 const generateUid = (prefix = "k_") =>
   `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-
-const deriveApiNameFromLabel = (label: string): string => {
-  return (
-    label
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "option"
-  );
-};
 
 const getGridClass = (cols: number = 2) => {
   switch (cols) {
@@ -118,7 +109,8 @@ const QuestionInnerGroupFrame: React.FC<{
 
   const saveName = () => {
     setIsEditingName(false);
-    onUpdateGroupName(nameText.trim() || `Group ${groupIndex + 1}`);
+    const trimmed = nameText.trim() || `Group ${groupIndex + 1}`;
+    onUpdateGroupName(trimmed);
   };
 
   return (
@@ -269,7 +261,6 @@ const QuestionDropZone: React.FC<{
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [labelText, setLabelText] = useState(question.label || `Question ${index + 1}`);
   const [subLabelText, setSubLabelText] = useState(question.subLabel || "");
-  const [apiNameText, setApiNameText] = useState(question.api_name || `question_${index + 1}`);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -284,6 +275,13 @@ const QuestionDropZone: React.FC<{
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!isEditingHeader) {
+      setLabelText(question.label || `Question ${index + 1}`);
+      setSubLabelText(question.subLabel || "");
+    }
+  }, [question.label, question.subLabel, index, isEditingHeader]);
 
   // Resolve inner groups — NO default group auto-creation
   const resolvedGroups = useMemo((): KioskGroup[] => {
@@ -323,7 +321,9 @@ const QuestionDropZone: React.FC<{
 
   const handleUpdateGroupName = (groupUid: string, name: string) => {
     const updated = resolvedGroups.map((g) =>
-      (g.gid || g._uid) === groupUid ? { ...g, name } : g
+      (g.gid || g._uid) === groupUid
+        ? { ...g, name, api_name: deriveApiNameFromLabel(name, "group") }
+        : g
     );
     onUpdateQuestion(question.q_id || question._uid || "", {
       groups: updated,
@@ -358,17 +358,17 @@ const QuestionDropZone: React.FC<{
 
   const saveHeader = () => {
     setIsEditingHeader(false);
+    const label = labelText.trim() || `Question ${index + 1}`;
     onUpdateQuestion(question.q_id || question._uid || "", {
-      label: labelText.trim() || `Question ${index + 1}`,
+      label,
       subLabel: subLabelText.trim() || undefined,
-      api_name: apiNameText.trim() || `question_${index + 1}`,
+      api_name: deriveApiNameFromLabel(label, `question_${index + 1}`),
     });
   };
 
   const cancelHeader = () => {
     setLabelText(question.label || `Question ${index + 1}`);
     setSubLabelText(question.subLabel || "");
-    setApiNameText(question.api_name || `question_${index + 1}`);
     setIsEditingHeader(false);
   };
 
@@ -409,20 +409,6 @@ const QuestionDropZone: React.FC<{
                 className="rounded border border-slate-300 bg-white px-2.5 py-0.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                 placeholder="Sub-label or instructions (optional)..."
               />
-              <div className="sr-only">
-                <span className="text-[10px] font-mono text-slate-400">api_name:</span>
-                <input
-                  type="text"
-                  value={apiNameText}
-                  onChange={(e) => setApiNameText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveHeader();
-                    if (e.key === "Escape") cancelHeader();
-                  }}
-                  className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-[10px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  placeholder="api_name..."
-                />
-              </div>
               {/* Save / Cancel buttons */}
               <div className="flex items-center gap-1.5 pt-0.5">
                 <button
@@ -654,18 +640,25 @@ const EmptyCanvasDropZone: React.FC<{ onDropQuestion: () => void }> = ({
 
 // Helper to sanitize options and payload hierarchy strictly
 export const sanitizeOption = (opt: KioskOption): KioskOption => {
-  const isImageRadio = opt.field_type === "image_radio";
-  const isColor = opt.field_type === "color" || opt.field_type === "color_swatch";
+  const fieldType = opt.field_type || "radio";
+  const isImageRadio = fieldType === "image_radio";
+  const isColor = fieldType === "color" || fieldType === "color_swatch";
+  const isRadioOrCheckbox =
+    fieldType === "radio" || fieldType === "checkbox" || isImageRadio;
   const optUid = opt.uid || opt._uid || generateUid("opt_");
+  const label = opt.label || "";
+  const apiName = label
+    ? deriveApiNameFromLabel(label, "option")
+    : opt.api_name || "option";
 
   const clean: KioskOption = {
     uid: optUid,
     _uid: optUid,
     id: opt.id ?? null,
-    field_type: opt.field_type || "radio",
-    label: opt.label || "",
+    field_type: fieldType,
+    label,
     subLabel: opt.subLabel || "",
-    api_name: opt.api_name || "",
+    api_name: apiName,
     value: opt.value ?? "",
     price: opt.price || "",
     image: opt.image || "",
@@ -707,16 +700,22 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
     if (opt.color_fill) {
       clean.color_fill = opt.color_fill;
     }
+    clean.value = opt.color || opt.value || clean.value;
+  } else if (isRadioOrCheckbox) {
+    clean.value = apiName;
   }
 
   return clean;
 };
 
 export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
+  const kioskName = rawConfig.name || "";
   return {
-    name: rawConfig.name || "",
+    name: kioskName,
     id: rawConfig.id,
-    api_name: rawConfig.api_name,
+    api_name: kioskName
+      ? deriveApiNameFromLabel(kioskName, rawConfig.api_name || "new_kiosk")
+      : rawConfig.api_name,
     description: rawConfig.description,
     submitting: rawConfig.submitting,
     is_active: rawConfig.is_active,
@@ -731,37 +730,40 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
             cleaned.gid = gid;
             return cleaned;
           });
+          const groupName = g.name || "Group";
           const cleanGroup: KioskGroup = {
             gid,
             id: g.id ?? null,
-            name: g.name,
+            name: groupName,
+            api_name: deriveApiNameFromLabel(groupName, "group"),
             columns: g.columns,
             options: groupOptions,
           };
           if (g.description) cleanGroup.description = g.description;
-          if (g.api_name) cleanGroup.api_name = g.api_name;
           return cleanGroup;
         });
 
+        const questionLabel = q.label || "Question";
         // Question with groups strictly HAS NO "options" key and NO "_uid" key
         return {
           q_id,
           id: q.id ?? null,
-          label: q.label,
+          label: questionLabel,
           subLabel: q.subLabel,
-          api_name: q.api_name,
+          api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           columns: q.columns,
           column_count: q.column_count,
           groups: sanitizedGroups,
         };
       } else {
         const sanitizedOptions = (q.options || []).map(sanitizeOption);
+        const questionLabel = q.label || "Question";
         return {
           q_id,
           id: q.id ?? null,
-          label: q.label,
+          label: questionLabel,
           subLabel: q.subLabel,
-          api_name: q.api_name,
+          api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           columns: q.columns,
           column_count: q.column_count,
           options: sanitizedOptions,
@@ -831,13 +833,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   // Question Management
   const handleAddQuestion = useCallback((insertIndex?: number) => {
     const qUid = generateUid("q_");
+    const label = `Question ${(config.questions?.length ?? 0) + 1}`;
     const newQuestion: KioskQuestion = {
       q_id: qUid,
       _uid: qUid,
       id: null,
-      label: `Question ${(config.questions?.length ?? 0) + 1}`,
+      label,
       subLabel: "Please select an option below",
-      api_name: `question_${(config.questions?.length ?? 0) + 1}`,
+      api_name: deriveApiNameFromLabel(label, "question"),
       options: [],
     };
 
@@ -866,10 +869,12 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       const gUid = generateUid("grp_");
       const gid = generateUid("gid_");
 
+      const groupName = `Group ${existingGroups.length + 1}`;
       const newGroup: KioskGroup = {
         gid,
         _uid: gUid,
-        name: `Group ${existingGroups.length + 1}`,
+        name: groupName,
+        api_name: deriveApiNameFromLabel(groupName, "group"),
         columns: targetQ.columns || targetQ.column_count || 2,
         options: isFirstGroup ? (targetQ.options || []).map(sanitizeOption) : [],
       };
@@ -901,10 +906,12 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       const gUid = generateUid("grp_");
       const gid = generateUid("gid_");
 
+      const groupName = `Group ${currentGroups.length + 1}`;
       const newGroup: KioskGroup = {
         gid,
         _uid: gUid,
-        name: `Group ${currentGroups.length + 1}`,
+        name: groupName,
+        api_name: deriveApiNameFromLabel(groupName, "group"),
         columns: lastQ.columns || lastQ.column_count || 2,
         options: isFirstGroup ? (lastQ.options || []).map(sanitizeOption) : [],
       };
@@ -921,10 +928,20 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   }, []);
 
   const handleUpdateQuestion = useCallback((questionUid: string, updates: Partial<KioskQuestion>) => {
+    const normalizedUpdates = updates.label != null
+      ? {
+          ...updates,
+          api_name: deriveApiNameFromLabel(
+            String(updates.label).trim(),
+            "question",
+          ),
+        }
+      : updates;
+
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((q) =>
-        (q.q_id || q._uid) === questionUid ? { ...q, ...updates } : q
+        (q.q_id || q._uid) === questionUid ? { ...q, ...normalizedUpdates } : q
       ),
     }));
   }, []);
@@ -968,13 +985,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           id: null,
         }));
 
+    const duplicatedLabel = `${question.label || "Question"} (Copy)`;
     const duplicated: KioskQuestion = {
       ...question,
       q_id: newQId,
       _uid: newQId,
       id: null,
-      label: `${question.label || "Question"} (Copy)`,
-      api_name: `${question.api_name || "question"}_copy`,
+      label: duplicatedLabel,
+      api_name: deriveApiNameFromLabel(duplicatedLabel, "question"),
       groups: duplicatedGroups,
       options: duplicatedOptions,
     };
@@ -1189,7 +1207,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       option.field_type === "radio" ||
       option.field_type === "checkbox" ||
       option.field_type === "image_radio";
-    const newApiName = `${option.api_name || "option"}_copy`;
+    const duplicatedLabel = `${option.label || "Option"} (Copy)`;
     const newOptUid = generateUid("opt_");
 
     const duplicated: KioskOption = sanitizeOption({
@@ -1197,13 +1215,13 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       uid: newOptUid,
       _uid: newOptUid,
       id: null,
-      label: `${option.label || "Option"} (Copy)`,
-      api_name: newApiName,
-      value: isRadioOrCb
-        ? newApiName
-        : option.field_type === "input"
-        ? ""
-        : option.value || option.color || "choice",
+      label: duplicatedLabel,
+      value:
+        isRadioOrCb
+          ? deriveApiNameFromLabel(duplicatedLabel, "option")
+          : option.field_type === "input"
+          ? ""
+          : option.value || option.color || "choice",
     });
 
     const targetOptId = option.uid || option._uid;
@@ -1318,7 +1336,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
               <input
                 type="text"
                 value={config.name}
-                onChange={(e) => setConfig({ ...config, name: e.target.value })}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setConfig({
+                    ...config,
+                    name,
+                    api_name: deriveApiNameFromLabel(name, config.api_name || "new_kiosk"),
+                  });
+                }}
                 placeholder="Enter Kiosk Name"
                 className="h-8 max-w-[240px] rounded-md border border-transparent bg-transparent px-2 text-sm font-semibold text-slate-900 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:outline-none dark:text-white dark:hover:border-slate-700 dark:focus:bg-slate-800"
               />
@@ -1453,15 +1478,15 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           </div>
         ) : (
           /* Full Live Preview Mode */
-          <main className="flex flex-1 min-h-0 flex-col overflow-y-auto p-4 custom-scrollbar bg-slate-200/60 dark:bg-slate-950">
+          <main className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 bg-slate-200/60 dark:bg-slate-950">
             <div
-              className={`w-full mt-6 transition-all duration-300 ${
+              className={`flex min-h-0 flex-col transition-all duration-300 ${
                 previewDevice === "mobile"
-                  ? "mx-auto max-w-sm rounded-sm border-8 border-slate-800 bg-white shadow-2xl overflow-hidden min-h-[700px] dark:bg-slate-900"
-                  : "rounded-sm border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
+                  ? "mx-auto h-full max-h-full w-full max-w-sm rounded-sm border-8 border-slate-800 bg-white shadow-2xl overflow-hidden dark:bg-slate-900"
+                  : "h-full w-full rounded-sm border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
               }`}
             >
-              <div className="p-4 md:p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5 custom-scrollbar overscroll-y-contain">
                 <KioskRenderer
                   config={previewConfig}
                   livePreviewOptions={livePreviewOptions}

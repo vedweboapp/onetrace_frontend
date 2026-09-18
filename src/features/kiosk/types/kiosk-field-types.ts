@@ -43,13 +43,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         required: true,
       },
       {
-        type: "text",
-        label: "API Name / Key",
-        key: "api_name",
-        placeholder: "e.g. radio_choice",
-        description: "API identifier (also used as the selected value)",
-      },
-      {
         type: "textarea",
         label: "Sub Label / Description",
         key: "subLabel",
@@ -84,13 +77,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         key: "label",
         placeholder: "e.g. Add Extra Towels",
         required: true,
-      },
-      {
-        type: "text",
-        label: "API Name / Key",
-        key: "api_name",
-        placeholder: "e.g. extra_towels",
-        description: "API identifier (also used as the selected value)",
       },
       {
         type: "textarea",
@@ -245,13 +231,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         key: "label",
         placeholder: "e.g. Premium Suite",
         required: true,
-      },
-      {
-        type: "text",
-        label: "API Name / Key",
-        key: "api_name",
-        placeholder: "e.g. premium_suite",
-        description: "API identifier (also used as the selected value)",
       },
       {
         type: "textarea",

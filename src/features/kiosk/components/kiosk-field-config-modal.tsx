@@ -26,6 +26,7 @@ import type {
 import { cn } from "@/core/utils/http.util";
 import { applyColorFill } from "../utils/kiosk-color-fill";
 import { kioskPlacementOverlayClass } from "../utils/kiosk-placement-styles";
+import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
 
 interface KioskFieldConfigModalProps {
   option: KioskOption;
@@ -99,16 +100,6 @@ const checkerboardPattern: React.CSSProperties = {
   backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0",
 };
 
-function deriveApiNameFromLabel(label: string): string {
-  return (
-    label
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "input_field"
-  );
-}
-
 function getQuestionUid(question: any): string {
   return question?.q_id || question?._uid || "";
 }
@@ -150,7 +141,20 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   );
 
   useEffect(() => {
-    setFormData({ ...def.defaultConfig(), ...option });
+    const merged: KioskOption = { ...def.defaultConfig(), ...option };
+    const label = merged.label || "";
+    if (label) {
+      const ft = merged.field_type || "radio";
+      const apiName = deriveApiNameFromLabel(
+        label,
+        ft === "input" ? "input_field" : "option",
+      );
+      merged.api_name = apiName;
+      if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
+        merged.value = apiName;
+      }
+    }
+    setFormData(merged);
     setFillScopeMode(option.fill_target_question ? 'question' : 'individual');
     setPlacementScopeMode(
       option.placement_target_question || option.placement?.target_question
@@ -484,6 +488,24 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const syncApiNameFromLabel = (
+    prev: KioskOption,
+    label: string,
+  ): Pick<KioskOption, "api_name" | "value"> => {
+    const ft = prev.field_type || "radio";
+    const apiName = deriveApiNameFromLabel(
+      label,
+      ft === "input" ? "input_field" : "option",
+    );
+    if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
+      return { api_name: apiName, value: apiName };
+    }
+    if (ft === "input") {
+      return { api_name: apiName };
+    }
+    return { api_name: apiName };
+  };
+
   const handleChange = (key: keyof KioskOption, val: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [key]: val };
@@ -497,11 +519,8 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           };
         }
       }
-      if (key === "api_name") {
-        const ft = prev.field_type || "radio";
-        if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
-          updated.value = val;
-        }
+      if (key === "label") {
+        Object.assign(updated, syncApiNameFromLabel(prev, String(val)));
       }
       return updated;
     });
@@ -525,8 +544,12 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       // Clean out placement properties which do not belong to color fields
       const { placement, placement_mode, placement_position, ...cleanData } = formData;
 
+      const colorLabel = formData.label || "Color Choice";
+      const colorApiName = deriveApiNameFromLabel(colorLabel, "color_choice");
+
       onSave({
         ...cleanData,
+        api_name: colorApiName,
         value: String(finalColor),
         color: String(finalColor),
         fill_color: String(finalColor),
@@ -537,14 +560,14 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     } else {
       const ft = formData.field_type || "radio";
       const isImageRadio = ft === "image_radio";
-      const normalizedApiName =
-        ft === "input" && (!formData.api_name || formData.api_name === "input_field")
-          ? deriveApiNameFromLabel(formData.label || "input_field")
-          : formData.api_name;
+      const normalizedApiName = deriveApiNameFromLabel(
+        formData.label || (ft === "input" ? "input_field" : "option"),
+        ft === "input" ? "input_field" : "option",
+      );
 
       const normalizedValue =
         ft === "radio" || ft === "checkbox" || ft === "image_radio"
-          ? normalizedApiName || formData.value || ""
+          ? normalizedApiName
           : ft === "input"
           ? (formData.value ?? "")
           : formData.value;
@@ -1138,9 +1161,10 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
 
             {/* 3. Standard Config Fields (Filtered per field type) */}
             {def.configFields.map((field) => {
-              // Skip fill_image if rendered above, and skip value attribute from modal
+              // Skip fill_image if rendered above, and skip value / api_name from modal
               if (field.key === "fill_image" && isColorField) return null;
               if (field.key === "value") return null;
+              if (field.key === "api_name") return null;
 
               const val = (formData[field.key] as any) ?? "";
 
@@ -1476,9 +1500,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                     <div className="flex items-center gap-2 pt-0.5">
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         format: {formData.input_type || "text"}
-                      </span>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                        key: {formData.api_name || "input_field"}
                       </span>
                     </div>
                   </div>
