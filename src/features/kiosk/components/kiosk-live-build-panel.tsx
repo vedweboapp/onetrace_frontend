@@ -6,10 +6,58 @@ import type { KioskConfig, KioskOption } from "../types/kiosk.types";
 import {
   computeLiveBuildScene,
   type KioskAnswerValue,
+  type LiveBuildOverlay,
 } from "../utils/kiosk-live-build";
 import { applyColorFill } from "../utils/kiosk-color-fill";
 import { kioskPlacementOverlayClass } from "../utils/kiosk-placement-styles";
 import { cn } from "@/core/utils/http.util";
+
+interface LiveBuildOverlayItemProps {
+  layer: LiveBuildOverlay;
+  sizeClass?: string;
+  shadow?: boolean;
+}
+
+const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
+  layer,
+  sizeClass = "size-10",
+  shadow = false,
+}) => {
+  const [tintedSrc, setTintedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!layer.color) {
+      setTintedSrc(null);
+      return;
+    }
+    let cancelled = false;
+    applyColorFill(layer.image, layer.color).then((result) => {
+      if (!cancelled) {
+        setTintedSrc(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer.image, layer.color]);
+
+  const displaySrc = tintedSrc || layer.image;
+
+  return (
+    <div
+      className={cn(
+        kioskPlacementOverlayClass(layer.position, sizeClass),
+        shadow && "shadow-md",
+      )}
+    >
+      <img
+        src={displaySrc}
+        alt={layer.label || "Layer"}
+        className="size-full object-cover"
+      />
+    </div>
+  );
+};
 
 interface KioskLiveBuildPanelProps {
   config: KioskConfig;
@@ -158,19 +206,12 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                   className="size-full object-contain drop-shadow-md"
                 />
                 {scene.overlays.map((layer, idx) => (
-                  <div
-                    key={`${layer.image}-${idx}`}
-                    className={cn(
-                      kioskPlacementOverlayClass(layer.position, "size-10"),
-                      "shadow-md",
-                    )}
-                  >
-                    <img
-                      src={layer.image}
-                      alt={layer.label || "Layer"}
-                      className="size-full object-cover"
-                    />
-                  </div>
+                  <LiveBuildOverlayItem
+                    key={`${layer.image}-${layer.uid || idx}`}
+                    layer={layer}
+                    sizeClass="size-10"
+                    shadow
+                  />
                 ))}
               </div>
             ) : showSolidBlock ? (
@@ -179,31 +220,21 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                 style={{ backgroundColor: scene.solidColor || "#2563EB" }}
               >
                 {scene.overlays.map((layer, idx) => (
-                  <div
-                    key={`${layer.image}-${idx}`}
-                    className={kioskPlacementOverlayClass(layer.position, "size-8")}
-                  >
-                    <img
-                      src={layer.image}
-                      alt={layer.label || "Layer"}
-                      className="size-full object-cover"
-                    />
-                  </div>
+                  <LiveBuildOverlayItem
+                    key={`${layer.image}-${layer.uid || idx}`}
+                    layer={layer}
+                    sizeClass="size-8"
+                  />
                 ))}
               </div>
             ) : scene.overlays.length > 0 ? (
               <div className="relative h-[170px] w-[120px] rounded-sm bg-white/60 ring-1 ring-slate-300 dark:bg-slate-800/60">
                 {scene.overlays.map((layer, idx) => (
-                  <div
-                    key={`${layer.image}-${idx}`}
-                    className={kioskPlacementOverlayClass(layer.position, "size-12")}
-                  >
-                    <img
-                      src={layer.image}
-                      alt={layer.label || "Layer"}
-                      className="size-full object-cover"
-                    />
-                  </div>
+                  <LiveBuildOverlayItem
+                    key={`${layer.image}-${layer.uid || idx}`}
+                    layer={layer}
+                    sizeClass="size-12"
+                  />
                 ))}
               </div>
             ) : null}

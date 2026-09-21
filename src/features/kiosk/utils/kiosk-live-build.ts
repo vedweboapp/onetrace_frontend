@@ -12,11 +12,14 @@ export type KioskAnswerValue =
   | undefined;
 
 export interface LiveBuildOverlay {
+  uid?: string | null;
   image: string;
   position: PositionValue;
   label?: string;
   targetUid?: string | null;
   targetUids?: string[];
+  questionUid?: string | null;
+  color?: string | null;
 }
 
 export interface LiveBuildColorApply {
@@ -336,7 +339,7 @@ export function computeLiveBuildScene(
   }
 
   // Pass 3: Resolve place-mode overlays
-  for (const { selected } of selectedItems) {
+  for (const { question, selected } of selectedItems) {
     if (selected.field_type === "image_radio" && isPlaceMode(selected) && selected.image) {
       const targetUids = getPlacementTargetOptionUids(selected, questions);
       const primaryTargetUid = targetUids[0] || selected.target_image_field || selected.placement?.target_field || null;
@@ -347,6 +350,7 @@ export function computeLiveBuildScene(
           if (targetOpt?.image) {
             canvasUid = tUid;
             canvasImage = String(targetOpt.image);
+            canvasQuestion = question;
             break;
           }
         }
@@ -357,25 +361,32 @@ export function computeLiveBuildScene(
         selected.placement?.position ||
         "center";
 
+      const optUid = selected.uid || selected._uid || null;
+      const qUid = question.q_id || question._uid || null;
+
       overlays.push({
+        uid: optUid,
         image: String(selected.image),
         position,
         label: selected.label || undefined,
         targetUid: primaryTargetUid,
         targetUids,
+        questionUid: qUid,
+        color: null,
       });
     }
   }
 
-  // Pass 4: Evaluate color fill — only applies to the CURRENTLY SELECTED image
+  // Pass 4: Evaluate color fill — applies to targeted base canvas or overlay images
   for (const { selected, resolvedColor } of selectedItems) {
     if (!isColorType(selected)) continue;
 
     const chosenColor = resolvedColor || "#2563EB";
+    const targets = getTargetOptionUids(selected, questions);
+    let matchedAny = false;
 
-    // Color fill only applies if a base canvas image is ACTUALLY SELECTED
+    // Check base canvas image
     if (canvasUid && canvasImage) {
-      const targets = getTargetOptionUids(selected, questions);
       const isTargeted =
         targets.includes(canvasUid) ||
         (selected.fill_target_question &&
@@ -387,12 +398,26 @@ export function computeLiveBuildScene(
           color: chosenColor,
           targetUid: canvasUid,
         };
+        matchedAny = true;
       }
     }
 
-    // If no canvas image is selected or the selected image is not targeted,
-    // show solid color block only. We NEVER spawn an unselected image!
-    if (!colorApply) {
+    // Check overlays
+    for (const layer of overlays) {
+      if (!layer.uid) continue;
+      const isLayerTargeted =
+        targets.includes(layer.uid) ||
+        (selected.fill_target_question &&
+          layer.questionUid === selected.fill_target_question);
+
+      if (isLayerTargeted) {
+        layer.color = chosenColor;
+        matchedAny = true;
+      }
+    }
+
+    // If no canvas image or overlay is targeted or exists, fallback to solid color block
+    if (!matchedAny && !canvasImage && overlays.length === 0) {
       solidColor = chosenColor;
     }
   }
