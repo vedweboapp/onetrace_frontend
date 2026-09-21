@@ -28,6 +28,7 @@ import {
   type KioskQuestion,
   type KioskOption,
   type KioskGroup,
+  type PlacementCoordinates,
   DEFAULT_KIOSK_CONFIG,
 } from "../types/kiosk.types";
 import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
@@ -738,8 +739,15 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
 
   if (isImageRadio) {
     if (opt.placement_mode) clean.placement_mode = opt.placement_mode;
-    if (opt.placement_position) clean.placement_position = opt.placement_position;
-    if (opt.placement) clean.placement = opt.placement;
+    if (opt.placement) {
+      clean.placement = {
+        mode: opt.placement.mode,
+        coordinates: opt.placement.coordinates,
+        target_field: opt.placement.target_field,
+        target_fields: opt.placement.target_fields,
+        target_question: opt.placement.target_question,
+      };
+    }
     if (opt.placement_targets && opt.placement_targets.length > 0) {
       clean.placement_targets = opt.placement_targets;
     }
@@ -1239,7 +1247,6 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         ...(isImageRadio && defaultOpt.placement_mode
           ? {
               placement_mode: defaultOpt.placement_mode,
-              placement_position: defaultOpt.placement_position || undefined,
               placement: defaultOpt.placement || undefined,
             }
           : {}),
@@ -1740,6 +1747,27 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                 <KioskRenderer
                   config={previewConfig}
                   livePreviewOptions={livePreviewOptions}
+                  onPlacementChange={(optionUid, coordinates: PlacementCoordinates) => {
+                    setConfig((prev) => ({
+                      ...prev,
+                      questions: (prev.questions || []).map((question) => ({
+                        ...question,
+                        options: question.options?.map((option) =>
+                          (option.o_id || option.uid || option._uid) === optionUid
+                            ? { ...option, placement: { ...(option.placement || { mode: "place" }), coordinates } }
+                            : option,
+                        ),
+                        groups: question.groups?.map((group) => ({
+                          ...group,
+                          options: (group.options || []).map((option) =>
+                            (option.o_id || option.uid || option._uid) === optionUid
+                              ? { ...option, placement: { ...(option.placement || { mode: "place" }), coordinates } }
+                              : option,
+                          ),
+                        })),
+                      })),
+                    }));
+                  }}
                   onSubmit={(values) => {
                     console.log("Kiosk simulated submit values:", values);
                     toastSuccess("Simulated kiosk submission recorded!");

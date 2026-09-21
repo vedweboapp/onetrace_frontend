@@ -20,16 +20,10 @@ import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
 import type {
   KioskOption,
   PlacementMode,
-  PlacementScaleRatio,
-  PositionValue,
   ColorFillConfig,
 } from "../types/kiosk.types";
 import { cn } from "@/core/utils/http.util";
 import { applyColorFill } from "../utils/kiosk-color-fill";
-import {
-  kioskPlacementOverlayClass,
-  kioskPlacementScaleRatioClass,
-} from "../utils/kiosk-placement-styles";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
 
 interface KioskFieldConfigModalProps {
@@ -52,17 +46,6 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"];
-
-const PLACEMENT_SCALE_RATIOS: Array<{
-  value: PlacementScaleRatio;
-  label: string;
-  description: string;
-}> = [
-  { value: "door", label: "Long Glass", description: "Tall door insert" },
-  { value: "square", label: "Square", description: "Even panel" },
-  { value: "strip", label: "Strip", description: "Thin long strip" },
-  { value: "framed", label: "Framed", description: "80% panel with 10% margin" },
-];
 
 function isValidImageFile(file: File): boolean {
   const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
@@ -248,18 +231,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   const placementMode: PlacementMode | undefined =
     formData.placement_mode || formData.placement?.mode || undefined;
 
-  const position: PositionValue | undefined =
-    formData.placement_position ||
-    formData.placement?.position ||
-    (placementMode === "place" ? "center" : undefined);
-
-  const scaleRatio: PlacementScaleRatio =
-    formData.placement_scale_ratio ||
-    formData.placement?.scale_ratio ||
-    "door";
-
-  const scaleRatioClass = kioskPlacementScaleRatioClass(scaleRatio);
-
   // Current placement_targets array (UIDs of target canvas options)
   const placementTargets: string[] = React.useMemo(() => {
     if (Array.isArray(formData.placement_targets)) return formData.placement_targets;
@@ -306,7 +277,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         return {
           ...prev,
           placement_mode: "group",
-          placement_position: undefined,
           target_image_field: undefined,
           placement_targets: undefined,
           placement_target_question: undefined,
@@ -315,7 +285,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           },
         };
       } else {
-        const nextPos: PositionValue = position || "center";
         const currentTargets = placementTargets.length > 0
           ? placementTargets
           : availableImageFields.length > 0
@@ -326,54 +295,16 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         return {
           ...prev,
           placement_mode: "place",
-          placement_position: nextPos,
-          placement_scale_ratio: scaleRatio,
           target_image_field: nextTargetField,
           placement_targets: currentTargets,
           placement: {
             mode: "place",
-            position: nextPos,
-            scale_ratio: scaleRatio,
             target_field: nextTargetField,
             target_fields: currentTargets,
           },
         };
       }
     });
-  };
-
-  const handlePositionChange = (pos: PositionValue) => {
-    setFormData((prev) => ({
-      ...prev,
-      placement_mode: "place",
-      placement_position: pos,
-      placement_scale_ratio: scaleRatio,
-      placement: {
-        mode: "place",
-        position: pos,
-        scale_ratio: scaleRatio,
-        target_field: prev.target_image_field,
-        target_fields: prev.placement_targets || (prev.target_image_field ? [prev.target_image_field] : []),
-        target_question: prev.placement_target_question || null,
-      },
-    }));
-  };
-
-  const handleScaleRatioChange = (nextScaleRatio: PlacementScaleRatio) => {
-    setFormData((prev) => ({
-      ...prev,
-      placement_mode: "place",
-      placement_position: position || "center",
-      placement_scale_ratio: nextScaleRatio,
-      placement: {
-        mode: "place",
-        position: position || "center",
-        scale_ratio: nextScaleRatio,
-        target_field: prev.target_image_field,
-        target_fields: prev.placement_targets || (prev.target_image_field ? [prev.target_image_field] : []),
-        target_question: prev.placement_target_question || null,
-      },
-    }));
   };
 
   const handleSelectTargetField = (targetUid: string) => {
@@ -385,8 +316,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       placement_targets: chosenUid ? [chosenUid] : [],
       placement: {
         mode: prev.placement_mode || "place",
-        position: position || "center",
-        scale_ratio: scaleRatio,
+            coordinates: prev.placement?.coordinates || null,
         target_field: chosenUid || null,
         target_fields: chosenUid ? [chosenUid] : [],
         target_question: null,
@@ -412,8 +342,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         target_image_field: primary,
         placement: {
           mode: prev.placement_mode || "place",
-          position: position || "center",
-          scale_ratio: scaleRatio,
+          coordinates: prev.placement?.coordinates || null,
           target_field: primary || null,
           target_fields: next,
           target_question: null,
@@ -432,8 +361,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         target_image_field: undefined,
         placement: {
           mode: prev.placement_mode || "place",
-          position: position || "center",
-          scale_ratio: scaleRatio,
+          coordinates: prev.placement?.coordinates || null,
           target_field: null,
           target_fields: [],
           target_question: null,
@@ -451,8 +379,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       target_image_field: primary,
       placement: {
         mode: prev.placement_mode || "place",
-        position: position || "center",
-        scale_ratio: scaleRatio,
+        coordinates: prev.placement?.coordinates || null,
         target_field: primary || null,
         target_fields: targetUids,
         target_question: targetQuestionUid,
@@ -590,7 +517,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         : null;
 
       // Clean out placement properties which do not belong to color fields
-      const { placement, placement_mode, placement_position, ...cleanData } = formData;
+      const { placement, placement_mode, ...cleanData } = formData;
 
       const colorLabel = formData.label || "Color Choice";
       const colorApiName = deriveApiNameFromLabel(colorLabel, "color_choice");
@@ -624,8 +551,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       if (!isImageRadio) {
         delete cleanData.placement;
         delete cleanData.placement_mode;
-        delete cleanData.placement_position;
-        delete cleanData.placement_scale_ratio;
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
       } else if (!cleanData.placement_mode) {
@@ -638,8 +563,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         delete cleanData.placement_target_question;
       } else if (cleanData.placement_mode === "group") {
         cleanData.placement = { mode: "group" };
-        delete cleanData.placement_position;
-        delete cleanData.placement_scale_ratio;
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
         delete cleanData.target_image_field;
@@ -648,12 +571,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         const primaryTarget = finalPlacementTargets[0] || null;
         cleanData.placement_targets = finalPlacementTargets.length > 0 ? finalPlacementTargets : undefined;
         cleanData.target_image_field = primaryTarget;
-        cleanData.placement_position = position || "center";
-        cleanData.placement_scale_ratio = scaleRatio;
         cleanData.placement = {
           mode: "place",
-          position: position || "center",
-          scale_ratio: scaleRatio,
+          coordinates: formData.placement?.coordinates || null,
           target_field: primaryTarget,
           target_fields: finalPlacementTargets.length > 0 ? finalPlacementTargets : null,
           target_question: formData.placement_target_question || null,
@@ -926,141 +846,16 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                             </div>
                           )}
 
-                          {/* Target Position Overlay Marker */}
-                          <div
-                            className={cn(
-                              kioskPlacementOverlayClass(position, scaleRatioClass),
-                              "flex items-center justify-center border-blue-100 bg-blue-600/90 text-[10px] font-bold text-white pointer-events-none",
-                            )}
-                          >
-                            {position === "center"
-                              ? "0"
-                              : position
-                              ? position[0].toUpperCase()
-                              : "0"}
+                          <div className="absolute inset-[25%] flex items-center justify-center border-2 border-blue-100 bg-blue-600/90 text-[10px] font-bold text-white pointer-events-none">
+                            Freeform
                           </div>
                         </div>
                       </div>
 
-                      {/* Joystick Directional Controller */}
-                      <div className="shrink-0 flex flex-col items-center gap-2">
-                        <span className="mb-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                          Position:{" "}
-                          <span className="font-mono text-blue-600 dark:text-blue-400 font-bold capitalize">
-                            {position || "center"}
-                          </span>
-                        </span>
-
-                        <div className="relative grid grid-cols-3 grid-rows-3 gap-1 size-24 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-inner">
-                          {/* Top */}
-                          <div className="col-start-2 row-start-1 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handlePositionChange("top")}
-                              className={cn(
-                                "size-6 rounded flex items-center justify-center transition shadow-2xs",
-                                position === "top"
-                                  ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
-                                  : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-                              )}
-                              title="Top (▲)"
-                            >
-                              <ChevronUp size={14} strokeWidth={2.5} />
-                            </button>
-                          </div>
-
-                          {/* Left */}
-                          <div className="col-start-1 row-start-2 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handlePositionChange("left")}
-                              className={cn(
-                                "size-6 rounded flex items-center justify-center transition shadow-2xs",
-                                position === "left"
-                                  ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
-                                  : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-                              )}
-                              title="Left (◀)"
-                            >
-                              <ChevronLeft size={14} strokeWidth={2.5} />
-                            </button>
-                          </div>
-
-                          {/* Center */}
-                          <div className="col-start-2 row-start-2 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handlePositionChange("center")}
-                              className={cn(
-                                "size-6 rounded flex items-center justify-center text-[10px] font-bold transition shadow-2xs font-mono",
-                                position === "center"
-                                  ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
-                                  : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-                              )}
-                              title="Center (0)"
-                            >
-                              0
-                            </button>
-                          </div>
-
-                          {/* Right */}
-                          <div className="col-start-3 row-start-2 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handlePositionChange("right")}
-                              className={cn(
-                                "size-6 rounded flex items-center justify-center transition shadow-2xs",
-                                position === "right"
-                                  ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
-                                  : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-                              )}
-                              title="Right (▶)"
-                            >
-                              <ChevronRight size={14} strokeWidth={2.5} />
-                            </button>
-                          </div>
-
-                          {/* Bottom */}
-                          <div className="col-start-2 row-start-3 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => handlePositionChange("bottom")}
-                              className={cn(
-                                "size-6 rounded flex items-center justify-center transition shadow-2xs",
-                                position === "bottom"
-                                  ? "bg-blue-600 text-white shadow-xs scale-105 ring-2 ring-blue-400"
-                                  : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-                              )}
-                              title="Bottom (▼)"
-                            >
-                              <ChevronDown size={14} strokeWidth={2.5} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="w-36 space-y-1">
-                          <span className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                            Scale Ratio
-                          </span>
-                          <div className="grid grid-cols-4 gap-1">
-                            {PLACEMENT_SCALE_RATIOS.map((ratio) => (
-                              <button
-                                key={ratio.value}
-                                type="button"
-                                onClick={() => handleScaleRatioChange(ratio.value)}
-                                className={cn(
-                                  "flex h-10 flex-col items-center justify-center rounded-md border px-1 text-[9px] font-semibold transition",
-                                  scaleRatio === ratio.value
-                                    ? "border-blue-600 bg-blue-600 text-white shadow-xs"
-                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
-                                )}
-                                title={ratio.description}
-                              >
-                                <span>{ratio.label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="shrink-0 w-40 space-y-2">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Position and size are edited in the freeform overlap tool from the live renderer.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1674,7 +1469,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
               {isImageRadioField && placementMode === "place" && (
                 <div>
                   <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-                    Canvas Placement Overlay ({position || "center"})
+                    Canvas Placement Overlay (Freeform)
                   </span>
                   <div className="relative h-44 w-full rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 overflow-hidden flex items-center justify-center shadow-inner">
                     {/* Base Target Image */}
@@ -1697,7 +1492,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
 
                     {/* Placed Overlay Object (NO Color Tint) */}
                     {formData.image ? (
-                      <div className={kioskPlacementOverlayClass(position)}>
+                      <div className="absolute inset-[25%] overflow-hidden rounded-md border-2 border-white shadow-lg">
                         <img
                           src={String(formData.image)}
                           alt="Placed object"
@@ -1707,11 +1502,10 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                     ) : (
                       <div
                         className={cn(
-                          kioskPlacementOverlayClass(position, "size-14"),
-                          "flex items-center justify-center border-dashed border-blue-500/80 bg-blue-500/20 backdrop-blur-xs text-[10px] font-bold text-blue-700 dark:text-blue-300",
+                          "absolute inset-[25%] flex items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-blue-500/80 bg-blue-500/20 backdrop-blur-xs text-[10px] font-bold text-blue-700 dark:text-blue-300",
                         )}
                       >
-                        {position || "center"}
+                        Place image
                       </div>
                     )}
                   </div>
@@ -1770,17 +1564,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                       {placementMode}
                     </span>
                   </div>
-
-                  {placementMode === "place" && (
-                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-slate-500 dark:text-slate-400">
-                        Position:
-                      </span>
-                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400 capitalize">
-                        {position || "center"}
-                      </span>
-                    </div>
-                  )}
 
                   {placementMode === "place" && selectedTargetField && (
                     <div className="flex items-center justify-between text-[11px]">

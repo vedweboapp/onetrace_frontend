@@ -8,7 +8,7 @@
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
-import type { PlacementScaleRatio } from "./kiosk.types";
+import type { PlacementCoordinates } from "./kiosk.types";
 
 // ── Per-option selection ──────────────────────────────────────────────────────
 
@@ -52,13 +52,8 @@ export interface KioskSelectedOption {
   placement_mode: "place" | "group" | null;
 
   /**
-   * Where the image is placed on the target canvas.
-   * Only set when placement_mode === "place".
-   */
-  placement_position: "top" | "bottom" | "left" | "right" | "center" | null;
-
-  /** Scale ratio for an image placed on the target canvas. */
-  placement_scale_ratio: PlacementScaleRatio | null;
+  /** Normalized overlay corners relative to the target canvas. */
+  placement_coordinates: PlacementCoordinates | null;
 
   /** UID of the canvas (image_radio option) this object is placed on.
    * Only set when placement_mode === "place".

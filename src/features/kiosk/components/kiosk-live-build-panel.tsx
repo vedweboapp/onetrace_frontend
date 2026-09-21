@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
-import type { KioskConfig, KioskOption } from "../types/kiosk.types";
+import type { KioskConfig, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
 import {
   computeLiveBuildScene,
   type KioskAnswerValue,
@@ -10,8 +10,9 @@ import {
 } from "../utils/kiosk-live-build";
 import { applyColorFill } from "../utils/kiosk-color-fill";
 import {
-  kioskPlacementOverlayClass,
-  kioskPlacementScaleRatioClass,
+  DEFAULT_PLACEMENT_COORDINATES,
+  normalizePlacementCoordinates,
+  placementCoordinatesStyle,
 } from "../utils/kiosk-placement-styles";
 import { cn } from "@/core/utils/http.util";
 
@@ -19,12 +20,14 @@ interface LiveBuildOverlayItemProps {
   layer: LiveBuildOverlay;
   sizeClass?: string;
   shadow?: boolean;
+  onClick?: () => void;
 }
 
 const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
   layer,
   sizeClass = "size-10",
   shadow = false,
+  onClick,
 }) => {
   const [tintedSrc, setTintedSrc] = useState<string | null>(null);
 
@@ -49,12 +52,12 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
   return (
     <div
       className={cn(
-        kioskPlacementOverlayClass(
-          layer.position,
-          kioskPlacementScaleRatioClass(layer.scaleRatio, sizeClass),
-        ),
+        "absolute z-10 overflow-hidden rounded-md border-2 border-white shadow-lg transition-all duration-200",
+        sizeClass,
         shadow && "shadow-md",
       )}
+      style={placementCoordinatesStyle(layer.coordinates)}
+      onClick={onClick}
     >
       <img
         src={displaySrc}
@@ -71,7 +74,106 @@ interface KioskLiveBuildPanelProps {
   livePreviewOptions?: Record<string, KioskOption | null | undefined>;
   className?: string;
   compact?: boolean;
+  onPlacementChange?: (optionUid: string, coordinates: PlacementCoordinates) => void;
 }
+
+interface PlacementEditorModalProps {
+  layer: LiveBuildOverlay;
+  canvasImage: string;
+  onChange: (coordinates: PlacementCoordinates) => void;
+  onClose: () => void;
+}
+
+const PlacementEditorModal: React.FC<PlacementEditorModalProps> = ({
+  layer,
+  canvasImage,
+  onChange,
+  onClose,
+}) => {
+  const canvasRef = React.useRef<HTMLDivElement>(null);
+  const [coordinates, setCoordinates] = React.useState(() =>
+    normalizePlacementCoordinates(layer.coordinates || DEFAULT_PLACEMENT_COORDINATES),
+  );
+  const [interaction, setInteraction] = React.useState<{
+    type: "move" | "resize";
+    x: number;
+    y: number;
+    start: PlacementCoordinates;
+  } | null>(null);
+
+  const updateFromPointer = (event: React.PointerEvent) => {
+    if (!interaction || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    const dx = x - interaction.x;
+    const dy = y - interaction.y;
+    const start = interaction.start;
+    const width = start.bottom_right.x - start.top_left.x;
+    const height = start.bottom_right.y - start.top_left.y;
+    const next = interaction.type === "move"
+      ? {
+          top_left: { x: start.top_left.x + dx, y: start.top_left.y + dy },
+          bottom_right: { x: start.bottom_right.x + dx, y: start.bottom_right.y + dy },
+        }
+      : {
+          top_left: start.top_left,
+          bottom_right: {
+            x: Math.max(start.top_left.x + 5, start.bottom_right.x + dx),
+            y: Math.max(start.top_left.y + 5, start.bottom_right.y + dy),
+          },
+        };
+    const normalized = normalizePlacementCoordinates(next);
+    if (interaction.type === "move") {
+      const clampedX = Math.max(0, Math.min(100 - width, normalized.top_left.x));
+      const clampedY = Math.max(0, Math.min(100 - height, normalized.top_left.y));
+      normalized.top_left = { x: clampedX, y: clampedY };
+      normalized.bottom_right = { x: clampedX + width, y: clampedY + height };
+    }
+    setCoordinates(normalized);
+    onChange(normalized);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onPointerMove={updateFromPointer} onPointerUp={() => setInteraction(null)}>
+      <div className="w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Place overlapping image</h3>
+            <p className="text-[11px] text-slate-400">Drag the image to move it. Drag the corner to resize it.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded border border-slate-600 px-3 py-1 text-xs text-white">Done</button>
+        </div>
+        <div ref={canvasRef} className="relative mx-auto aspect-video max-h-[70vh] w-full overflow-hidden rounded border border-slate-600 bg-slate-800">
+          {canvasImage && <img src={canvasImage} alt="Base document" className="size-full object-contain" />}
+          <div
+            className="absolute cursor-move overflow-visible border-2 border-blue-400 bg-blue-500/20"
+            style={placementCoordinatesStyle(coordinates)}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              setInteraction({ type: "move", x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100, start: coordinates });
+            }}
+          >
+            <img src={layer.image} alt={layer.label || "Overlapping image"} className="size-full object-contain" />
+            <button
+              type="button"
+              aria-label="Resize overlapping image"
+              className="absolute -bottom-2 -right-2 size-4 cursor-se-resize rounded-full border-2 border-white bg-blue-500"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                const rect = canvasRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                setInteraction({ type: "resize", x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100, start: coordinates });
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
   config,
@@ -79,6 +181,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
   livePreviewOptions,
   className,
   compact = false,
+  onPlacementChange,
 }) => {
   const scene = useMemo(
     () => computeLiveBuildScene(config, answers, livePreviewOptions),
@@ -87,6 +190,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
 
   const [tintedCanvasSrc, setTintedCanvasSrc] = useState<string | null>(null);
   const [tintLoading, setTintLoading] = useState(false);
+  const [editingLayer, setEditingLayer] = useState<LiveBuildOverlay | null>(null);
 
   const tintSource = useMemo(() => {
     if (!scene.colorApply) return null;
@@ -166,6 +270,15 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
   }
 
   return (
+    <>
+    {editingLayer && mainImageSrc && editingLayer.uid && (
+      <PlacementEditorModal
+        layer={editingLayer}
+        canvasImage={mainImageSrc}
+        onChange={(coordinates) => onPlacementChange?.(editingLayer.uid!, coordinates)}
+        onClose={() => setEditingLayer(null)}
+      />
+    )}
     <aside
       className={cn(
         "shrink-0 rounded-lg border border-slate-200 bg-[#ececec] shadow-sm dark:border-slate-700 dark:bg-slate-900",
@@ -217,6 +330,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                     layer={layer}
                     sizeClass="size-10"
                     shadow
+                    onClick={() => setEditingLayer(layer)}
                   />
                 ))}
               </div>
@@ -301,5 +415,6 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
         )}
       </div>
     </aside>
+    </>
   );
 };

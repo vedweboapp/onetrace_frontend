@@ -2,9 +2,9 @@ import type {
   KioskConfig,
   KioskOption,
   KioskQuestion,
-  PlacementScaleRatio,
-  PositionValue,
+  PlacementCoordinates,
 } from "../types/kiosk.types";
+import { DEFAULT_PLACEMENT_COORDINATES } from "./kiosk-placement-styles";
 
 export type KioskAnswerValue =
   | { uid?: string; o_id?: string; value?: string | number }
@@ -15,8 +15,7 @@ export type KioskAnswerValue =
 export interface LiveBuildOverlay {
   uid?: string | null;
   image: string;
-  position: PositionValue;
-  scaleRatio: PlacementScaleRatio;
+  coordinates: PlacementCoordinates;
   label?: string;
   targetUid?: string | null;
   targetUids?: string[];
@@ -363,14 +362,8 @@ export function computeLiveBuildScene(
         }
       }
 
-      const position: PositionValue =
-        selected.placement_position ||
-        selected.placement?.position ||
-        "center";
-      const scaleRatio: PlacementScaleRatio =
-        selected.placement_scale_ratio ||
-        selected.placement?.scale_ratio ||
-        "door";
+      const coordinates =
+        selected.placement?.coordinates || DEFAULT_PLACEMENT_COORDINATES;
 
       const optUid = getOptionKey(selected) || null;
       const qUid = question.q_id || question._uid || null;
@@ -378,8 +371,7 @@ export function computeLiveBuildScene(
       overlays.push({
         uid: optUid,
         image: String(selected.image),
-        position,
-        scaleRatio,
+        coordinates,
         label: selected.label || undefined,
         targetUid: primaryTargetUid,
         targetUids,

@@ -4,7 +4,7 @@ import React, { forwardRef, useImperativeHandle, useState, useCallback, useEffec
 import { CheckCircle, Check, Layers, Send, Palette, X } from "lucide-react";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import type { KioskConfig, KioskQuestion, KioskOption } from "../types/kiosk.types";
+import type { KioskConfig, KioskQuestion, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
 import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
@@ -192,6 +192,7 @@ export interface KioskRendererProps {
   isSubmitting?: boolean;
   /** Per-question draft option while configuring (live builder sync) */
   livePreviewOptions?: Record<string, KioskOption | null | undefined>;
+  onPlacementChange?: (optionUid: string, coordinates: PlacementCoordinates) => void;
 }
 
 const getGridClass = (cols: number = 2) => {
@@ -217,6 +218,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       renderMode = "desktop",
       isSubmitting = false,
       livePreviewOptions,
+      onPlacementChange,
     },
     ref,
   ) {
@@ -805,6 +807,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             config={config}
             answers={answers}
             livePreviewOptions={livePreviewOptions}
+            onPlacementChange={onPlacementChange}
             className="order-1 lg:order-2 lg:sticky lg:top-2 lg:self-start"
             compact={isPhone}
           />

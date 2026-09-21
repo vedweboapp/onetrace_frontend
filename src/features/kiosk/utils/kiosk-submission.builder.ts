@@ -43,20 +43,6 @@ function resolveSelectedOption(
     (option.placement?.mode as "place" | "group" | undefined) ||
     null;
 
-  const placementPosition =
-    option.placement_position ||
-    (option.placement?.position as
-      | "top"
-      | "bottom"
-      | "left"
-      | "right"
-      | "center"
-      | undefined) ||
-    null;
-
-  const placementScaleRatio =
-    option.placement_scale_ratio || option.placement?.scale_ratio || null;
-
   const placementTargetUid =
     option.target_image_field ||
     (option.placement?.target_field as string | undefined) ||
@@ -85,9 +71,10 @@ function resolveSelectedOption(
 
     // Placement extras (image_radio only)
     placement_mode: isImageRadio ? placementMode : null,
-    placement_position: isImageRadio && placementMode === "place" ? placementPosition : null,
-    placement_scale_ratio:
-      isImageRadio && placementMode === "place" ? placementScaleRatio : null,
+    placement_coordinates:
+      isImageRadio && placementMode === "place"
+        ? option.placement?.coordinates || null
+        : null,
     placement_target_uid: isImageRadio && placementMode === "place" ? placementTargetUid : null,
     placement_target_uids:
       isImageRadio && placementMode === "place" && placementTargetUids.length > 0
