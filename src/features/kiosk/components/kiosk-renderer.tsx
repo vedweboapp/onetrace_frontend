@@ -12,6 +12,7 @@ import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
 import { getQuestionOptions } from "../utils/kiosk-lookup";
 import { buildLookupOptions } from "../utils/kiosk-lookup";
 import { fetchGroup } from "@/features/groups/api/group.api";
+import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -240,20 +241,35 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         (question) => question.is_lookup && question.item_group_id != null,
       );
 
-      Promise.all(
-        lookupQuestions.map(async (question) => {
-          const questionUid = question.q_id || question._uid || "";
+      Promise.all([
+        fetchCompositeItemsPage(1, 500),
+        ...lookupQuestions.map(async (question) => {
           const group = await fetchGroup(Number(question.item_group_id));
-          return [
-            questionUid,
-            buildLookupOptions(
-              group.items || [],
-              question.item_group_id as string | number,
-              question.lookup_option_type || "radio",
-            ),
-          ] as const;
+          return { question, group };
         }),
-      )
+      ])
+        .then(([compositeResult, ...lookupResults]) => {
+          const compositeById = new Map(
+            compositeResult.items.map((item) => [item.id, item]),
+          );
+          return lookupResults.map(({ question, group }) => {
+            const questionUid = question.q_id || question._uid || "";
+            const items = (group.items || []).map((item) => ({
+              ...item,
+              selling_price:
+                compositeById.get(Number(item.item))?.selling_price ??
+                item.selling_price,
+            }));
+            return [
+              questionUid,
+              buildLookupOptions(
+                items,
+                question.item_group_id as string | number,
+                question.lookup_option_type || "radio",
+              ),
+            ] as const;
+          });
+        })
         .then((entries) => {
           if (!cancelled) setLookupOptionsByQuestion(Object.fromEntries(entries));
         })
@@ -290,7 +306,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           ...getQuestionOptions(q),
         ];
         allOpts.forEach((opt) => {
-          const optId = opt.uid || opt._uid;
+          const optId = opt.o_id || opt.uid || opt._uid;
           if (optId) map.set(optId, { option: opt, question: q });
         });
       });
@@ -299,7 +315,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
     const handleInputChange = (question: KioskQuestion, option: KioskOption, val: string) => {
       const qKey = question.api_name || question.q_id || question._uid || "";
-      const optUid = option.uid || option._uid || "";
+      const optUid = option.o_id || option.uid || option._uid || "";
 
       setAnswers((prev) => {
         const current = prev[qKey];
@@ -326,7 +342,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
     const getInputValue = (question: KioskQuestion, option: KioskOption): string => {
       const qKey = question.api_name || question.q_id || question._uid || "";
-      const optUid = option.uid || option._uid || "";
+      const optUid = option.o_id || option.uid || option._uid || "";
       const ans = answers[qKey];
       if (!ans) return (option.value as string) || "";
       if (Array.isArray(ans)) {
@@ -341,7 +357,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
     const handleSelectOption = (question: KioskQuestion, option: KioskOption) => {
       const qKey = question.api_name || question.q_id || question._uid || "";
-      const optUid = option.uid || option._uid || "";
+      const optUid = option.o_id || option.uid || option._uid || "";
       const payloadVal = option.value || option.color || option.label || optUid;
 
       if (option.field_type === "checkbox") {
@@ -364,7 +380,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
               ...getQuestionOptions(question),
             ];
             const inputOptionUids = new Set(
-              allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.uid || o._uid)
+              allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.o_id || o.uid || o._uid)
             );
             const keptInputs = current.filter((item) => {
               const u = typeof item === "object" ? item.uid : item;
@@ -418,7 +434,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       const isColorSwatch = option.field_type === "color_swatch";
       const isColor = option.field_type === "color";
       const isImageRadio = option.field_type === "image_radio";
-      const optUid = option.uid || option._uid || "";
+      const optUid = option.o_id || option.uid || option._uid || "";
 
       // Input Field Rendering
       if (isInput) {
@@ -508,7 +524,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         : typeof selectedVal === "object" && selectedVal !== null
         ? selectedVal.uid === optUid
         : selectedVal === optUid;
-      const inputId = `opt_${question.q_id || question._uid || ""}_${option.uid || option._uid || optIdx}`;
+      const inputId = `opt_${question.q_id || question._uid || ""}_${option.o_id || option.uid || option._uid || optIdx}`;
 
       const handleCardClick = () => {
         if (isColorSwatch) {
@@ -524,7 +540,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
       return (
         <div
-          key={option.uid || option._uid || optIdx}
+          key={option.o_id || option.uid || option._uid || optIdx}
           onClick={handleCardClick}
           className={cn(
             "relative flex cursor-pointer rounded-sm border overflow-hidden transition-all duration-150 select-none",

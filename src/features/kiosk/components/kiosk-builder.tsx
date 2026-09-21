@@ -3,10 +3,12 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { DndProvider, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { useParams, useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { AppButton as Button } from "@/shared/ui/app-button";
-import { toastSuccess } from "@/shared/feedback/app-toast";
+import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
+import { createKiosk, getKioskById, updateKiosk } from "../api/kiosk.api";
 import {
   Monitor,
   Smartphone,
@@ -36,15 +38,40 @@ import { KioskLookupQuestionModal } from "./kiosk-lookup-question-modal";
 import { KioskRenderer } from "./kiosk-renderer";
 import { cn } from "@/core/utils/http.util";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
+import {
+  buildKioskFormData,
+  formDataToDebugEntries,
+} from "../utils/kiosk-formdata.builder";
 
 interface KioskBuilderProps {
   initialConfig?: KioskConfig;
-  onSave?: (config: KioskConfig) => void;
+  onSave?: (config: KioskConfig, formData?: FormData) => void;
   backUrl?: string;
 }
 
 const generateUid = (prefix = "k_") =>
   `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+type KioskMutationResponse = {
+  id?: string | number;
+  data?: {
+    id?: string | number;
+  };
+};
+
+const getCreatedKioskId = (response: KioskMutationResponse | null | undefined) =>
+  response?.data?.id ?? response?.id;
+
+const getSaveErrorMessage = (err: unknown) => {
+  const error = err as { response?: { data?: { message?: string } }; message?: string };
+  return error?.response?.data?.message || error?.message || "Failed to save kiosk";
+};
+
+const getRouteParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+const getKioskEditUrl = (id: string | number) =>
+  `${routes.dashboard.settingsKiosks}/${id}?kiosk_mode=edit`;
 
 const getGridClass = (cols: number = 2) => {
   switch (cols) {
@@ -209,7 +236,7 @@ const QuestionInnerGroupFrame: React.FC<{
       {group.options && group.options.length > 0 ? (
         <div className={cn("grid gap-2.5", getGridClass(columns))}>
           {group.options.map((option, optIdx) => {
-            const optId = option.uid || option._uid || String(optIdx);
+            const optId = option.o_id || option.uid || option._uid || String(optIdx);
             return (
               <DynamicKioskFieldPreview
                 key={optId}
@@ -573,7 +600,7 @@ const QuestionDropZone: React.FC<{
             {(question.options || []).length > 0 ? (
               <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
                 {(question.options || []).map((option, optIdx) => {
-                  const optId = option.uid || option._uid || String(optIdx);
+                  const optId = option.o_id || option.uid || option._uid || String(optIdx);
                   return (
                     <DynamicKioskFieldPreview
                       key={optId}
@@ -682,19 +709,18 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
   const isColor = fieldType === "color" || fieldType === "color_swatch";
   const isRadioOrCheckbox =
     fieldType === "radio" || fieldType === "checkbox" || isImageRadio;
-  const optUid = opt.uid || opt._uid || generateUid("opt_");
+  const optId = opt.o_id || opt.uid || opt._uid || generateUid("opt_");
   const label = opt.label || "";
   const apiName = label
     ? deriveApiNameFromLabel(label, "option")
     : opt.api_name || "option";
 
   const clean: KioskOption = {
-    uid: optUid,
-    _uid: optUid,
+    o_id: optId,
     id: opt.id ?? null,
     field_type: fieldType,
     label,
-    subLabel: opt.subLabel || "",
+    subLabel: opt.subLabel || opt.sub_label || "",
     api_name: apiName,
     value: opt.value ?? "",
     price: opt.price || "",
@@ -788,7 +814,7 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           q_id,
           id: q.id ?? null,
           label: questionLabel,
-          subLabel: q.subLabel,
+          subLabel: q.subLabel || q.sub_label,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           is_lookup: q.is_lookup,
           item_group_id: q.item_group_id,
@@ -804,7 +830,7 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           q_id,
           id: q.id ?? null,
           label: questionLabel,
-          subLabel: q.subLabel,
+          subLabel: q.subLabel || q.sub_label,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           is_lookup: q.is_lookup,
           item_group_id: q.item_group_id,
@@ -824,12 +850,19 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   backUrl = routes.dashboard.settingsKiosks,
 }) => {
   const router = useRouter();
+  const params = useParams<{ id?: string | string[] }>();
+  const searchParams = useSearchParams();
+  const kioskMode = searchParams.get("kiosk_mode");
+  const routeKioskId = getRouteParam(params?.id);
 
   // Normalize initial config to sanitized questions structure
   const [config, setConfig] = useState<KioskConfig>(() => {
     if (!initialConfig) return DEFAULT_KIOSK_CONFIG;
     return sanitizeConfig(initialConfig);
   });
+  const configRef = useRef(config);
+  configRef.current = config;
+  const [isLoadingKiosk, setIsLoadingKiosk] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
@@ -848,10 +881,41 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     return { [editingOptionModal.questionUid]: draftOption };
   }, [editingOptionModal, draftOption]);
 
+  useEffect(() => {
+    if (initialConfig || kioskMode !== "edit" || !routeKioskId) return;
+
+    let cancelled = false;
+
+    const loadKiosk = async () => {
+      setIsLoadingKiosk(true);
+      try {
+        const kiosk = await getKioskById(routeKioskId);
+        if (!cancelled && kiosk) {
+          setConfig(sanitizeConfig(kiosk));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load kiosk:", err);
+          toastError(getSaveErrorMessage(err));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingKiosk(false);
+        }
+      }
+    };
+
+    loadKiosk();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialConfig, kioskMode, routeKioskId]);
+
   const previewConfig = useMemo((): KioskConfig => {
     if (!draftOption || !editingOptionModal) return config;
     const { questionUid } = editingOptionModal;
-    const draftOptId = draftOption.uid || draftOption._uid;
+    const draftOptId = draftOption.o_id || draftOption.uid || draftOption._uid;
     return {
       ...config,
       questions: (config.questions || []).map((q) => {
@@ -859,14 +923,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         if (qId !== questionUid) return q;
         const updatedOpts = q.options
           ? q.options.map((opt) =>
-              (opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
+              (opt.o_id || opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
             )
           : undefined;
         const updatedGroups = q.groups
           ? q.groups.map((g) => ({
               ...g,
               options: (g.options || []).map((opt) =>
-                (opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
+                (opt.o_id || opt.uid || opt._uid) === draftOptId ? { ...draftOption } : opt,
               ),
             }))
           : undefined;
@@ -1058,8 +1122,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           const newGrpUid = generateUid("grp_");
           const opts = (g.options || []).map((opt) => ({
             ...opt,
-            uid: generateUid("opt_"),
-            _uid: generateUid("opt_"),
+            o_id: generateUid("opt_"),
             id: null,
             gid: newGid,
             group_uid: newGrpUid,
@@ -1077,8 +1140,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       ? undefined
       : (question.options || []).map((opt) => ({
           ...opt,
-          uid: generateUid("opt_"),
-          _uid: generateUid("opt_"),
+          o_id: generateUid("opt_"),
           id: null,
         }));
 
@@ -1157,10 +1219,9 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         initialValue = "";
       }
 
-      const optUid = generateUid("opt_");
+      const optId = generateUid("opt_");
       const newOption: KioskOption = {
-        uid: optUid,
-        _uid: optUid,
+        o_id: optId,
         id: null,
         label,
         subLabel: defaultOpt.subLabel || "",
@@ -1266,7 +1327,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       normalizedOption.value = normalizedOption.color || normalizedOption.value || "#2563EB";
     }
 
-    const optId = normalizedOption.uid || normalizedOption._uid;
+    const optId = normalizedOption.o_id || normalizedOption.uid || normalizedOption._uid;
 
     setConfig((prev) => ({
       ...prev,
@@ -1285,14 +1346,14 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         if (q.is_lookup) return q;
         const updatedOptions = q.options
           ? q.options.map((opt) =>
-              (opt.uid || opt._uid) === optId ? normalizedOption : opt
+              (opt.o_id || opt.uid || opt._uid) === optId ? normalizedOption : opt
             )
           : undefined;
         const updatedGroups = q.groups
           ? q.groups.map((g) => ({
               ...g,
               options: (g.options || []).map((opt) =>
-                (opt.uid || opt._uid) === optId ? normalizedOption : opt
+                (opt.o_id || opt.uid || opt._uid) === optId ? normalizedOption : opt
               ),
             }))
           : undefined;
@@ -1313,12 +1374,12 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       questions: (prev.questions || []).map((q) => {
         if ((q.q_id || q._uid) !== questionUid) return q;
         const updatedOptions = q.options
-          ? q.options.filter((opt) => (opt.uid || opt._uid) !== optionUid)
+          ? q.options.filter((opt) => (opt.o_id || opt.uid || opt._uid) !== optionUid)
           : undefined;
         const updatedGroups = q.groups
           ? q.groups.map((g) => ({
               ...g,
-              options: (g.options || []).filter((opt) => (opt.uid || opt._uid) !== optionUid),
+              options: (g.options || []).filter((opt) => (opt.o_id || opt.uid || opt._uid) !== optionUid),
             }))
           : undefined;
         return {
@@ -1336,12 +1397,11 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       option.field_type === "checkbox" ||
       option.field_type === "image_radio";
     const duplicatedLabel = `${option.label || "Option"} (Copy)`;
-    const newOptUid = generateUid("opt_");
+    const newOptId = generateUid("opt_");
 
     const duplicated: KioskOption = sanitizeOption({
       ...option,
-      uid: newOptUid,
-      _uid: newOptUid,
+      o_id: newOptId,
       id: null,
       label: duplicatedLabel,
       value:
@@ -1352,7 +1412,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           : option.value || option.color || "choice",
     });
 
-    const targetOptId = option.uid || option._uid;
+    const targetOptId = option.o_id || option.uid || option._uid;
 
     setConfig((prev) => ({
       ...prev,
@@ -1360,7 +1420,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         if ((q.q_id || q._uid) !== questionUid) return q;
         const opts = q.options ? [...q.options] : undefined;
         if (opts) {
-          const idx = opts.findIndex((opt) => (opt.uid || opt._uid) === targetOptId);
+          const idx = opts.findIndex((opt) => (opt.o_id || opt.uid || opt._uid) === targetOptId);
           if (idx !== -1) {
             opts.splice(idx + 1, 0, duplicated);
           } else {
@@ -1371,7 +1431,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         const updatedGroups = q.groups
           ? q.groups.map((g) => {
               const grpOpts = [...(g.options || [])];
-              const gIdx = grpOpts.findIndex((opt) => (opt.uid || opt._uid) === targetOptId);
+              const gIdx = grpOpts.findIndex((opt) => (opt.o_id || opt.uid || opt._uid) === targetOptId);
               if (gIdx !== -1) {
                 grpOpts.splice(gIdx + 1, 0, duplicated);
               }
@@ -1391,7 +1451,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         if ((q.q_id || q._uid) !== questionUid) return q;
         const allOpts = q.options ? [...q.options] : undefined;
         if (allOpts) {
-          const fromIndex = allOpts.findIndex((opt) => (opt.uid || opt._uid) === fromUid);
+          const fromIndex = allOpts.findIndex((opt) => (opt.o_id || opt.uid || opt._uid) === fromUid);
           if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
             const [moved] = allOpts.splice(fromIndex, 1);
             allOpts.splice(toIndex, 0, moved);
@@ -1400,10 +1460,10 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
         const updatedGroups = q.groups
           ? q.groups.map((g) => {
-              const hasIt = (g.options || []).some((o) => (o.uid || o._uid) === fromUid);
+              const hasIt = (g.options || []).some((o) => (o.o_id || o.uid || o._uid) === fromUid);
               if (!hasIt) return g;
               const grpOpts = [...(g.options || [])];
-              const gFromIdx = grpOpts.findIndex((o) => (o.uid || o._uid) === fromUid);
+              const gFromIdx = grpOpts.findIndex((o) => (o.o_id || o.uid || o._uid) === fromUid);
               if (gFromIdx === -1) return g;
               const [gMoved] = grpOpts.splice(gFromIdx, 1);
               const clampedTo = Math.max(0, Math.min(toIndex, grpOpts.length));
@@ -1418,29 +1478,78 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   }, []);
 
   // Top Action Handlers
-  const handleSaveOnly = () => {
-    const finalConfig = sanitizeConfig(config);
+  const handleSaveOnly = async () => {
+    const finalConfig = sanitizeConfig(configRef.current);
+    const formData = buildKioskFormData(finalConfig);
     console.log("==================== KIOSK BUILDER SAVE PAYLOAD ====================");
     console.log("Kiosk Payload Object:", finalConfig);
     console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+    console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
     console.log("====================================================================");
-    onSave?.(finalConfig);
-    toastSuccess("Kiosk saved successfully");
+
+    if (onSave) {
+      onSave(finalConfig, formData);
+      toastSuccess("Kiosk saved successfully");
+    } else {
+      try {
+        if (finalConfig.id) {
+          await updateKiosk(finalConfig.id, formData);
+        } else {
+          const res = await createKiosk(formData);
+          const createdId = getCreatedKioskId(res);
+          if (createdId) {
+            setConfig((prev) => ({ ...prev, id: createdId }));
+            router.push(
+              getKioskEditUrl(createdId) as Parameters<typeof router.push>[0],
+            );
+          }
+        }
+        toastSuccess("Kiosk saved successfully");
+      } catch (err: unknown) {
+        console.error("Failed to save kiosk:", err);
+        toastError(getSaveErrorMessage(err));
+      }
+    }
   };
 
-  const handleSaveAndClose = () => {
-    const finalConfig = sanitizeConfig(config);
+  const handleSaveAndClose = async () => {
+    const finalConfig = sanitizeConfig(configRef.current);
+    const formData = buildKioskFormData(finalConfig);
     console.log("==================== KIOSK BUILDER SAVE & CLOSE PAYLOAD ============");
     console.log("Kiosk Payload Object:", finalConfig);
     console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+    console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
     console.log("====================================================================");
-    onSave?.(finalConfig);
-    toastSuccess("Kiosk saved successfully");
-    router.push(backUrl as any);
+
+    if (onSave) {
+      onSave(finalConfig, formData);
+      toastSuccess("Kiosk saved successfully");
+      router.push(backUrl as Parameters<typeof router.push>[0]);
+    } else {
+      try {
+        if (finalConfig.id) {
+          await updateKiosk(finalConfig.id, formData);
+          toastSuccess("Kiosk saved successfully");
+          router.push(backUrl as Parameters<typeof router.push>[0]);
+        } else {
+          const res = await createKiosk(formData);
+          const createdId = getCreatedKioskId(res);
+          router.push(
+            (createdId ? getKioskEditUrl(createdId) : backUrl) as Parameters<
+              typeof router.push
+            >[0],
+          );
+        }
+        if (!finalConfig.id) toastSuccess("Kiosk saved successfully");
+      } catch (err: unknown) {
+        console.error("Failed to save kiosk:", err);
+        toastError(getSaveErrorMessage(err));
+      }
+    }
   };
 
   const handleClose = () => {
-    router.push(backUrl as any);
+    router.push(backUrl as Parameters<typeof router.push>[0]);
   };
 
   return (
@@ -1554,7 +1663,11 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         </header>
 
         {/* Builder / Preview Viewport */}
-        {activeTab === "form" ? (
+        {isLoadingKiosk ? (
+          <div className="flex flex-1 items-center justify-center text-sm font-medium text-slate-500 dark:text-slate-400">
+            Loading kiosk...
+          </div>
+        ) : activeTab === "form" ? (
           <div className="flex flex-1 overflow-hidden">
             {/* Left ModuleBar Palette */}
             <KioskModuleBar

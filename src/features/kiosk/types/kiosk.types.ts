@@ -1,11 +1,13 @@
 export type PlacementMode = "place" | "group";
 
 export type PositionValue = "top" | "bottom" | "left" | "right" | "center";
+export type PlacementScaleRatio = "door" | "square" | "strip" | "framed";
 export type LookupOptionType = "radio" | "checkbox" | "image_radio";
 
 export interface PlacementConfig {
   mode: PlacementMode;
   position?: PositionValue; // only relevant when mode === 'place'
+  scale_ratio?: PlacementScaleRatio | null;
   target_field?: string | null; // UID of the selected kiosk image field to place on
   target_fields?: string[] | null; // UIDs of multiple selected image fields to place on
   target_question?: string | null; // UID of a whole question to place on
@@ -17,6 +19,7 @@ export interface ColorFillConfig {
 }
 
 export interface KioskOption {
+  o_id?: string;
   uid?: string;
   _uid?: string;
   id?: string | number | null;
@@ -36,6 +39,7 @@ export interface KioskOption {
   fill_target_question?: string | null;
   placement_mode?: PlacementMode | null;
   placement_position?: PositionValue | null;
+  placement_scale_ratio?: PlacementScaleRatio | null;
   placement?: PlacementConfig | null;
   placement_targets?: string[] | null;
   placement_target_question?: string | null;
@@ -116,6 +120,7 @@ export interface KioskListItem {
   api_name: string;
   description?: string | null;
   is_active?: boolean;
+  questions?: any[] | null;
   created_at?: string;
   modified_at?: string;
   created_by?: { id: number; username?: string; email?: string } | null;

@@ -9,7 +9,10 @@ import {
   type LiveBuildOverlay,
 } from "../utils/kiosk-live-build";
 import { applyColorFill } from "../utils/kiosk-color-fill";
-import { kioskPlacementOverlayClass } from "../utils/kiosk-placement-styles";
+import {
+  kioskPlacementOverlayClass,
+  kioskPlacementScaleRatioClass,
+} from "../utils/kiosk-placement-styles";
 import { cn } from "@/core/utils/http.util";
 
 interface LiveBuildOverlayItemProps {
@@ -46,7 +49,10 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
   return (
     <div
       className={cn(
-        kioskPlacementOverlayClass(layer.position, sizeClass),
+        kioskPlacementOverlayClass(
+          layer.position,
+          kioskPlacementScaleRatioClass(layer.scaleRatio, sizeClass),
+        ),
         shadow && "shadow-md",
       )}
     >
@@ -169,8 +175,8 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
       )}
     >
       {/* Visual stage — overflow-hidden keeps the canvas clipping intact */}
-      <div className="overflow-hidden border-b border-slate-300/80 bg-[#ececec] px-4 pb-5 pt-4 dark:border-slate-700 dark:bg-slate-900">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="overflow-hidden border-b border-slate-300/80 bg-[#ececec] dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-center justify-between px-3 py-2">
           <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-800 dark:text-slate-200">
             {config.name ? config.name.slice(0, 24) : "Your build"}
           </span>
@@ -179,9 +185,9 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
           </span>
         </div>
 
-        <div className="relative mx-auto flex min-h-[200px] max-w-[240px] items-center justify-center px-2 py-4">
+        <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden">
           {/* Dimension guides (decorative, like reference kiosk) */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="hidden">
             <div className="relative h-[160px] w-[120px]">
               <div className="absolute -right-6 top-0 flex h-full flex-col items-center justify-between py-1">
                 <div className="h-full w-px bg-slate-400/70" />
@@ -195,15 +201,15 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
             </div>
           </div>
 
-          <div className="relative z-10 flex max-h-[180px] w-full max-w-[140px] items-center justify-center">
+          <div className="relative z-10 flex max-h-[190px] w-full items-center justify-center">
             {tintLoading && !mainImageSrc && !showSolidBlock ? (
               <div className="text-[10px] text-slate-500">Updating…</div>
             ) : mainImageSrc ? (
-              <div className="relative mx-auto h-[170px] w-[130px]">
+              <div className="relative w-fit max-h-[190px] max-w-full overflow-hidden">
                 <img
                   src={mainImageSrc}
                   alt="Live build"
-                  className="size-full object-contain drop-shadow-md"
+                  className="block max-h-[190px] max-w-full object-contain drop-shadow-md"
                 />
                 {scene.overlays.map((layer, idx) => (
                   <LiveBuildOverlayItem
@@ -216,7 +222,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
               </div>
             ) : showSolidBlock ? (
               <div
-                className="relative h-[170px] w-[120px] rounded-sm shadow-md ring-1 ring-black/10"
+                className="relative h-[170px] w-[120px] overflow-hidden rounded-sm shadow-md ring-1 ring-black/10"
                 style={{ backgroundColor: scene.solidColor || "#2563EB" }}
               >
                 {scene.overlays.map((layer, idx) => (
@@ -228,7 +234,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                 ))}
               </div>
             ) : scene.overlays.length > 0 ? (
-              <div className="relative h-[170px] w-[120px] rounded-sm bg-white/60 ring-1 ring-slate-300 dark:bg-slate-800/60">
+              <div className="relative h-[170px] w-[120px] overflow-hidden rounded-sm bg-white/60 ring-1 ring-slate-300 dark:bg-slate-800/60">
                 {scene.overlays.map((layer, idx) => (
                   <LiveBuildOverlayItem
                     key={`${layer.image}-${layer.uid || idx}`}
@@ -243,7 +249,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
       </div>
 
       {/* Summary — independently scrollable so long feature lists are reachable */}
-      <div className="space-y-3 bg-white px-4 py-4 dark:bg-slate-950 overflow-y-auto max-h-[320px] custom-scrollbar">
+      <div className="space-y-3 bg-white px-3 py-3 dark:bg-slate-950 overflow-y-auto max-h-[320px] custom-scrollbar">
         {primarySummary && (
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">

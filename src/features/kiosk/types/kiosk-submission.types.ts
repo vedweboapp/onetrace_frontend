@@ -8,6 +8,8 @@
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
+import type { PlacementScaleRatio } from "./kiosk.types";
+
 // ── Per-option selection ──────────────────────────────────────────────────────
 
 export interface KioskSelectedOption {
@@ -54,6 +56,9 @@ export interface KioskSelectedOption {
    * Only set when placement_mode === "place".
    */
   placement_position: "top" | "bottom" | "left" | "right" | "center" | null;
+
+  /** Scale ratio for an image placed on the target canvas. */
+  placement_scale_ratio: PlacementScaleRatio | null;
 
   /** UID of the canvas (image_radio option) this object is placed on.
    * Only set when placement_mode === "place".

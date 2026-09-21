@@ -20,12 +20,16 @@ import { KIOSK_FIELD_TYPES } from "../types/kiosk-field-types";
 import type {
   KioskOption,
   PlacementMode,
+  PlacementScaleRatio,
   PositionValue,
   ColorFillConfig,
 } from "../types/kiosk.types";
 import { cn } from "@/core/utils/http.util";
 import { applyColorFill } from "../utils/kiosk-color-fill";
-import { kioskPlacementOverlayClass } from "../utils/kiosk-placement-styles";
+import {
+  kioskPlacementOverlayClass,
+  kioskPlacementScaleRatioClass,
+} from "../utils/kiosk-placement-styles";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
 
 interface KioskFieldConfigModalProps {
@@ -48,6 +52,17 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"];
+
+const PLACEMENT_SCALE_RATIOS: Array<{
+  value: PlacementScaleRatio;
+  label: string;
+  description: string;
+}> = [
+  { value: "door", label: "Long Glass", description: "Tall door insert" },
+  { value: "square", label: "Square", description: "Even panel" },
+  { value: "strip", label: "Strip", description: "Thin long strip" },
+  { value: "framed", label: "Framed", description: "80% panel with 10% margin" },
+];
 
 function isValidImageFile(file: File): boolean {
   const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
@@ -174,11 +189,11 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   // ──────────────────────────────────────────────────────────────
   // Derived: all external image options (excluding own question)
   // ──────────────────────────────────────────────────────────────
-  const optId = option.uid || option._uid;
+  const optId = option.o_id || option.uid || option._uid;
   const ownQuestionUid = React.useMemo(() => {
     const found = (questions || []).find((q: any) => {
       const allOpts = getQuestionOptions(q);
-      return allOpts.some((opt: any) => (opt.uid || opt._uid) === optId);
+      return allOpts.some((opt: any) => (opt.o_id || opt.uid || opt._uid) === optId);
     });
     return questionUid || getQuestionUid(found) || null;
   }, [questions, optId, questionUid]);
@@ -194,7 +209,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     availableQuestions.forEach((q: any, qIdx: number) => {
       const allOpts = getQuestionOptions(q);
       allOpts.forEach((opt: any, optIdx: number) => {
-        const itemUid = opt.uid || opt._uid;
+        const itemUid = opt.o_id || opt.uid || opt._uid;
         if (itemUid === optId) return;
         const img = opt.image || opt.fill_image;
         if (img) {
@@ -237,6 +252,13 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     formData.placement_position ||
     formData.placement?.position ||
     (placementMode === "place" ? "center" : undefined);
+
+  const scaleRatio: PlacementScaleRatio =
+    formData.placement_scale_ratio ||
+    formData.placement?.scale_ratio ||
+    "door";
+
+  const scaleRatioClass = kioskPlacementScaleRatioClass(scaleRatio);
 
   // Current placement_targets array (UIDs of target canvas options)
   const placementTargets: string[] = React.useMemo(() => {
@@ -305,11 +327,13 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           ...prev,
           placement_mode: "place",
           placement_position: nextPos,
+          placement_scale_ratio: scaleRatio,
           target_image_field: nextTargetField,
           placement_targets: currentTargets,
           placement: {
             mode: "place",
             position: nextPos,
+            scale_ratio: scaleRatio,
             target_field: nextTargetField,
             target_fields: currentTargets,
           },
@@ -323,9 +347,28 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       ...prev,
       placement_mode: "place",
       placement_position: pos,
+      placement_scale_ratio: scaleRatio,
       placement: {
         mode: "place",
         position: pos,
+        scale_ratio: scaleRatio,
+        target_field: prev.target_image_field,
+        target_fields: prev.placement_targets || (prev.target_image_field ? [prev.target_image_field] : []),
+        target_question: prev.placement_target_question || null,
+      },
+    }));
+  };
+
+  const handleScaleRatioChange = (nextScaleRatio: PlacementScaleRatio) => {
+    setFormData((prev) => ({
+      ...prev,
+      placement_mode: "place",
+      placement_position: position || "center",
+      placement_scale_ratio: nextScaleRatio,
+      placement: {
+        mode: "place",
+        position: position || "center",
+        scale_ratio: nextScaleRatio,
         target_field: prev.target_image_field,
         target_fields: prev.placement_targets || (prev.target_image_field ? [prev.target_image_field] : []),
         target_question: prev.placement_target_question || null,
@@ -343,6 +386,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       placement: {
         mode: prev.placement_mode || "place",
         position: position || "center",
+        scale_ratio: scaleRatio,
         target_field: chosenUid || null,
         target_fields: chosenUid ? [chosenUid] : [],
         target_question: null,
@@ -369,6 +413,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         placement: {
           mode: prev.placement_mode || "place",
           position: position || "center",
+          scale_ratio: scaleRatio,
           target_field: primary || null,
           target_fields: next,
           target_question: null,
@@ -388,6 +433,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         placement: {
           mode: prev.placement_mode || "place",
           position: position || "center",
+          scale_ratio: scaleRatio,
           target_field: null,
           target_fields: [],
           target_question: null,
@@ -406,6 +452,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       placement: {
         mode: prev.placement_mode || "place",
         position: position || "center",
+        scale_ratio: scaleRatio,
         target_field: primary || null,
         target_fields: targetUids,
         target_question: targetQuestionUid,
@@ -578,6 +625,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
+        delete cleanData.placement_scale_ratio;
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
       } else if (!cleanData.placement_mode) {
@@ -585,11 +633,13 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
+        delete cleanData.placement_scale_ratio;
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
       } else if (cleanData.placement_mode === "group") {
         cleanData.placement = { mode: "group" };
         delete cleanData.placement_position;
+        delete cleanData.placement_scale_ratio;
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
         delete cleanData.target_image_field;
@@ -599,9 +649,11 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         cleanData.placement_targets = finalPlacementTargets.length > 0 ? finalPlacementTargets : undefined;
         cleanData.target_image_field = primaryTarget;
         cleanData.placement_position = position || "center";
+        cleanData.placement_scale_ratio = scaleRatio;
         cleanData.placement = {
           mode: "place",
           position: position || "center",
+          scale_ratio: scaleRatio,
           target_field: primaryTarget,
           target_fields: finalPlacementTargets.length > 0 ? finalPlacementTargets : null,
           target_question: formData.placement_target_question || null,
@@ -877,13 +929,8 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                           {/* Target Position Overlay Marker */}
                           <div
                             className={cn(
-                              "absolute size-7 rounded-sm border-2 border-white bg-blue-600/90 shadow-md backdrop-blur-xs flex items-center justify-center text-[10px] font-bold text-white transition-all duration-150 pointer-events-none",
-                              position === "top" && "top-1.5 inset-x-auto",
-                              position === "bottom" && "bottom-1.5 inset-x-auto",
-                              position === "left" && "left-1.5 inset-y-auto",
-                              position === "right" && "right-1.5 inset-y-auto",
-                              (!position || position === "center") &&
-                                "inset-0 m-auto",
+                              kioskPlacementOverlayClass(position, scaleRatioClass),
+                              "flex items-center justify-center border-blue-100 bg-blue-600/90 text-[10px] font-bold text-white pointer-events-none",
                             )}
                           >
                             {position === "center"
@@ -896,7 +943,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                       </div>
 
                       {/* Joystick Directional Controller */}
-                      <div className="shrink-0 flex flex-col items-center">
+                      <div className="shrink-0 flex flex-col items-center gap-2">
                         <span className="mb-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
                           Position:{" "}
                           <span className="font-mono text-blue-600 dark:text-blue-400 font-bold capitalize">
@@ -988,6 +1035,30 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                             >
                               <ChevronDown size={14} strokeWidth={2.5} />
                             </button>
+                          </div>
+                        </div>
+
+                        <div className="w-36 space-y-1">
+                          <span className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                            Scale Ratio
+                          </span>
+                          <div className="grid grid-cols-4 gap-1">
+                            {PLACEMENT_SCALE_RATIOS.map((ratio) => (
+                              <button
+                                key={ratio.value}
+                                type="button"
+                                onClick={() => handleScaleRatioChange(ratio.value)}
+                                className={cn(
+                                  "flex h-10 flex-col items-center justify-center rounded-md border px-1 text-[9px] font-semibold transition",
+                                  scaleRatio === ratio.value
+                                    ? "border-blue-600 bg-blue-600 text-white shadow-xs"
+                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
+                                )}
+                                title={ratio.description}
+                              >
+                                <span>{ratio.label}</span>
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>

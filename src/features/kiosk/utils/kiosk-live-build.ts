@@ -2,12 +2,13 @@ import type {
   KioskConfig,
   KioskOption,
   KioskQuestion,
+  PlacementScaleRatio,
   PositionValue,
 } from "../types/kiosk.types";
 
 export type KioskAnswerValue =
-  | { uid: string; value?: string | number }
-  | { uid: string; value?: string | number }[]
+  | { uid?: string; o_id?: string; value?: string | number }
+  | { uid?: string; o_id?: string; value?: string | number }[]
   | string
   | undefined;
 
@@ -15,6 +16,7 @@ export interface LiveBuildOverlay {
   uid?: string | null;
   image: string;
   position: PositionValue;
+  scaleRatio: PlacementScaleRatio;
   label?: string;
   targetUid?: string | null;
   targetUids?: string[];
@@ -46,12 +48,15 @@ export interface LiveBuildScene {
   totalPrice: number;
 }
 
+const getOptionKey = (opt: KioskOption): string =>
+  opt.o_id || opt.uid || opt._uid || "";
+
 function getAllQuestionOptions(q: KioskQuestion): KioskOption[] {
   const seen = new Set<string>();
   const all: KioskOption[] = [];
   const pushOpt = (opt: KioskOption) => {
     if (!opt) return;
-    const key = opt.uid || opt._uid;
+    const key = getOptionKey(opt);
     if (key) {
       if (!seen.has(key)) {
         seen.add(key);
@@ -79,7 +84,7 @@ function buildOptionIndex(questions: KioskQuestion[]): Map<string, KioskOption> 
   const map = new Map<string, KioskOption>();
   for (const q of questions) {
     for (const opt of getAllQuestionOptions(q)) {
-      const id = opt.uid || opt._uid;
+      const id = getOptionKey(opt);
       if (id) map.set(id, opt);
     }
   }
@@ -98,23 +103,23 @@ function resolveSelectedOption(
   if (!ans) return null;
 
   // Array answer: happens when input fields co-exist with single-choice options.
-  // Look for the first non-input uid entry.
   if (Array.isArray(ans)) {
     for (const entry of ans) {
-      const uid = typeof entry === "object" && entry?.uid ? entry.uid : entry;
-      const opt = options.find((o) => (o.uid || o._uid) === uid);
+      const targetId = typeof entry === "object" && entry ? (entry.o_id || entry.uid) : entry;
+      const opt = options.find((o) => getOptionKey(o) === targetId);
       if (opt && opt.field_type !== "input") return opt;
     }
     return null;
   }
 
-  if (typeof ans === "object" && ans !== null && "uid" in ans) {
-    return options.find((o) => (o.uid || o._uid) === ans.uid) ?? null;
+  if (typeof ans === "object" && ans !== null) {
+    const targetId = (ans as any).o_id || (ans as any).uid;
+    return options.find((o) => getOptionKey(o) === targetId) ?? null;
   }
 
   const key = typeof ans === "string" ? ans : String(ans);
   return (
-    options.find((o) => (o.uid || o._uid) === key || o.value === key || o.label === key) ??
+    options.find((o) => getOptionKey(o) === key || o.value === key || o.label === key) ??
     null
   );
 }
@@ -129,8 +134,8 @@ function resolveCheckboxSelections(
   const options = getAllQuestionOptions(question);
   return ans
     .map((entry) => {
-      const uid = typeof entry === "object" && entry?.uid ? entry.uid : entry;
-      const opt = options.find((o) => (o.uid || o._uid) === uid);
+      const targetId = typeof entry === "object" && entry ? (entry.o_id || entry.uid) : entry;
+      const opt = options.find((o) => getOptionKey(o) === targetId);
       return opt && opt.field_type !== "input" ? opt : null;
     })
     .filter(Boolean) as KioskOption[];
@@ -147,15 +152,17 @@ function resolveInputSelections(
 
   if (Array.isArray(ans)) {
     for (const entry of ans) {
-      if (typeof entry === "object" && entry?.uid) {
-        const opt = options.find((o) => (o.uid || o._uid) === entry.uid && o.field_type === "input");
+      if (typeof entry === "object" && entry) {
+        const targetId = entry.o_id || entry.uid;
+        const opt = options.find((o) => getOptionKey(o) === targetId && o.field_type === "input");
         if (opt && String(entry.value ?? "").trim().length > 0) {
           results.push({ option: opt, value: String(entry.value) });
         }
       }
     }
-  } else if (typeof ans === "object" && ans !== null && "uid" in ans) {
-    const opt = options.find((o) => (o.uid || o._uid) === (ans as any).uid && o.field_type === "input");
+  } else if (typeof ans === "object" && ans !== null) {
+    const targetId = (ans as any).o_id || (ans as any).uid;
+    const opt = options.find((o) => getOptionKey(o) === targetId && o.field_type === "input");
     if (opt && String((ans as any).value ?? "").trim().length > 0) {
       results.push({ option: opt, value: String((ans as any).value) });
     }
@@ -171,12 +178,12 @@ function resolveOptionColor(
 ): string {
   const qKey = question.api_name || question.q_id || question._uid || "";
   const ans = answers[qKey];
-  const optUid = option.uid || option._uid;
+  const optId = getOptionKey(option);
   if (
     typeof ans === "object" &&
     ans !== null &&
     !Array.isArray(ans) &&
-    ans.uid === optUid &&
+    ((ans as any).o_id === optId || ans.uid === optId) &&
     typeof ans.value === "string" &&
     ans.value.startsWith("#")
   ) {
@@ -214,7 +221,7 @@ export function getTargetOptionUids(
     const q = questions.find((item) => (item.q_id || item._uid) === colorOption.fill_target_question);
     if (q) {
       for (const opt of getAllQuestionOptions(q)) {
-        const optId = opt.uid || opt._uid;
+        const optId = getOptionKey(opt);
         if (opt.image && optId) targets.add(optId);
       }
     }
@@ -248,7 +255,7 @@ export function getPlacementTargetOptionUids(
     const q = questions.find((item) => (item.q_id || item._uid) === targetQ);
     if (q) {
       for (const opt of getAllQuestionOptions(q)) {
-        const optId = opt.uid || opt._uid;
+        const optId = getOptionKey(opt);
         if (opt.image && optId) targets.add(optId);
       }
     }
@@ -332,7 +339,7 @@ export function computeLiveBuildScene(
       continue; // overlays handled below
     }
     if (selected.image) {
-      canvasUid = selected.uid || selected._uid || null;
+      canvasUid = getOptionKey(selected) || null;
       canvasImage = String(selected.image);
       canvasQuestion = question;
     }
@@ -360,14 +367,19 @@ export function computeLiveBuildScene(
         selected.placement_position ||
         selected.placement?.position ||
         "center";
+      const scaleRatio: PlacementScaleRatio =
+        selected.placement_scale_ratio ||
+        selected.placement?.scale_ratio ||
+        "door";
 
-      const optUid = selected.uid || selected._uid || null;
+      const optUid = getOptionKey(selected) || null;
       const qUid = question.q_id || question._uid || null;
 
       overlays.push({
         uid: optUid,
         image: String(selected.image),
         position,
+        scaleRatio,
         label: selected.label || undefined,
         targetUid: primaryTargetUid,
         targetUids,

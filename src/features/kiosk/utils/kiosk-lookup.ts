@@ -6,6 +6,7 @@ type LookupItem = {
   item_name?: string | null;
   name?: string | null;
   abbreviation?: string | null;
+  selling_price?: number | string | null;
 };
 
 export function buildLookupOptions(
@@ -19,17 +20,17 @@ export function buildLookupOptions(
     if (itemId == null) continue;
     const id = String(itemId);
     options.push({
-        uid: `lookup_${groupId}_${id}`,
-        _uid: `lookup_${groupId}_${id}`,
-        id: itemId,
-        field_type: presentation,
-        label: item.item_name || item.name || item.abbreviation || `Item ${id}`,
-        value: itemId,
-        api_name: id,
-        image: null,
-        price: "",
-        required: false,
-      });
+      o_id: `lookup_${groupId}_${id}`,
+      id: itemId,
+      field_type: presentation,
+      label: item.item_name || item.name || item.abbreviation || `Item ${id}`,
+      value: itemId,
+      api_name: id,
+      image: null,
+      price: item.selling_price ?? "",
+      subLabel: "Select the item to add",
+      required: false,
+    });
   }
   return options;
 }
