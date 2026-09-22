@@ -1822,6 +1822,10 @@
         "machineNamePlaceholder": "Pune Retail Store Terminal 1",
         "city": "Ciudad",
         "locationName": "Nombre de ubicación",
+        "locationNamePlaceholder": "Buscar ubicación",
+        "cityPlaceholder": "Seleccionar ciudad",
+        "citySelectLocationFirst": "Selecciona una ubicación primero",
+        "clearCity": "Borrar ciudad",
         "activeLabel": "Activo",
         "save": "Guardar",
         "cancel": "Cancelar"

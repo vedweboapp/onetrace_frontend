@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { City } from "country-state-city";
 import { Pencil, Power, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
@@ -15,6 +16,7 @@ import {
   updateKioskMachine,
 } from "@/features/kiosk-machines/api/kiosk-machine.api";
 import type { KioskMachine } from "@/features/kiosk-machines/types/kiosk-machine.types";
+import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess, toastError, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
@@ -22,6 +24,8 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { sanitizeTitleInput, sanitizeTextInput } from "@/shared/form/field-input.util";
+import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
+import { resolveCityInDataset } from "@/shared/utils/nominatim-address-parse.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
@@ -29,11 +33,13 @@ import {
   AddButton,
   AppButton,
   AppModal,
+  CheckmarkSelect,
   ConfirmDialog,
   DataTablePaginationBar,
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
   listPageRootClassName,
+  FieldErrorText,
   FieldGroup,
   ListPageCard,
   ListPageCardGrid,
@@ -96,6 +102,8 @@ export function KioskMachineSettingsPanel() {
   const [machineName, setMachineName] = React.useState("");
   const [city, setCity] = React.useState("");
   const [locationName, setLocationName] = React.useState("");
+  const [countryIso, setCountryIso] = React.useState("");
+  const [stateIso, setStateIso] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{
     machine_code?: string;
@@ -141,12 +149,26 @@ export function KioskMachineSettingsPanel() {
     hasActiveFilters,
   });
 
+  const cityOptions = React.useMemo(() => {
+    if (!countryIso || !stateIso) return [];
+    return City.getCitiesOfState(countryIso, stateIso)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((c) => ({ value: c.name, label: c.name }));
+  }, [countryIso, stateIso]);
+
+  function resetLocationFields() {
+    setCity("");
+    setLocationName("");
+    setCountryIso("");
+    setStateIso("");
+  }
+
   function openCreate() {
     setEditing(null);
     setMachineCode("");
     setMachineName("");
-    setCity("");
-    setLocationName("");
+    resetLocationFields();
     setErrors({});
     setFormOpen(true);
   }
@@ -157,8 +179,34 @@ export function KioskMachineSettingsPanel() {
     setMachineName(row.machine_name);
     setCity(row.city ?? "");
     setLocationName(row.location_name ?? "");
+    setCountryIso("");
+    setStateIso("");
     setErrors({});
     setFormOpen(true);
+  }
+
+  function handleLocationInputChange(value: string) {
+    setLocationName(value);
+    if (!value.trim()) {
+      setCountryIso("");
+      setStateIso("");
+      setCity("");
+    }
+  }
+
+  function handleSelectPlace(place: PlaceSuggestion) {
+    const label =
+      place.label?.trim() ||
+      [place.line1, place.city, place.state, place.country].filter(Boolean).join(", ");
+    setLocationName(label);
+    setCountryIso(place.countryIso?.trim() ?? "");
+    setStateIso(place.stateIso?.trim() ?? "");
+    const resolvedCity = resolveCityInDataset(
+      place.countryIso ?? "",
+      place.stateIso ?? "",
+      place.city ?? "",
+    );
+    setCity(resolvedCity || place.city?.trim() || "");
   }
 
   async function submitForm() {
@@ -454,12 +502,9 @@ export function KioskMachineSettingsPanel() {
       >
         <div className="flex flex-col gap-4">
           <FieldGroup
-            label={
-              <span>
-                {t("modal.machineCode")} <span className="text-red-500">*</span>
-              </span>
-            }
+            label={t("modal.machineCode")}
             htmlFor="kiosk-machine-code"
+            required
           >
             <input
               id="kiosk-machine-code"
@@ -475,18 +520,13 @@ export function KioskMachineSettingsPanel() {
               autoComplete="off"
               placeholder={t("modal.machineCodePlaceholder")}
             />
-            {errors.machine_code ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.machine_code}</p>
-            ) : null}
+            <FieldErrorText>{errors.machine_code}</FieldErrorText>
           </FieldGroup>
 
           <FieldGroup
-            label={
-              <span>
-                {t("modal.machineName")} <span className="text-red-500">*</span>
-              </span>
-            }
+            label={t("modal.machineName")}
             htmlFor="kiosk-machine-name"
+            required
           >
             <input
               id="kiosk-machine-name"
@@ -502,28 +542,42 @@ export function KioskMachineSettingsPanel() {
               autoComplete="off"
               placeholder={t("modal.machineNamePlaceholder")}
             />
-            {errors.machine_name ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.machine_name}</p>
-            ) : null}
-          </FieldGroup>
-
-          <FieldGroup label={t("modal.city")} htmlFor="kiosk-machine-city">
-            <input
-              id="kiosk-machine-city"
-              value={city}
-              onChange={(e) => setCity(sanitizeTextInput(e.target.value))}
-              className={surfaceInputClassName}
-              autoComplete="off"
-            />
+            <FieldErrorText>{errors.machine_name}</FieldErrorText>
           </FieldGroup>
 
           <FieldGroup label={t("modal.locationName")} htmlFor="kiosk-machine-location">
-            <input
+            <AddressPlaceAutocomplete
               id="kiosk-machine-location"
               value={locationName}
-              onChange={(e) => setLocationName(sanitizeTextInput(e.target.value))}
-              className={surfaceInputClassName}
-              autoComplete="off"
+              onChange={handleLocationInputChange}
+              onSelectPlace={handleSelectPlace}
+              countryIso={countryIso || undefined}
+              contextCity={city || undefined}
+              placeholder={t("modal.locationNamePlaceholder")}
+              disabled={saving}
+              portaled
+            />
+          </FieldGroup>
+
+          <FieldGroup label={t("modal.city")} htmlFor="kiosk-machine-city">
+            <CheckmarkSelect
+              id="kiosk-machine-city"
+              options={cityOptions}
+              value={city}
+              onChange={setCity}
+              disabled={saving || cityOptions.length === 0}
+              searchable
+              clearable
+              portaled
+              emptyLabel={
+                cityOptions.length === 0
+                  ? t("modal.citySelectLocationFirst")
+                  : t("modal.cityPlaceholder")
+              }
+              searchPlaceholder={t("modal.cityPlaceholder")}
+              clearAriaLabel={t("modal.clearCity")}
+              fallbackLabel={city || undefined}
+              listLabel={t("modal.city")}
             />
           </FieldGroup>
         </div>
