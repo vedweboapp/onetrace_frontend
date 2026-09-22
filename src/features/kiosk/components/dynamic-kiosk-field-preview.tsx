@@ -11,6 +11,7 @@ import {
   CheckSquare,
   TextCursorInput,
   MoreVertical,
+  Check,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import type { KioskOption } from "../types/kiosk.types";
@@ -20,6 +21,7 @@ interface DynamicKioskOptionPreviewProps {
   option: KioskOption;
   index: number;
   isLookupApiOption?: boolean;
+  isIncludedInKiosk?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -32,6 +34,7 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
   option,
   index,
   isLookupApiOption = false,
+  isIncludedInKiosk = false,
   onEdit,
   onDelete,
   onDuplicate,
@@ -193,6 +196,16 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
                     ? "Input Field"
                     : "Radio Option")}
               </span>
+
+              {isLookupApiOption && isIncludedInKiosk && (
+                <span
+                  className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  title="Included in this kiosk"
+                  aria-label="Included in this kiosk"
+                >
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              )}
 
               {option.price && (
                 <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">

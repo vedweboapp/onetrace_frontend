@@ -221,7 +221,9 @@ export function getTargetOptionUids(
     if (q) {
       for (const opt of getAllQuestionOptions(q)) {
         const optId = getOptionKey(opt);
-        if (opt.image && optId) targets.add(optId);
+        if ((opt.image || opt.field_type === "image_radio" || opt.composite_item_id != null) && optId) {
+          targets.add(optId);
+        }
       }
     }
   }
@@ -255,7 +257,9 @@ export function getPlacementTargetOptionUids(
     if (q) {
       for (const opt of getAllQuestionOptions(q)) {
         const optId = getOptionKey(opt);
-        if (opt.image && optId) targets.add(optId);
+        if ((opt.image || opt.field_type === "image_radio" || opt.composite_item_id != null) && optId) {
+          targets.add(optId);
+        }
       }
     }
   }
