@@ -205,7 +205,7 @@ export function JobsMapView({ jobs, onJobClick }: Props) {
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto px-2 pb-3 sm:px-3">
             <table className="w-full min-w-[40rem] border-t border-slate-100 text-left text-sm dark:border-slate-800">
               <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
                 <tr>
@@ -213,7 +213,7 @@ export function JobsMapView({ jobs, onJobClick }: Props) {
                   <th className="px-4 py-2.5 sm:px-6">{t("colSite")}</th>
                   <th className="px-4 py-2.5 sm:px-6">{t("colAddress")}</th>
                   <th className="px-4 py-2.5 sm:px-6">{t("colClient")}</th>
-                  <th className="px-4 py-2.5 sm:px-6">{t("colReason")}</th>
+                  <th className="px-4 py-2.5 pr-8 sm:px-6 sm:pr-10">{t("colReason")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -237,13 +237,13 @@ export function JobsMapView({ jobs, onJobClick }: Props) {
                     <td className="max-w-[16rem] truncate px-4 py-3 text-slate-600 dark:text-slate-300 sm:px-6">
                       {row.addressText}
                     </td>
-                    <td className="max-w-[10rem] truncate px-4 py-3 text-slate-700 dark:text-slate-200 sm:px-6">
+                    <td className="max-w-[12rem] truncate px-4 py-3 pr-5 text-slate-700 dark:text-slate-200 sm:px-6 sm:pr-6">
                       {row.clientLabel || "—"}
                     </td>
-                    <td className="px-4 py-3 sm:px-6">
+                    <td className="px-4 py-3 pr-8 sm:px-6 sm:pr-10">
                       <span
                         className={cn(
-                          "inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium",
+                          "inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-medium",
                           row.reason === "no_address"
                             ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
                             : "bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200",

@@ -1,4 +1,4 @@
-import { fetchUsersPage } from "@/features/users/api/user.api";
+import { fetchUserProfile, fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserAvailabilityPayloadRow } from "@/features/users/types/user-availability.types";
 import type { UserProfile } from "@/features/users/types/user.types";
 import {
@@ -31,6 +31,44 @@ function resolveUserAvailableDays(user: UserProfile): UserAvailabilityPayloadRow
       detail?.availableDays ??
       null,
   );
+}
+
+/** List/dropdown payloads often omit `available_days` — detail has them under `user_detail`. */
+async function resolveAvailableDaysWithDetail(
+  user: UserProfile,
+  profileId: number,
+): Promise<UserAvailabilityPayloadRow[]> {
+  const fromList = resolveUserAvailableDays(user);
+  if (fromList.length > 0) return fromList;
+  if (!Number.isFinite(profileId) || profileId <= 0) return [];
+  try {
+    const detail = await fetchUserProfile(profileId);
+    return resolveUserAvailableDays(detail);
+  } catch {
+    return [];
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: limit }, async () => {
+      while (true) {
+        const index = cursor;
+        cursor += 1;
+        if (index >= items.length) return;
+        results[index] = await mapper(items[index]!, index);
+      }
+    }),
+  );
+  return results;
 }
 
 export function technicianMatchesWorkerId(
@@ -84,7 +122,16 @@ export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<
   // Full catalog for day/week/month colors + bulk select — walk all dropdown pages.
   const { items } = await fetchUsersPage(1, 20, { dropdown: true, fetchAllPages: true });
   const seen = new Set<number>();
-  const rows: SchedulingTechnician[] = [];
+  const draft: Array<{
+    id: number;
+    profileId: number;
+    name: string;
+    title: string;
+    initials: string;
+    searchText: string;
+    user: UserProfile;
+  }> = [];
+
   for (const user of items) {
     const id = resolveUserProfileSelectId(user);
     if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
@@ -94,15 +141,30 @@ export async function loadSchedulingTechnicians(fallbackTitle: string): Promise<
       user.role_detail?.role_name?.trim() ||
       user.role_detail?.name?.trim() ||
       fallbackTitle;
-    rows.push({
+    draft.push({
       id,
       profileId: user.id,
       name,
       title,
       initials: initialsFromName(name),
       searchText: `${name} ${title} ${user.user_detail.email ?? ""}`.toLowerCase(),
-      availableDays: resolveUserAvailableDays(user),
+      user,
     });
   }
+
+  // Detail `GET user-profile/{id}/` carries `user_detail.available_days` for green hours.
+  const rows = await mapWithConcurrency(draft, 6, async (row) => {
+    const availableDays = await resolveAvailableDaysWithDetail(row.user, row.profileId);
+    return {
+      id: row.id,
+      profileId: row.profileId,
+      name: row.name,
+      title: row.title,
+      initials: row.initials,
+      searchText: row.searchText,
+      availableDays,
+    } satisfies SchedulingTechnician;
+  });
+
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }

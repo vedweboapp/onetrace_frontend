@@ -42,7 +42,7 @@ export type SchedulingCatalog = {
 type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
 
 /** Bump when filter/technician shape changes so in-memory caches reset. */
-const CATALOG_VERSION = 7;
+const CATALOG_VERSION = 8;
 let techniciansCacheVersion = 0;
 let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
