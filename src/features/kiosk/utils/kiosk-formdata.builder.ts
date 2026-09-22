@@ -45,6 +45,7 @@ function sanitizeImageLookupOption(option: any): Record<string, unknown> {
   return {
     o_id: option?.o_id || option?.uid || option?._uid,
     composite_item_id: option?.composite_item_id,
+    field_type: "image_radio",
     placement: {
       mode: placement.mode ?? option?.placement_mode ?? null,
       coordinates: placement.coordinates ?? null,

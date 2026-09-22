@@ -25,6 +25,13 @@ import type {
 import { cn } from "@/core/utils/http.util";
 import { applyColorFill } from "../utils/kiosk-color-fill";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
+import {
+  buildLookupOptions,
+  getLookupGroupId,
+  isLookupQuestion,
+  mergeLookupOptions,
+} from "../utils/kiosk-lookup";
+import { fetchGroup } from "@/features/groups/api/group.api";
 
 interface KioskFieldConfigModalProps {
   option: KioskOption;
@@ -134,7 +141,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
 
   const isLookupImageQuestion = !!(
     owningQuestion &&
-    owningQuestion.is_lookup &&
+    isLookupQuestion(owningQuestion) &&
     (owningQuestion.lookup_option_type || "radio") === "image_radio"
   );
 
@@ -202,10 +209,64 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     return questionUid || getQuestionUid(found) || null;
   }, [questions, optId, questionUid]);
 
+  const [lookupOptionsByQuestion, setLookupOptionsByQuestion] = useState<Record<string, KioskOption[]>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const lookupQuestions = (questions || []).filter(
+      (q: any) => getQuestionUid(q) !== ownQuestionUid && isLookupQuestion(q),
+    );
+    if (lookupQuestions.length === 0) {
+      setLookupOptionsByQuestion({});
+      return;
+    }
+
+    Promise.all(
+      lookupQuestions.map(async (q: any) => {
+        const groupId = getLookupGroupId(q);
+        if (groupId == null) return null;
+        try {
+          const group = await fetchGroup(Number(groupId));
+          const presentation =
+            q.lookup_option_type ||
+            (getQuestionOptions(q).some((item: any) => item.field_type === "image_radio")
+              ? "image_radio"
+              : "radio");
+          const runtimeOptions = buildLookupOptions(
+            group.items || [],
+            groupId,
+            presentation,
+          );
+          return [
+            getQuestionUid(q),
+            mergeLookupOptions(runtimeOptions, getQuestionOptions(q)),
+          ] as const;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) {
+        setLookupOptionsByQuestion(Object.fromEntries(entries.filter(Boolean) as [string, KioskOption[]][]));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [questions, ownQuestionUid]);
+
   // All questions that are NOT this option's own question
   const availableQuestions = React.useMemo(() => {
-    return (questions || []).filter((q: any) => getQuestionUid(q) !== ownQuestionUid);
-  }, [questions, ownQuestionUid]);
+    return (questions || [])
+      .filter((q: any) => getQuestionUid(q) !== ownQuestionUid)
+      .map((q: any) => {
+        const hydratedOptions = lookupOptionsByQuestion[getQuestionUid(q)];
+        return hydratedOptions
+          ? { ...q, options: hydratedOptions, groups: undefined }
+          : q;
+      });
+  }, [questions, ownQuestionUid, lookupOptionsByQuestion]);
 
   // All image-bearing options from external questions
   const availableImageFields = React.useMemo(() => {
@@ -215,14 +276,17 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       allOpts.forEach((opt: any, optIdx: number) => {
         const itemUid = opt.o_id || opt.uid || opt._uid;
         if (itemUid === optId) return;
-        const img = opt.image || opt.fill_image;
-        if (img) {
+        const isImageOption =
+          opt.field_type === "image_radio" ||
+          opt.image ||
+          opt.fill_image;
+        if (isImageOption) {
           list.push({
             uid: itemUid,
             label: opt.label || `Option ${optIdx + 1}`,
             questionUid: getQuestionUid(q),
             questionLabel: q.label || `Question ${qIdx + 1}`,
-            image: String(img),
+            image: String(opt.image || opt.fill_image || ""),
           });
         }
       });
@@ -787,12 +851,14 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                                           {checked && <Check size={10} strokeWidth={3} className="text-white" />}
                                         </span>
                                         <span className="size-7 shrink-0 overflow-hidden rounded border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
-                                          <img
-                                            src={field.image}
-                                            alt={field.label}
-                                            className="size-full object-cover"
-                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                          />
+                                          {field.image ? (
+                                            <img
+                                              src={field.image}
+                                              alt={field.label}
+                                              className="size-full object-cover"
+                                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                            />
+                                          ) : null}
                                         </span>
                                         <span className="min-w-0 flex-1 truncate font-medium">{field.label}</span>
                                       </button>

@@ -7,6 +7,7 @@ import { fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import type { KioskQuestion, LookupOptionType } from "../types/kiosk.types";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
+import { getLookupGroupId, getQuestionOptions } from "../utils/kiosk-lookup";
 
 interface KioskLookupQuestionModalProps {
   question?: KioskQuestion;
@@ -19,10 +20,18 @@ export const KioskLookupQuestionModal: React.FC<KioskLookupQuestionModalProps> =
   onSave,
   onClose,
 }) => {
+  const savedOptions = question ? getQuestionOptions(question) : [];
+  const savedPresentation = savedOptions.some(
+    (option) => option.field_type === "image_radio",
+  )
+    ? "image_radio"
+    : "radio";
   const [label, setLabel] = useState(question?.label || "Items");
-  const [groupId, setGroupId] = useState(String(question?.item_group_id || ""));
+  const [groupId, setGroupId] = useState(
+    String(getLookupGroupId(question || ({} as KioskQuestion)) || ""),
+  );
   const [presentation, setPresentation] = useState<LookupOptionType>(
-    question?.lookup_option_type || "radio",
+    question?.lookup_option_type || savedPresentation,
   );
   const [groups, setGroups] = useState<Group[]>([]);
   const [error, setError] = useState<string | null>(null);

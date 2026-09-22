@@ -9,14 +9,14 @@ import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
 import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
-import { getQuestionOptions } from "../utils/kiosk-lookup";
+import {
+  getLookupGroupId,
+  mergeLookupOptions,
+  getQuestionOptions,
+  isLookupQuestion,
+} from "../utils/kiosk-lookup";
 import { buildLookupOptions } from "../utils/kiosk-lookup";
 import { fetchGroup } from "@/features/groups/api/group.api";
-import {
-  fetchCompositeItem,
-  fetchCompositeItemsPage,
-} from "@/features/composite-items/api/composite-item.api";
-import { resolveItemAttachmentUrl } from "@/features/items/utils/item-attachment-display.util";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -235,85 +235,45 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
     } | null>(null);
     const [lookupOptionsByQuestion, setLookupOptionsByQuestion] = useState<Record<string, KioskOption[]>>({});
 
-    const resolveItemImageFromComposite = useCallback((compositeItem: any): string | null => {
-      const attachment = Array.isArray(compositeItem?.attachments)
-        ? compositeItem.attachments.find((row: any) => row && resolveItemAttachmentUrl(row))
-        : null;
-      const image = attachment ? resolveItemAttachmentUrl(attachment) : null;
-      if (image) return image;
-      return typeof compositeItem?.image === "string" && compositeItem.image.trim()
-        ? compositeItem.image.trim()
-        : null;
-    }, []);
-
     // Must be declared before optionByUid which depends on it
     const isPhone = renderMode === "phone";
     const activeQuestions = (config.questions ?? []).filter(
       (q) => q.is_deleted !== true,
     );
 
+    const getLookupPresentation = (question: KioskQuestion) =>
+      question.lookup_option_type ||
+      (getQuestionOptions(question).some((option) => option.field_type === "image_radio")
+        ? "image_radio"
+        : "radio");
+
     useEffect(() => {
       let cancelled = false;
       const lookupQuestions = (config.questions ?? []).filter(
-        (question) => question.is_lookup && question.item_group_id != null,
+        (question) =>
+          isLookupQuestion(question) &&
+          (question.item_group_id != null || getLookupGroupId(question) != null),
       );
 
-      Promise.all([
-        fetchCompositeItemsPage(1, 500),
-        ...lookupQuestions.map(async (question) => {
-          const group = await fetchGroup(Number(question.item_group_id));
-          return { question, group };
+      Promise.all(
+        lookupQuestions.map(async (question) => {
+          const groupId = getLookupGroupId(question);
+          const group = await fetchGroup(Number(groupId));
+          return { question, group, groupId };
         }),
-      ])
-        .then(async ([compositeResult, ...lookupResults]) => {
-          const compositeById = new Map(
-            compositeResult.items.map((item) => [String(item.id), item]),
-          );
-
-          const entries = await Promise.all(
-            lookupResults.map(async ({ question, group }) => {
+      )
+        .then(async (lookupResults) => {
+          const entries = lookupResults.map(({ question, group, groupId }) => {
               const questionUid = question.q_id || question._uid || "";
-              const items = (group.items || []).map((item) => ({
-                ...item,
-                selling_price:
-                  compositeById.get(String(item.item ?? item.id))?.selling_price ??
-                  item.selling_price,
-              }));
-
-              const runtimeImagesById: Record<string, string | null> = {};
-              if ((question.lookup_option_type || "radio") === "image_radio") {
-                const ids = items
-                  .map((item) => Number(item.item ?? item.id))
-                  .filter((id) => Number.isFinite(id));
-
-                const details = await Promise.all(
-                  ids.map(async (itemId) => {
-                    try {
-                      return await fetchCompositeItem(itemId);
-                    } catch {
-                      return compositeById.get(String(itemId)) ?? null;
-                    }
-                  }),
-                );
-
-                for (const detail of details) {
-                  if (!detail) continue;
-                  const itemId = String(detail.id);
-                  runtimeImagesById[itemId] = resolveItemImageFromComposite(detail);
-                }
-              }
-
               return [
                 questionUid,
                 buildLookupOptions(
-                  items,
-                  question.item_group_id as string | number,
-                  question.lookup_option_type || "radio",
-                  runtimeImagesById,
+                  group.items || [],
+                  groupId as string | number,
+                  getLookupPresentation(question),
                 ),
               ] as const;
-            }),
-          );
+            });
 
           if (!cancelled) setLookupOptionsByQuestion(Object.fromEntries(entries));
         })
@@ -330,9 +290,13 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       () => activeQuestions.map((question) => {
         const questionUid = question.q_id || question._uid || "";
         const lookupOptions = lookupOptionsByQuestion[questionUid];
-        return lookupOptions
-          ? { ...question, options: lookupOptions, groups: undefined }
-          : question;
+        if (!lookupOptions) return question;
+
+        return {
+          ...question,
+          options: mergeLookupOptions(lookupOptions, getQuestionOptions(question)),
+          groups: undefined,
+        };
       }),
       [activeQuestions, lookupOptionsByQuestion],
     );
@@ -846,7 +810,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <KioskLiveBuildPanel
-            config={config}
+            config={renderedConfig}
             answers={answers}
             livePreviewOptions={livePreviewOptions}
             onPlacementChange={onPlacementChange}
