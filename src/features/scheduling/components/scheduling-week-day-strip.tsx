@@ -8,17 +8,13 @@ import type { SchedulingTechnician } from "@/features/scheduling/utils/schedulin
 import { technicianMatchesWorkerId } from "@/features/scheduling/utils/scheduling-technician.util";
 import { scheduleJobLabel } from "@/features/scheduling/utils/schedule-map.util";
 import {
-  buildDayTimeSegments,
+  formatAvailabilityHours,
   formatMinutesRange,
   getDayAvailabilityWindow,
   hasAvailabilityData,
   minutesToTime,
-  timeToMinutes,
+  occupiedRangesForDay,
 } from "@/features/scheduling/utils/scheduling-availability.util";
-import {
-  SCHEDULE_DAY_END_HOUR,
-  SCHEDULE_DAY_START_HOUR,
-} from "@/features/scheduling/utils/scheduling-time.util";
 import { toDateKey } from "@/features/scheduling/utils/scheduling-week.util";
 import { cn } from "@/core/utils/http.util";
 
@@ -41,25 +37,10 @@ type Props = {
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
 };
 
-function snapMinutes(value: number, lo: number, hi: number) {
-  const snapped = Math.round(value / 15) * 15;
-  return Math.min(hi, Math.max(lo, snapped));
-}
-
-function minutesFromClientY(el: HTMLElement, clientY: number, segStart: number, segEnd: number) {
-  const rect = el.getBoundingClientRect();
-  const ratio = Math.min(1, Math.max(0, (clientY - rect.top) / Math.max(rect.height, 1)));
-  return snapMinutes(segStart + ratio * (segEnd - segStart), segStart, segEnd);
-}
-
-const KIND_CLASS: Record<string, string> = {
-  available: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200",
-  unavailable: "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
-  scheduled: "bg-sky-200 text-sky-950 dark:bg-sky-900/70 dark:text-sky-100",
-  timeoff: "bg-amber-200 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100",
-  free: "bg-white text-slate-400 dark:bg-slate-950 dark:text-slate-500",
-};
-
+/**
+ * Workforce-style week cell: tinted availability background + compact stacked
+ * job/time-off cards (no tall green strips between every booking).
+ */
 export function SchedulingWeekDayStrip({
   tech,
   day,
@@ -75,289 +56,204 @@ export function SchedulingWeekDayStrip({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
-  const [slotDrag, setSlotDrag] = React.useState<{
-    segStart: number;
-    segEnd: number;
-    startMinutes: number;
-    endMinutes: number;
-    originY: number;
-    moved: boolean;
-  } | null>(null);
-  const slotDragRef = React.useRef(slotDrag);
-  slotDragRef.current = slotDrag;
   const dayKey = toDateKey(day);
   const window = getDayAvailabilityWindow(tech.availableDays, day);
   const known = hasAvailabilityData(tech.availableDays);
-  const segments = buildDayTimeSegments({
-    dayKey,
-    window,
-    knownAvailability: known,
-    schedules,
-    timeOffs,
-    spanStartMinutes: SCHEDULE_DAY_START_HOUR * 60,
-    spanEndMinutes: SCHEDULE_DAY_END_HOUR * 60,
-  });
-  const total = segments.reduce((sum, row) => sum + Math.max(15, row.endMinutes - row.startMinutes), 0);
+  const occupied = occupiedRangesForDay([...schedules, ...timeOffs], dayKey);
+  const hasBlocks = schedules.length > 0 || timeOffs.length > 0;
 
-  if (known && !window && segments.every((segment) => segment.kind === "unavailable")) {
+  const pendingHere =
+    pendingCreate &&
+    pendingCreate.dayKey === dayKey &&
+    technicianMatchesWorkerId(tech, pendingCreate.techId)
+      ? pendingCreate
+      : null;
+
+  const sortedSchedules = React.useMemo(
+    () => [...schedules].sort((a, b) => a.start_at.localeCompare(b.start_at) || a.id - b.id),
+    [schedules],
+  );
+  const sortedTimeOffs = React.useMemo(
+    () => [...timeOffs].sort((a, b) => a.start_at.localeCompare(b.start_at) || a.id - b.id),
+    [timeOffs],
+  );
+
+  const isOff = known && !window;
+  const canCreate = Boolean(onCreate) && !createBusy && Boolean(window);
+
+  function openDefaultSlot() {
+    if (!onCreate || !window) return;
+    // Prefer first free hour inside availability; fall back to window start.
+    let start = window.startMinutes;
+    for (const range of occupied) {
+      if (start >= range.startMinutes && start < range.endMinutes) {
+        start = range.endMinutes;
+      }
+    }
+    if (start + 15 > window.endMinutes) start = window.startMinutes;
+    const end = Math.min(window.endMinutes, start + 60);
+    if (end - start < 15) return;
+    onCreate(minutesToTime(start), minutesToTime(end));
+  }
+
+  if (isOff) {
     return (
-      <div className="flex h-full min-h-[4.5rem] w-full items-center justify-center rounded-md bg-slate-100 text-[10px] font-medium text-slate-400 dark:bg-slate-800/70">
+      <div className="flex h-full min-h-[3.25rem] w-full items-center justify-center rounded-md bg-slate-100 px-1 text-[10px] font-medium text-slate-400 dark:bg-slate-800/70">
         {t("offDuty")}
       </div>
     );
   }
 
-  if (segments.length === 0) {
-    return <div className="h-full min-h-[4.5rem] w-full rounded-md" />;
-  }
-
-  const hasBlocks = schedules.length > 0 || timeOffs.length > 0;
-
   return (
     <div
       className={cn(
-        "flex h-full flex-col gap-1 overflow-hidden rounded-md",
-        hasBlocks ? "min-h-[8rem]" : "min-h-[5rem]",
+        "flex h-full min-h-[3.25rem] w-full flex-col gap-1 overflow-hidden rounded-md p-1",
+        window
+          ? "bg-emerald-50/90 dark:bg-emerald-950/30"
+          : known
+            ? "bg-slate-100 dark:bg-slate-800/60"
+            : "bg-white dark:bg-slate-950",
+        canCreate && "cursor-crosshair",
       )}
+      title={
+        window
+          ? `${t("legendAvailable")} · ${formatAvailabilityHours(window, locale)}`
+          : undefined
+      }
+      onClick={(e) => {
+        if (!canCreate) return;
+        if ((e.target as HTMLElement).closest("[data-week-card],[data-week-action]")) return;
+        openDefaultSlot();
+      }}
     >
-      {segments.map((segment) => {
-        const flexGrow = Math.max(15, segment.endMinutes - segment.startMinutes);
-        const label = formatMinutesRange(segment.startMinutes, segment.endMinutes, locale);
-        const minHeight =
-          segment.kind === "scheduled" || segment.kind === "timeoff"
-            ? 44
-            : Math.max(12, (flexGrow / Math.max(total, 1)) * (hasBlocks ? 120 : 72));
+      {!hasBlocks && window ? (
+        <p className="pointer-events-none px-0.5 text-[9px] font-semibold leading-tight text-emerald-800/80 dark:text-emerald-200/80">
+          {formatAvailabilityHours(window, locale)}
+        </p>
+      ) : null}
 
-        if (segment.kind === "scheduled" && segment.schedule) {
-          return (
-            <div
-              key={`job-${segment.schedule.id}-${segment.startMinutes}`}
-              className={cn(
-                "group/job relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
-                KIND_CLASS.scheduled,
-              )}
-              style={{ flexGrow, flexBasis: 0, minHeight }}
-            >
+      {sortedTimeOffs.map((row) => {
+        const start = new Date(row.start_at);
+        const end = new Date(row.end_at);
+        const label =
+          !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())
+            ? formatMinutesRange(
+                start.getHours() * 60 + start.getMinutes(),
+                end.getHours() * 60 + end.getMinutes(),
+                locale,
+              )
+            : "";
+        return (
+          <div
+            key={`off-${row.id}`}
+            data-week-card
+            className="relative rounded border border-amber-300 bg-amber-100 px-1.5 py-1 dark:border-amber-800 dark:bg-amber-950/60"
+          >
+            <p className="truncate pr-4 text-[10px] font-semibold leading-tight text-amber-950 dark:text-amber-100">
+              {row.reason || t("legendTimeOff")}
+            </p>
+            <p className="truncate text-[9px] leading-tight text-amber-800/80">{label}</p>
+            {onRemoveTimeOff ? (
               <button
                 type="button"
-                className="block w-full truncate text-left"
-                onClick={() => onScheduleClick(segment.schedule!)}
+                data-week-action
+                title={t("timeOff.remove")}
+                aria-label={t("timeOff.remove")}
+                className="absolute right-0.5 top-0.5 inline-flex size-4 items-center justify-center rounded text-amber-800/70 hover:bg-red-50 hover:text-red-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveTimeOff(row);
+                }}
               >
-                <span className="block truncate pr-8 text-[10px] font-semibold leading-tight">
-                  {scheduleJobLabel(segment.schedule)}
-                </span>
-                <span className="block truncate text-[9px] leading-tight opacity-80">{label}</span>
+                <X className="size-3" strokeWidth={2.5} />
               </button>
-              <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5">
-                {onCopySchedule ? (
-                  <button
-                    type="button"
-                    title={t("copy.action")}
-                    aria-label={t("copy.action")}
-                    className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-sky-100 hover:text-sky-950 dark:text-sky-200/80 dark:hover:bg-sky-900"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCopySchedule(segment.schedule!);
-                    }}
-                  >
-                    <Copy className="size-3" strokeWidth={2.5} />
-                  </button>
-                ) : null}
-                {onRemoveSchedule ? (
-                  <button
-                    type="button"
-                    title={t("removeSchedule")}
-                    aria-label={t("removeSchedule")}
-                    className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveSchedule(segment.schedule!);
-                    }}
-                  >
-                    <X className="size-3" strokeWidth={2.5} />
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          );
-        }
+            ) : null}
+          </div>
+        );
+      })}
 
-        if (segment.kind === "timeoff" && segment.timeOff) {
-          return (
-            <div
-              key={`off-${segment.timeOff.id}-${segment.startMinutes}`}
-              className={cn(
-                "relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
-                KIND_CLASS.timeoff,
-              )}
-              style={{ flexGrow, flexBasis: 0, minHeight }}
+      {sortedSchedules.map((schedule) => {
+        const start = new Date(schedule.start_at);
+        const end = new Date(schedule.end_at);
+        const label =
+          !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())
+            ? formatMinutesRange(
+                start.getHours() * 60 + start.getMinutes(),
+                end.getHours() * 60 + end.getMinutes(),
+                locale,
+              )
+            : "";
+        return (
+          <div
+            key={`job-${schedule.id}`}
+            data-week-card
+            className="group/job relative rounded border border-sky-300 bg-sky-100 px-1.5 py-1 shadow-sm dark:border-sky-800 dark:bg-sky-900/70"
+          >
+            <button
+              type="button"
+              data-week-action
+              className="block w-full truncate text-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                onScheduleClick(schedule);
+              }}
             >
-              <p className="truncate pr-4 text-[10px] font-semibold leading-tight">
-                {segment.timeOff.reason || t("legendTimeOff")}
-              </p>
-              <p className="truncate text-[9px] leading-tight opacity-80">{label}</p>
-              {onRemoveTimeOff ? (
+              <span className="block truncate pr-8 text-[10px] font-semibold leading-tight text-sky-950 dark:text-sky-100">
+                {scheduleJobLabel(schedule)}
+              </span>
+              {label ? (
+                <span className="block truncate text-[9px] leading-tight text-sky-800/80 dark:text-sky-200/80">
+                  {label}
+                </span>
+              ) : null}
+            </button>
+            <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5">
+              {onCopySchedule ? (
                 <button
                   type="button"
-                  title={t("timeOff.remove")}
-                  aria-label={t("timeOff.remove")}
-                  className="absolute right-0.5 top-0.5 inline-flex size-4 items-center justify-center rounded text-amber-800/70 hover:bg-red-50 hover:text-red-600 dark:text-amber-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                  onClick={() => onRemoveTimeOff(segment.timeOff!)}
+                  data-week-action
+                  title={t("copy.action")}
+                  aria-label={t("copy.action")}
+                  className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-sky-50 hover:text-sky-950 dark:text-sky-200/80"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopySchedule(schedule);
+                  }}
+                >
+                  <Copy className="size-3" strokeWidth={2.5} />
+                </button>
+              ) : null}
+              {onRemoveSchedule ? (
+                <button
+                  type="button"
+                  data-week-action
+                  title={t("removeSchedule")}
+                  aria-label={t("removeSchedule")}
+                  className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveSchedule(schedule);
+                  }}
                 >
                   <X className="size-3" strokeWidth={2.5} />
                 </button>
               ) : null}
             </div>
-          );
-        }
-
-        const canDragBook = segment.kind === "available" && Boolean(onCreate) && !createBusy;
-        const draggingThis =
-          slotDrag != null &&
-          slotDrag.segStart === segment.startMinutes &&
-          slotDrag.segEnd === segment.endMinutes;
-        const pendingHere =
-          pendingCreate &&
-          pendingCreate.dayKey === dayKey &&
-          technicianMatchesWorkerId(tech, pendingCreate.techId)
-            ? pendingCreate
-            : null;
-        const pendingStart = pendingHere ? timeToMinutes(pendingHere.startTime) : null;
-        const pendingEnd = pendingHere ? timeToMinutes(pendingHere.endTime) : null;
-        const pendingOverlapsSegment =
-          pendingStart != null &&
-          pendingEnd != null &&
-          pendingStart < segment.endMinutes &&
-          pendingEnd > segment.startMinutes;
-        const pendingTopPct =
-          pendingOverlapsSegment && pendingStart != null && pendingEnd != null
-            ? ((Math.max(pendingStart, segment.startMinutes) - segment.startMinutes) /
-                Math.max(segment.endMinutes - segment.startMinutes, 1)) *
-              100
-            : 0;
-        const pendingHeightPct =
-          pendingOverlapsSegment && pendingStart != null && pendingEnd != null
-            ? ((Math.min(pendingEnd, segment.endMinutes) - Math.max(pendingStart, segment.startMinutes)) /
-                Math.max(segment.endMinutes - segment.startMinutes, 1)) *
-              100
-            : 0;
-        const title =
-          segment.kind === "available"
-            ? `${t("legendAvailable")} · ${label}`
-            : segment.kind === "unavailable"
-              ? t("offDuty")
-              : undefined;
-        const dragLo = draggingThis ? Math.min(slotDrag.startMinutes, slotDrag.endMinutes) : 0;
-        const dragHi = draggingThis ? Math.max(slotDrag.startMinutes, slotDrag.endMinutes) : 0;
-        const dragTopPct = draggingThis
-          ? ((dragLo - segment.startMinutes) / Math.max(segment.endMinutes - segment.startMinutes, 1)) * 100
-          : 0;
-        const dragHeightPct = draggingThis
-          ? ((dragHi - dragLo) / Math.max(segment.endMinutes - segment.startMinutes, 1)) * 100
-          : 0;
-
-        return (
-          <div
-            key={`${segment.kind}-${segment.startMinutes}-${segment.endMinutes}`}
-            className={cn(
-              "group/avail relative flex min-h-0 flex-col justify-center overflow-hidden px-1 py-0.5",
-              KIND_CLASS[segment.kind],
-              canDragBook && "cursor-crosshair touch-none select-none",
-            )}
-            style={{ flexGrow, flexBasis: 0, minHeight }}
-            title={title}
-            onPointerDown={
-              canDragBook
-                ? (e) => {
-                    if (e.button !== 0) return;
-                    if ((e.target as HTMLElement).closest("[data-avail-create]")) return;
-                    e.preventDefault();
-                    const slot = e.currentTarget;
-                    slot.setPointerCapture(e.pointerId);
-                    const at = minutesFromClientY(slot, e.clientY, segment.startMinutes, segment.endMinutes);
-                    setSlotDrag({
-                      segStart: segment.startMinutes,
-                      segEnd: segment.endMinutes,
-                      startMinutes: at,
-                      endMinutes: Math.min(segment.endMinutes, at + 15),
-                      originY: e.clientY,
-                      moved: false,
-                    });
-                  }
-                : undefined
-            }
-            onPointerMove={
-              canDragBook
-                ? (e) => {
-                    if (!slotDragRef.current) return;
-                    const at = minutesFromClientY(
-                      e.currentTarget,
-                      e.clientY,
-                      segment.startMinutes,
-                      segment.endMinutes,
-                    );
-                    setSlotDrag((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            endMinutes: at,
-                            moved: prev.moved || Math.abs(e.clientY - prev.originY) > 6,
-                          }
-                        : prev,
-                    );
-                  }
-                : undefined
-            }
-            onPointerUp={
-              canDragBook
-                ? () => {
-                    const drag = slotDragRef.current;
-                    setSlotDrag(null);
-                    if (!drag) return;
-                    const startMin = drag.moved
-                      ? Math.min(drag.startMinutes, drag.endMinutes)
-                      : drag.startMinutes;
-                    const endMin = drag.moved
-                      ? Math.max(drag.startMinutes, drag.endMinutes, startMin + 15)
-                      : Math.min(drag.segEnd, startMin + 60);
-                    onCreate?.(
-                      minutesToTime(startMin),
-                      minutesToTime(Math.min(Math.max(endMin, startMin + 15), drag.segEnd)),
-                    );
-                  }
-                : undefined
-            }
-            onPointerCancel={canDragBook ? () => setSlotDrag(null) : undefined}
-          >
-            {segment.kind === "available" ? (
-              <p className="pointer-events-none truncate text-[9px] font-semibold leading-tight opacity-80">
-                {label}
-              </p>
-            ) : null}
-
-            {draggingThis ? (
-              <div
-                className="pointer-events-none absolute inset-x-0 z-[1] bg-sky-400/45 ring-1 ring-inset ring-sky-500/40"
-                style={{ top: `${dragTopPct}%`, height: `${Math.max(dragHeightPct, 8)}%` }}
-              />
-            ) : null}
-            {pendingOverlapsSegment ? (
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0.5 z-[2] flex items-center justify-center gap-1",
-                  "rounded-sm border border-sky-400 bg-sky-100/95 text-sky-900",
-                  "dark:border-sky-500 dark:bg-sky-950/85 dark:text-sky-100",
-                )}
-                style={{ top: `${pendingTopPct}%`, height: `${Math.max(pendingHeightPct, 12)}%` }}
-                aria-busy
-                aria-label={t("creatingSchedule")}
-              >
-                <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
-              </div>
-            ) : null}
           </div>
         );
       })}
+
+      {pendingHere ? (
+        <div
+          data-week-card
+          className="flex items-center justify-center gap-1 rounded border border-sky-400 bg-sky-50 px-1.5 py-1 text-sky-900 dark:border-sky-500 dark:bg-sky-950/85 dark:text-sky-100"
+          aria-busy
+          aria-label={t("creatingSchedule")}
+        >
+          <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} aria-hidden />
+          <span className="truncate text-[9px] font-semibold">{t("creatingSchedule")}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -3785,8 +3785,8 @@
       "emptyUsersHint": "Prueba otro grupo o borra la búsqueda para ver usuarios.",
       "clearPeopleFilters": "Borrar filtros",
       "bulk": {
-        "selectAll": "Seleccionar todos los usuarios visibles",
-        "selectAllGroups": "Seleccionar todos los grupos visibles",
+        "selectAll": "Seleccionar todo",
+        "selectAllGroups": "Seleccionar todos los grupos",
         "selectWorker": "Seleccionar {name}",
         "selectGroup": "Seleccionar {name}",
         "scheduleSelected": "Programar ({count})",

@@ -3800,8 +3800,8 @@
       "emptyUsersHint": "Try another group or clear the search to see users.",
       "clearPeopleFilters": "Clear filters",
       "bulk": {
-        "selectAll": "Select all visible users",
-        "selectAllGroups": "Select all visible groups",
+        "selectAll": "Select all",
+        "selectAllGroups": "Select all groups",
         "selectWorker": "Select {name}",
         "selectGroup": "Select {name}",
         "scheduleSelected": "Schedule ({count})",
