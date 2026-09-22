@@ -2,11 +2,11 @@
 
 export type MapLatLng = { lat: number; lon: number };
 
-const MIN_ZOOM = 3;
+const MIN_ZOOM = 4;
 const MAX_FIT_ZOOM = 15;
 /** Spans wider than this usually mean bad/outliers or multi-continent data — don't show the whole world. */
-const MAX_LAT_SPAN = 55;
-const MAX_LNG_SPAN = 90;
+const MAX_LAT_SPAN = 40;
+const MAX_LNG_SPAN = 60;
 
 export function isPlausibleMapCoordinate(lat: number, lon: number): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
@@ -29,7 +29,7 @@ export function fitGoogleMapToPins(map: google.maps.Map, pins: MapLatLng[]): voi
   const usable = pins.filter((p) => isPlausibleMapCoordinate(p.lat, p.lon));
   if (usable.length === 0) {
     map.setCenter({ lat: 20.5937, lng: 78.9629 });
-    map.setZoom(4);
+    map.setZoom(5);
     return;
   }
   if (usable.length === 1) {
@@ -48,7 +48,7 @@ export function fitGoogleMapToPins(map: google.maps.Map, pins: MapLatLng[]): voi
   if (latSpan > MAX_LAT_SPAN || lngSpan > MAX_LNG_SPAN) {
     const center = averageCenter(usable);
     map.setCenter({ lat: center.lat, lng: center.lon });
-    map.setZoom(4);
+    map.setZoom(5);
     return;
   }
 
@@ -83,7 +83,7 @@ export function fitLeafletMapToPins(
 ): void {
   const usable = pins.filter((p) => isPlausibleMapCoordinate(p.lat, p.lon));
   if (usable.length === 0) {
-    map.setView([20.5937, 78.9629], 4);
+    map.setView([20.5937, 78.9629], 5);
     return;
   }
   if (usable.length === 1) {
@@ -94,7 +94,7 @@ export function fitLeafletMapToPins(
   const bounds = createBounds();
   for (const pin of usable) bounds.extend([pin.lat, pin.lon]);
   if (!bounds.isValid()) {
-    map.setView([20.5937, 78.9629], 4);
+    map.setView([20.5937, 78.9629], 5);
     return;
   }
 
@@ -102,9 +102,9 @@ export function fitLeafletMapToPins(
   const lngSpan = Math.abs(bounds.getEast() - bounds.getWest());
   if (latSpan > MAX_LAT_SPAN || lngSpan > MAX_LNG_SPAN) {
     const center = averageCenter(usable);
-    map.setView([center.lat, center.lon], 4);
+    map.setView([center.lat, center.lon], 5);
     return;
   }
 
-  map.fitBounds(bounds, { padding: [48, 48], maxZoom: MAX_FIT_ZOOM });
+  map.fitBounds(bounds, { padding: [48, 48], maxZoom: MAX_FIT_ZOOM, minZoom: MIN_ZOOM });
 }
