@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Power, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
@@ -56,6 +56,10 @@ function resolveMachineOrganizationId(row: KioskMachine, sessionOrgId: number | 
   return sessionOrgId;
 }
 
+function hasPairingCode(row: KioskMachine): boolean {
+  return Boolean(row.pairing_code?.trim());
+}
+
 export function KioskMachineSettingsPanel() {
   const t = useTranslations("Dashboard.kioskMachines");
   const tList = useTranslations("Dashboard.list");
@@ -92,7 +96,6 @@ export function KioskMachineSettingsPanel() {
   const [machineName, setMachineName] = React.useState("");
   const [city, setCity] = React.useState("");
   const [locationName, setLocationName] = React.useState("");
-  const [isActive, setIsActive] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{
     machine_code?: string;
@@ -144,7 +147,6 @@ export function KioskMachineSettingsPanel() {
     setMachineName("");
     setCity("");
     setLocationName("");
-    setIsActive(true);
     setErrors({});
     setFormOpen(true);
   }
@@ -155,7 +157,6 @@ export function KioskMachineSettingsPanel() {
     setMachineName(row.machine_name);
     setCity(row.city ?? "");
     setLocationName(row.location_name ?? "");
-    setIsActive(row.is_active);
     setErrors({});
     setFormOpen(true);
   }
@@ -187,7 +188,7 @@ export function KioskMachineSettingsPanel() {
         location_name: locationName.trim() || null,
       };
       if (editing) {
-        await updateKioskMachine(editing.id, { ...payload, is_active: isActive });
+        await updateKioskMachine(editing.id, payload);
         toastSuccess(t("saved"));
       } else {
         await createKioskMachine(payload);
@@ -248,24 +249,24 @@ export function KioskMachineSettingsPanel() {
   const rowActions = React.useCallback(
     (row: KioskMachine) => {
       const isActivating = activatingId === row.id;
-      const showActivate = !row.is_activated;
+      const showActivate = hasPairingCode(row);
       return (
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1">
           {showActivate ? (
-            <AppButton
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
-              loading={isActivating}
-              disabled={activatingId !== null}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+              title={t("activate")}
+              aria-label={t("activate")}
+              disabled={isActivating || activatingId !== null}
               onClick={() => void handleActivate(row)}
             >
-              {t("activate")}
-            </AppButton>
+              <Power className={cn("size-3.5", isActivating && "animate-pulse")} strokeWidth={2} />
+            </button>
           ) : null}
           <button
             type="button"
-            className="inline-flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             title={t("edit")}
             aria-label={t("edit")}
             disabled={activatingId !== null}
@@ -275,7 +276,7 @@ export function KioskMachineSettingsPanel() {
           </button>
           <button
             type="button"
-            className="inline-flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-300"
             title={t("delete")}
             aria-label={t("delete")}
             disabled={activatingId !== null}
@@ -294,24 +295,14 @@ export function KioskMachineSettingsPanel() {
     return [
       c.text("machine_code", t("table.code"), (r) => r.machine_code),
       c.text("machine_name", t("table.name"), (r) => r.machine_name),
-      c.text("city", t("table.city"), (r) => dash(r.city), { responsive: "sm" }),
-      c.text("location", t("table.location"), (r) => dash(r.location_name), { responsive: "md" }),
+      c.text("city", t("table.city"), (r) => dash(r.city)),
+      c.text("location", t("table.location"), (r) => dash(r.location_name)),
       c.status(
         "recordStatus",
         t("table.status"),
-        (r) => r.is_active,
+        (r) => r.is_activated,
         t("status.active"),
         t("status.inactive"),
-      ),
-      c.custom(
-        "activated",
-        t("table.activated"),
-        (row) => (
-          <span className="text-xs text-slate-600 dark:text-slate-300">
-            {row.is_activated ? t("status.activated") : t("status.notActivated")}
-          </span>
-        ),
-        { responsive: "lg" },
       ),
       c.custom(
         "created",
@@ -321,7 +312,6 @@ export function KioskMachineSettingsPanel() {
             {dateFmt.format(new Date(row.created_at))}
           </span>
         ),
-        { responsive: "md" },
       ),
       c.actions("actions", t("table.actions"), rowActions),
     ];
@@ -393,8 +383,8 @@ export function KioskMachineSettingsPanel() {
                   footer={
                     <div className="flex w-full items-center justify-between gap-2">
                       <ActiveStatusBadge
-                        active={row.is_active}
-                        label={row.is_active ? t("status.active") : t("status.inactive")}
+                        active={row.is_activated}
+                        label={row.is_activated ? t("status.active") : t("status.inactive")}
                       />
                       {rowActions(row)}
                     </div>
@@ -536,22 +526,6 @@ export function KioskMachineSettingsPanel() {
               autoComplete="off"
             />
           </FieldGroup>
-
-          {editing ? (
-            <FieldGroup label={t("modal.activeLabel")} htmlFor="kiosk-machine-active">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                <input
-                  id="kiosk-machine-active"
-                  type="checkbox"
-                  className="size-4 rounded border-slate-300"
-                  checked={isActive}
-                  disabled={saving}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                />
-                {isActive ? t("status.active") : t("status.inactive")}
-              </label>
-            </FieldGroup>
-          ) : null}
         </div>
       </AppModal>
 
