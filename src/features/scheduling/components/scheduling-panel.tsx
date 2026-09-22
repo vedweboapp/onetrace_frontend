@@ -23,6 +23,7 @@ import {
   type TimeOffPrefill,
 } from "@/features/scheduling/components/mark-unavailable-modal";
 import { ScheduleBulkResultModal } from "@/features/scheduling/components/schedule-bulk-result-modal";
+import { ScheduleSameGroupOfferModal } from "@/features/scheduling/components/schedule-same-group-offer-modal";
 import { SchedulingDayAgendaPanel } from "@/features/scheduling/components/scheduling-day-agenda-panel";
 import { ScheduleDeleteSummary } from "@/features/scheduling/components/schedule-delete-summary";
 import { SchedulingDayTimeline, type TimelineRangeSelect } from "@/features/scheduling/components/scheduling-day-timeline";
@@ -53,6 +54,7 @@ import {
 } from "@/features/scheduling/utils/scheduling-availability.util";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
 import { rowsForTechnician, technicianMatchesWorkerId, technicianWorkerIds, workerDayRows } from "@/features/scheduling/utils/scheduling-technician.util";
+import { resolveGroupMembers } from "@/features/scheduling/utils/scheduling-people-row.util";
 import { scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
 import {
   addDays,
@@ -213,6 +215,14 @@ export function SchedulingPanel({
   const [bulkResultOpen, setBulkResultOpen] = React.useState(false);
   const [bulkScheduledCount, setBulkScheduledCount] = React.useState(0);
   const [bulkSkipped, setBulkSkipped] = React.useState<ScheduleBulkSkipRow[]>([]);
+  const [peerOffer, setPeerOffer] = React.useState<{
+    groupId: number;
+    groupName: string;
+    peers: SchedulingTechnician[];
+    day: Date;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
   const [pendingCreate, setPendingCreate] = React.useState<{
     techId: number;
     dayKey: string;
@@ -575,12 +585,152 @@ export function SchedulingPanel({
     return { id: tech.id, name: tech.name, title: tech.title, initials: tech.initials };
   }
 
+  function findPeerGroupForWorker(workerId: number): {
+    id: number;
+    name: string;
+    peers: SchedulingTechnician[];
+  } | null {
+    const technicians = catalog?.technicians ?? [];
+    for (const group of catalog?.userGroups ?? []) {
+      const members = resolveGroupMembers(group, technicians);
+      if (!members.some((m) => technicianMatchesWorkerId(m, workerId))) continue;
+      const peers = members.filter((m) => !technicianMatchesWorkerId(m, workerId));
+      if (peers.length === 0) continue;
+      return {
+        id: group.id,
+        name: group.name?.trim() || `Group #${group.id}`,
+        peers,
+      };
+    }
+    return null;
+  }
+
+  /** Job scheduling tab: job/client known — create on drag without the modal. */
+  async function createScheduleForScopedJob(
+    tech: SchedulingTechnician | null,
+    day: Date,
+    times?: { startTime: string; endTime: string },
+  ) {
+    if (!jobScopedId || creatingSchedule) return;
+
+    if (!jobScopedClientId) {
+      toastError(t("validation.client"));
+      return;
+    }
+
+    const workerId =
+      tech?.id ??
+      (typeof defaultAssignedWorkerId === "number" && defaultAssignedWorkerId > 0
+        ? defaultAssignedWorkerId
+        : null);
+    if (workerId == null) {
+      toastError(t("validation.worker"));
+      return;
+    }
+
+    const catalogTech =
+      tech ??
+      catalog?.technicians.find(
+        (row) => row.id === workerId || row.profileId === workerId,
+      ) ??
+      null;
+
+    let startTime = times?.startTime;
+    let endTime = times?.endTime;
+
+    if (catalogTech) {
+      const window = getDayAvailabilityWindow(catalogTech.availableDays, day);
+      if (!window) {
+        toastError(t("conflict.noAvailability"));
+        return;
+      }
+      if (times) {
+        const startMin = timeToMinutes(times.startTime);
+        const endMin = timeToMinutes(times.endTime);
+        if (
+          startMin == null ||
+          endMin == null ||
+          endMin - startMin < 15 ||
+          startMin < window.startMinutes ||
+          endMin > window.endMinutes
+        ) {
+          toastError(t("conflict.unavailable"));
+          return;
+        }
+      }
+      startTime = times?.startTime ?? minutesToTime(window.startMinutes);
+      endTime =
+        times?.endTime ?? minutesToTime(Math.min(window.startMinutes + 60, window.endMinutes));
+    }
+
+    if (!startTime?.trim() || !endTime?.trim()) {
+      toastError(t("validation.startTime"));
+      return;
+    }
+
+    const dateKey = toDateKey(day);
+    const startIso = combineDateAndTimeToIso(dateKey, startTime, false);
+    const endIso = combineDateAndTimeEndToIso(dateKey, endTime, false);
+
+    const conflict = getBookingConflict({
+      workerId,
+      startAt: startIso,
+      endAt: endIso,
+    });
+    if (conflict) {
+      toastError(conflict);
+      return;
+    }
+
+    setCreatingSchedule(true);
+    setPendingCreate({
+      techId: workerId,
+      dayKey: dateKey,
+      startTime,
+      endTime,
+    });
+    try {
+      const result = await createSchedule({
+        job_id: jobScopedId,
+        worker_ids: [workerId],
+        client_id: jobScopedClientId,
+        project_id: jobScopedProjectId,
+        start_at: startIso,
+        end_at: endIso,
+      });
+      toastSuccess(t("modal.successToast"));
+      onScheduleCreated(result.schedule ?? result.schedules[0]);
+
+      const peerGroup = findPeerGroupForWorker(workerId);
+      if (peerGroup && peerGroup.peers.length > 0) {
+        setPeerOffer({
+          groupId: peerGroup.id,
+          groupName: peerGroup.name,
+          peers: peerGroup.peers,
+          day,
+          startTime,
+          endTime,
+        });
+      }
+    } catch (error) {
+      toastApiError(error, t("modal.errorToast"));
+    } finally {
+      setCreatingSchedule(false);
+      setPendingCreate(null);
+    }
+  }
+
   function openCreateSchedule(
     tech: SchedulingTechnician | null,
     day: Date,
     times?: { startTime: string; endTime: string },
   ) {
-    // Always open the modal (incl. job tab) so same-group peers + skip results work.
+    // From job detail: job/client are known — create on drag without the modal.
+    if (jobScopedId) {
+      void createScheduleForScopedJob(tech, day, times);
+      return;
+    }
+
     setCreateTech(tech ? toCreateTech(tech) : null);
     setCreateTechs(null);
     setCreateGroupId(null);
@@ -590,9 +740,6 @@ export function SchedulingPanel({
       startTime: times?.startTime,
       endTime: times?.endTime,
       workerId: tech?.id,
-      clientId: jobScopedClientId ?? undefined,
-      jobId: jobScopedId ?? undefined,
-      lockJob: Boolean(jobScopedId),
     };
     if (!tech) {
       setCreatePrefill(scopedPrefill);
@@ -688,15 +835,22 @@ export function SchedulingPanel({
       }
     }
 
-    if (jobScopedId && workers.length > 1) {
-      void createBulkForScopedJob(workers.map((w) => w.id), day, groupId, {
+    if (jobScopedId) {
+      if (workers.length === 1) {
+        void createScheduleForScopedJob(workers[0]!, parseDateKey(dateKey), {
+          startTime: startTime ?? "09:00",
+          endTime: endTime ?? "10:00",
+        });
+        return;
+      }
+      void createBulkForScopedJob(workers.map((w) => w.id), parseDateKey(dateKey), groupId, {
         startTime: startTime ?? "09:00",
         endTime: endTime ?? "10:00",
       });
       return;
     }
 
-    // Single worker (incl. job tab): open modal so same-group peers + skips work.
+    // Main /scheduling page: open modal (same-group peers live inside the modal).
     if (workers.length === 1) {
       setCreateTechs(null);
       setCreateTech(mapped[0] ?? null);
@@ -707,9 +861,6 @@ export function SchedulingPanel({
       workerId: workers[0]?.id,
       startTime,
       endTime,
-      clientId: jobScopedClientId ?? undefined,
-      jobId: jobScopedId ?? undefined,
-      lockJob: Boolean(jobScopedId),
     });
     setCreateOpen(true);
   }
@@ -1044,7 +1195,15 @@ export function SchedulingPanel({
     <SchedulingPeopleHeader
       search={techSearch}
       focusedWorker={focusedWorker}
-      onBack={!fixedWorkerId && focusedWorker ? () => setWorkerFilter("") : undefined}
+      onBack={
+        !fixedWorkerId && focusedWorker
+          ? () => {
+              setTechSearch("");
+              setSelectedWorkerIds(new Set());
+              setWorkerFilter("");
+            }
+          : undefined
+      }
       onSearchChange={setTechSearch}
       selectedCount={selectedCount}
       allVisibleSelected={allVisibleSelected}
@@ -1235,14 +1394,15 @@ export function SchedulingPanel({
   );
 
   React.useEffect(() => {
-    if (!syncUrl) return;
-    setSecondaryRow(toolbarRow);
+    // Keep chrome slot clear — interactive Day/Week/Month lives in-panel so clicks
+    // are not lost when setSecondaryRow remounts the toolbar every render.
+    setSecondaryRow(null);
     return () => setSecondaryRow(null);
-  });
+  }, [setSecondaryRow]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {syncUrl ? null : toolbarRow}
+      {toolbarRow}
 
       {focusedWorker || (singleWorker && viewMode !== "month") ? (
         <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
@@ -1357,6 +1517,7 @@ export function SchedulingPanel({
                 }}
                 onScheduleClick={openJobDetail}
                 onRemoveSchedule={setDeleteTarget}
+                onCopySchedule={copySchedule}
                 onRemoveTimeOff={setDeleteTimeOff}
               />
             ) : (
@@ -1440,6 +1601,7 @@ export function SchedulingPanel({
             }}
             onScheduleClick={openJobDetail}
             onRemoveSchedule={setDeleteTarget}
+            onCopySchedule={copySchedule}
             onRemoveTimeOff={setDeleteTimeOff}
           />
         </div>
@@ -1563,6 +1725,7 @@ export function SchedulingPanel({
                         }
                         onScheduleClick={openJobDetail}
                         onRemoveSchedule={setDeleteTarget}
+                        onCopySchedule={copySchedule}
                         onRemoveTimeOff={setDeleteTimeOff}
                       />
                     </div>
@@ -1604,6 +1767,25 @@ export function SchedulingPanel({
         scheduledCount={bulkScheduledCount}
         skipped={bulkSkipped}
         onClose={() => setBulkResultOpen(false)}
+      />
+
+      <ScheduleSameGroupOfferModal
+        open={peerOffer != null}
+        groupName={peerOffer?.groupName ?? ""}
+        peers={(peerOffer?.peers ?? []).map((p) => ({ id: p.id, name: p.name, title: p.title }))}
+        busy={creatingSchedule}
+        onSkip={() => setPeerOffer(null)}
+        onConfirm={() => {
+          if (!peerOffer) return;
+          const { peers, day, startTime, endTime, groupId } = peerOffer;
+          setPeerOffer(null);
+          void createBulkForScopedJob(
+            peers.map((p) => p.id),
+            day,
+            groupId,
+            { startTime, endTime },
+          );
+        }}
       />
 
       <SchedulingDayAgendaPanel
