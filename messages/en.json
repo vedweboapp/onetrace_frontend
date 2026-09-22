@@ -3822,7 +3822,11 @@
         "close": "Close",
         "sameGroupHeading": "Also in {group}",
         "scheduleSameGroup": "Schedule all in group ({count})",
-        "clearGroupPeers": "Schedule this user only"
+        "clearGroupPeers": "Schedule this user only",
+        "sameGroupOfferTitle": "Schedule same group?",
+        "sameGroupOfferBody": "Also schedule the other {count, plural, one {# user} other {# users}} in {group} for this job at the same time?",
+        "sameGroupOfferConfirm": "Schedule group ({count})",
+        "sameGroupOfferSkip": "Not now"
       },
       "legendAvailable": "Available",
       "legendUnavailable": "Unavailable",

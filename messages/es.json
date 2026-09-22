@@ -3807,7 +3807,11 @@
         "close": "Cerrar",
         "sameGroupHeading": "También en {group}",
         "scheduleSameGroup": "Programar todo el grupo ({count})",
-        "clearGroupPeers": "Programar solo este usuario"
+        "clearGroupPeers": "Programar solo este usuario",
+        "sameGroupOfferTitle": "¿Programar el mismo grupo?",
+        "sameGroupOfferBody": "¿También programar {count, plural, one {al otro # usuario} other {a los otros # usuarios}} de {group} para este trabajo a la misma hora?",
+        "sameGroupOfferConfirm": "Programar grupo ({count})",
+        "sameGroupOfferSkip": "Ahora no"
       },
       "legendAvailable": "Disponible",
       "legendUnavailable": "No disponible",

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, X } from "lucide-react";
+import { Copy, Loader2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import {
@@ -59,6 +59,7 @@ type Props = {
   createBusy?: boolean;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
+  onCopySchedule?: (schedule: Schedule) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
 };
 
@@ -92,11 +93,14 @@ export function SchedulingWeekCalendar({
   createBusy = false,
   onScheduleClick,
   onRemoveSchedule,
+  onCopySchedule,
   onRemoveTimeOff,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
   const [drag, setDrag] = React.useState<DragState | null>(null);
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const autoScrollKeyRef = React.useRef<string | null>(null);
 
   const hours = React.useMemo(() => {
     const list: number[] = [];
@@ -108,6 +112,8 @@ export function SchedulingWeekCalendar({
   const totalMinutes = (END_HOUR - START_HOUR) * 60;
   const hourPx = fillHeight ? MIN_HOUR_PX : HOUR_PX;
   const gridHeight = hours.length * hourPx;
+  /** fillHeight tracks need a real pixel height so % bands + Y→time drag work. */
+  const trackHeightPx = fillHeight ? Math.max(gridHeight, hours.length * MIN_HOUR_PX) : gridHeight;
 
   const dayModels = React.useMemo(() => {
     return days.map((day) => {
@@ -159,20 +165,24 @@ export function SchedulingWeekCalendar({
   const labelCount = Math.max(1, labelHours.length - 1);
 
   function bandStyle(startMin: number, endMin: number, gapPx = 3): React.CSSProperties {
-    if (fillHeight) {
-      const start = ((startMin - START_HOUR * 60) / totalMinutes) * 100;
-      const span = Math.max(1.5, ((endMin - startMin) / totalMinutes) * 100);
-      if (gapPx <= 0) return { top: `${start}%`, height: `${span}%` };
-      return {
-        top: `calc(${start}% + ${gapPx}px)`,
-        height: `max(calc(${span}% - ${gapPx * 2}px), 14px)`,
-      };
-    }
-    return {
-      top: ((startMin - START_HOUR * 60) / totalMinutes) * gridHeight + gapPx,
-      height: Math.max(18, ((endMin - startMin) / totalMinutes) * gridHeight - gapPx * 2),
-    };
+    const start = ((startMin - START_HOUR * 60) / totalMinutes) * trackHeightPx + gapPx;
+    const height = Math.max(18, ((endMin - startMin) / totalMinutes) * trackHeightPx - gapPx * 2);
+    return { top: start, height };
   }
+
+  React.useLayoutEffect(() => {
+    if (days.length !== 1) return;
+    const model = dayModels[0];
+    if (!model?.window) return;
+    const key = `${technician.id}:${model.dayKey}`;
+    if (autoScrollKeyRef.current === key) return;
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    autoScrollKeyRef.current = key;
+    const focusMin = Math.max(START_HOUR * 60, model.window.startMinutes - 60);
+    const y = ((focusMin - START_HOUR * 60) / totalMinutes) * trackHeightPx;
+    el.scrollTop = Math.max(0, y - 16);
+  }, [days.length, dayModels, technician.id, totalMinutes, trackHeightPx]);
 
   return (
     <div className={cn("min-h-0 flex-1", fillHeight ? "flex flex-col overflow-hidden" : "overflow-auto")}>
@@ -218,38 +228,31 @@ export function SchedulingWeekCalendar({
           </div>
         )}
 
-        <div className={cn(fillHeight && "min-h-0 flex-1 overflow-auto")}>
+        <div ref={scrollAreaRef} className={cn(fillHeight ? "min-h-0 flex-1 overflow-auto" : null)}>
         <div
-          className={cn("grid", fillHeight && "h-full")}
+          className="grid"
           style={{
             gridTemplateColumns: colTemplate,
-            minHeight: fillHeight ? gridHeight : gridHeight + TOP_PAD + 16,
+            height: trackHeightPx + (fillHeight ? 0 : TOP_PAD + 16),
+            minHeight: trackHeightPx,
           }}
         >
           <div
             className="relative border-r border-slate-200 dark:border-slate-800"
-            style={fillHeight ? undefined : { height: gridHeight + TOP_PAD + 16 }}
+            style={{ height: trackHeightPx + (fillHeight ? 0 : TOP_PAD + 16) }}
           >
             {labelHours.map((hour, index) => (
               <div
                 key={hour}
-                className={cn(
-                  "absolute right-2 text-[11px] font-medium tabular-nums text-slate-500",
-                  fillHeight
-                    ? index === 0
-                      ? "top-1"
+                className="absolute right-2 -translate-y-1/2 text-[11px] font-medium tabular-nums text-slate-500"
+                style={{
+                  top:
+                    index === 0
+                      ? 8
                       : index === labelCount
-                        ? "bottom-1 top-auto"
-                        : "-translate-y-1/2"
-                    : "-translate-y-1/2",
-                )}
-                style={
-                  fillHeight
-                    ? index === 0 || index === labelCount
-                      ? undefined
-                      : { top: `${(index / labelCount) * 100}%` }
-                    : { top: TOP_PAD + index * hourPx }
-                }
+                        ? trackHeightPx - 8
+                        : (index / labelCount) * trackHeightPx,
+                }}
               >
                 {formatHourLabel(hour, locale)}
               </div>
@@ -265,11 +268,10 @@ export function SchedulingWeekCalendar({
               <div
                 key={model.dayKey}
                 className="relative cursor-crosshair border-r border-slate-100 last:border-r-0 dark:border-slate-800/80"
-                style={
-                  fillHeight
-                    ? undefined
-                    : { height: gridHeight, marginTop: TOP_PAD }
-                }
+                style={{
+                  height: trackHeightPx,
+                  marginTop: fillHeight ? 0 : TOP_PAD,
+                }}
                 onPointerDown={(e) => {
                   if (createBusy || e.button !== 0) return;
                   if ((e.target as HTMLElement).closest("button")) return;
@@ -309,11 +311,10 @@ export function SchedulingWeekCalendar({
                   <div
                     key={hour}
                     className="pointer-events-none absolute inset-x-0 border-t border-slate-100 dark:border-slate-800/70"
-                    style={
-                      fillHeight
-                        ? { top: `${(index / hours.length) * 100}%`, height: `${100 / hours.length}%` }
-                        : { top: index * hourPx, height: hourPx }
-                    }
+                    style={{
+                      top: index * (trackHeightPx / hours.length),
+                      height: trackHeightPx / hours.length,
+                    }}
                   />
                 ))}
 
@@ -373,7 +374,7 @@ export function SchedulingWeekCalendar({
                           className="block w-full truncate text-left"
                           onClick={() => onScheduleClick(segment.schedule!)}
                         >
-                          <p className="truncate pr-4 text-[11px] font-semibold text-sky-950 dark:text-sky-100">
+                          <p className="truncate pr-8 text-[11px] font-semibold text-sky-950 dark:text-sky-100">
                             {scheduleJobLabel(segment.schedule)}
                           </p>
                           <p className="truncate text-[10px] text-sky-800/80 dark:text-sky-200/80">
@@ -382,17 +383,30 @@ export function SchedulingWeekCalendar({
                           </p>
                           <p className="truncate text-[10px] text-sky-800/70">{segment.schedule.client_name}</p>
                         </button>
-                        {onRemoveSchedule ? (
-                          <button
-                            type="button"
-                            title={t("removeSchedule")}
-                            aria-label={t("removeSchedule")}
-                            className="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                            onClick={() => onRemoveSchedule(segment.schedule!)}
-                          >
-                            <X className="size-3" strokeWidth={2.5} />
-                          </button>
-                        ) : null}
+                        <div className="absolute right-1 top-1 flex items-center gap-0.5">
+                          {onCopySchedule ? (
+                            <button
+                              type="button"
+                              title={t("copy.action")}
+                              aria-label={t("copy.action")}
+                              className="inline-flex size-5 items-center justify-center rounded text-sky-800/70 hover:bg-sky-100 hover:text-sky-950 dark:text-sky-200/80 dark:hover:bg-sky-900"
+                              onClick={() => onCopySchedule(segment.schedule!)}
+                            >
+                              <Copy className="size-3" strokeWidth={2.5} />
+                            </button>
+                          ) : null}
+                          {onRemoveSchedule ? (
+                            <button
+                              type="button"
+                              title={t("removeSchedule")}
+                              aria-label={t("removeSchedule")}
+                              className="inline-flex size-5 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                              onClick={() => onRemoveSchedule(segment.schedule!)}
+                            >
+                              <X className="size-3" strokeWidth={2.5} />
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   }
