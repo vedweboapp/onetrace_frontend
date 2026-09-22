@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Power, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
@@ -248,20 +248,20 @@ export function KioskMachineSettingsPanel() {
   const rowActions = React.useCallback(
     (row: KioskMachine) => {
       const isActivating = activatingId === row.id;
-      const canActivate = !row.is_activated;
+      const showActivate = !row.is_activated;
       return (
-        <div className="flex items-center justify-end gap-1">
-          {canActivate ? (
-            <button
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {showActivate ? (
+            <AppButton
               type="button"
-              className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
-              title={t("activate")}
-              aria-label={t("activate")}
-              disabled={isActivating || activatingId !== null}
+              variant="secondary"
+              size="sm"
+              loading={isActivating}
+              disabled={activatingId !== null}
               onClick={() => void handleActivate(row)}
             >
-              <Power className={cn("size-3.5", isActivating && "animate-pulse")} strokeWidth={2} />
-            </button>
+              {t("activate")}
+            </AppButton>
           ) : null}
           <button
             type="button"
