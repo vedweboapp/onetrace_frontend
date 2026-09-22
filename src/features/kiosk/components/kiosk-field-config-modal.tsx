@@ -120,6 +120,24 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
   const fieldType = (option.field_type as string) || "radio";
   const def = KIOSK_FIELD_TYPES[fieldType] ?? KIOSK_FIELD_TYPES.radio;
 
+  const owningQuestion = React.useMemo(() => {
+    if (questionUid) {
+      return (questions || []).find((q: any) => (q.q_id || q._uid) === questionUid) || null;
+    }
+
+    const optionUid = option.o_id || option.uid || option._uid;
+    return (questions || []).find((q: any) => {
+      const allOpts = getQuestionOptions(q);
+      return allOpts.some((opt: any) => (opt.o_id || opt.uid || opt._uid) === optionUid);
+    }) || null;
+  }, [option, questionUid, questions]);
+
+  const isLookupImageQuestion = !!(
+    owningQuestion &&
+    owningQuestion.is_lookup &&
+    (owningQuestion.lookup_option_type || "radio") === "image_radio"
+  );
+
   const isColorField = fieldType === "color" || fieldType === "color_swatch";
   const isImageRadioField = fieldType === "image_radio";
 
@@ -149,7 +167,10 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       );
       merged.api_name = apiName;
       if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
-        merged.value = apiName;
+        merged.value =
+          ft === "image_radio" && merged.composite_item_id != null
+            ? String(merged.composite_item_id)
+            : apiName;
       }
     }
     setFormData(merged);
@@ -473,7 +494,13 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       ft === "input" ? "input_field" : "option",
     );
     if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
-      return { api_name: apiName, value: apiName };
+      return {
+        api_name: apiName,
+        value:
+          ft === "image_radio" && prev.composite_item_id != null
+            ? String(prev.composite_item_id)
+            : apiName,
+      };
     }
     if (ft === "input") {
       return { api_name: apiName };
@@ -541,7 +568,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       );
 
       const normalizedValue =
-        ft === "radio" || ft === "checkbox" || ft === "image_radio"
+        ft === "image_radio"
+          ? String(formData.composite_item_id ?? formData.value ?? normalizedApiName)
+          : ft === "radio" || ft === "checkbox"
           ? normalizedApiName
           : ft === "input"
           ? (formData.value ?? "")
@@ -1033,6 +1062,12 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
               if (field.key === "value") return null;
               if (field.key === "api_name") return null;
               if (fieldType === "items_lookup" && field.key === "item_group_id") return null;
+              if (
+                isLookupImageQuestion &&
+                (field.key === "image" || field.key === "label" || field.key === "subLabel" || field.key === "price")
+              ) {
+                return null;
+              }
 
               const val = (formData[field.key] as any) ?? "";
 

@@ -12,7 +12,11 @@ import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
 import { getQuestionOptions } from "../utils/kiosk-lookup";
 import { buildLookupOptions } from "../utils/kiosk-lookup";
 import { fetchGroup } from "@/features/groups/api/group.api";
-import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
+import {
+  fetchCompositeItem,
+  fetchCompositeItemsPage,
+} from "@/features/composite-items/api/composite-item.api";
+import { resolveItemAttachmentUrl } from "@/features/items/utils/item-attachment-display.util";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -231,6 +235,17 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
     } | null>(null);
     const [lookupOptionsByQuestion, setLookupOptionsByQuestion] = useState<Record<string, KioskOption[]>>({});
 
+    const resolveItemImageFromComposite = useCallback((compositeItem: any): string | null => {
+      const attachment = Array.isArray(compositeItem?.attachments)
+        ? compositeItem.attachments.find((row: any) => row && resolveItemAttachmentUrl(row))
+        : null;
+      const image = attachment ? resolveItemAttachmentUrl(attachment) : null;
+      if (image) return image;
+      return typeof compositeItem?.image === "string" && compositeItem.image.trim()
+        ? compositeItem.image.trim()
+        : null;
+    }, []);
+
     // Must be declared before optionByUid which depends on it
     const isPhone = renderMode === "phone";
     const activeQuestions = (config.questions ?? []).filter(
@@ -250,29 +265,56 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           return { question, group };
         }),
       ])
-        .then(([compositeResult, ...lookupResults]) => {
+        .then(async ([compositeResult, ...lookupResults]) => {
           const compositeById = new Map(
-            compositeResult.items.map((item) => [item.id, item]),
+            compositeResult.items.map((item) => [String(item.id), item]),
           );
-          return lookupResults.map(({ question, group }) => {
-            const questionUid = question.q_id || question._uid || "";
-            const items = (group.items || []).map((item) => ({
-              ...item,
-              selling_price:
-                compositeById.get(Number(item.item))?.selling_price ??
-                item.selling_price,
-            }));
-            return [
-              questionUid,
-              buildLookupOptions(
-                items,
-                question.item_group_id as string | number,
-                question.lookup_option_type || "radio",
-              ),
-            ] as const;
-          });
-        })
-        .then((entries) => {
+
+          const entries = await Promise.all(
+            lookupResults.map(async ({ question, group }) => {
+              const questionUid = question.q_id || question._uid || "";
+              const items = (group.items || []).map((item) => ({
+                ...item,
+                selling_price:
+                  compositeById.get(String(item.item ?? item.id))?.selling_price ??
+                  item.selling_price,
+              }));
+
+              const runtimeImagesById: Record<string, string | null> = {};
+              if ((question.lookup_option_type || "radio") === "image_radio") {
+                const ids = items
+                  .map((item) => Number(item.item ?? item.id))
+                  .filter((id) => Number.isFinite(id));
+
+                const details = await Promise.all(
+                  ids.map(async (itemId) => {
+                    try {
+                      return await fetchCompositeItem(itemId);
+                    } catch {
+                      return compositeById.get(String(itemId)) ?? null;
+                    }
+                  }),
+                );
+
+                for (const detail of details) {
+                  if (!detail) continue;
+                  const itemId = String(detail.id);
+                  runtimeImagesById[itemId] = resolveItemImageFromComposite(detail);
+                }
+              }
+
+              return [
+                questionUid,
+                buildLookupOptions(
+                  items,
+                  question.item_group_id as string | number,
+                  question.lookup_option_type || "radio",
+                  runtimeImagesById,
+                ),
+              ] as const;
+            }),
+          );
+
           if (!cancelled) setLookupOptionsByQuestion(Object.fromEntries(entries));
         })
         .catch(() => {

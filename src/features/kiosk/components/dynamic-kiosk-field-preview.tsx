@@ -19,6 +19,7 @@ import { applyColorFill } from "../utils/kiosk-color-fill";
 interface DynamicKioskOptionPreviewProps {
   option: KioskOption;
   index: number;
+  isLookupApiOption?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -30,6 +31,7 @@ const OPTION_DND_TYPE = "KIOSK_QUESTION_OPTION";
 export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> = ({
   option,
   index,
+  isLookupApiOption = false,
   onEdit,
   onDelete,
   onDuplicate,
@@ -254,31 +256,35 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
                 Configure
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDuplicate();
-                }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              >
-                <Copy size={13} className="text-slate-400" />
-                Duplicate
-              </button>
+              {!isLookupApiOption && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDuplicate();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <Copy size={13} className="text-slate-400" />
+                    Duplicate
+                  </button>
 
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete();
-                }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                <Trash2 size={13} />
-                Delete
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    <Trash2 size={13} />
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

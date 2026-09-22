@@ -39,10 +39,14 @@ import { KioskLookupQuestionModal } from "./kiosk-lookup-question-modal";
 import { KioskRenderer } from "./kiosk-renderer";
 import { cn } from "@/core/utils/http.util";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
+import { buildLookupOptions } from "../utils/kiosk-lookup";
 import {
   buildKioskFormData,
   formDataToDebugEntries,
 } from "../utils/kiosk-formdata.builder";
+import { fetchGroup } from "@/features/groups/api/group.api";
+import { fetchCompositeItem } from "@/features/composite-items/api/composite-item.api";
+import { resolveItemAttachmentUrl } from "@/features/items/utils/item-attachment-display.util";
 
 interface KioskBuilderProps {
   initialConfig?: KioskConfig;
@@ -295,7 +299,88 @@ const QuestionDropZone: React.FC<{
   const [labelText, setLabelText] = useState(question.label || `Question ${index + 1}`);
   const [subLabelText, setSubLabelText] = useState(question.subLabel || "");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lookupPreviewOptions, setLookupPreviewOptions] = useState<KioskOption[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!question.is_lookup || !question.item_group_id) {
+      setLookupPreviewOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadLookupPreview = async () => {
+      try {
+        const group = await fetchGroup(Number(question.item_group_id));
+        const items = (group.items || []).map((item) => ({
+          ...item,
+          selling_price:
+            item.selling_price != null
+              ? item.selling_price
+              : undefined,
+        }));
+        const runtimeImagesById: Record<string, string | null> = {};
+
+        if ((question.lookup_option_type || "radio") === "image_radio") {
+          const ids = items
+            .map((item) => Number(item.item ?? item.id))
+            .filter((id) => Number.isFinite(id));
+
+          const details = await Promise.all(
+            ids.map(async (itemId) => {
+              try {
+                return await fetchCompositeItem(itemId);
+              } catch {
+                return null;
+              }
+            }),
+          );
+
+          for (const detail of details) {
+            if (!detail || detail.id == null) continue;
+            const rawDetail = detail as Record<string, unknown>;
+            const rawAttachment = Array.isArray(rawDetail.attachments)
+              ? (rawDetail.attachments as any[]).find((row: any) => Boolean(resolveItemAttachmentUrl(row)))
+              : null;
+            const rawImage = typeof rawDetail.image === "string" ? rawDetail.image.trim() : "";
+            const resolved = rawAttachment
+              ? resolveItemAttachmentUrl(rawAttachment)
+              : rawImage || null;
+            runtimeImagesById[String(detail.id)] = resolved;
+
+            const itemId = Number(detail.id);
+            const targetIndex = items.findIndex((item) => Number(item.item ?? item.id) === itemId);
+            if (targetIndex >= 0) {
+              items[targetIndex] = {
+                ...items[targetIndex],
+                selling_price:
+                  detail.selling_price ?? items[targetIndex].selling_price ?? "",
+              };
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setLookupPreviewOptions(
+            buildLookupOptions(
+              items,
+              question.item_group_id as string | number,
+              question.lookup_option_type || "radio",
+              runtimeImagesById,
+            ),
+          );
+        }
+      } catch {
+        if (!cancelled) setLookupPreviewOptions([]);
+      }
+    };
+
+    void loadLookupPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [question.item_group_id, question.is_lookup, question.lookup_option_type]);
 
   // Close ellipsis menu when clicking outside
   useEffect(() => {
@@ -598,7 +683,41 @@ const QuestionDropZone: React.FC<{
         ) : (
           // No groups — render options directly in a flat grid
           <div>
-            {(question.options || []).length > 0 ? (
+            {question.is_lookup && (question.lookup_option_type || "radio") === "image_radio" ? (
+              lookupPreviewOptions.length > 0 ? (
+                <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
+                  {lookupPreviewOptions.map((option, optIdx) => {
+                    const optId = option.o_id || option.uid || option._uid || String(optIdx);
+                    const savedOption = (question.options || []).find(
+                      (saved) => (saved.o_id || saved.uid || saved._uid) === optId,
+                    );
+                    const editableOption = savedOption
+                      ? { ...option, ...savedOption }
+                      : option;
+                    return (
+                      <DynamicKioskFieldPreview
+                        key={optId}
+                        option={editableOption}
+                        index={optIdx}
+                        isLookupApiOption={true}
+                        onEdit={() => onEditOption(editableOption, qId)}
+                        onDelete={() => onDeleteOption(qId, optId)}
+                        onDuplicate={() => onDuplicateOption(qId, editableOption)}
+                        onMove={(fromIdx, toIdx) => onMoveOption(qId, optId, toIdx)}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
+                  Loading lookup items...
+                </div>
+              )
+            ) : question.is_lookup ? (
+              <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
+                Lookup items are configured from the API and are not manually added here.
+              </div>
+            ) : (question.options || []).length > 0 ? (
               <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
                 {(question.options || []).map((option, optIdx) => {
                   const optId = option.o_id || option.uid || option._uid || String(optIdx);
@@ -607,6 +726,7 @@ const QuestionDropZone: React.FC<{
                       key={optId}
                       option={option}
                       index={optIdx}
+                      isLookupApiOption={question.is_lookup && (question.lookup_option_type || "radio") === "image_radio"}
                       onEdit={() => onEditOption(option, qId)}
                       onDelete={() => onDeleteOption(qId, optId)}
                       onDuplicate={() => onDuplicateOption(qId, option)}
@@ -615,7 +735,7 @@ const QuestionDropZone: React.FC<{
                   );
                 })}
               </div>
-            ) : question.is_lookup ? null : (
+            ) : (
               <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
                 Drag fields here to add options
               </div>
@@ -724,11 +844,13 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
     subLabel: opt.subLabel || opt.sub_label || "",
     api_name: apiName,
     value: opt.value ?? "",
-    price: opt.price || "",
+    price: opt.price ?? opt.selling_price ?? "",
+    selling_price: opt.selling_price ?? opt.price ?? "",
     image: opt.image || "",
     required: opt.required ?? false,
   };
 
+  if (opt.composite_item_id !== undefined) clean.composite_item_id = opt.composite_item_id;
   if (opt.placeholder !== undefined) clean.placeholder = opt.placeholder;
   if (opt.input_type !== undefined) clean.input_type = opt.input_type;
   if (opt.color !== undefined) clean.color = opt.color;
@@ -738,16 +860,14 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
   if (opt.lookup_option_type !== undefined) clean.lookup_option_type = opt.lookup_option_type;
 
   if (isImageRadio) {
-    if (opt.placement_mode) clean.placement_mode = opt.placement_mode;
-    if (opt.placement) {
-      clean.placement = {
-        mode: opt.placement.mode,
-        coordinates: opt.placement.coordinates,
-        target_field: opt.placement.target_field,
-        target_fields: opt.placement.target_fields,
-        target_question: opt.placement.target_question,
-      };
-    }
+    clean.placement_mode = opt.placement_mode ?? null;
+    clean.placement = {
+      mode: (opt.placement?.mode as any) ?? null,
+      coordinates: opt.placement?.coordinates ?? null,
+      target_field: opt.placement?.target_field ?? null,
+      target_fields: opt.placement?.target_fields ?? null,
+      target_question: opt.placement?.target_question ?? null,
+    };
     if (opt.placement_targets && opt.placement_targets.length > 0) {
       clean.placement_targets = opt.placement_targets;
     }
@@ -774,8 +894,10 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
       clean.color_fill = opt.color_fill;
     }
     clean.value = opt.color || opt.value || clean.value;
-  } else if (isRadioOrCheckbox) {
+  } else if (fieldType === "radio" || fieldType === "checkbox") {
     clean.value = apiName;
+  } else if (fieldType === "image_radio") {
+    clean.value = String(opt.composite_item_id ?? opt.value ?? apiName);
   }
 
   return clean;
@@ -832,8 +954,11 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           groups: sanitizedGroups,
         };
       } else {
-        const sanitizedOptions = (q.options || []).map(sanitizeOption);
         const questionLabel = q.label || "Question";
+        const isLookupApiOnly = !!q.is_lookup && (q.lookup_option_type || "radio") !== "image_radio";
+        const sanitizedOptions = isLookupApiOnly
+          ? []
+          : (q.options || []).map(sanitizeOption);
         return {
           q_id,
           id: q.id ?? null,
@@ -976,6 +1101,64 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     });
   }, [config.questions]);
 
+  const hydrateLookupQuestionOptions = useCallback(async (question: KioskQuestion): Promise<KioskQuestion> => {
+    if (!question.is_lookup || !question.item_group_id || (question.lookup_option_type || "radio") !== "image_radio") {
+      return question;
+    }
+
+    try {
+      const group = await fetchGroup(Number(question.item_group_id));
+      const items = (group.items || []).map((item) => ({
+        ...item,
+        selling_price: item.selling_price != null ? item.selling_price : undefined,
+      }));
+
+      const runtimeImagesById: Record<string, string | null> = {};
+      const ids = items
+        .map((item) => Number((item as any).item ?? (item as any).id ?? (item as any).composite_item_id))
+        .filter((id) => Number.isFinite(id));
+
+      const details = await Promise.all(
+        ids.map(async (itemId) => {
+          try {
+            return await fetchCompositeItem(itemId);
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      for (const detail of details) {
+        if (!detail || detail.id == null) continue;
+        const rawDetail = detail as Record<string, unknown>;
+        const rawAttachment = Array.isArray(rawDetail.attachments)
+          ? (rawDetail.attachments as any[]).find((row: any) => Boolean(resolveItemAttachmentUrl(row)))
+          : null;
+        const rawImage = typeof rawDetail.image === "string" ? rawDetail.image.trim() : "";
+        runtimeImagesById[String(detail.id)] = rawAttachment
+          ? resolveItemAttachmentUrl(rawAttachment)
+          : rawImage || null;
+      }
+
+      return {
+        ...question,
+        options: buildLookupOptions(
+          items,
+          question.item_group_id as string | number,
+          question.lookup_option_type || "radio",
+          runtimeImagesById,
+        ),
+        groups: undefined,
+      };
+    } catch {
+      return {
+        ...question,
+        options: [],
+        groups: undefined,
+      };
+    }
+  }, []);
+
   const handleAddLookupQuestion = useCallback((afterQuestionUid: string) => {
     const lookupQuestion: KioskQuestion = {
       q_id: generateUid("q_"),
@@ -999,17 +1182,18 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     setEditingLookupQuestion({ question: lookupQuestion, isNew: true });
   }, []);
 
-  const handleSaveLookupQuestion = useCallback((updatedQuestion: KioskQuestion) => {
+  const handleSaveLookupQuestion = useCallback(async (updatedQuestion: KioskQuestion) => {
+    const hydratedQuestion = await hydrateLookupQuestionOptions(updatedQuestion);
     setConfig((prev) => ({
       ...prev,
       questions: (prev.questions || []).map((question) =>
-        (question.q_id || question._uid) === (updatedQuestion.q_id || updatedQuestion._uid)
-          ? updatedQuestion
+        (question.q_id || question._uid) === (hydratedQuestion.q_id || hydratedQuestion._uid)
+          ? hydratedQuestion
           : question,
       ),
     }));
     setEditingLookupQuestion(null);
-  }, []);
+  }, [hydrateLookupQuestionOptions]);
 
   const handleCancelLookupQuestion = useCallback(() => {
     if (editingLookupQuestion?.isNew) {
@@ -1114,6 +1298,43 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       ),
     }));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateEmptyImageLookupQuestions = async () => {
+      const questionsToHydrate = (config.questions || []).filter(
+        (question) =>
+          question.is_lookup &&
+          question.item_group_id != null &&
+          (question.lookup_option_type || "radio") === "image_radio" &&
+          (!question.options || question.options.length === 0),
+      );
+
+      if (questionsToHydrate.length === 0) return;
+
+      const hydrated = await Promise.all(
+        questionsToHydrate.map((question) => hydrateLookupQuestionOptions(question)),
+      );
+
+      if (cancelled) return;
+
+      setConfig((prev) => ({
+        ...prev,
+        questions: (prev.questions || []).map((question) => {
+          const match = hydrated.find(
+            (item) => (item.q_id || item._uid) === (question.q_id || question._uid),
+          );
+          return match ? match : question;
+        }),
+      }));
+    };
+
+    void hydrateEmptyImageLookupQuestions();
+    return () => {
+      cancelled = true;
+    };
+  }, [config.questions, hydrateLookupQuestionOptions]);
 
   const handleDeleteQuestion = useCallback((questionUid: string) => {
     setConfig((prev) => ({
@@ -1328,7 +1549,11 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
     const ft = updatedOption.field_type || "radio";
     const normalizedOption = sanitizeOption({ ...updatedOption });
-    if (ft === "radio" || ft === "checkbox" || ft === "image_radio") {
+    if (ft === "image_radio") {
+      normalizedOption.value = String(
+        normalizedOption.composite_item_id ?? normalizedOption.value ?? normalizedOption.api_name ?? "",
+      );
+    } else if (ft === "radio" || ft === "checkbox") {
       normalizedOption.value = normalizedOption.api_name || normalizedOption.value || "";
     } else if (ft === "color" || ft === "color_swatch") {
       normalizedOption.value = normalizedOption.color || normalizedOption.value || "#2563EB";
@@ -1350,12 +1575,16 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
             groups: undefined,
           };
         }
-        if (q.is_lookup) return q;
-        const updatedOptions = q.options
-          ? q.options.map((opt) =>
-              (opt.o_id || opt.uid || opt._uid) === optId ? normalizedOption : opt
+        if (q.is_lookup && (q.lookup_option_type || "radio") !== "image_radio") return q;
+        const currentOptions = q.options || [];
+        const hasMatchingOption = currentOptions.some(
+          (opt) => (opt.o_id || opt.uid || opt._uid) === optId,
+        );
+        const updatedOptions = hasMatchingOption
+          ? currentOptions.map((opt) =>
+              (opt.o_id || opt.uid || opt._uid) === optId ? normalizedOption : opt,
             )
-          : undefined;
+          : [...currentOptions, normalizedOption];
         const updatedGroups = q.groups
           ? q.groups.map((g) => ({
               ...g,
@@ -1380,6 +1609,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       ...prev,
       questions: (prev.questions || []).map((q) => {
         if ((q.q_id || q._uid) !== questionUid) return q;
+        if (q.is_lookup && (q.lookup_option_type || "radio") === "image_radio") return q;
         const updatedOptions = q.options
           ? q.options.filter((opt) => (opt.o_id || opt.uid || opt._uid) !== optionUid)
           : undefined;
@@ -1399,6 +1629,11 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   }, []);
 
   const handleDuplicateOption = useCallback((questionUid: string, option: KioskOption) => {
+    const targetQuestion = (config.questions || []).find((q) => (q.q_id || q._uid) === questionUid);
+    if (targetQuestion?.is_lookup && (targetQuestion.lookup_option_type || "radio") === "image_radio") {
+      return;
+    }
+
     const isRadioOrCb =
       option.field_type === "radio" ||
       option.field_type === "checkbox" ||
@@ -1754,14 +1989,62 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                         ...question,
                         options: question.options?.map((option) =>
                           (option.o_id || option.uid || option._uid) === optionUid
-                            ? { ...option, placement: { ...(option.placement || { mode: "place" }), coordinates } }
+                            ? {
+                                ...option,
+                                placement_mode: "place",
+                                placement: {
+                                  ...(option.placement || { mode: "place" }),
+                                  mode: "place",
+                                  coordinates,
+                                  target_field:
+                                    option.target_image_field || option.placement?.target_field || null,
+                                  target_fields:
+                                    option.placement_targets?.length
+                                      ? option.placement_targets
+                                      : option.placement?.target_fields || null,
+                                  target_question:
+                                    option.placement_target_question || option.placement?.target_question || null,
+                                },
+                                target_image_field:
+                                  option.target_image_field || option.placement?.target_field || null,
+                                placement_targets:
+                                  option.placement_targets?.length
+                                    ? option.placement_targets
+                                    : option.placement?.target_fields || null,
+                                placement_target_question:
+                                  option.placement_target_question || option.placement?.target_question || null,
+                              }
                             : option,
                         ),
                         groups: question.groups?.map((group) => ({
                           ...group,
                           options: (group.options || []).map((option) =>
                             (option.o_id || option.uid || option._uid) === optionUid
-                              ? { ...option, placement: { ...(option.placement || { mode: "place" }), coordinates } }
+                              ? {
+                                  ...option,
+                                  placement_mode: "place",
+                                  placement: {
+                                    ...(option.placement || { mode: "place" }),
+                                    mode: "place",
+                                    coordinates,
+                                    target_field:
+                                      option.target_image_field || option.placement?.target_field || null,
+                                    target_fields:
+                                      option.placement_targets?.length
+                                        ? option.placement_targets
+                                        : option.placement?.target_fields || null,
+                                    target_question:
+                                      option.placement_target_question || option.placement?.target_question || null,
+                                  },
+                                  target_image_field:
+                                    option.target_image_field || option.placement?.target_field || null,
+                                  placement_targets:
+                                    option.placement_targets?.length
+                                      ? option.placement_targets
+                                      : option.placement?.target_fields || null,
+                                  placement_target_question:
+                                    option.placement_target_question || option.placement?.target_question || null,
+                                }
                               : option,
                           ),
                         })),

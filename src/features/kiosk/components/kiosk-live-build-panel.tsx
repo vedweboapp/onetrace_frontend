@@ -52,7 +52,7 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
   return (
     <div
       className={cn(
-        "absolute z-10 overflow-hidden rounded-md border-2 border-white shadow-lg transition-all duration-200",
+        "absolute z-20 overflow-hidden rounded-md border-2 border-white shadow-lg transition-all duration-200",
         sizeClass,
         shadow && "shadow-md",
       )}
@@ -322,7 +322,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                 <img
                   src={mainImageSrc}
                   alt="Live build"
-                  className="block max-h-[190px] max-w-full object-contain drop-shadow-md"
+                  className="relative z-0 block max-h-[190px] max-w-full object-contain drop-shadow-md"
                 />
                 {scene.overlays.map((layer, idx) => (
                   <LiveBuildOverlayItem

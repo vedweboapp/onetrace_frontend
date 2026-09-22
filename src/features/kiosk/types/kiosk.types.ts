@@ -13,7 +13,7 @@ export interface PlacementCoordinates {
 }
 
 export interface PlacementConfig {
-  mode: PlacementMode;
+  mode: PlacementMode | null;
   coordinates?: PlacementCoordinates | null;
   target_field?: string | null; // UID of the selected kiosk image field to place on
   target_fields?: string[] | null; // UIDs of multiple selected image fields to place on

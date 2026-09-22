@@ -33,6 +33,44 @@ export function isBinaryFile(val: any): boolean {
   );
 }
 
+function isImageLookupQuestion(question: any): boolean {
+  return Boolean(
+    question?.is_lookup &&
+      (question.lookup_option_type || "radio") === "image_radio",
+  );
+}
+
+function sanitizeImageLookupOption(option: any): Record<string, unknown> {
+  const placement = option?.placement || {};
+  return {
+    o_id: option?.o_id || option?.uid || option?._uid,
+    composite_item_id: option?.composite_item_id,
+    placement: {
+      mode: placement.mode ?? option?.placement_mode ?? null,
+      coordinates: placement.coordinates ?? null,
+      target_field: placement.target_field ?? option?.target_image_field ?? null,
+      target_fields: placement.target_fields ?? option?.placement_targets ?? null,
+      target_question:
+        placement.target_question ?? option?.placement_target_question ?? null,
+    },
+  };
+}
+
+function stripImageLookupOptionFields(schema: any): void {
+  for (const question of schema?.questions || []) {
+    if (!isImageLookupQuestion(question)) continue;
+
+    if (Array.isArray(question.options)) {
+      question.options = question.options.map(sanitizeImageLookupOption);
+    }
+    for (const group of question.groups || []) {
+      if (Array.isArray(group.options)) {
+        group.options = group.options.map(sanitizeImageLookupOption);
+      }
+    }
+  }
+}
+
 /**
  * Appends binary image files (image and fill_image) for an option at a given hierarchical key
  */
@@ -100,6 +138,8 @@ export function buildKioskFormData(config: KioskConfig): FormData {
     }),
   );
 
+  stripImageLookupOptionFields(jsonSchema);
+
   // 1. Append the schema JSON string under key "JSONString"
   fd.append("JSONString", JSON.stringify(jsonSchema));
 
@@ -112,13 +152,13 @@ export function buildKioskFormData(config: KioskConfig): FormData {
     if (q.groups && q.groups.length > 0) {
       q.groups.forEach((g, gIndex) => {
         const gPrefix = `${qPrefix}[groups][${gIndex}]`;
-        (g.options || []).forEach((opt, optIndex) => {
+        (isImageLookupQuestion(q) ? [] : g.options || []).forEach((opt, optIndex) => {
           const optPrefix = `${gPrefix}[options][${optIndex}]`;
           appendOptionBinaryFiles(fd, optPrefix, opt, optIndex);
         });
       });
     } else {
-      (q.options || []).forEach((opt, optIndex) => {
+      (isImageLookupQuestion(q) ? [] : q.options || []).forEach((opt, optIndex) => {
         const optPrefix = `${qPrefix}[options][${optIndex}]`;
         appendOptionBinaryFiles(fd, optPrefix, opt, optIndex);
       });
