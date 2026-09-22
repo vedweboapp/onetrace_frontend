@@ -87,5 +87,6 @@ export const routes = {
     settingsTitle: "/settings/title-settings",
     settingsKiosks: "/settings/kiosks",
     settingsKiosk: "/settings/kiosks",
+    settingsKioskMachines: "/settings/kiosk-machine",
   },
 } as const;

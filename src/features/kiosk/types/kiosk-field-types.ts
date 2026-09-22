@@ -1,4 +1,4 @@
-import { CircleDot, CheckSquare, Palette, Image, LucideIcon } from "lucide-react";
+import { CircleDot, CheckSquare, Palette, Image, TextCursorInput, List, LucideIcon } from "lucide-react";
 import type { KioskOption } from "./kiosk.types";
 
 export interface KioskFieldConfigField {
@@ -8,11 +8,12 @@ export interface KioskFieldConfigField {
   placeholder?: string;
   description?: string;
   required?: boolean;
+  options?: { label: string; value: string }[];
 }
 
 export interface KioskFieldTypeDefinition {
   label: string;
-  field_type: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio";
+  field_type: "radio" | "checkbox" | "color" | "color_swatch" | "image_radio" | "input" | "items_lookup";
   icon: LucideIcon;
   description: string;
   defaultConfig: () => Partial<KioskOption>;
@@ -20,18 +21,53 @@ export interface KioskFieldTypeDefinition {
 }
 
 export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
+  items_lookup: {
+    label: "Items Lookup",
+    field_type: "items_lookup",
+    icon: List,
+    description: "Load items from one API group as a protected radio, checkbox, or image choice question",
+    defaultConfig: () => ({
+      field_type: "items_lookup",
+      label: "Items",
+      subLabel: "Select items",
+      api_name: "items",
+      item_group_id: undefined,
+      lookup_option_type: "radio",
+    }),
+    configFields: [
+      {
+        type: "select",
+        label: "Option presentation",
+        key: "lookup_option_type",
+        options: [
+          { label: "Radio buttons", value: "radio" },
+          { label: "Checkbox buttons", value: "checkbox" },
+          { label: "Image buttons", value: "image_radio" },
+        ],
+        required: true,
+      },
+      {
+        type: "text",
+        label: "Item group ID",
+        key: "item_group_id",
+        placeholder: "e.g. 12",
+        required: true,
+        description: "Items are loaded from this group ID.",
+      },
+    ],
+  },
   radio: {
     label: "Radio Option",
     field_type: "radio",
     icon: CircleDot,
-    description: "A selectable choice item with label, description, value, and optional price",
+    description: "A selectable choice item with label, description, and optional price",
     defaultConfig: () => ({
       field_type: "radio",
       label: "Radio Choice",
       subLabel: "",
-      value: "choice_1",
-      price: "",
       api_name: "radio_choice",
+      value: "radio_choice",
+      price: "",
     }),
     configFields: [
       {
@@ -46,13 +82,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         label: "Sub Label / Description",
         key: "subLabel",
         placeholder: "e.g. Description or notes for this choice",
-      },
-      {
-        type: "text",
-        label: "Value / Code",
-        key: "value",
-        placeholder: "e.g. standard_checkin",
-        required: true,
       },
       {
         type: "text",
@@ -72,9 +101,9 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       field_type: "checkbox",
       label: "Checkbox Choice",
       subLabel: "",
-      value: "choice_1",
-      price: "",
       api_name: "checkbox_choice",
+      value: "checkbox_choice",
+      price: "",
     }),
     configFields: [
       {
@@ -89,13 +118,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         label: "Sub Label / Description",
         key: "subLabel",
         placeholder: "e.g. Additional notes for this option",
-      },
-      {
-        type: "text",
-        label: "Value / Code",
-        key: "value",
-        placeholder: "e.g. extra_towels",
-        required: true,
       },
       {
         type: "text",
@@ -154,14 +176,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       },
       {
         type: "text",
-        label: "Value / Code",
-        key: "value",
-        placeholder: "e.g. #2563EB",
-        description: "Stored value (automatically updated when you pick a color)",
-        required: true,
-      },
-      {
-        type: "text",
         label: "Price / Extra Fee",
         key: "price",
         placeholder: "e.g. 10.00",
@@ -217,14 +231,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       },
       {
         type: "text",
-        label: "Value / Code",
-        key: "value",
-        placeholder: "e.g. #0EA5E9",
-        description: "Stored value (automatically updated when you pick a color)",
-        required: true,
-      },
-      {
-        type: "text",
         label: "Price / Extra Fee",
         key: "price",
         placeholder: "e.g. 10.00",
@@ -241,15 +247,10 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       field_type: "image_radio",
       label: "Image Choice",
       subLabel: "",
+      api_name: "image_choice",
       value: "image_choice",
       price: "",
       image: "",
-      placement_mode: "group",
-      placement_position: undefined,
-      placement: {
-        mode: "group",
-      },
-      api_name: "image_choice",
     }),
     configFields: [
       {
@@ -274,17 +275,68 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       },
       {
         type: "text",
-        label: "Value / Code",
-        key: "value",
-        placeholder: "e.g. premium_suite",
+        label: "Price / Extra Fee",
+        key: "price",
+        placeholder: "e.g. 150.00",
+        description: "Optional price or surcharge associated with this choice",
+      },
+    ],
+  },
+  input: {
+    label: "Input Field",
+    field_type: "input",
+    icon: TextCursorInput,
+    description: "An input field with custom attributes (label, placeholder, type, etc.) and individual answer values",
+    defaultConfig: () => ({
+      field_type: "input",
+      label: "Input Field",
+      subLabel: "",
+      value: "",
+      placeholder: "Enter value here...",
+      input_type: "text",
+      required: false,
+      price: "",
+      api_name: "input_field",
+    }),
+    configFields: [
+      {
+        type: "text",
+        label: "Field Label",
+        key: "label",
+        placeholder: "e.g. Customer Name, Notes, or Phone",
         required: true,
+      },
+      {
+        type: "textarea",
+        label: "Sub Label / Helper Text",
+        key: "subLabel",
+        placeholder: "e.g. Please enter any specific preferences",
+      },
+      {
+        type: "select",
+        label: "Input Type",
+        key: "input_type",
+        options: [
+          { label: "Text", value: "text" },
+          { label: "Number", value: "number" },
+          { label: "Email", value: "email" },
+          { label: "Phone", value: "tel" },
+          { label: "Textarea (Multi-line)", value: "textarea" },
+        ],
+        description: "Choose keyboard and format type for this input",
+      },
+      {
+        type: "text",
+        label: "Placeholder",
+        key: "placeholder",
+        placeholder: "e.g. Type your response...",
       },
       {
         type: "text",
         label: "Price / Extra Fee",
         key: "price",
-        placeholder: "e.g. 150.00",
-        description: "Optional price or surcharge associated with this choice",
+        placeholder: "e.g. 0.00",
+        description: "Optional surcharge added when this input field is filled",
       },
     ],
   },

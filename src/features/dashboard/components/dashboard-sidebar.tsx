@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -719,6 +719,7 @@ function DashboardSettingsSidebar({
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const kioskMachinesHref = routes.dashboard.settingsKioskMachines;
   const kiosksHref = routes.dashboard.settingsKiosks;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const integrationsHref = routes.dashboard.settingsIntegrations;
@@ -740,6 +741,8 @@ function DashboardSettingsSidebar({
   const companySettingsActive =
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive = pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const kioskMachinesActive =
+    pathname === kioskMachinesHref || pathname.startsWith(`${kioskMachinesHref}/`);
   const kiosksActive = pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const integrationsActive =
@@ -786,6 +789,14 @@ function DashboardSettingsSidebar({
           active={modulesActive}
           label={t("modules")}
           icon={Settings}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={kioskMachinesHref}
+          active={kioskMachinesActive}
+          label={t("kiosk")}
+          icon={MonitorSmartphone}
           expanded={expanded}
           resolved={resolved}
         />

@@ -9,6 +9,7 @@ import {
   Copy,
   CircleDot,
   CheckSquare,
+  TextCursorInput,
   MoreVertical,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
@@ -18,6 +19,7 @@ import { applyColorFill } from "../utils/kiosk-color-fill";
 interface DynamicKioskOptionPreviewProps {
   option: KioskOption;
   index: number;
+  isLookupApiOption?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -29,6 +31,7 @@ const OPTION_DND_TYPE = "KIOSK_QUESTION_OPTION";
 export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> = ({
   option,
   index,
+  isLookupApiOption = false,
   onEdit,
   onDelete,
   onDuplicate,
@@ -144,6 +147,10 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
               }}
               title={`Color: ${option.color || option.value || "#2563EB"}`}
             />
+          ) : option.field_type === "input" ? (
+            <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+              <TextCursorInput size={14} />
+            </div>
           ) : (
             <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
               {option.field_type === "checkbox" ? <CheckSquare size={14} /> : <CircleDot size={14} />}
@@ -182,6 +189,8 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
                     ? "Checkbox Option"
                     : option.field_type === "image_radio"
                     ? "Image Radio Option"
+                    : option.field_type === "input"
+                    ? "Input Field"
                     : "Radio Option")}
               </span>
 
@@ -196,6 +205,17 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
               <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
                 {option.subLabel}
               </p>
+            )}
+
+            {option.field_type === "input" && (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 rounded border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-[11px] text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500 truncate select-none">
+                  {option.placeholder || "Enter value here..."}
+                </div>
+                <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-mono text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  {option.input_type || "text"}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -236,31 +256,35 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
                 Configure
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDuplicate();
-                }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              >
-                <Copy size={13} className="text-slate-400" />
-                Duplicate
-              </button>
+              {!isLookupApiOption && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDuplicate();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <Copy size={13} className="text-slate-400" />
+                    Duplicate
+                  </button>
 
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete();
-                }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                <Trash2 size={13} />
-                Delete
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    <Trash2 size={13} />
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -405,7 +405,8 @@
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
-      "kiosks": "Kiosks",
+      "kiosk": "Kiosk",
+      "kiosks": "Kiosk Forms",
       "integrations": "Integrations",
       "auditLogs": "Audit Logs",
       "hint": "Customize theme and accent for this workspace.",
@@ -1794,6 +1795,62 @@
       "hexPlaceholder": "#000000",
       "validationName": "Enter a vendor type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
+    },
+    "kioskMachines": {
+      "metaTitle": "Kiosk",
+      "title": "Kiosk",
+      "subtitle": "Manage kiosk machines for your organization.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "activateMissingData": "Pairing code or organization is missing for this machine.",
+      "activateError": "Could not activate kiosk machine. Try again.",
+      "table": {
+        "code": "Machine code",
+        "name": "Machine name",
+        "city": "City",
+        "location": "Location",
+        "status": "Status",
+        "activated": "Activation",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "activated": "Activated",
+        "notActivated": "Not activated"
+      },
+      "emptyTitle": "No Kiosk Machines Yet",
+      "emptyDescription": "Add your first kiosk machine to get started.",
+      "loadError": "Could not load kiosk machines. Try again.",
+      "modal": {
+        "createTitle": "Add Kiosk Machine",
+        "editTitle": "Edit Kiosk Machine",
+        "machineCode": "Machine code",
+        "machineCodePlaceholder": "KM-Pune-001",
+        "machineName": "Machine name",
+        "machineNamePlaceholder": "Pune Retail Store Terminal 1",
+        "city": "City",
+        "locationName": "Location name",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "validation": {
+        "machineCode": "Enter a machine code.",
+        "machineName": "Enter a machine name."
+      },
+      "deleteConfirmTitle": "Delete This Kiosk Machine?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} machines",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Kiosk machine updated",
+      "created": "Kiosk machine created",
+      "deleted": "Kiosk machine deleted",
+      "activatedToast": "Kiosk machine activated"
     },
     "users": {
       "metaTitle": "Users",
@@ -3800,8 +3857,8 @@
       "emptyUsersHint": "Try another group or clear the search to see users.",
       "clearPeopleFilters": "Clear filters",
       "bulk": {
-        "selectAll": "Select all visible users",
-        "selectAllGroups": "Select all visible groups",
+        "selectAll": "Select all",
+        "selectAllGroups": "Select all groups",
         "selectWorker": "Select {name}",
         "selectGroup": "Select {name}",
         "scheduleSelected": "Schedule ({count})",

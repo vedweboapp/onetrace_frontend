@@ -2,9 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Layers, Palette } from "lucide-react";
-import type { KioskOption, KioskQuestion, PositionValue } from "../types/kiosk.types";
+import type { KioskOption, KioskQuestion } from "../types/kiosk.types";
 import { applyColorFill } from "../utils/kiosk-color-fill";
-import { kioskPlacementOverlayClass } from "../utils/kiosk-placement-styles";
+import {
+  DEFAULT_PLACEMENT_COORDINATES,
+  placementCoordinatesStyle,
+} from "../utils/kiosk-placement-styles";
 import { cn } from "@/core/utils/http.util";
 
 type QuestionAnswer =
@@ -116,15 +119,10 @@ export const KioskObjectVisual: React.FC<KioskObjectVisualProps> = ({
     const baseImage = targetOpt?.image as string | undefined;
     if (!baseImage && !activeOption.image) return null;
 
-    const position: PositionValue =
-      activeOption.placement_position ||
-      activeOption.placement?.position ||
-      "center";
-
     return {
       baseImage: baseImage || "",
       overlayImage: (activeOption.image as string) || "",
-      position,
+      coordinates: activeOption.placement?.coordinates || DEFAULT_PLACEMENT_COORDINATES,
       targetLabel: targetOpt?.label || "Canvas",
       objectLabel: activeOption.label || "Object",
     };
@@ -217,8 +215,8 @@ export const KioskObjectVisual: React.FC<KioskObjectVisualProps> = ({
             <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
               Canvas placement · {placementScene.targetLabel}
             </span>
-            <span className="font-mono text-[10px] font-bold capitalize text-blue-600 dark:text-blue-400">
-              {placementScene.position}
+            <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-400">
+              Freeform placement
             </span>
           </div>
           <div className="relative h-44 w-full bg-slate-100 dark:bg-slate-950">
@@ -236,7 +234,8 @@ export const KioskObjectVisual: React.FC<KioskObjectVisualProps> = ({
 
             {placementScene.overlayImage ? (
               <div
-                className={kioskPlacementOverlayClass(placementScene.position)}
+                className="absolute z-10 overflow-hidden rounded-md border-2 border-white shadow-lg"
+                style={placementCoordinatesStyle(placementScene.coordinates)}
               >
                 <img
                   src={placementScene.overlayImage}
@@ -247,11 +246,12 @@ export const KioskObjectVisual: React.FC<KioskObjectVisualProps> = ({
             ) : (
               <div
                 className={cn(
-                  kioskPlacementOverlayClass(placementScene.position, "size-14"),
-                  "flex items-center justify-center border-dashed border-blue-500/80 bg-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300",
+                  "absolute z-10 flex items-center justify-center rounded-md border-2 border-dashed border-blue-500/80 bg-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300",
+                  "overflow-hidden",
                 )}
+                style={placementCoordinatesStyle(placementScene.coordinates)}
               >
-                {placementScene.position}
+                Place image
               </div>
             )}
           </div>

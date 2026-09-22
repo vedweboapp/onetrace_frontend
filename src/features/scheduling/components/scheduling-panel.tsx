@@ -1404,34 +1404,34 @@ export function SchedulingPanel({
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {toolbarRow}
 
-      {focusedWorker || (singleWorker && viewMode !== "month") ? (
+      {viewMode !== "month" ? (
         <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2">
           {focusedWorker ? <div className="min-w-0 flex-1">{peopleHeader}</div> : null}
-          <SchedulingLegend className={cn("min-w-0 lg:hidden", focusedWorker ? "hidden sm:flex" : "flex-1")} />
-          {singleWorker && viewMode !== "month" ? (
-            <div className="ml-auto inline-flex shrink-0 rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900">
-              {(
-                [
-                  ["book", t("bookJob")],
-                  ["timeoff", t("markTimeOff")],
-                ] as const
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={cn(
-                    "rounded px-2 py-0.5 text-[10px] font-semibold transition",
-                    dragMode === mode
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-100 dark:text-slate-900"
-                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
-                  )}
-                  onClick={() => setDragMode(mode)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          <SchedulingLegend
+            className={cn("min-w-0 lg:hidden", focusedWorker ? "hidden sm:flex" : "flex-1")}
+          />
+          <div className="ml-auto inline-flex shrink-0 rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900">
+            {(
+              [
+                ["book", t("bookJob")],
+                ["timeoff", t("markTimeOff")],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                className={cn(
+                  "rounded px-2 py-0.5 text-[10px] font-semibold transition",
+                  dragMode === mode
+                    ? "bg-white text-slate-900 shadow-sm dark:bg-slate-100 dark:text-slate-900"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100",
+                )}
+                onClick={() => setDragMode(mode)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="flex shrink-0 items-center border-b border-slate-200 px-1 py-1 dark:border-slate-800 sm:px-2 lg:hidden">
@@ -1705,7 +1705,7 @@ export function SchedulingPanel({
                   return (
                     <div
                       key={`${tech.id}-${dayKey}`}
-                      className="min-h-[4.75rem] border-r border-slate-100 px-2 py-1.5 last:border-r-0 dark:border-slate-800/60"
+                      className="min-h-[3.5rem] border-r border-slate-100 px-1.5 py-1 last:border-r-0 dark:border-slate-800/60"
                     >
                       <SchedulingWeekDayStrip
                         tech={tech}

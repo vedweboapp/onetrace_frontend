@@ -12,6 +12,7 @@ import {
   Layers,
   ListTodo,
   MapPinHouse,
+  MonitorSmartphone,
   Package,
   Palette,
   PanelLeft,
@@ -125,6 +126,7 @@ export function DashboardHeader() {
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const kioskMachinesHref = routes.dashboard.settingsKioskMachines;
   const kiosksHref = routes.dashboard.settingsKiosks;
   const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
@@ -205,6 +207,8 @@ export function DashboardHeader() {
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive =
     pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const kioskMachinesActive =
+    pathname === kioskMachinesHref || pathname.startsWith(`${kioskMachinesHref}/`);
   const kiosksActive =
     pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const pinStatusActive =
@@ -300,6 +304,8 @@ export function DashboardHeader() {
                                             ? tSettingsNav("companySettings")
                                             : modulesActive
                                               ? tSettingsNav("modules")
+                                              : kioskMachinesActive
+                                                ? tSettingsNav("kiosk")
                                               : kiosksActive
                                             ? tSettingsNav("kiosks")
                                             : customizationHubActive
@@ -439,6 +445,7 @@ export function DashboardHeader() {
             <TopNavLink href={personalProfileHref} label={tSettingsNav("personalProfile")} icon={UserRound} active={personalProfileActive} resolved={resolved} />
             <TopNavLink href={companySettingsHref} label={tSettingsNav("companySettings")} icon={Building2} active={companySettingsActive} resolved={resolved} />
             <TopNavLink href={modulesHref} label={tSettingsNav("modules")} icon={Settings} active={modulesActive} resolved={resolved} />
+            <TopNavLink href={kioskMachinesHref} label={tSettingsNav("kiosk")} icon={MonitorSmartphone} active={kioskMachinesActive} resolved={resolved} />
             <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useDrag } from "react-dnd";
+import { Layers } from "lucide-react";
 import { KIOSK_FIELD_TYPES, KioskFieldTypeDefinition } from "../types/kiosk-field-types";
 
 const DraggablePaletteField: React.FC<{
@@ -67,11 +68,39 @@ const DraggableAddQuestionButton: React.FC<{
   );
 };
 
+const DraggableAddGroupButton: React.FC<{
+  onAddGroup?: () => void;
+}> = ({ onAddGroup }) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: "ADD_GROUP",
+    item: { type: "ADD_GROUP" },
+    collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
+  }));
+
+  return (
+    <div
+      ref={drag as any}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className="w-full cursor-move"
+    >
+      <button
+        type="button"
+        onClick={onAddGroup}
+        className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50/80 px-4 text-xs font-semibold text-slate-600 transition hover:border-blue-500 hover:bg-blue-50/40 hover:text-blue-600 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
+      >
+        <Layers size={13} />
+        Add Group Frame
+      </button>
+    </div>
+  );
+};
+
 interface KioskModuleBarProps {
   onAddQuestion?: () => void;
+  onAddGroup?: () => void;
 }
 
-export const KioskModuleBar: React.FC<KioskModuleBarProps> = ({ onAddQuestion }) => {
+export const KioskModuleBar: React.FC<KioskModuleBarProps> = ({ onAddQuestion, onAddGroup }) => {
   const fieldList = Object.values(KIOSK_FIELD_TYPES);
 
   return (
@@ -96,8 +125,9 @@ export const KioskModuleBar: React.FC<KioskModuleBarProps> = ({ onAddQuestion })
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="shrink-0 border-t border-gray-200 bg-white p-4 space-y-2 dark:border-slate-800 dark:bg-slate-900">
         <DraggableAddQuestionButton onAddQuestion={onAddQuestion} />
+        <DraggableAddGroupButton onAddGroup={onAddGroup} />
       </div>
     </aside>
   );
