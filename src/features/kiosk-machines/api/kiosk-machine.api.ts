@@ -42,7 +42,7 @@ function toWritePayload(
   if (typeof body.machine_name === "string") out.machine_name = body.machine_name.trim();
   if ("city" in body) out.city = body.city?.trim() || null;
   if ("location_name" in body) out.location_name = body.location_name?.trim() || null;
-  if (typeof body.is_active === "boolean") out.is_active = body.is_active;
+  if ("is_active" in body && typeof body.is_active === "boolean") out.is_active = body.is_active;
   return out;
 }
 
