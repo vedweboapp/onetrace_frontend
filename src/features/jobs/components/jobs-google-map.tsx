@@ -66,8 +66,8 @@ export function JobsGoogleMap({
 
     createGoogleMap(el, {
       center: { lat: 20.5937, lng: 78.9629 },
-      zoom: 4,
-      minZoom: 3,
+      zoom: 5,
+      minZoom: 4,
       scrollwheel: true,
       fullscreenControl: true,
       mapTypeControl: false,
@@ -217,7 +217,6 @@ export function JobsGoogleMap({
       const jobId = pin.jobId;
       const content = createJobMapPinElement({
         title: pin.jobLabel,
-        color: pin.statusColor,
         selected: selectedJobId === jobId,
       });
       const marker = createAdvancedMarker({

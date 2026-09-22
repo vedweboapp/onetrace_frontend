@@ -155,9 +155,14 @@ export function JobsLeafletMap({
       mapRef.current = L.map(el, {
         scrollWheelZoom: true,
         zoomControl: true,
-        minZoom: 3,
+        minZoom: 4,
+        maxBounds: [
+          [-85, -180],
+          [85, 180],
+        ],
+        maxBoundsViscosity: 1,
         worldCopyJump: false,
-      }).setView([20.5937, 78.9629], 4);
+      }).setView([20.5937, 78.9629], 5);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         noWrap: true,
@@ -190,7 +195,7 @@ export function JobsLeafletMap({
     for (const pin of resolved) {
       if (markersRef.current.has(pin.jobId)) continue;
       added = true;
-      const pinEl = createJobMapPinElement({ title: pin.jobLabel, color: pin.statusColor });
+      const pinEl = createJobMapPinElement({ title: pin.jobLabel });
       const icon = L.divIcon({
         className: "ot-job-map-leaflet-pin",
         html: pinEl.outerHTML,
