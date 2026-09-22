@@ -21,7 +21,7 @@ function countryFromLanguageTag(tag: string | null | undefined): Country | undef
     const region = raw.split("-")[1]?.toUpperCase();
     return asSupportedPhoneCountry(region);
   }
-}
+}.
 
 function readDeviceTimeZone(): string | undefined {
   try {

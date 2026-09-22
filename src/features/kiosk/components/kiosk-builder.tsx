@@ -39,14 +39,18 @@ import { KioskLookupQuestionModal } from "./kiosk-lookup-question-modal";
 import { KioskRenderer } from "./kiosk-renderer";
 import { cn } from "@/core/utils/http.util";
 import { deriveApiNameFromLabel } from "../utils/kiosk-api-name";
-import { buildLookupOptions } from "../utils/kiosk-lookup";
+import {
+  buildLookupOptions,
+  getLookupGroupId,
+  getQuestionOptions,
+  isLookupQuestion,
+  mergeLookupOptions,
+} from "../utils/kiosk-lookup";
 import {
   buildKioskFormData,
   formDataToDebugEntries,
 } from "../utils/kiosk-formdata.builder";
 import { fetchGroup } from "@/features/groups/api/group.api";
-import { fetchCompositeItem } from "@/features/composite-items/api/composite-item.api";
-import { resolveItemAttachmentUrl } from "@/features/items/utils/item-attachment-display.util";
 
 interface KioskBuilderProps {
   initialConfig?: KioskConfig;
@@ -268,6 +272,7 @@ const QuestionInnerGroupFrame: React.FC<{
 const QuestionDropZone: React.FC<{
   question: KioskQuestion;
   index: number;
+  persistedLookupCompositeItemIds: ReadonlySet<string>;
   onAddOption: (questionUid: string, item?: any) => void;
   onAddLookupQuestion: (questionUid: string) => void;
   onEditLookupQuestion: (question: KioskQuestion) => void;
@@ -282,6 +287,7 @@ const QuestionDropZone: React.FC<{
 }> = ({
   question,
   index,
+  persistedLookupCompositeItemIds,
   onAddOption,
   onAddLookupQuestion,
   onEditLookupQuestion,
@@ -301,9 +307,15 @@ const QuestionDropZone: React.FC<{
   const [menuOpen, setMenuOpen] = useState(false);
   const [lookupPreviewOptions, setLookupPreviewOptions] = useState<KioskOption[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
+  const lookupPresentation =
+    question.lookup_option_type ||
+    (getQuestionOptions(question).some((option) => option.field_type === "image_radio")
+      ? "image_radio"
+      : "radio");
 
   useEffect(() => {
-    if (!question.is_lookup || !question.item_group_id) {
+    const lookupGroupId = getLookupGroupId(question);
+    if (!isLookupQuestion(question) || lookupGroupId == null) {
       setLookupPreviewOptions([]);
       return;
     }
@@ -312,7 +324,7 @@ const QuestionDropZone: React.FC<{
 
     const loadLookupPreview = async () => {
       try {
-        const group = await fetchGroup(Number(question.item_group_id));
+        const group = await fetchGroup(Number(lookupGroupId));
         const items = (group.items || []).map((item) => ({
           ...item,
           selling_price:
@@ -320,54 +332,12 @@ const QuestionDropZone: React.FC<{
               ? item.selling_price
               : undefined,
         }));
-        const runtimeImagesById: Record<string, string | null> = {};
-
-        if ((question.lookup_option_type || "radio") === "image_radio") {
-          const ids = items
-            .map((item) => Number(item.item ?? item.id))
-            .filter((id) => Number.isFinite(id));
-
-          const details = await Promise.all(
-            ids.map(async (itemId) => {
-              try {
-                return await fetchCompositeItem(itemId);
-              } catch {
-                return null;
-              }
-            }),
-          );
-
-          for (const detail of details) {
-            if (!detail || detail.id == null) continue;
-            const rawDetail = detail as Record<string, unknown>;
-            const rawAttachment = Array.isArray(rawDetail.attachments)
-              ? (rawDetail.attachments as any[]).find((row: any) => Boolean(resolveItemAttachmentUrl(row)))
-              : null;
-            const rawImage = typeof rawDetail.image === "string" ? rawDetail.image.trim() : "";
-            const resolved = rawAttachment
-              ? resolveItemAttachmentUrl(rawAttachment)
-              : rawImage || null;
-            runtimeImagesById[String(detail.id)] = resolved;
-
-            const itemId = Number(detail.id);
-            const targetIndex = items.findIndex((item) => Number(item.item ?? item.id) === itemId);
-            if (targetIndex >= 0) {
-              items[targetIndex] = {
-                ...items[targetIndex],
-                selling_price:
-                  detail.selling_price ?? items[targetIndex].selling_price ?? "",
-              };
-            }
-          }
-        }
-
         if (!cancelled) {
           setLookupPreviewOptions(
             buildLookupOptions(
               items,
-              question.item_group_id as string | number,
-              question.lookup_option_type || "radio",
-              runtimeImagesById,
+              lookupGroupId,
+              lookupPresentation,
             ),
           );
         }
@@ -620,7 +590,7 @@ const QuestionDropZone: React.FC<{
               </div>
 
               {/* Duplicate */}
-              {question.is_lookup && (
+              {isLookupQuestion(question) && (
                 <button
                   type="button"
                   onClick={() => { onEditLookupQuestion(question); setMenuOpen(false); }}
@@ -683,23 +653,22 @@ const QuestionDropZone: React.FC<{
         ) : (
           // No groups — render options directly in a flat grid
           <div>
-            {question.is_lookup && (question.lookup_option_type || "radio") === "image_radio" ? (
+            {isLookupQuestion(question) && lookupPresentation === "image_radio" ? (
               lookupPreviewOptions.length > 0 ? (
                 <div className={cn("grid gap-2.5", getGridClass(question.columns || question.column_count || 2))}>
                   {lookupPreviewOptions.map((option, optIdx) => {
                     const optId = option.o_id || option.uid || option._uid || String(optIdx);
-                    const savedOption = (question.options || []).find(
-                      (saved) => (saved.o_id || saved.uid || saved._uid) === optId,
-                    );
-                    const editableOption = savedOption
-                      ? { ...option, ...savedOption }
-                      : option;
+                    const editableOption = mergeLookupOptions(
+                      [option],
+                      question.options || [],
+                    )[0] || option;
                     return (
                       <DynamicKioskFieldPreview
                         key={optId}
                         option={editableOption}
                         index={optIdx}
                         isLookupApiOption={true}
+                        isIncludedInKiosk={persistedLookupCompositeItemIds.has(String(option.composite_item_id))}
                         onEdit={() => onEditOption(editableOption, qId)}
                         onDelete={() => onDeleteOption(qId, optId)}
                         onDuplicate={() => onDuplicateOption(qId, editableOption)}
@@ -713,7 +682,7 @@ const QuestionDropZone: React.FC<{
                   Loading lookup items...
                 </div>
               )
-            ) : question.is_lookup ? (
+            ) : isLookupQuestion(question) ? (
               <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/60 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/30">
                 Lookup items are configured from the API and are not manually added here.
               </div>
@@ -726,7 +695,7 @@ const QuestionDropZone: React.FC<{
                       key={optId}
                       option={option}
                       index={optIdx}
-                      isLookupApiOption={question.is_lookup && (question.lookup_option_type || "radio") === "image_radio"}
+                      isLookupApiOption={isLookupQuestion(question) && lookupPresentation === "image_radio"}
                       onEdit={() => onEditOption(option, qId)}
                       onDelete={() => onDeleteOption(qId, optId)}
                       onDuplicate={() => onDuplicateOption(qId, option)}
@@ -977,6 +946,21 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
   };
 };
 
+function getPersistedLookupCompositeItemIds(config?: KioskConfig | null): Set<string> {
+  const ids = new Set<string>();
+  for (const question of config?.questions || []) {
+    if (!question.is_lookup || (question.lookup_option_type || "radio") !== "image_radio") {
+      continue;
+    }
+    for (const option of question.options || []) {
+      if (option.composite_item_id != null) {
+        ids.add(String(option.composite_item_id));
+      }
+    }
+  }
+  return ids;
+}
+
 export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   initialConfig,
   onSave,
@@ -996,6 +980,9 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   const configRef = useRef(config);
   configRef.current = config;
   const [isLoadingKiosk, setIsLoadingKiosk] = useState(false);
+  const [persistedLookupCompositeItemIds, setPersistedLookupCompositeItemIds] = useState<Set<string>>(
+    () => getPersistedLookupCompositeItemIds(initialConfig),
+  );
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
@@ -1024,6 +1011,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       try {
         const kiosk = await getKioskById(routeKioskId);
         if (!cancelled && kiosk) {
+          setPersistedLookupCompositeItemIds(getPersistedLookupCompositeItemIds(kiosk));
           setConfig(sanitizeConfig(kiosk));
         }
       } catch (err) {
@@ -1102,51 +1090,29 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   }, [config.questions]);
 
   const hydrateLookupQuestionOptions = useCallback(async (question: KioskQuestion): Promise<KioskQuestion> => {
-    if (!question.is_lookup || !question.item_group_id || (question.lookup_option_type || "radio") !== "image_radio") {
+    const lookupGroupId = getLookupGroupId(question);
+    const lookupPresentation =
+      question.lookup_option_type ||
+      (getQuestionOptions(question).some((option) => option.field_type === "image_radio")
+        ? "image_radio"
+        : "radio");
+    if (!isLookupQuestion(question) || lookupGroupId == null || lookupPresentation !== "image_radio") {
       return question;
     }
 
     try {
-      const group = await fetchGroup(Number(question.item_group_id));
+      const group = await fetchGroup(Number(lookupGroupId));
       const items = (group.items || []).map((item) => ({
         ...item,
         selling_price: item.selling_price != null ? item.selling_price : undefined,
       }));
 
-      const runtimeImagesById: Record<string, string | null> = {};
-      const ids = items
-        .map((item) => Number((item as any).item ?? (item as any).id ?? (item as any).composite_item_id))
-        .filter((id) => Number.isFinite(id));
-
-      const details = await Promise.all(
-        ids.map(async (itemId) => {
-          try {
-            return await fetchCompositeItem(itemId);
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      for (const detail of details) {
-        if (!detail || detail.id == null) continue;
-        const rawDetail = detail as Record<string, unknown>;
-        const rawAttachment = Array.isArray(rawDetail.attachments)
-          ? (rawDetail.attachments as any[]).find((row: any) => Boolean(resolveItemAttachmentUrl(row)))
-          : null;
-        const rawImage = typeof rawDetail.image === "string" ? rawDetail.image.trim() : "";
-        runtimeImagesById[String(detail.id)] = rawAttachment
-          ? resolveItemAttachmentUrl(rawAttachment)
-          : rawImage || null;
-      }
-
       return {
         ...question,
         options: buildLookupOptions(
           items,
-          question.item_group_id as string | number,
-          question.lookup_option_type || "radio",
-          runtimeImagesById,
+          lookupGroupId,
+          lookupPresentation,
         ),
         groups: undefined,
       };
@@ -1934,6 +1900,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                       <QuestionDropZone
                         question={question}
                         index={qIndex}
+                        persistedLookupCompositeItemIds={persistedLookupCompositeItemIds}
                         onAddOption={handleAddOption}
                         onAddLookupQuestion={handleAddLookupQuestion}
                         onEditLookupQuestion={(lookupQuestion) =>
