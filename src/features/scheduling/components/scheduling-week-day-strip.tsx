@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Copy, Loader2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Schedule, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
 import type { SchedulingTechnician } from "@/features/scheduling/utils/scheduling-technician.util";
@@ -37,6 +37,7 @@ type Props = {
   createBusy?: boolean;
   onScheduleClick: (schedule: Schedule) => void;
   onRemoveSchedule?: (schedule: Schedule) => void;
+  onCopySchedule?: (schedule: Schedule) => void;
   onRemoveTimeOff?: (timeOff: WorkerTimeOff) => void;
 };
 
@@ -69,6 +70,7 @@ export function SchedulingWeekDayStrip({
   createBusy = false,
   onScheduleClick,
   onRemoveSchedule,
+  onCopySchedule,
   onRemoveTimeOff,
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
@@ -141,25 +143,41 @@ export function SchedulingWeekDayStrip({
                 className="block w-full truncate text-left"
                 onClick={() => onScheduleClick(segment.schedule!)}
               >
-                <span className="block truncate pr-4 text-[10px] font-semibold leading-tight">
+                <span className="block truncate pr-8 text-[10px] font-semibold leading-tight">
                   {scheduleJobLabel(segment.schedule)}
                 </span>
                 <span className="block truncate text-[9px] leading-tight opacity-80">{label}</span>
               </button>
-              {onRemoveSchedule ? (
-                <button
-                  type="button"
-                  title={t("removeSchedule")}
-                  aria-label={t("removeSchedule")}
-                  className="absolute right-0.5 top-0.5 inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveSchedule(segment.schedule!);
-                  }}
-                >
-                  <X className="size-3" strokeWidth={2.5} />
-                </button>
-              ) : null}
+              <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5">
+                {onCopySchedule ? (
+                  <button
+                    type="button"
+                    title={t("copy.action")}
+                    aria-label={t("copy.action")}
+                    className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-sky-100 hover:text-sky-950 dark:text-sky-200/80 dark:hover:bg-sky-900"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCopySchedule(segment.schedule!);
+                    }}
+                  >
+                    <Copy className="size-3" strokeWidth={2.5} />
+                  </button>
+                ) : null}
+                {onRemoveSchedule ? (
+                  <button
+                    type="button"
+                    title={t("removeSchedule")}
+                    aria-label={t("removeSchedule")}
+                    className="inline-flex size-4 items-center justify-center rounded text-sky-800/70 hover:bg-red-50 hover:text-red-600 dark:text-sky-200/80 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveSchedule(segment.schedule!);
+                    }}
+                  >
+                    <X className="size-3" strokeWidth={2.5} />
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         }
@@ -315,29 +333,6 @@ export function SchedulingWeekDayStrip({
               <p className="pointer-events-none truncate text-[9px] font-semibold leading-tight opacity-80">
                 {label}
               </p>
-            ) : null}
-
-            {canDragBook && !draggingThis && !pendingOverlapsSegment ? (
-              <button
-                type="button"
-                data-avail-create
-                title={t("createSchedule")}
-                aria-label={t("createSchedule")}
-                className={cn(
-                  "absolute right-0.5 top-0.5 z-[3] inline-flex size-5 items-center justify-center rounded-full bg-sky-600 text-white shadow-sm",
-                  "opacity-0 transition group-hover/avail:opacity-100 focus-visible:opacity-100",
-                  "hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                )}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const startMin = segment.startMinutes;
-                  const endMin = Math.min(segment.endMinutes, startMin + 60);
-                  onCreate?.(minutesToTime(startMin), minutesToTime(Math.max(endMin, startMin + 15)));
-                }}
-              >
-                <Plus className="size-3" strokeWidth={2.5} aria-hidden />
-              </button>
             ) : null}
 
             {draggingThis ? (

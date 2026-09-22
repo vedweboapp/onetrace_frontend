@@ -308,12 +308,26 @@ export function CreateScheduleModal({
     setJobId(nextJobId);
     const job = map[Number(nextJobId)];
     if (!job) return;
+
+    // Drag / week-strip range already chose start+end — never replace with job_time (often seconds→1 min).
+    const prefillStart = prefill?.startTime?.trim();
+    const prefillEnd = prefill?.endTime?.trim();
+    if (prefillStart && prefillEnd) {
+      setStartTime(prefillStart);
+      setEndTime(prefillEnd);
+      if (prefill?.dateKey) {
+        setStartDate(prefill.dateKey);
+        setEndDate(prefill.dateKey);
+      }
+      return;
+    }
+
     const durationMinutes = parseJobDurationMinutes(job.job_time);
-    const hasPrefillTimes = Boolean(prefill?.startTime || prefill?.endTime);
-    const keepCalendarStart = Boolean(prefill?.dateKey || prefill?.startTime || startDate || startTime);
+    const hasPrefillTimes = Boolean(prefillStart || prefillEnd);
+    const keepCalendarStart = Boolean(prefill?.dateKey || prefillStart || startDate || startTime);
     if (durationMinutes && durationMinutes > 0 && keepCalendarStart) {
       const baseDate = startDate || prefill?.dateKey || defaultDateKey;
-      const baseTime = (prefill?.startTime || startTime || "09:00").trim();
+      const baseTime = (prefillStart || startTime || "09:00").trim();
       const safeBaseTime = isMidnightTime(baseTime) && !hasPrefillTimes ? "09:00" : baseTime;
       const next = addMinutesToDateTime(baseDate, safeBaseTime, durationMinutes);
       if (baseDate) setStartDate(baseDate);
@@ -324,7 +338,7 @@ export function CreateScheduleModal({
         return;
       }
     }
-    // Drag / bulk prefill already chose times — don't overwrite with job midnight.
+    // Drag / bulk prefill already chose a start — don't overwrite with job midnight stamps.
     if (hasPrefillTimes || prefill?.dateKey) return;
     const start = splitApiDateTime(job.start_date);
     const end = splitApiDateTime(job.end_date || job.start_date);
@@ -364,7 +378,14 @@ export function CreateScheduleModal({
     if (!endDate.trim()) next.endDate = t("validation.endDate");
     if (!startTime.trim()) next.startTime = t("validation.startTime");
     if (!endTime.trim()) next.endTime = t("validation.endTime");
-    if (!next.startTime && !next.endTime && selectedWorker) {
+    if (!next.startTime && !next.endTime) {
+      const startMin = timeToMinutes(startTime);
+      const endMin = timeToMinutes(endTime);
+      if (startMin == null || endMin == null || endMin - startMin < 15) {
+        next.time = t("conflict.invalidRange");
+      }
+    }
+    if (!next.startTime && !next.endTime && !next.time && selectedWorker) {
       if (isBulk) {
         const conflict = validateBulkAvailability();
         if (conflict) next.time = conflict;
