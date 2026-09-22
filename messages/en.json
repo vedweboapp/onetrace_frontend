@@ -1833,6 +1833,10 @@
         "machineNamePlaceholder": "Pune Retail Store Terminal 1",
         "city": "City",
         "locationName": "Location name",
+        "locationNamePlaceholder": "Search location",
+        "cityPlaceholder": "Select city",
+        "citySelectLocationFirst": "Select a location first",
+        "clearCity": "Clear city",
         "activeLabel": "Active",
         "save": "Save",
         "cancel": "Cancel"
