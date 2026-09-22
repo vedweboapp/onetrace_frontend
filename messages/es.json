@@ -398,6 +398,7 @@
       "formBuilder": "Creador de formularios",
       "projectForms": "Formularios de proyecto",
       "modules": "Módulos",
+      "kiosk": "Kiosco",
       "kiosks": "Formularios de kiosco",
       "integrations": "Integraciones",
       "auditLogs": "Registros de auditoría",
@@ -1783,6 +1784,62 @@
       "hexPlaceholder": "#000000",
       "validationName": "Introduce un nombre de tipo de proveedor.",
       "validationHex": "Usa un color hex válido de 6 dígitos (p. ej. #DBEAFE)."
+    },
+    "kioskMachines": {
+      "metaTitle": "Kiosco",
+      "title": "Kiosco",
+      "subtitle": "Gestiona las máquinas de kiosco de tu organización.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "activateMissingData": "Falta el código de emparejamiento o la organización de esta máquina.",
+      "activateError": "No se pudo activar la máquina de kiosco. Inténtalo de nuevo.",
+      "table": {
+        "code": "Código de máquina",
+        "name": "Nombre de máquina",
+        "city": "Ciudad",
+        "location": "Ubicación",
+        "status": "Estado",
+        "activated": "Activación",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo",
+        "activated": "Activado",
+        "notActivated": "No activado"
+      },
+      "emptyTitle": "Aún no hay máquinas de kiosco",
+      "emptyDescription": "Añade tu primera máquina de kiosco para empezar.",
+      "loadError": "No se pudieron cargar las máquinas de kiosco. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Añadir máquina de kiosco",
+        "editTitle": "Editar máquina de kiosco",
+        "machineCode": "Código de máquina",
+        "machineCodePlaceholder": "KM-Pune-001",
+        "machineName": "Nombre de máquina",
+        "machineNamePlaceholder": "Pune Retail Store Terminal 1",
+        "city": "Ciudad",
+        "locationName": "Nombre de ubicación",
+        "activeLabel": "Activo",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "validation": {
+        "machineCode": "Introduce un código de máquina.",
+        "machineName": "Introduce un nombre de máquina."
+      },
+      "deleteConfirmTitle": "¿Eliminar esta máquina de kiosco?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} máquinas",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Máquina de kiosco actualizada",
+      "created": "Máquina de kiosco creada",
+      "deleted": "Máquina de kiosco eliminada",
+      "activatedToast": "Máquina de kiosco activada"
     },
     "users": {
       "metaTitle": "Usuarios",
