@@ -29,7 +29,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "items_lookup",
       label: "Items",
-      subLabel: "Select items",
+      sub_label: "Select items",
       api_name: "items",
       item_group_id: undefined,
       lookup_option_type: "radio",
@@ -64,7 +64,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "radio",
       label: "Radio Choice",
-      subLabel: "",
+      sub_label: "",
       api_name: "radio_choice",
       value: "radio_choice",
       price: "",
@@ -80,7 +80,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Description",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Description or notes for this choice",
       },
       {
@@ -100,7 +100,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "checkbox",
       label: "Checkbox Choice",
-      subLabel: "",
+      sub_label: "",
       api_name: "checkbox_choice",
       value: "checkbox_choice",
       price: "",
@@ -116,7 +116,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Description",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Additional notes for this option",
       },
       {
@@ -136,7 +136,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "color",
       label: "Color Choice",
-      subLabel: "",
+      sub_label: "",
       color: "#2563EB",
       value: "#2563EB",
       target_image_field: undefined,
@@ -171,7 +171,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Description",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Glossy metallic finish",
       },
       {
@@ -191,7 +191,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "color_swatch",
       label: "Color Swatch Choice",
-      subLabel: "",
+      sub_label: "",
       color: "#0EA5E9",
       value: "#0EA5E9",
       target_image_field: undefined,
@@ -226,7 +226,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Description",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Glossy sky blue finish",
       },
       {
@@ -246,7 +246,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "image_radio",
       label: "Image Choice",
-      subLabel: "",
+      sub_label: "",
       api_name: "image_choice",
       value: "image_choice",
       price: "",
@@ -270,7 +270,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Description",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Spacious suite with ocean view",
       },
       {
@@ -290,7 +290,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
     defaultConfig: () => ({
       field_type: "input",
       label: "Input Field",
-      subLabel: "",
+      sub_label: "",
       value: "",
       placeholder: "Enter value here...",
       input_type: "text",
@@ -309,7 +309,7 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
       {
         type: "textarea",
         label: "Sub Label / Helper Text",
-        key: "subLabel",
+        key: "sub_label",
         placeholder: "e.g. Please enter any specific preferences",
       },
       {

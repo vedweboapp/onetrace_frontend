@@ -155,10 +155,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
 
   const [colorFilledPreview, setColorFilledPreview] = useState<string>("");
   const [imageError, setImageError] = useState<string | null>(null);
-  // 'individual' = pick specific image options; 'question' = target a whole question
-  const [fillScopeMode, setFillScopeMode] = useState<'individual' | 'question'>(
-    () => (option.fill_target_question ? 'question' : 'individual'),
-  );
   const [placementScopeMode, setPlacementScopeMode] = useState<'individual' | 'question'>(
     () => (option.placement_target_question || option.placement?.target_question ? 'question' : 'individual'),
   );
@@ -181,7 +177,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
       }
     }
     setFormData(merged);
-    setFillScopeMode(option.fill_target_question ? 'question' : 'individual');
     setPlacementScopeMode(
       option.placement_target_question || option.placement?.target_question
         ? 'question'
@@ -485,27 +480,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
         target_image_field: next[0] || null,
       };
     });
-  };
-
-  /** Select an entire question — all its image-bearing options become targets */
-  const handleSelectFillQuestion = (qUid: string) => {
-    if (!qUid) {
-      setFormData((prev) => ({ ...prev, fill_targets: [], fill_target_question: null }));
-      return;
-    }
-    const q = availableQuestions.find((q: any) => getQuestionUid(q) === qUid);
-    if (!q) return;
-    const imageUids = getQuestionOptions(q)
-      .filter((o: any) => o.image || o.fill_image)
-      .map((o: any) => (o.uid || o._uid) as string)
-      .filter(Boolean);
-    setFormData((prev) => ({
-      ...prev,
-      fill_targets: imageUids,
-      fill_target_question: qUid,
-      target_image_field: imageUids[0] || null,
-      fill_image: undefined,
-    }));
   };
 
   /** Legacy single-field handler kept for placement logic compatibility */
@@ -977,41 +951,8 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                   )}
                 </div>
 
-                {/* Scope toggle: Individual images vs Whole question */}
-                <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFillScopeMode('individual');
-                      // Clear question-scope targets when switching
-                      setFormData((prev) => ({ ...prev, fill_target_question: null }));
-                    }}
-                    className={cn(
-                      "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
-                      fillScopeMode === 'individual'
-                        ? "bg-blue-600 text-white shadow-xs font-semibold"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
-                    )}
-                  >
-                    Individual Images
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFillScopeMode('question')}
-                    className={cn(
-                      "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
-                      fillScopeMode === 'question'
-                        ? "bg-blue-600 text-white shadow-xs font-semibold"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
-                    )}
-                  >
-                    Whole Question
-                  </button>
-                </div>
-
-                {/* Individual scope: checklist of image options */}
-                {fillScopeMode === 'individual' && (
-                  <div className="space-y-1.5">
+                {/* Individual image checklist */}
+                <div className="space-y-1.5">
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Select one or more image options from other questions to fill with this color:
                     </p>
@@ -1058,12 +999,14 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                                     </span>
                                     {/* Thumbnail */}
                                     <span className="size-7 shrink-0 overflow-hidden rounded border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700">
-                                      <img
-                                        src={field.image}
-                                        alt={field.label}
-                                        className="size-full object-cover"
-                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                      />
+                                      {field.image ? (
+                                        <img
+                                          src={field.image}
+                                          alt={field.label}
+                                          className="size-full object-cover"
+                                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                      ) : null}
                                     </span>
                                     <span className="min-w-0 flex-1 truncate font-medium">{field.label}</span>
                                   </button>
@@ -1075,41 +1018,6 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Whole question scope: pick a question */}
-                {fillScopeMode === 'question' && (
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Select a question — color fill will apply to all its image options automatically:
-                    </p>
-                    <select
-                      value={formData.fill_target_question || ""}
-                      onChange={(e) => handleSelectFillQuestion(e.target.value)}
-                      className="w-full rounded-sm border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    >
-                      <option value="">
-                        {availableQuestions.length === 0
-                          ? "-- No other questions found --"
-                          : "-- Select a question --"}
-                      </option>
-                      {availableQuestions.map((q: any) => {
-                        const qId = getQuestionUid(q);
-                        const imgCount = getQuestionOptions(q).filter((o: any) => o.image || o.fill_image).length;
-                        return (
-                          <option key={qId} value={qId}>
-                            {q.label || 'Question'} ({imgCount} image{imgCount !== 1 ? 's' : ''})
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {formData.fill_target_question && (
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                        ✓ {fillTargets.length} image option{fillTargets.length !== 1 ? 's' : ''} will be filled with this color
-                      </p>
-                    )}
-                  </div>
-                )}
 
                 {/* No targets warning */}
                 {fillTargets.length === 0 && (
@@ -1130,7 +1038,7 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
               if (fieldType === "items_lookup" && field.key === "item_group_id") return null;
               if (
                 isLookupImageQuestion &&
-                (field.key === "image" || field.key === "label" || field.key === "subLabel" || field.key === "price")
+                (field.key === "image" || field.key === "label" || field.key === "sub_label" || field.key === "price")
               ) {
                 return null;
               }
@@ -1446,9 +1354,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                         </span>
                       )}
                     </div>
-                    {formData.subLabel && (
+                    {formData.sub_label && (
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {formData.subLabel}
+                        {formData.sub_label}
                       </p>
                     )}
                     {formData.input_type === "textarea" ? (
@@ -1516,9 +1424,9 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                                 ? "Image Choice"
                                 : "Choice")}
                           </p>
-                          {formData.subLabel && (
+                          {formData.sub_label && (
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                              {formData.subLabel}
+                              {formData.sub_label}
                             </p>
                           )}
                         </div>

@@ -65,7 +65,7 @@ export function buildLookupOptions(
       api_name: id,
       label: itemLabel,
       price: sellingPrice,
-      subLabel: "Please Select the option",
+      sub_label: "Please Select the option",
       image: isImageLookup ? runtimeImage : null,
       placement_mode: isImageLookup ? null : undefined,
       placement: isImageLookup
@@ -108,7 +108,7 @@ export function mergeLookupOptions(
       value: runtimeOption.value,
       api_name: runtimeOption.api_name,
       label: runtimeOption.label,
-      subLabel: runtimeOption.subLabel,
+      sub_label: runtimeOption.sub_label || runtimeOption.subLabel,
       price: runtimeOption.price,
       selling_price: runtimeOption.selling_price,
       image: runtimeOption.image,
