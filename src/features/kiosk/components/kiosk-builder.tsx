@@ -10,8 +10,6 @@ import { AppButton as Button } from "@/shared/ui/app-button";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import { createKiosk, getKioskById, updateKiosk } from "../api/kiosk.api";
 import {
-  Monitor,
-  Smartphone,
   Plus,
   Trash2,
   Copy,
@@ -303,7 +301,7 @@ const QuestionDropZone: React.FC<{
   const qId = question.q_id || question._uid || `q_${index}`;
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [labelText, setLabelText] = useState(question.label || `Question ${index + 1}`);
-  const [subLabelText, setSubLabelText] = useState(question.subLabel || "");
+  const [subLabelText, setSubLabelText] = useState(question.sub_label || "");
   const [menuOpen, setMenuOpen] = useState(false);
   const [lookupPreviewOptions, setLookupPreviewOptions] = useState<KioskOption[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -367,9 +365,9 @@ const QuestionDropZone: React.FC<{
   useEffect(() => {
     if (!isEditingHeader) {
       setLabelText(question.label || `Question ${index + 1}`);
-      setSubLabelText(question.subLabel || "");
+      setSubLabelText(question.sub_label || "");
     }
-  }, [question.label, question.subLabel, index, isEditingHeader]);
+  }, [question.label, question.sub_label, index, isEditingHeader]);
 
   // Resolve inner groups — NO default group auto-creation
   const resolvedGroups = useMemo((): KioskGroup[] => {
@@ -455,14 +453,14 @@ const QuestionDropZone: React.FC<{
     const label = labelText.trim() || `Question ${index + 1}`;
     onUpdateQuestion(question.q_id || question._uid || "", {
       label,
-      subLabel: subLabelText.trim() || undefined,
+      sub_label: subLabelText.trim() || undefined,
       api_name: deriveApiNameFromLabel(label, `question_${index + 1}`),
     });
   };
 
   const cancelHeader = () => {
     setLabelText(question.label || `Question ${index + 1}`);
-    setSubLabelText(question.subLabel || "");
+    setSubLabelText(question.sub_label || "");
     setIsEditingHeader(false);
   };
 
@@ -533,9 +531,9 @@ const QuestionDropZone: React.FC<{
                   </span>
                   <Edit2 className="size-3 text-slate-400 opacity-0 group-hover/title:opacity-100" />
                 </div>
-                {question.subLabel && (
+                {question.sub_label && (
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {question.subLabel}
+                    {question.sub_label}
                   </p>
                 )}
               </div>
@@ -810,7 +808,7 @@ export const sanitizeOption = (opt: KioskOption): KioskOption => {
     id: opt.id ?? null,
     field_type: fieldType,
     label,
-    subLabel: opt.subLabel || opt.sub_label || "",
+    sub_label: opt.sub_label || opt.subLabel || "",
     api_name: apiName,
     value: opt.value ?? "",
     price: opt.price ?? opt.selling_price ?? "",
@@ -913,12 +911,12 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           q_id,
           id: q.id ?? null,
           label: questionLabel,
-          subLabel: q.subLabel || q.sub_label,
+          sub_label: q.sub_label || q.subLabel,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           is_lookup: q.is_lookup,
           item_group_id: q.item_group_id,
           lookup_option_type: q.lookup_option_type,
-          columns: q.columns,
+          columns: q.columns ?? q.column_count ?? 2,
           column_count: q.column_count,
           groups: sanitizedGroups,
         };
@@ -932,12 +930,12 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
           q_id,
           id: q.id ?? null,
           label: questionLabel,
-          subLabel: q.subLabel || q.sub_label,
+          sub_label: q.sub_label || q.subLabel,
           api_name: deriveApiNameFromLabel(questionLabel, q.api_name || "question"),
           is_lookup: q.is_lookup,
           item_group_id: q.item_group_id,
           lookup_option_type: q.lookup_option_type,
-          columns: q.columns,
+          columns: q.columns ?? q.column_count ?? 2,
           column_count: q.column_count,
           options: sanitizedOptions,
         };
@@ -985,7 +983,6 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   );
 
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [editingOptionModal, setEditingOptionModal] = useState<{
     option: KioskOption;
     questionUid: string;
@@ -1073,7 +1070,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       _uid: qUid,
       id: null,
       label,
-      subLabel: "Please select an option below",
+      sub_label: "Please select an option below",
       api_name: deriveApiNameFromLabel(label, "question"),
       options: [],
     };
@@ -1131,7 +1128,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
       _uid: "",
       id: null,
       label: "Items",
-      subLabel: "Select items",
+      sub_label: "Select items",
       api_name: "items",
       is_lookup: true,
       item_group_id: undefined,
@@ -1419,7 +1416,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         o_id: optId,
         id: null,
         label,
-        subLabel: defaultOpt.subLabel || "",
+        sub_label: defaultOpt.sub_label || defaultOpt.subLabel || "",
         api_name: apiName,
         value: initialValue || apiName,
         color:
@@ -1822,33 +1819,6 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            {activeTab === "preview" && (
-              <div className="mr-2 flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800">
-                <button
-                  onClick={() => setPreviewDevice("desktop")}
-                  className={`flex size-7 items-center justify-center rounded ${
-                    previewDevice === "desktop"
-                      ? "bg-white shadow-xs dark:bg-slate-700 text-blue-600"
-                      : "text-slate-400 hover:text-slate-600"
-                  }`}
-                  title="Desktop View"
-                >
-                  <Monitor className="size-4" />
-                </button>
-                <button
-                  onClick={() => setPreviewDevice("mobile")}
-                  className={`flex size-7 items-center justify-center rounded ${
-                    previewDevice === "mobile"
-                      ? "bg-white shadow-xs dark:bg-slate-700 text-blue-600"
-                      : "text-slate-400 hover:text-slate-600"
-                  }`}
-                  title="Mobile View"
-                >
-                  <Smartphone className="size-4" />
-                </button>
-              </div>
-            )}
-
             <button
               onClick={handleClose}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -1939,11 +1909,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           /* Full Live Preview Mode */
           <main className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 bg-slate-200/60 dark:bg-slate-950">
             <div
-              className={`flex min-h-0 flex-col transition-all duration-300 ${
-                previewDevice === "mobile"
-                  ? "mx-auto h-full max-h-full w-full max-w-sm rounded-sm border-8 border-slate-800 bg-white shadow-2xl overflow-hidden dark:bg-slate-900"
-                  : "h-full w-full rounded-sm border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
-              }`}
+              className="flex min-h-0 flex-col h-full w-full rounded-sm border border-slate-200 bg-white shadow-xl overflow-hidden dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5 custom-scrollbar overscroll-y-contain">
                 <KioskRenderer

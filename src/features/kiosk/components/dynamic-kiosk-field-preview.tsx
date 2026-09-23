@@ -214,9 +214,9 @@ export const DynamicKioskFieldPreview: React.FC<DynamicKioskOptionPreviewProps> 
               )}
             </div>
 
-            {option.subLabel && (
+            {option.sub_label && (
               <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500 dark:text-slate-400">
-                {option.subLabel}
+                {option.sub_label}
               </p>
             )}
 

@@ -33,7 +33,7 @@ export interface KioskOption {
   sequence?: number;
   order?: number;
   label?: string | null;
-  subLabel?: string | null;
+  sub_label?: string | null;
   api_name?: string | null;
   value?: string | number | null;
   price?: number | string | null;
@@ -84,7 +84,7 @@ export interface KioskQuestion {
   sequence?: number;
   order?: number;
   label?: string | null;
-  subLabel?: string | null;
+  sub_label?: string | null;
   api_name?: string | null;
   is_lookup?: boolean;
   item_group_id?: string | number | null;
