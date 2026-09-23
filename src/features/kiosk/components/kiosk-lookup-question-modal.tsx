@@ -67,7 +67,7 @@ export const KioskLookupQuestionModal: React.FC<KioskLookupQuestionModalProps> =
         id: null,
       }),
       label: label.trim(),
-      subLabel: question?.subLabel,
+      sub_label: question?.sub_label || question?.subLabel,
       api_name: deriveApiNameFromLabel(label.trim(), "items"),
       is_lookup: true,
       item_group_id: groupId,

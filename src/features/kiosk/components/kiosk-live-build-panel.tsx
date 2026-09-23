@@ -238,7 +238,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
       if (s.resolvedColor) {
         return `${s.option.label || "Color"} · ${s.resolvedColor.toUpperCase()}`;
       }
-      return s.option.subLabel || s.option.label;
+      return s.option.sub_label || s.option.label;
     })
     .filter(Boolean);
 
