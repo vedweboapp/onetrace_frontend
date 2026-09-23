@@ -7,8 +7,8 @@ import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
 import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
-import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
+import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import {
   getLookupGroupId,
   mergeLookupOptions,
@@ -450,7 +450,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         return (
           <div
             key={option.uid || option._uid || optIdx}
-            className="rounded-md border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-2"
+            className="space-y-2"
           >
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-900 dark:text-slate-100">
@@ -463,9 +463,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                 </span>
               )}
             </div>
-            {option.subLabel && (
+            {option.sub_label && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {option.subLabel}
+                {option.sub_label}
               </p>
             )}
             {option.input_type === "textarea" ? (
@@ -476,7 +476,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                 onChange={(e) =>
                   handleInputChange(question, option, e.target.value)
                 }
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="w-full rounded-md border-0 bg-transparent px-0 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100"
               />
             ) : (
               <input
@@ -672,9 +672,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                     </span>
                   )}
                 </div>
-                {option.subLabel && (
+                {option.sub_label && (
                   <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                    {option.subLabel}
+                    {option.sub_label}
                   </p>
                 )}
               </div>
@@ -835,9 +835,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {question.label || `Question ${qIdx + 1}`}
                   </h3>
-                  {question.subLabel && (
+                  {question.sub_label && (
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      {question.subLabel}
+                      {question.sub_label}
                     </p>
                   )}
                 </div>
@@ -857,11 +857,6 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                               key={group.gid || group._uid || grpIdx}
                               className="space-y-2"
                             >
-                              {group.name && (
-                                <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  {group.name}
-                                </h4>
-                              )}
                               <div
                                 className={cn(
                                   "grid gap-3",
@@ -903,8 +898,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
               </div>
             );
           })}
+          </div>
         </div>
-      </div>
 
           {/* Submit Action */}
           <div className="flex items-center justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
