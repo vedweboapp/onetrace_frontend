@@ -4,18 +4,32 @@ import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
+  BookUser,
   Building2,
+  CalendarDays,
   ClipboardList,
+  ClipboardPen,
   Construction,
   FileQuestion,
+  FileText,
   FolderKanban,
   Home,
   Layers,
   ListTodo,
+  MapPinHouse,
+  MonitorSmartphone,
   Package,
+  Palette,
+  QrCode,
+  Receipt,
+  RotateCcw,
   SearchX,
+  Settings,
+  ShieldCheck,
+  Store,
   Tags,
-  Users,
+  Truck,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import {
@@ -28,11 +42,34 @@ export type DashboardEmptyStateIconName =
   | "underDevelopment"
   | "home"
   | "clients"
+  | "vendors"
+  | "sites"
   | "contacts"
+  | "quotations"
+  | "invoices"
+  | "purchaseOrders"
+  | "jobs"
+  | "scheduling"
+  | "qrCodes"
+  | "forms"
+  | "materialRequests"
+  | "dispatches"
+  | "returnToStock"
+  | "kiosk"
+  | "kioskMachines"
+  | "kioskForms"
+  | "projectForms"
   | "projects"
   | "groups"
   | "items"
   | "compositeItems"
+  | "users"
+  | "roles"
+  | "profiles"
+  | "auditLogs"
+  | "modules"
+  | "companySettings"
+  | "customization"
   | "pinStatus"
   | "projectStatus"
   | "jobStatus"
@@ -65,11 +102,34 @@ const ICON_BY_NAME: Record<DashboardEmptyStateIconName, LucideIcon> = {
   underDevelopment: Construction,
   home: Home,
   clients: Building2,
-  contacts: Users,
+  vendors: Store,
+  sites: MapPinHouse,
+  contacts: BookUser,
+  quotations: FileText,
+  invoices: Receipt,
+  purchaseOrders: ClipboardList,
+  jobs: ListTodo,
+  scheduling: CalendarDays,
+  qrCodes: QrCode,
+  forms: ClipboardPen,
+  materialRequests: ClipboardList,
+  dispatches: Truck,
+  returnToStock: RotateCcw,
+  kiosk: MonitorSmartphone,
+  kioskMachines: MonitorSmartphone,
+  kioskForms: Store,
+  projectForms: FileText,
   projects: FolderKanban,
   groups: Layers,
   items: Package,
   compositeItems: Package,
+  users: UserRound,
+  roles: ShieldCheck,
+  profiles: Layers,
+  auditLogs: ClipboardList,
+  modules: Settings,
+  companySettings: Building2,
+  customization: Palette,
   pinStatus: Tags,
   projectStatus: Tags,
   jobStatus: ListTodo,
@@ -113,9 +173,9 @@ export function DashboardEmptyState({
       <div
         className={cn(
           "mb-5 inline-flex size-14 items-center justify-center rounded-2xl sm:mb-6",
-          "bg-gradient-to-br from-sky-50 to-indigo-50 text-orange-500",
-          "ring-1 ring-slate-200/80",
-          "dark:from-slate-800 dark:to-slate-900 dark:text-orange-400 dark:ring-slate-700",
+          "bg-[color:var(--dash-accent,#0f766e)]/10 text-[color:var(--dash-accent,#0f766e)]",
+          "ring-1 ring-[color:var(--dash-accent,#0f766e)]/20",
+          "dark:bg-[color:var(--dash-accent,#0f766e)]/15 dark:text-[color:var(--dash-accent,#0f766e)] dark:ring-[color:var(--dash-accent,#0f766e)]/30",
         )}
       >
         <Icon className="size-7" strokeWidth={1.6} aria-hidden />

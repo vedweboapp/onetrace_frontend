@@ -124,8 +124,6 @@ const LayoutDetails = () => {
                 <ListPageSearchField
                     value={searchQuery}
                     onCommit={setSearchQuery}
-                    placeholder="Search layout..."
-                    ariaLabel="Search layout"
                     className="max-w-[400px]"
                 />
 

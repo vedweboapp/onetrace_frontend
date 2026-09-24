@@ -8,6 +8,7 @@ import {
     AppButton,
     AppModal,
     CheckmarkSelect,
+    DashboardEmptyState,
     ListPageSearchField,
     SurfaceShell,
     DataTablePaginationBar,
@@ -308,8 +309,6 @@ const ProjectTypeFormList = () => {
             <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3">
             <div className="flex shrink-0 items-center justify-between gap-3">
                 <ListPageSearchField 
-                    placeholder={t("searchPlaceholder")}
-                    ariaLabel={t("searchAria")}
                     value={search}
                     onCommit={commitSearch}
                     className="sm:max-w-sm"
@@ -331,9 +330,17 @@ const ProjectTypeFormList = () => {
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
                     </div>
                 ) : !Array.isArray(items) || items.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        {t("empty")}
-                    </div>
+                    <DashboardEmptyState
+                        iconName="projectForms"
+                        title={t("emptyTitle")}
+                        description={t("emptyDescription")}
+                        action={
+                            <AppButton onClick={openProjectTypePicker} className="gap-1.5 font-semibold">
+                                <Plus className="size-4" /> {t("createNewForm")}
+                            </AppButton>
+                        }
+                        fill
+                    />
                 ) : (
                     <div className="relative flex min-h-0 flex-1 flex-col">
                         <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">

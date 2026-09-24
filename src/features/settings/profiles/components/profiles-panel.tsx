@@ -105,12 +105,6 @@ export function ProfilesPanel() {
           menuAriaLabel={t("fields.profileName")}
           items={[
             {
-              id: "view",
-              label: t("view"),
-              icon: Pencil,
-              onSelect: () => handleView(row.id),
-            },
-            {
               id: "edit",
               label: t("edit"),
               icon: Pencil,
@@ -127,7 +121,7 @@ export function ProfilesPanel() {
         />
       )),
     ];
-  }, [handleView, handleEdit, t]);
+  }, [handleEdit, t]);
 
   return (
     <div className={listPageRootClassName()}>
@@ -143,8 +137,6 @@ export function ProfilesPanel() {
           <ListPageSearchField
             value={search}
             onCommit={(q) => setUrl({ search: q.trim() || null, page: null }, { replace: true })}
-            placeholder={t("placeholders.profileName")}
-            ariaLabel={t("fields.profileName")}
           />
 
           <div className="flex shrink-0 items-center gap-2">
@@ -176,7 +168,7 @@ export function ProfilesPanel() {
           </div>
         ) : filteredProfiles.length === 0 ? (
           <DashboardEmptyState
-            iconName="default"
+            iconName="profiles"
             title={t("emptyTitle")}
             description={t("emptyDescription")}
             action={

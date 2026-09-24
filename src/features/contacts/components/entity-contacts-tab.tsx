@@ -159,7 +159,7 @@ export function EntityContactsTab({ entityType, entityId }: Props) {
           fill
           emptyStateKind={emptyStateKind}
           onboarding={{
-            iconName: "clients",
+            iconName: "contacts",
             title: t("detail.contactsEmptyTitle"),
             description: t("detail.contactsEmptyDescription"),
             action: addContactButton,

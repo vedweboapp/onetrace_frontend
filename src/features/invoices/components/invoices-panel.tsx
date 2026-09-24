@@ -366,8 +366,8 @@ export function InvoicesPanel() {
             <ListPageSearchField
               value={search}
               onCommit={commitSearch}
-              placeholder={t("searchPlaceholder")}
-              ariaLabel={t("searchAria")}
+
+
               className="sm:max-w-sm"
             />
             <CheckmarkSelect
@@ -434,7 +434,7 @@ export function InvoicesPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "invoices",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

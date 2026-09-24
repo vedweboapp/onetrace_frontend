@@ -154,8 +154,6 @@ export function DispatchesPanel() {
             <ListPageSearchField
               value={search}
               onCommit={commitSearch}
-              placeholder={t("searchPlaceholder")}
-              ariaLabel={tList("searchAria")}
               className="sm:max-w-sm"
             />
           }
@@ -184,7 +182,7 @@ export function DispatchesPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "items",
+              iconName: "dispatches",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

@@ -467,8 +467,7 @@ if (editing && initialValues) {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -516,7 +515,7 @@ if (editing && initialValues) {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "projects",
+              iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,

@@ -532,7 +532,7 @@ export function ProjectJobsTab({ projectId }: Props) {
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
-                iconName: "jobStatus",
+                iconName: "jobs",
                 title: t("emptyTitle"),
                 description: t("emptyDescription"),
                 action: null,

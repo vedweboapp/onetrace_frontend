@@ -34,6 +34,7 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import {
   CheckmarkSelect,
   DataTablePaginationBar,
+  DataTableScroll,
   DataTableTextModeToggle,
   ListPageEmptyStates,
   ListPageHeader,
@@ -100,7 +101,7 @@ export function AuditLogsPanel() {
   const dateFmt = useDashboardDateFormat();
   const textMode = useDataTableTextModeStore((s) => s.textMode);
   const wrap = textMode === "wrap";
-  const cellTextClass = wrap ? "whitespace-normal break-words" : "truncate";
+  const cellTextClass = wrap ? "whitespace-normal break-words" : "whitespace-nowrap";
   const {
     page,
     pageSize,
@@ -226,8 +227,6 @@ export function AuditLogsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={t("searchAria")}
                 className="sm:max-w-md"
               />
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -295,7 +294,7 @@ export function AuditLogsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "jobStatus",
+              iconName: "auditLogs",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
             }}
@@ -308,21 +307,18 @@ export function AuditLogsPanel() {
                 <DataTableTextModeToggle variant="header" className="shrink-0" />
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto">
+            <DataTableScroll className="min-h-0 flex-1">
               <table
-                className={cn(
-                  "w-full min-w-[56rem] text-left text-sm",
-                  wrap ? "table-auto" : "table-fixed",
-                )}
+                className="w-full min-w-max border-collapse table-auto text-left text-sm"
               >
-                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-3 sm:px-6">{t("table.when")}</th>
-                    <th className="px-4 py-3 sm:px-6">{t("table.changedBy")}</th>
-                    <th className="px-4 py-3 sm:px-6">{t("table.action")}</th>
-                    <th className="px-4 py-3 sm:px-6">{t("table.resource")}</th>
-                    <th className="px-4 py-3 sm:px-6">{t("table.module")}</th>
-                    <th className="px-4 py-3 pr-12 sm:px-6">{t("table.changes")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 sm:px-6">{t("table.when")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 sm:px-6">{t("table.changedBy")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 sm:px-6">{t("table.action")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 sm:px-6">{t("table.resource")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 sm:px-6">{t("table.module")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 pr-12 sm:px-6">{t("table.changes")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -343,12 +339,12 @@ export function AuditLogsPanel() {
                         <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-200 sm:px-6">
                           {when ? formatFlexibleApiDate(when, dateFmt) : "—"}
                         </td>
-                        <td className={cn("max-w-[12rem] px-4 py-3 sm:px-6", cellTextClass)}>
-                          <p className={cn("font-medium text-slate-900 dark:text-slate-50", cellTextClass)} title={!wrap ? actorName : undefined}>
+                        <td className={cn("px-4 py-3 sm:px-6", cellTextClass)}>
+                          <p className={cn("font-medium text-slate-900 dark:text-slate-50", cellTextClass)}>
                             {actorName}
                           </p>
                           {ip ? (
-                            <p className={cn("text-xs text-slate-400", cellTextClass)} title={!wrap ? t("table.ip", { ip }) : undefined}>
+                            <p className={cn("text-xs text-slate-400", cellTextClass)}>
                               {t("table.ip", { ip })}
                             </p>
                           ) : null}
@@ -356,35 +352,28 @@ export function AuditLogsPanel() {
                         <td className="px-4 py-3 sm:px-6">
                           <span
                             className={cn(
-                              "inline-flex max-w-full rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+                              "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300",
                               cellTextClass,
                             )}
-                            title={!wrap ? action : undefined}
                           >
                             {action}
                           </span>
                         </td>
-                        <td className={cn("max-w-[16rem] px-4 py-3 sm:px-6", cellTextClass)}>
+                        <td className={cn("px-4 py-3 sm:px-6", cellTextClass)}>
                           {resourceHref ? (
-                            <DetailEntityLink href={resourceHref} className={cn("font-medium", cellTextClass)} title={!wrap ? resourceLabel : undefined}>
+                            <DetailEntityLink href={resourceHref} className={cn("font-medium", cellTextClass)}>
                               {resourceLabel}
                             </DetailEntityLink>
                           ) : (
-                            <span
-                              className={cn("block text-slate-700 dark:text-slate-200", cellTextClass)}
-                              title={!wrap ? resourceLabel : undefined}
-                            >
+                            <span className={cn("block text-slate-700 dark:text-slate-200", cellTextClass)}>
                               {resourceLabel}
                             </span>
                           )}
                         </td>
-                        <td
-                          className={cn("max-w-[10rem] px-4 py-3 text-slate-700 dark:text-slate-200 sm:px-6", cellTextClass)}
-                          title={!wrap ? moduleLabel : undefined}
-                        >
+                        <td className={cn("px-4 py-3 text-slate-700 dark:text-slate-200 sm:px-6", cellTextClass)}>
                           {moduleLabel}
                         </td>
-                        <td className="px-4 py-3 pr-12 sm:px-6">
+                        <td className="whitespace-nowrap px-4 py-3 pr-12 sm:px-6">
                           {hasChanges ? (
                             <button
                               type="button"
@@ -402,7 +391,7 @@ export function AuditLogsPanel() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </DataTableScroll>
           </div>
         )}
 

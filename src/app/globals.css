@@ -298,6 +298,13 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
+/* Personal profile contact: emails | phones side-by-side only when wide enough. */
+@container form-fields (min-width: 42rem) {
+  .profile-contact-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Narrow form hosts (modals, drawers, phones): stack label above control. */
 @container form-fields (max-width: 32rem) {
   .form-field-row .field-group:not(.detail-field) {

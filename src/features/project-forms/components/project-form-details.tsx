@@ -141,8 +141,6 @@ const ProjectFormDetails = () => {
         <ListPageSearchField
           value={search}
           onCommit={commitSearch}
-          placeholder="Search project types"
-          ariaLabel="Search project types"
         />
         <AppButton className="ml-4" onClick={() => router.push(routes.dashboard.settingsProjectTypes)}>
           Create new project type
