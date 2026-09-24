@@ -406,7 +406,7 @@
       "customization": {
         "label": "Personalización",
         "hubTitle": "Personalización",
-        "hubDescription": "Elige qué configurar: Tipos de Proyecto, Tipos de Instalación, Tipos de Proveedor, Tipos de Unidad, Motivos de rechazo, Tipos de Lista de Verificación, Estados de Proyecto, Estados de Pin, Estados de Trabajo, Estados de Material, Etiquetas y Títulos.",
+        "hubDescription": "Elige una categoría para gestionar etiquetas, estados y tipos de tu espacio.",
         "backToHub": "Volver a personalización",
         "items": {
           "projectTypes": {
@@ -944,6 +944,8 @@
       "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
       "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
       "empty": "No se encontraron formularios. Crea tu primer formulario para empezar.",
+      "emptyTitle": "Aún no hay formularios de proyecto",
+      "emptyDescription": "Crea tu primer formulario para empezar.",
       "pageLabel": "{start}-{end} de {total}",
       "prev": "Anterior",
       "next": "Siguiente",
@@ -4380,7 +4382,7 @@
       }
     },
     "list": {
-      "searchPlaceholder": "Buscar…",
+      "searchPlaceholder": "Buscar aquí...",
       "searchAria": "Buscar en esta lista",
       "rowsPerPage": "Filas por página",
       "tableView": "Vista de tabla",

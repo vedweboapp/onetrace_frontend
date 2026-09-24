@@ -207,8 +207,6 @@ export function UserGroupsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             }
@@ -238,7 +236,7 @@ export function UserGroupsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "users",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

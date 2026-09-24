@@ -163,8 +163,6 @@ export function RolesPanel() {
           <ListPageSearchField
             value={search}
             onCommit={(q) => setUrl({ search: q.trim() || null, page: null }, { replace: true })}
-            placeholder={t("placeholders.roleName")}
-            ariaLabel={t("fields.roleName")}
           />
 
           <div className="flex shrink-0 items-center gap-2">
@@ -196,6 +194,7 @@ export function RolesPanel() {
           </div>
         ) : filteredRoles.length === 0 ? (
           <DashboardEmptyState
+            iconName="roles"
             title={t("emptyTitle")}
             description={t("emptyDescription")}
             action={

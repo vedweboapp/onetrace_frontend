@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/core/utils/http.util";
 import { surfaceInputClassName } from "./field-primitives";
 
 type Props = {
   value: string;
   onCommit: (next: string) => void;
-  placeholder: string;
-  ariaLabel: string;
+  placeholder?: string;
+  ariaLabel?: string;
   className?: string;
   inputId?: string;
   debounceMs?: number;
@@ -24,6 +25,9 @@ export function ListPageSearchField({
   inputId,
   debounceMs = 400,
 }: Props) {
+  const tList = useTranslations("Dashboard.list");
+  const resolvedPlaceholder = placeholder ?? tList("searchPlaceholder");
+  const resolvedAriaLabel = ariaLabel ?? tList("searchAria");
   const [local, setLocal] = React.useState(value ?? "");
 
   React.useEffect(() => {
@@ -58,8 +62,8 @@ export function ListPageSearchField({
         type="search"
         value={local ?? ""}
         onChange={(e) => setLocal(e.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
+        placeholder={resolvedPlaceholder}
+        aria-label={resolvedAriaLabel}
         autoComplete="off"
         className={cn(surfaceInputClassName, "pl-10")}
       />

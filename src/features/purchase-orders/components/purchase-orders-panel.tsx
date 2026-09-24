@@ -363,8 +363,8 @@ export function PurchaseOrdersPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={t("searchAria")}
+
+
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -431,7 +431,7 @@ export function PurchaseOrdersPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "purchaseOrders",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

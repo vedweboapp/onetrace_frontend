@@ -133,8 +133,6 @@ const ModulesDetails = () => {
                         setSearch(val || "");
                         setParam("page", 1);
                     }}
-                    placeholder={t("searchPlaceholder")}
-                    ariaLabel={t("searchAria")}
                     className="max-w-[280px]"
                 />
                 <AddButton onClick={() => route.push(createModuleHref)}>
@@ -167,6 +165,7 @@ const ModulesDetails = () => {
                         <ListPageEmptyStates
                             emptyStateKind={emptyStateKind}
                             onboarding={{
+                                iconName: "modules",
                                 title: t("emptyTitle"),
                                 description: t("emptyDescription"),
                                 action: (
