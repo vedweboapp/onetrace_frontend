@@ -161,16 +161,20 @@ const PersonalProfileForm = forwardRef<
                     initialData.user_detail?.last_name ||
                     "",
                 gender: initialData.user_detail?.gender?.toLowerCase() || "male",
-                emails: initialData?.emails?.map((email: any) => ({
-                    id: email?.id,
-                    email: email.email,
-                    is_primary: email?.is_primary,
-                })),
-                phones: initialData?.phones?.map((phone: any) => ({
-                    id: phone?.id,
-                    phone: phone?.phone,
-                    is_primary: phone?.is_primary,
-                })),
+                emails: initialData?.emails?.length
+                    ? initialData.emails.map((email: any) => ({
+                          id: email?.id,
+                          email: email.email,
+                          is_primary: email?.is_primary,
+                      }))
+                    : [{ email: "", is_primary: true }],
+                phones: initialData?.phones?.length
+                    ? initialData.phones.map((phone: any) => ({
+                          id: phone?.id,
+                          phone: phone?.phone,
+                          is_primary: phone?.is_primary,
+                      }))
+                    : [{ phone: "", is_primary: true }],
                 joiningDate: initialData.created_at?.split("T")[0] || "",
                 // role: "Senior Driver",
                 date_of_birth: initialData?.user_detail?.date_of_birth,
@@ -359,7 +363,19 @@ const PersonalProfileForm = forwardRef<
     const hasContactPhones = (watchedPhones ?? []).some(
         (row) => typeof row?.phone === "string" && row.phone.trim().length > 0,
     );
+    // View: hide when empty. Edit: always show so users can add email/phone.
     const showContactDetails = isEditing || hasContactEmails || hasContactPhones;
+
+    // Ensure editable blank rows exist when entering edit with no contacts.
+    useEffect(() => {
+        if (!isEditing) return;
+        if (emailFields.length === 0) {
+            appendEmail({ email: "", is_primary: true });
+        }
+        if (phoneFields.length === 0) {
+            appendPhone({ phone: "", is_primary: true });
+        }
+    }, [isEditing, emailFields.length, phoneFields.length, appendEmail, appendPhone]);
 
     useImperativeHandle(ref, () => ({
         submit: () => handleSubmit(handleActualSubmit)(),
