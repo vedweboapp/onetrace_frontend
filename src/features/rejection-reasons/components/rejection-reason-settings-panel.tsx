@@ -273,8 +273,6 @@ export function RejectionReasonSettingsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             </div>
@@ -305,7 +303,7 @@ export function RejectionReasonSettingsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "projects",
+              iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,

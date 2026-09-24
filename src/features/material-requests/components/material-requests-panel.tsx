@@ -303,8 +303,6 @@ export function MaterialRequestsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={t("searchAria")}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -383,7 +381,7 @@ export function MaterialRequestsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "materialRequests",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
             }}

@@ -413,7 +413,7 @@
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Rejection Reasons, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
+        "hubDescription": "Pick a category below to manage labels, statuses, and types for your workspace.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -955,6 +955,8 @@
       "loadError": "Failed to load forms. Please try again.",
       "projectTypesLoadError": "Failed to load project types. Please try again.",
       "empty": "No forms found. Create your first form to get started.",
+      "emptyTitle": "No Project Forms Yet",
+      "emptyDescription": "Create your first form to get started.",
       "pageLabel": "{start}-{end} of {total}",
       "prev": "Previous",
       "next": "Next",
@@ -4397,7 +4399,7 @@
       }
     },
     "list": {
-      "searchPlaceholder": "Search…",
+      "searchPlaceholder": "Search here...",
       "searchAria": "Search this list",
       "rowsPerPage": "Rows per page",
       "tableView": "Table view",

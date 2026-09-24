@@ -177,8 +177,6 @@ export function UsersPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             </div>
@@ -196,7 +194,7 @@ export function UsersPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "users",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

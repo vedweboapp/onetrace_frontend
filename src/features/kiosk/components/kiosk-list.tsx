@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { Plus, Edit2, Trash2, Store, LayoutList } from "lucide-react";
+import { Plus, Edit2, Trash2, LayoutList } from "lucide-react";
 import {
   AppButton,
+  DashboardEmptyState,
   DataTablePaginationBar,
   ListPageSearchField,
 } from "@/shared/ui";
@@ -118,8 +119,6 @@ export const KioskList = () => {
           <ListPageSearchField
             value={search || ""}
             onCommit={commitSearch}
-            placeholder="Search kiosks..."
-            ariaLabel="Search kiosks"
           />
         </div>
 
@@ -136,7 +135,42 @@ export const KioskList = () => {
       </div>
 
       {/* Main Table Shell */}
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center gap-2 py-16 text-slate-400">
+            <div className="size-4 animate-spin rounded-full border-2 border-[color:var(--dash-accent,#0f766e)] border-t-transparent" />
+            <span>Loading kiosks...</span>
+          </div>
+        ) : loadError ? (
+          <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadKiosks}
+              className="mt-1 text-xs text-[color:var(--dash-accent,#0f766e)] underline"
+            >
+              Retry
+            </button>
+          </div>
+        ) : items.length === 0 ? (
+          <DashboardEmptyState
+            iconName="kioskForms"
+            title="No kiosks created yet"
+            description="Get started by creating your first interactive kiosk flow."
+            action={
+              <AppButton
+                variant="primary"
+                onClick={handleCreate}
+                className="flex items-center gap-1.5 font-semibold"
+              >
+                <Plus className="size-4" />
+                Create first kiosk
+              </AppButton>
+            }
+            fill
+          />
+        ) : (
+          <>
         <div className="flex-1 overflow-auto custom-scrollbar">
           <table className="w-full border-collapse text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300">
@@ -150,57 +184,7 @@ export const KioskList = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center text-slate-400">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="size-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      <span>Loading kiosks...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : loadError ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center">
-                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center gap-2">
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                        {loadError}
-                      </p>
-                      <button
-                        onClick={loadKiosks}
-                        className="mt-1 text-xs text-blue-600 underline hover:text-blue-700 dark:text-blue-400"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center">
-                      <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 mb-3">
-                        <Store className="size-7" />
-                      </div>
-                      <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-                        No kiosks created yet
-                      </h4>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Get started by creating your first interactive kiosk flow.
-                      </p>
-                      <AppButton
-                        variant="primary"
-                        onClick={handleCreate}
-                        className="mt-4 flex items-center gap-1.5 text-xs"
-                      >
-                        <Plus className="size-4" />
-                        Create first kiosk
-                      </AppButton>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                items.map((row) => {
+              {items.map((row) => {
                   const qCount = questionCount(row);
                   const isActive = row.is_active !== false;
                   return (
@@ -212,7 +196,7 @@ export const KioskList = () => {
                       {/* Name */}
                       <td className="py-4 pl-6 pr-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--dash-accent,#0f766e)]/10 text-[color:var(--dash-accent,#0f766e)]">
                             <LayoutList className="size-4" />
                           </div>
                           <div>
@@ -298,15 +282,13 @@ export const KioskList = () => {
                       </td>
                     </tr>
                   );
-                })
-              )}
+                })}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        {!loading && items.length > 0 && (
-          <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
             <DataTablePaginationBar
               pagination={pagination}
               summary={`${pageRange.start}-${pageRange.end} of ${pagination.total_records}`}
@@ -324,6 +306,7 @@ export const KioskList = () => {
               }}
             />
           </div>
+          </>
         )}
       </div>
     </div>

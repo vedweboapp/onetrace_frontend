@@ -326,7 +326,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
-                iconName: "clients",
+                iconName: "quotations",
                 title: t("emptyTitle"),
                 description: t("emptyDescription"),
                 action: null,

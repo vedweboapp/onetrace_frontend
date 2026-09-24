@@ -360,8 +360,8 @@ export function ContactsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+
+
                 className="sm:max-w-sm"
               />
               {activeContactType === "vendor" ? (
@@ -436,7 +436,7 @@ export function ContactsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "contacts",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,
