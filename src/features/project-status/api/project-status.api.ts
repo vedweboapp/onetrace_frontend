@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { PROJECT_STATUS_PATHS } from "./project-status.paths";
 import type {
   WorkflowColourStatus,
@@ -78,6 +83,7 @@ function toPatchBody(body: WorkflowColourStatusUpdatePayload): Record<string, st
 export type ProjectStatusListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 export async function fetchProjectStatusesPage(
@@ -89,13 +95,19 @@ export async function fetchProjectStatusesPage(
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (filters?.is_active !== undefined) params.is_active = filters.is_active;
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<WorkflowColourStatusListResponse>(PROJECT_STATUS_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return {
-    items: (data.data as unknown as ProjectStatusApiRow[]).map(normalizeProjectStatusRow),
-    pagination: data.pagination,
-  };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchFirst: async () => {
+      const { data } = await api.get<WorkflowColourStatusListResponse>(PROJECT_STATUS_PATHS.list, { params });
+      const page = parseListApiPage<ProjectStatusApiRow>(data, pageSize);
+      return {
+        items: page.items.map(normalizeProjectStatusRow),
+        pagination: page.pagination as never,
+      };
+    },
+  });
 }
 
 export async function fetchProjectStatus(id: number): Promise<WorkflowColourStatus> {

@@ -6,7 +6,9 @@ export type ZohoOAuthCallbackParams = {
   accountsServer: string;
 };
 
-export function buildZohoConnectionTabUrl(tab: "help" | "configure" | "webhook"): string {
+export function buildZohoConnectionTabUrl(
+  tab: "help" | "configure" | "webhook" | "history",
+): string {
   return `${routes.dashboard.settingsZohoConnection}?tab=${tab}`;
 }
 

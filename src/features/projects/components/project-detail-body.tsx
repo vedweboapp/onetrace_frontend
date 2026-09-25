@@ -11,7 +11,10 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
-import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
+import {
+  resolveAppRoleIdMap,
+  userProfilesToSelectOptions,
+} from "@/features/users/utils/load-users-by-role.util";
 import { routes } from "@/shared/config/routes";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
@@ -136,9 +139,15 @@ export function ProjectDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchUsersPage(1, 100);
+        const roleIds = await resolveAppRoleIdMap();
+        const roleId = roleIds.get("manager");
+        if (roleId == null) {
+          if (!cancelled) setManagerOptions([]);
+          return;
+        }
+        const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
         if (!cancelled) {
-          setManagerOptions(items.map((u) => ({ value: String(u.id), label: userProfileLabel(u) })));
+          setManagerOptions(userProfilesToSelectOptions(items));
         }
       } catch {
         if (!cancelled) setManagerOptions([]);

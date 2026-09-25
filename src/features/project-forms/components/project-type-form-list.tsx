@@ -8,9 +8,12 @@ import {
     AppButton,
     AppModal,
     CheckmarkSelect,
+    DashboardEmptyState,
     ListPageSearchField,
     SurfaceShell,
     DataTablePaginationBar,
+    DataTableTextModeToggle,
+    useDataTableTextModeStore,
     type CheckmarkSelectOption,
 } from "@/shared/ui";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -23,8 +26,8 @@ import type { InstallationType } from "@/features/installation-types/types/insta
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { DashboardAppBrand } from "@/features/dashboard/components/dashboard-app-brand";
 import { routes } from "@/shared/config/routes";
+import { cn } from "@/core/utils/http.util";
 
 interface FormListItem {
     id: number | string;
@@ -84,6 +87,9 @@ const ProjectTypeFormList = () => {
     const t = useTranslations("Dashboard.settingsProjectForms");
     const router = useRouter();
     const dateFmt = useDashboardDateFormat();
+    const textMode = useDataTableTextModeStore((s) => s.textMode);
+    const wrap = textMode === "wrap";
+    const cellTextClass = wrap ? "whitespace-normal break-words" : "truncate";
 
     const { page, pageSize, search, setUrl, setPage, setPageSize } =
         useListUrlState({ defaultPageSize: 20 });
@@ -200,6 +206,7 @@ const ProjectTypeFormList = () => {
             try {
                 const response = await fetchProjectTypesPage(1, 50, {
                     is_active: true,
+                    dropdown: true,
                 });
                 if (!cancelled) {
                     setProjectTypes(Array.isArray(response.items) ? response.items : []);
@@ -217,7 +224,10 @@ const ProjectTypeFormList = () => {
             setInstallationTypesLoading(true);
             setInstallationTypesError(null);
             try {
-                const response = await fetchInstallationTypesPage(1, 50, { is_active: true });
+                const response = await fetchInstallationTypesPage(1, 50, {
+                    is_active: true,
+                    dropdown: true,
+                });
                 if (!cancelled) {
                     setInstallationTypes(Array.isArray(response.items) ? response.items : []);
                 }
@@ -299,8 +309,6 @@ const ProjectTypeFormList = () => {
             <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3">
             <div className="flex shrink-0 items-center justify-between gap-3">
                 <ListPageSearchField 
-                    placeholder={t("searchPlaceholder")}
-                    ariaLabel={t("searchAria")}
                     value={search}
                     onCommit={commitSearch}
                     className="sm:max-w-sm"
@@ -322,81 +330,110 @@ const ProjectTypeFormList = () => {
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
                     </div>
                 ) : !Array.isArray(items) || items.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        {t("empty")}
-                    </div>
+                    <DashboardEmptyState
+                        iconName="projectForms"
+                        title={t("emptyTitle")}
+                        description={t("emptyDescription")}
+                        action={
+                            <AppButton onClick={openProjectTypePicker} className="gap-1.5 font-semibold">
+                                <Plus className="size-4" /> {t("createNewForm")}
+                            </AppButton>
+                        }
+                        fill
+                    />
                 ) : (
-                    <div className="min-h-0 flex-1 overflow-auto">
-                        <table className="w-full border-collapse text-left text-sm">
-                            <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.formName")}</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.apiName")}</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.installationType")}</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(Array.isArray(items) ? items : []).map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        onClick={() =>
-                                            router.push(
-                                                `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
-                                            )
-                                        }
-                                        className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-900/30"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <span className="font-medium text-slate-800 dark:text-slate-100">
-                                                {row.name || "—"}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <code className="rounded bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                {formApiName(row)}
-                                            </code>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-slate-600 dark:text-slate-300">
-                                                {projectTypeLabel(row.project_type)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-slate-600 dark:text-slate-300">
-                                                {installationTypeLabel(row.installation_type)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="block text-slate-500 dark:text-slate-400">
-                                                {row.created_at
-                                                    ? dateFmt.format(new Date(row.created_at))
-                                                    : "—"}
-                                            </div>
-                                            {userLabel(row.created_by) !== "—" && (
-                                                <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                                                    {userLabel(row.created_by)}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="block text-slate-500 dark:text-slate-400">
-                                                {row.modified_at
-                                                    ? dateFmt.format(new Date(row.modified_at))
-                                                    : "—"}
-                                            </div>
-                                            {userLabel(row.modified_by) !== "—" && (
-                                                <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                                                    {userLabel(row.modified_by)}
-                                                </div>
-                                            )}
-                                        </td>
+                    <div className="relative flex min-h-0 flex-1 flex-col">
+                        <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
+                            <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
+                                <DataTableTextModeToggle variant="header" className="shrink-0" />
+                            </div>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-auto">
+                            <table
+                                className={cn(
+                                    "w-full border-collapse text-left text-sm",
+                                    wrap ? "table-auto" : "table-fixed",
+                                )}
+                            >
+                                <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.formName")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.apiName")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.installationType")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
+                                        <th className="px-4 py-3 pr-12 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {(Array.isArray(items) ? items : []).map((row) => {
+                                        const name = row.name || "—";
+                                        const apiName = formApiName(row);
+                                        const projectType = projectTypeLabel(row.project_type);
+                                        const installationType = installationTypeLabel(row.installation_type);
+                                        const createdBy = userLabel(row.created_by);
+                                        const modifiedBy = userLabel(row.modified_by);
+
+                                        return (
+                                            <tr
+                                                key={row.id}
+                                                onClick={() =>
+                                                    router.push(
+                                                        `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
+                                                    )
+                                                }
+                                                className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-900/30"
+                                            >
+                                                <td className={cn("px-4 py-3", cellTextClass)} title={!wrap ? name : undefined}>
+                                                    <span className={cn("font-medium text-slate-800 dark:text-slate-100", cellTextClass)}>
+                                                        {name}
+                                                    </span>
+                                                </td>
+                                                <td className={cn("px-4 py-3", cellTextClass)} title={!wrap ? apiName : undefined}>
+                                                    <code className={cn("rounded bg-slate-100 px-2 py-1 text-xs font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-300", cellTextClass)}>
+                                                        {apiName}
+                                                    </code>
+                                                </td>
+                                                <td className={cn("px-4 py-3", cellTextClass)} title={!wrap ? projectType : undefined}>
+                                                    <span className={cn("text-slate-600 dark:text-slate-300", cellTextClass)}>
+                                                        {projectType}
+                                                    </span>
+                                                </td>
+                                                <td className={cn("px-4 py-3", cellTextClass)} title={!wrap ? installationType : undefined}>
+                                                    <span className={cn("text-slate-600 dark:text-slate-300", cellTextClass)}>
+                                                        {installationType}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="block whitespace-nowrap text-slate-500 dark:text-slate-400">
+                                                        {row.created_at
+                                                            ? dateFmt.format(new Date(row.created_at))
+                                                            : "—"}
+                                                    </div>
+                                                    {createdBy !== "—" && (
+                                                        <div className={cn("mt-0.5 text-xs text-slate-400 dark:text-slate-500", cellTextClass)} title={!wrap ? createdBy : undefined}>
+                                                            {createdBy}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 pr-12">
+                                                    <div className="block whitespace-nowrap text-slate-500 dark:text-slate-400">
+                                                        {row.modified_at
+                                                            ? dateFmt.format(new Date(row.modified_at))
+                                                            : "—"}
+                                                    </div>
+                                                    {modifiedBy !== "—" && (
+                                                        <div className={cn("mt-0.5 text-xs text-slate-400 dark:text-slate-500", cellTextClass)} title={!wrap ? modifiedBy : undefined}>
+                                                            {modifiedBy}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 

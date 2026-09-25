@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { QrCode, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -115,7 +115,7 @@ export function QrCodesPanel() {
   const [fetchJobOptions, setFetchJobOptions] = React.useState(false);
 
   const loadJobOptions = React.useCallback(async () => {
-    const { items: jobs } = await fetchJobsPage(1, 500, undefined, { silent: true });
+    const { items: jobs } = await fetchJobsPage(1, 20, { dropdown: true }, { silent: true });
     return jobs.map((j) => ({
       value: String(j.id),
       label: j.title?.trim() || `#${j.id}`,
@@ -317,8 +317,7 @@ export function QrCodesPanel() {
             <ListPageSearchField
               value={search}
               onCommit={commitSearch}
-              placeholder={t("searchPlaceholder")}
-              ariaLabel={tList("searchAria")}
+
               className="sm:max-w-sm"
             />
             <CheckmarkSelect
@@ -370,7 +369,7 @@ export function QrCodesPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              icon: QrCode,
+              iconName: "qrCodes",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

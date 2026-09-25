@@ -146,7 +146,7 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   const reloadClients = React.useCallback(async () => {
     try {
-      const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+      const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
@@ -155,17 +155,23 @@ export function ContactFormScreen({ mode, contactId }: Props) {
 
   const reloadVendors = React.useCallback(async () => {
     try {
-      const { items: vendors } = await fetchVendorsPage(1, 500, { is_active: true });
+      const { items: vendors } = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
       setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
     } catch {
       setVendorOptions([]);
     }
   }, []);
 
+  // Client contact form → clients only; vendor contact form → vendors only.
   React.useEffect(() => {
+    if (contactType === "vendor") {
+      setClientOptions([]);
+      void reloadVendors();
+      return;
+    }
+    setVendorOptions([]);
     void reloadClients();
-    void reloadVendors();
-  }, [reloadClients, reloadVendors]);
+  }, [contactType, reloadClients, reloadVendors]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -210,8 +216,9 @@ export function ContactFormScreen({ mode, contactId }: Props) {
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     onReloadOptions: async () => {
-      await reloadClients();
-      await reloadVendors();
+      const type = getValues("contact_type");
+      if (type === "vendor") await reloadVendors();
+      else await reloadClients();
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {

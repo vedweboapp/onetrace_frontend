@@ -109,7 +109,7 @@ export function ProjectsPanel() {
   const [fetchClientOptions, setFetchClientOptions] = React.useState(false);
 
   const loadClientOptions = React.useCallback(async () => {
-    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
     return clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
@@ -118,7 +118,7 @@ export function ProjectsPanel() {
   const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
 
   const loadProjectTypeOptions = React.useCallback(async () => {
-    const { items } = await fetchProjectTypesPage(1, 500, { is_active: true });
+    const { items } = await fetchProjectTypesPage(1, 20, { is_active: true, dropdown: true });
     return items;
   }, []);
 
@@ -401,9 +401,7 @@ export function ProjectsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
             </div>

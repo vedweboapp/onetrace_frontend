@@ -61,6 +61,8 @@ export const routes = {
     settingsJobStatus: "/settings/job-status",
     settingsMaterialStatus: "/settings/material-status",
     settingsTags: "/settings/tag",
+    settingsPaymentModes: "/settings/payment-mode",
+    settingsPaymentTerms: "/settings/payment-term",
     settingsProjectTypes: "/settings/project-type",
     settingsInstallationTypes: "/settings/installation-type",
     settingsVendorTypes: "/settings/vendor-type",
@@ -78,6 +80,7 @@ export const routes = {
     settingsModules: "/settings/modules",
     settingsProjectForms: "/settings/project-type-forms",
     settingsIntegrations: "/settings/integrations",
+    settingsAuditLogs: "/settings/audit-logs",
     settingsZohoCallback: "/settings/integrations/zoho/callback",
     settingsZohoKeyMapping: "/settings/integrations/zoho/key-mapping",
     settingsZohoConnection: "/settings/integrations/zoho/connection",
@@ -86,5 +89,6 @@ export const routes = {
     settingsTitle: "/settings/title-settings",
     settingsKiosks: "/settings/kiosks",
     settingsKiosk: "/settings/kiosks",
+    settingsKioskMachines: "/settings/kiosk-machine",
   },
 } as const;

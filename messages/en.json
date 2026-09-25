@@ -233,8 +233,29 @@
       "pageDescription": "Public QR code scan page.",
       "eyebrow": "QR code",
       "title": "QR code",
+      "loading": "Loading QR details…",
+      "untitledJob": "Job",
+      "jobSection": "Job details",
+      "statusUnknown": "No status",
+      "pinsSection": "Pins ({count})",
+      "noPins": "No pins on this job.",
+      "pinFallback": "Pin #{id}",
+      "pinLocation": "Loc {location}",
+      "pinQr": "QR {id}",
+      "scanHint": "Scanned from a public QR code link.",
+      "fields": {
+        "client": "Client",
+        "project": "Project",
+        "site": "Site",
+        "address": "Address",
+        "startDate": "Start date",
+        "completedAt": "Completed",
+        "workers": "Workers",
+        "description": "Description",
+        "qualityAssurance": "Quality assurance"
+      },
       "noDataTitle": "No data found",
-      "noDataDescription": "This QR code is not assigned yet, so there is nothing to show."
+      "noDataDescription": "This QR code has no data to show, or the lookup did not return a response."
     }
   },
   "Dashboard": {
@@ -252,6 +273,7 @@
         "unitType": "Add Unit Type",
         "installationType": "Add Installation Type",
         "materialStatus": "Add Material Status",
+        "title": "Add Title",
         "user": "Add New User"
       }
     },
@@ -368,6 +390,8 @@
       "jobStatus": "Job Statuses",
       "materialStatus": "Material Statuses",
       "tags": "Tags",
+      "paymentModes": "Payment Modes",
+      "paymentTerms": "Payment Terms",
       "titles": "Titles",
       "projectTypes": "Project Types",
       "installationTypes": "Installation Types",
@@ -384,13 +408,15 @@
       "formBuilder": "Form Builder",
       "projectForms": "Project forms",
       "modules": "Modules",
+      "kiosk": "Kiosk",
       "kiosks": "Kiosk Forms",
       "integrations": "Integrations",
+      "auditLogs": "Audit Logs",
       "hint": "Customize theme and accent for this workspace.",
       "customization": {
         "label": "Customization",
         "hubTitle": "Customization",
-        "hubDescription": "Choose what to configure — Project Types, Installation Types, Vendor Types, Unit Types, Rejection Reasons, Checklist Types, Project Statuses, Pin Statuses, Job Statuses, Material Statuses, Tags, and Titles.",
+        "hubDescription": "Pick a category below to manage labels, statuses, and types for your workspace.",
         "backToHub": "Back to customization",
         "items": {
           "projectTypes": {
@@ -437,12 +463,101 @@
             "title": "Tags",
             "description": "Tags for organizing pins and records."
           },
+          "paymentModes": {
+            "title": "Payment Modes",
+            "description": "Payment methods such as bank transfer, Google Pay, or remittance."
+          },
+          "paymentTerms": {
+            "title": "Payment Terms",
+            "description": "Net days and discount terms used on invoices and purchase orders."
+          },
           "title": {
             "title": "Titles",
             "description": "Organize the title for the project."
           }
         }
       }
+    },
+    "auditTrails": {
+      "metaTitle": "Audit Logs",
+      "title": "Audit Logs",
+      "loadError": "Could not load audit logs. Try again.",
+      "emptyTitle": "No audit logs yet",
+      "emptyDescription": "Activity across modules will appear here as records are created and updated.",
+      "searchPlaceholder": "Search user, action, or resource...",
+      "searchAria": "Search audit logs",
+      "pageLabel": "Showing {start}-{end} of {total}",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsPerPage": "Rows per page",
+      "unknownUser": "Unknown user",
+      "actionFallback": "Updated",
+      "filters": {
+        "module": "Module",
+        "action": "Action",
+        "allModules": "All modules",
+        "allActions": "All actions",
+        "fromDate": "From Date",
+        "toDate": "To Date",
+        "clearDates": "Clear Dates",
+        "clearFromDate": "Clear from date",
+        "clearToDate": "Clear to date"
+      },
+      "modules": {
+        "materialRequest": "Material request",
+        "quotation": "Quotation",
+        "client": "Client",
+        "vendor": "Vendor",
+        "quotationTag": "Quotation tag",
+        "contact": "Contact",
+        "job": "Job",
+        "project": "Project",
+        "jobSchedule": "Job schedule",
+        "workerTimeOff": "Worker time off",
+        "site": "Site",
+        "dispatch": "Dispatch",
+        "invoice": "Invoice",
+        "purchaseOrder": "Purchase order",
+        "item": "Item",
+        "group": "Group",
+        "compositeItem": "Composite item"
+      },
+      "table": {
+        "when": "When",
+        "changedBy": "Changed by",
+        "action": "Action",
+        "resource": "Resource",
+        "module": "Module",
+        "changes": "Changes",
+        "ip": "IP: {ip}",
+        "viewChanges": "View {count}"
+      },
+      "timeline": {
+        "title": "Timeline",
+        "loading": "Loading timeline…",
+        "loadError": "Could not load timeline. Try again.",
+        "empty": "No activity recorded for this record yet.",
+        "event": "Activity",
+        "byActor": "By {name}",
+        "byActorRole": "By {name} · {role}",
+        "ip": "IP: {ip}",
+        "viewChanges": "View {count, plural, one {# change} other {# changes}}",
+        "showMore": "Show more",
+        "showLess": "Show less"
+      },
+      "changesModal": {
+        "title": "Field changes",
+        "cancel": "Cancel",
+        "openRecord": "Open record",
+        "changedBy": "Changed by: {name}",
+        "ip": "IP: {ip}",
+        "empty": "No field-level changes were recorded for this event.",
+        "colField": "Field",
+        "colFrom": "From",
+        "colTo": "To"
+      },
+      "tabTimeline": "Timeline",
+      "tabDetails": "Details"
     },
     "integrations": {
       "title": "Integrations",
@@ -497,11 +612,14 @@
         "pullLastSynced": "Last synced: {datetime}",
         "pullLastSyncedNever": "Last synced: Never",
         "pullSyncInProgress": "Sync in progress…",
+        "pullSyncLastResult": "Last sync result",
         "pullSyncComplete": "Sync completed",
+        "pullSyncPartialComplete": "Sync finished with some skipped or failed records",
         "pullSyncFailed": "Sync failed",
         "pullSyncStatusQueued": "Queued",
         "pullSyncStatusRunning": "Running",
         "pullSyncStatusSucceeded": "Succeeded",
+        "pullSyncStatusPartial": "Partially succeeded",
         "pullSyncStatusFailed": "Failed",
         "pullSyncProcessed": "Processed: {count}",
         "pullSyncCreated": "Created: {count}",
@@ -509,6 +627,7 @@
         "pullSyncRestored": "Restored: {count}",
         "pullSyncSkipped": "Skipped: {count}",
         "pullSyncStatusError": "Failed to check sync status. Please try again.",
+        "viewHistory": "View history",
         "saveMapping": "Save mapping",
         "cancel": "Cancel",
         "loadError": "Failed to load field mapping options. Please try again.",
@@ -572,7 +691,64 @@
         "notAvailable": "—",
         "yes": "Yes",
         "no": "No",
-        "disconnected": "Disconnected"
+        "disconnected": "Disconnected",
+        "tabs": {
+          "help": "Help",
+          "configure": "Configuration",
+          "webhook": "Webhooks",
+          "history": "Sync history"
+        }
+      },
+      "zohoSyncHistory": {
+        "title": "Sync history",
+        "description": "Review past Zoho syncs and webhook events for this connection.",
+        "refresh": "Refresh",
+        "loadError": "Failed to load sync history. Please try again.",
+        "emptyTitle": "No sync history yet",
+        "emptyDescription": "Sync jobs and webhook events will appear here after data is imported or received.",
+        "detailTitle": "Sync details",
+        "resourceUnknown": "General",
+        "eventTypeValue": "{value}",
+        "failedCount": "{count} failed",
+        "pageOf": "Page {page} of {total} · {count} total",
+        "prev": "Previous",
+        "next": "Next",
+        "retryFailed": "Retry failed records",
+        "retryUnavailable": "Only failed or partially completed sync jobs can be retried.",
+        "retrySuccess": "Retry started for failed records.",
+        "retryError": "Could not retry failed records.",
+        "unknownError": "Unknown error",
+        "kind": {
+          "syncJob": "Sync job",
+          "eventLog": "Webhook event",
+          "other": "Event"
+        },
+        "sections": {
+          "counts": "Results",
+          "event": "Event details",
+          "errors": "Errors"
+        },
+        "fields": {
+          "when": "When",
+          "kind": "Type",
+          "resource": "Resource",
+          "event": "Event",
+          "status": "Status",
+          "failedRecords": "Failed records",
+          "mode": "Mode",
+          "processed": "Processed",
+          "created": "Created",
+          "updated": "Updated",
+          "restored": "Restored",
+          "skipped": "Skipped",
+          "started": "Started",
+          "completed": "Completed",
+          "duration": "Duration",
+          "error": "Error",
+          "retries": "Retries",
+          "records": "Records",
+          "recordId": "Record ID"
+        }
       },
       "zohoResources": {
         "mappingPageTitle": "Map Zoho Inventory Fields",
@@ -795,6 +971,8 @@
       "loadError": "Failed to load forms. Please try again.",
       "projectTypesLoadError": "Failed to load project types. Please try again.",
       "empty": "No forms found. Create your first form to get started.",
+      "emptyTitle": "No Project Forms Yet",
+      "emptyDescription": "Create your first form to get started.",
       "pageLabel": "{start}-{end} of {total}",
       "prev": "Previous",
       "next": "Next",
@@ -1241,6 +1419,113 @@
       "validationName": "Enter a unit name.",
       "validationShortForm": "Enter a unit short form (e.g. kg)."
     },
+    "paymentModes": {
+      "metaTitle": "Payment Modes",
+      "title": "Payment Modes",
+      "subtitle": "Manage payment methods used on invoices and purchases.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "yes": "Yes",
+      "no": "No",
+      "table": {
+        "name": "Name",
+        "systemName": "System name",
+        "default": "Default",
+        "mandatory": "Mandatory",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last Updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No Payment Modes Yet",
+      "emptyDescription": "Create your first payment mode (e.g. Bank Transfer, Google Pay).",
+      "loadError": "Could not load payment modes. Try again.",
+      "modal": {
+        "createTitle": "New Payment Mode",
+        "editTitle": "Edit Payment Mode",
+        "name": "Name",
+        "namePlaceholder": "e.g. Bank Transfer",
+        "systemName": "System name",
+        "systemNamePlaceholder": "e.g. bank_transfer",
+        "isDefault": "Default payment mode",
+        "isMandatory": "Mandatory",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete This Payment Mode?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} payment modes",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Payment mode updated",
+      "created": "Payment mode created",
+      "deleted": "Payment mode deleted",
+      "validationName": "Enter a payment mode name.",
+      "validationSystemName": "Enter a system name (e.g. bank_transfer)."
+    },
+    "paymentTerms": {
+      "metaTitle": "Payment Terms",
+      "title": "Payment Terms",
+      "subtitle": "Manage net days and discount terms for invoices and purchases.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "yes": "Yes",
+      "no": "No",
+      "table": {
+        "label": "Label",
+        "days": "Days",
+        "default": "Default",
+        "type": "Type",
+        "discount": "Discount",
+        "discountDueDays": "Discount due days",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last Updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No Payment Terms Yet",
+      "emptyDescription": "Create your first payment term (e.g. Net 30, Due on Receipt).",
+      "loadError": "Could not load payment terms. Try again.",
+      "modal": {
+        "createTitle": "New Payment Term",
+        "editTitle": "Edit Payment Term",
+        "label": "Label",
+        "labelPlaceholder": "e.g. Net 30",
+        "days": "Payment term days",
+        "discount": "Discount %",
+        "discountDueDays": "Discount due days",
+        "discountDueDaysPlaceholder": "Optional",
+        "type": "Type",
+        "isDefault": "Default payment term",
+        "isSystemTerms": "System term",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete This Payment Term?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} payment terms",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Payment term updated",
+      "created": "Payment term created",
+      "deleted": "Payment term deleted",
+      "validationLabel": "Enter a payment term label.",
+      "validationDays": "Enter payment term days (0 or more).",
+      "validationDiscount": "Enter a valid discount percentage."
+    },
     "rejectionReasons": {
       "metaTitle": "Rejection Reasons",
       "title": "Rejection Reasons",
@@ -1636,6 +1921,66 @@
       "validationName": "Enter a vendor type name.",
       "validationHex": "Use a valid 6-digit hex color (e.g. #DBEAFE)."
     },
+    "kioskMachines": {
+      "metaTitle": "Kiosk",
+      "title": "Kiosk",
+      "subtitle": "Manage kiosk machines for your organization.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "activateMissingData": "Pairing code or organization is missing for this machine.",
+      "activateError": "Could not activate kiosk machine. Try again.",
+      "table": {
+        "code": "Machine code",
+        "name": "Machine name",
+        "city": "City",
+        "location": "Location",
+        "status": "Status",
+        "activated": "Activation",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "activated": "Activated",
+        "notActivated": "Not activated"
+      },
+      "emptyTitle": "No Kiosk Machines Yet",
+      "emptyDescription": "Add your first kiosk machine to get started.",
+      "loadError": "Could not load kiosk machines. Try again.",
+      "modal": {
+        "createTitle": "Add Kiosk Machine",
+        "editTitle": "Edit Kiosk Machine",
+        "machineCode": "Machine code",
+        "machineCodePlaceholder": "KM-Pune-001",
+        "machineName": "Machine name",
+        "machineNamePlaceholder": "Pune Retail Store Terminal 1",
+        "city": "City",
+        "locationName": "Location name",
+        "locationNamePlaceholder": "Search location",
+        "cityPlaceholder": "Select city",
+        "citySelectLocationFirst": "Select a location first",
+        "clearCity": "Clear city",
+        "activeLabel": "Active",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "validation": {
+        "machineCode": "Enter a machine code.",
+        "machineName": "Enter a machine name."
+      },
+      "deleteConfirmTitle": "Delete This Kiosk Machine?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} machines",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Kiosk machine updated",
+      "created": "Kiosk machine created",
+      "deleted": "Kiosk machine deleted",
+      "activatedToast": "Kiosk machine activated"
+    },
     "users": {
       "metaTitle": "Users",
       "detailMetaTitle": "User Details",
@@ -1663,6 +2008,7 @@
         "email": "Email",
         "phone": "Phone",
         "role": "Role",
+        "profile": "Profile",
         "inviteStatus": "Invite Status",
         "created": "Created",
         "actions": "Actions"
@@ -1674,6 +2020,7 @@
         "phone": "Phone Number",
         "gender": "Gender",
         "role": "Role",
+        "profile": "Profile",
         "basePay": "Base Pay",
         "basePayType": "Pay Type",
         "basePayTypeFixed": "Fixed Pay",
@@ -1727,6 +2074,7 @@
       "placeholders": {
         "gender": "Select gender",
         "role": "Select role",
+        "profile": "Select profile",
         "basePay": "Enter amount",
         "country": "Select country",
         "state": "Select state",
@@ -1739,6 +2087,7 @@
         "phone": "Enter a valid phone number.",
         "gender": "Select gender.",
         "role": "Select role.",
+        "profile": "Select profile.",
         "basePay": "Enter a valid base pay amount.",
         "addressLine1": "Enter address line 1.",
         "addressType": "Select address type.",
@@ -1914,15 +2263,18 @@
       "fields": {
         "profileName": "Profile Name",
         "profileType": "Profile Type",
-        "description": "Description"
+        "description": "Description",
+        "role": "Role"
       },
       "placeholders": {
         "profileName": "Enter profile name",
         "profileType": "Enter profile type (optional)",
-        "description": "Enter description (optional)"
+        "description": "Enter description (optional)",
+        "role": "Select role"
       },
       "validation": {
-        "profileName": "Profile name is required."
+        "profileName": "Profile name is required.",
+        "role": "Select a role."
       },
       "modal": {
         "save": "Save",
@@ -3283,12 +3635,16 @@
         "backAria": "Back to material requests list",
         "tabsAria": "Material request detail sections",
         "tabOverview": "Overview",
+        "tabDispatches": "Dispatches",
         "tabTimeline": "Timeline",
         "tabLogs": "Logs",
         "tabActivityTimeline": "Activity timeline",
         "sectionLogs": "Activity Logs",
         "sectionActivityTimeline": "Activity Timeline",
         "sectionDispatches": "Dispatches",
+        "dispatchesTitle": "Dispatches",
+        "dispatchesEmpty": "No dispatches have been made for this material request.",
+        "dispatchesLoadError": "Failed to load dispatches.",
         "dispatchLink": "View dispatch",
         "sectionOverview": "Overview",
         "sectionJobs": "Jobs",
@@ -3630,15 +3986,15 @@
       "emptyUsersHint": "Try another group or clear the search to see users.",
       "clearPeopleFilters": "Clear filters",
       "bulk": {
-        "selectAll": "Select all visible users",
-        "selectAllGroups": "Select all visible groups",
+        "selectAll": "Select all",
+        "selectAllGroups": "Select all groups",
         "selectWorker": "Select {name}",
         "selectGroup": "Select {name}",
         "scheduleSelected": "Schedule ({count})",
         "scheduleSelectedGroups": "Schedule groups ({count})",
         "scheduleGroup": "Schedule group",
         "groupSelectAria": "Filter or schedule by group",
-        "noneSelected": "Select one or more users or groups first.",
+        "noneSelected": "Select one or more users first.",
         "pickGroup": "Choose a group first.",
         "groupEmpty": "No users found in that group.",
         "groupTimeOffUnsupported": "Mark time off for individual users, not groups.",
@@ -3649,7 +4005,14 @@
         "noneScheduled": "No users were scheduled.",
         "notScheduledHeading": "Not scheduled",
         "unknownWorker": "Worker #{id}",
-        "close": "Close"
+        "close": "Close",
+        "sameGroupHeading": "Also in {group}",
+        "scheduleSameGroup": "Schedule all in group ({count})",
+        "clearGroupPeers": "Schedule this user only",
+        "sameGroupOfferTitle": "Schedule same group?",
+        "sameGroupOfferBody": "Also schedule the other {count, plural, one {# user} other {# users}} in {group} for this job at the same time?",
+        "sameGroupOfferConfirm": "Schedule group ({count})",
+        "sameGroupOfferSkip": "Not now"
       },
       "legendAvailable": "Available",
       "legendUnavailable": "Unavailable",
@@ -3847,9 +4210,12 @@
       "next": "Next",
       "mapView": {
         "emptyTitle": "No mappable job sites",
-        "emptyDescription": "Jobs on this page do not have a site address that can be placed on the map. Add site address details, or switch page.",
-        "skippedCount": "{count, plural, one {# job on this page has no site address and is hidden from the map.} other {# jobs on this page have no site address and are hidden from the map.}}",
+        "emptyDescription": "None of these jobs have a site address that can be placed on the map. Add site address details to show pins.",
+        "skippedCount": "{count, plural, one {# job has no usable map location and is listed below.} other {# jobs have no usable map location and are listed below.}}",
         "ariaMap": "Jobs map",
+        "loadingMap": "Loading map…",
+        "placingPins": "Placing pins…",
+        "loadMapError": "Could not load Google Maps. Check your API key and try again.",
         "jobId": "Job ID",
         "address": "Address",
         "site": "Site",
@@ -3857,8 +4223,19 @@
         "status": "Status",
         "viewDetails": "Details",
         "openJob": "Open job",
-        "panelTitle": "Job location",
-        "closePanel": "Close job panel"
+        "panelTitle": "Job details",
+        "panelSubtitle": "Loading job overview…",
+        "loadDetailError": "Could not load this job. Try again.",
+        "closePanel": "Close job panel",
+        "unmappedTitle": "Jobs not shown on map",
+        "unmappedDescription": "{count, plural, one {# job could not be placed on the map.} other {# jobs could not be placed on the map.}}",
+        "colJob": "Job",
+        "colSite": "Site",
+        "colAddress": "Address",
+        "colClient": "Client",
+        "colReason": "Reason",
+        "reasonNoAddress": "No address",
+        "reasonInvalidAddress": "Invalid address"
       },
       "delete": "Delete",
       "deleteConfirmTitle": "Delete This Job?",
@@ -4145,7 +4522,7 @@
       }
     },
     "list": {
-      "searchPlaceholder": "Search…",
+      "searchPlaceholder": "Search here...",
       "searchAria": "Search this list",
       "rowsPerPage": "Rows per page",
       "tableView": "Table view",

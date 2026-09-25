@@ -15,6 +15,14 @@ export function applySequencesToItems(
   }));
 }
 
+/** Re-number sequences 1..n for a full (non-paginated) ordered list. */
+export function applyFullListSequences(items: ChecklistType[]): ChecklistType[] {
+  return items.map((item, index) => ({
+    ...item,
+    sequence: index + 1,
+  }));
+}
+
 export function checklistSequenceUpdates(
   before: ChecklistType[],
   after: ChecklistType[],

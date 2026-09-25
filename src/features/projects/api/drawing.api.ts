@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { DRAWING_PATHS } from "./drawing.paths";
 import type {
   Drawing,
@@ -35,21 +40,31 @@ export async function fetchDrawingsPage(
   page = 1,
   pageSize = 100,
   search?: string,
-  params?: Record<string,any>
+  params?: Record<string, unknown> & { dropdown?: boolean },
 ): Promise<{ items: Drawing[]; pagination: ProjectPagination }> {
-  const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
-    params: {
-      page,
-      page_size: pageSize,
-      ...(search?.trim() ? { search: search.trim() } : {}),
-      ...(params)
+  const { dropdown, ...rest } = params ?? {};
+  const requestParams: Record<string, string | number | boolean> = {
+    page,
+    page_size: pageSize,
+    ...(search?.trim() ? { search: search.trim() } : {}),
+  };
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined && value !== null) {
+      requestParams[key] = value as string | number | boolean;
+    }
+  }
+  applyDropdownListParam(requestParams, dropdown === true);
+
+  return resolveDropdownListPages({
+    dropdown: dropdown === true,
+    fetchFirst: async () => {
+      const { data } = await api.get<DrawingListResponse>(DRAWING_PATHS.list(projectId), {
+        params: requestParams,
+      });
+      // Keep API list order (do not re-sort by `order` — that reverses levels relative to the response).
+      return parseListApiPage(data, Number(requestParams.page_size) || 20);
     },
   });
-  assertEnvelopeSuccess(data);
-  // Keep API list order (do not re-sort by `order` — that reverses levels relative to the response).
-  const items = Array.isArray(data.data) ? [...data.data] : [];
-  const pagination = data.pagination ?? defaultPagination(items);
-  return { items, pagination };
 }
 
 export async function fetchDrawing(projectId: number, drawingId: number): Promise<Drawing> {

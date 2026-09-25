@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { UsersSettingsTabs } from "@/features/users/components/users-settings-tabs";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { userProfileLabel } from "@/features/users/utils/user-profile-select.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -43,6 +44,10 @@ function fullName(row: UserProfile) {
 
 function roleLabel(row: UserProfile): string {
   return row.role_detail?.role_name?.trim() || row.role_detail?.name?.trim() || "—";
+}
+
+function profileLabel(row: UserProfile): string {
+  return userProfileLabel(row);
 }
 
 export function UsersPanel() {
@@ -126,6 +131,7 @@ export function UsersPanel() {
       c.truncate("email", t("table.email"), (r) => r.user_detail.email, { title: (r) => r.user_detail.email }),
       c.phone("phone", t("table.phone"), (r) => r.user_detail.phone_number),
       c.text("role", t("table.role"), (r) => roleLabel(r)),
+      c.text("profile", t("table.profile"), (r) => profileLabel(r)),
       c.text("invite", t("table.inviteStatus"), (r) => r.user_detail.invite_status ?? "—"),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
       c.actions("actions", t("table.actions"), (row) => (
@@ -171,8 +177,6 @@ export function UsersPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             </div>
@@ -190,7 +194,7 @@ export function UsersPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "users",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (
@@ -212,7 +216,7 @@ export function UsersPanel() {
                   className={highlightClassName(row.id)}
                   title={fullName(row)}
                   subtitle={row.user_detail.email}
-                  meta={roleLabel(row)}
+                  meta={`${roleLabel(row)} · ${profileLabel(row)}`}
                   description={`${t("fields.inviteStatus")}: ${row.user_detail.invite_status ?? "—"}`}
                   footer={<span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span>}
                   onCardClick={() => openDetail(row.id)}

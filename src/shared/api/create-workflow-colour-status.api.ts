@@ -8,6 +8,11 @@ import type {
   WorkflowColourStatusListResponse,
   WorkflowColourStatusUpdatePayload,
 } from "@/shared/types/workflow-colour-status.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -18,6 +23,7 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 
 export type WorkflowColourStatusListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
 
 export type WorkflowColourStatusApiPaths = {
@@ -34,13 +40,18 @@ export function createWorkflowColourStatusApi(
     pageSize = 20,
     filters?: WorkflowColourStatusListFilters,
   ): Promise<{ items: WorkflowColourStatus[]; pagination: WorkflowColourStatusListResponse["pagination"] }> {
-    const params: Record<string, string | number> = { page, page_size: pageSize };
+    const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
     const q = filters?.search?.trim();
     if (q) params.search = q;
+    applyDropdownListParam(params, filters?.dropdown);
 
-    const { data } = await api.get<WorkflowColourStatusListResponse>(resolveUrl(paths.list), { params });
-    assertEnvelopeSuccess(data);
-    return { items: data.data, pagination: data.pagination };
+    return resolveDropdownListPages({
+      dropdown: filters?.dropdown,
+      fetchFirst: async () => {
+        const { data } = await api.get<WorkflowColourStatusListResponse>(resolveUrl(paths.list), { params });
+        return parseListApiPage(data, pageSize);
+      },
+    });
   }
 
   async function create(body: WorkflowColourStatusCreatePayload): Promise<WorkflowColourStatus> {

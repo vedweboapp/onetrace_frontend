@@ -410,9 +410,9 @@ export function DrawingPinPreviewModal({
   React.useEffect(() => {
     if (open && projectId) {
       Promise.allSettled([
-        fetchCompositeItemsPage(1, 500),
-        fetchPinStatusesPage(1, 500),
-        fetchProjectFormsPage(projectId, 1, 500),
+        fetchCompositeItemsPage(1, 20, { dropdown: true }),
+        fetchPinStatusesPage(1, 20, { dropdown: true }),
+        fetchProjectFormsPage(projectId, 1, 20, { dropdown: true }),
       ]).then(([itemsRes, statusesRes, formsRes]) => {
         if (itemsRes.status === "fulfilled") setItemsList(itemsRes.value.items);
         if (statusesRes.status === "fulfilled") setStatusesList(statusesRes.value.items);

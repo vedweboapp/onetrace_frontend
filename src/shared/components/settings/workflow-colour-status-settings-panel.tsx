@@ -360,8 +360,6 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             </div>

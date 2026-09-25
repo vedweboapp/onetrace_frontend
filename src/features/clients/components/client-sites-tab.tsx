@@ -139,7 +139,7 @@ export function ClientSitesTab({ clientId }: Props) {
           fill
           emptyStateKind={emptyStateKind}
           onboarding={{
-            iconName: "projects",
+            iconName: "sites",
             title: t("detail.sitesEmptyTitle"),
             description: t("detail.sitesEmptyDescription"),
             action: addSiteButton,

@@ -100,7 +100,7 @@ export function SitesPanel() {
   const [fetchClientOptions, setFetchClientOptions] = React.useState(() => Boolean(clientParam));
 
   const loadClientOptions = React.useCallback(async () => {
-    const { items: clients } = await fetchClientsPage(1, 500, { is_active: true });
+    const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
     return clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
@@ -268,9 +268,7 @@ export function SitesPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={(q) => setUrl({ search: q.trim() || null, page: null }, { replace: true })}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={(q) => setUrl({ search: q.trim() || null, page: null }, { replace: true })}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -316,7 +314,7 @@ export function SitesPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "projects",
+              iconName: "sites",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: (

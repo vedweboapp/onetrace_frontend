@@ -4,6 +4,8 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClient } from "@/features/clients/api/client.api";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
@@ -27,6 +29,7 @@ type Props = {
 
 export function ClientDetailScreen({ clientId, className }: Props) {
   const t = useTranslations("Dashboard.clients");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -36,15 +39,18 @@ export function ClientDetailScreen({ clientId, className }: Props) {
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "sites", label: t("detail.tabs.sites") },
       { id: "projects", label: t("detail.tabs.projects") },
+      { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t],
+    [t, tAudit],
   );
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = React.useState(() =>
-    tabFromUrl && ["details", "contacts", "sites", "projects"].includes(tabFromUrl) ? tabFromUrl : "details",
+    tabFromUrl && ["details", "contacts", "sites", "projects", "timeline"].includes(tabFromUrl)
+      ? tabFromUrl
+      : "details",
   );
 
   React.useEffect(() => {
@@ -132,6 +138,12 @@ export function ClientDetailScreen({ clientId, className }: Props) {
             <ClientSitesTab clientId={detail.id} />
           ) : detail && activeTab === "projects" ? (
             <ClientProjectsTab clientId={detail.id} />
+          ) : detail && activeTab === "timeline" ? (
+            <EntityAuditTimeline
+              module={AUDIT_TRAIL_MODULES.client}
+              objectId={detail.id}
+              dateFmt={dateFmt}
+            />
           ) : null}
         </div>
       )}

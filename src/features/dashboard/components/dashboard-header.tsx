@@ -12,6 +12,7 @@ import {
   Layers,
   ListTodo,
   MapPinHouse,
+  MonitorSmartphone,
   Package,
   Palette,
   PanelLeft,
@@ -125,6 +126,7 @@ export function DashboardHeader() {
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
+  const kioskMachinesHref = routes.dashboard.settingsKioskMachines;
   const kiosksHref = routes.dashboard.settingsKiosks;
   const customizationHref = routes.dashboard.settingsCustomization;
   const pinStatusHref = routes.dashboard.settingsPinStatus;
@@ -145,6 +147,7 @@ export function DashboardHeader() {
   const rolesHref = routes.dashboard.settingsRoles;
   const profilesHref = routes.dashboard.settingsProfiles;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const homeActive = pathname === homeHref;
   const clientsActive =
@@ -204,6 +207,8 @@ export function DashboardHeader() {
     pathname === companySettingsHref || pathname.startsWith(`${companySettingsHref}/`);
   const modulesActive =
     pathname === modulesHref || pathname.startsWith(`${modulesHref}/`);
+  const kioskMachinesActive =
+    pathname === kioskMachinesHref || pathname.startsWith(`${kioskMachinesHref}/`);
   const kiosksActive =
     pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const pinStatusActive =
@@ -244,6 +249,8 @@ export function DashboardHeader() {
     pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const auditLogsActive =
+    pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
   const sectionTitle = homeActive
     ? tNav("home")
@@ -276,66 +283,70 @@ export function DashboardHeader() {
                       : schedulingActive
                         ? tNav("scheduling")
                         : qrCodesActive
-                        ? tNav("qrCodes")
-                        : formsActive
-                          ? tNav("forms")
-                        : groupsActive
-                          ? tNav("groups")
-                          : materialRequestsActive
-                            ? tNav("materialRequests")
-                            : dispatchesActive
-                              ? tNav("dispatches")
-                              : returnToStockActive
-                                ? tNav("returnToStock")
-                                : compositeActive
-                                  ? tNav("compositeItems")
-                                  : itemsActive
-                                    ? tNav("itemsPlain")
-                                    : personalProfileActive
-                                      ? tSettingsNav("personalProfile")
-                                      : companySettingsActive
-                                        ? tSettingsNav("companySettings")
-                                        : modulesActive
-                                          ? tSettingsNav("modules")
-                                          : kiosksActive
+                          ? tNav("qrCodes")
+                          : formsActive
+                            ? tNav("forms")
+                            : groupsActive
+                              ? tNav("groups")
+                              : materialRequestsActive
+                                ? tNav("materialRequests")
+                                : dispatchesActive
+                                  ? tNav("dispatches")
+                                  : returnToStockActive
+                                    ? tNav("returnToStock")
+                                    : compositeActive
+                                      ? tNav("compositeItems")
+                                      : itemsActive
+                                        ? tNav("itemsPlain")
+                                        : personalProfileActive
+                                          ? tSettingsNav("personalProfile")
+                                          : companySettingsActive
+                                            ? tSettingsNav("companySettings")
+                                            : modulesActive
+                                              ? tSettingsNav("modules")
+                                              : kioskMachinesActive
+                                                ? tSettingsNav("kiosk")
+                                              : kiosksActive
                                             ? tSettingsNav("kiosks")
                                             : customizationHubActive
-                                              ? tSettingsNav("customization.label")
-                                              : pinStatusActive
-                                                ? tSettingsNav("pinStatus")
-                                                : projectStatusActive
-                                                  ? tSettingsNav("projectStatus")
-                                                  : jobStatusActive
-                                                    ? tSettingsNav("jobStatus")
-                                                    : materialStatusActive
-                                                      ? tSettingsNav("materialStatus")
-                                                      : tagActive
-                                                        ? tSettingsNav("tags")
-                                                        : installationTypeActive
-                                                          ? tSettingsNav("installationTypes")
-                                                          : vendorTypeActive
-                                                            ? tSettingsNav("vendorTypes")
-                                                            : unitTypeActive
-                                                              ? tSettingsNav("unitTypes")
-                                                              : rejectionReasonActive
-                                                                ? tSettingsNav("rejectionReasons")
-                                                                : checklistTypeActive
-                                                                  ? tSettingsNav("checklistTypes")
-                                                                  : titleActive
-                                                                    ? tSettingsNav("titles")
-                                                                    : projectTypeActive
-                                                                      ? tSettingsNav("projectTypes")
-                                                                      : usersActive
-                                                                        ? tSettingsNav("users")
-                                                                        : rolesActive
-                                                                          ? tSettingsNav("roles")
-                                                                          : profilesActive
-                                                                            ? tSettingsNav("profiles")
-                                                                            : integrationsActive
-                                                                              ? tSettingsNav("integrations")
-                                                                              : projectFormsActive
-                                                                                ? tSettingsNav("projectForms")
-                                                                                : tNav("home");
+                                                  ? tSettingsNav("customization.label")
+                                                  : pinStatusActive
+                                                    ? tSettingsNav("pinStatus")
+                                                    : projectStatusActive
+                                                      ? tSettingsNav("projectStatus")
+                                                      : jobStatusActive
+                                                        ? tSettingsNav("jobStatus")
+                                                        : materialStatusActive
+                                                          ? tSettingsNav("materialStatus")
+                                                          : tagActive
+                                                            ? tSettingsNav("tags")
+                                                            : installationTypeActive
+                                                              ? tSettingsNav("installationTypes")
+                                                              : vendorTypeActive
+                                                                ? tSettingsNav("vendorTypes")
+                                                                : unitTypeActive
+                                                                  ? tSettingsNav("unitTypes")
+                                                                  : rejectionReasonActive
+                                                                    ? tSettingsNav("rejectionReasons")
+                                                                    : checklistTypeActive
+                                                                      ? tSettingsNav("checklistTypes")
+                                                                      : titleActive
+                                                                        ? tSettingsNav("titles")
+                                                                        : projectTypeActive
+                                                                          ? tSettingsNav("projectTypes")
+                                                                          : usersActive
+                                                                            ? tSettingsNav("users")
+                                                                            : rolesActive
+                                                                              ? tSettingsNav("roles")
+                                                                              : profilesActive
+                                                                                ? tSettingsNav("profiles")
+                                                                                : integrationsActive
+                                                                                  ? tSettingsNav("integrations")
+                                                                                : auditLogsActive
+                                                                                  ? tSettingsNav("auditLogs")
+                                                                                    : projectFormsActive
+                                                                                      ? tSettingsNav("projectForms")
+                                                                                      : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -434,6 +445,7 @@ export function DashboardHeader() {
             <TopNavLink href={personalProfileHref} label={tSettingsNav("personalProfile")} icon={UserRound} active={personalProfileActive} resolved={resolved} />
             <TopNavLink href={companySettingsHref} label={tSettingsNav("companySettings")} icon={Building2} active={companySettingsActive} resolved={resolved} />
             <TopNavLink href={modulesHref} label={tSettingsNav("modules")} icon={Settings} active={modulesActive} resolved={resolved} />
+            <TopNavLink href={kioskMachinesHref} label={tSettingsNav("kiosk")} icon={MonitorSmartphone} active={kioskMachinesActive} resolved={resolved} />
             <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
@@ -441,6 +453,7 @@ export function DashboardHeader() {
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />
             <TopNavLink href={profilesHref} label={tSettingsNav("profiles")} icon={Layers} active={profilesActive} resolved={resolved} />
             <TopNavLink href={integrationsHref} label={tSettingsNav("integrations")} icon={Plug} active={integrationsActive} resolved={resolved} />
+            <TopNavLink href={auditLogsHref} label={tSettingsNav("auditLogs")} icon={ClipboardList} active={auditLogsActive} resolved={resolved} />
           </>
         ) : (
           <>

@@ -411,6 +411,34 @@ export function SchedulingDayTimeline({
     onScrollTargetApplied,
   ]);
 
+  // When no explicit focus (e.g. after create), nudge the day grid toward available hours
+  // so green bands aren't stuck off-screen at midnight.
+  const autoScrollDayKeyRef = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    if (scrollToMinutes != null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    if (autoScrollDayKeyRef.current === dayKey) return;
+
+    const members =
+      groupRows && groupRows.length > 0 ? groupRows.flatMap((g) => g.members) : technicians;
+    let earliest: number | null = null;
+    for (const tech of members) {
+      if (!hasAvailabilityData(tech.availableDays)) continue;
+      const window = getDayAvailabilityWindow(tech.availableDays, day);
+      if (!window) continue;
+      earliest = earliest == null ? window.startMinutes : Math.min(earliest, window.startMinutes);
+    }
+    if (earliest == null) return;
+
+    autoScrollDayKeyRef.current = dayKey;
+    const focusMinutes = Math.max(SCHEDULE_DAY_START_HOUR * 60, earliest - 60);
+    const minutesFromStart = focusMinutes - SCHEDULE_DAY_START_HOUR * 60;
+    const targetX = (minutesFromStart / 60) * HOUR_WIDTH_PX;
+    const leadIn = hideWorkerColumn ? 24 : Math.min(96, el.clientWidth * 0.15);
+    el.scrollTo({ left: Math.max(0, targetX - leadIn), top: el.scrollTop, behavior: "auto" });
+  }, [day, dayKey, technicians, groupRows, scrollToMinutes, hideWorkerColumn]);
+
   if (rowCount === 0) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">

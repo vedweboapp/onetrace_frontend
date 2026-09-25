@@ -257,7 +257,7 @@ export function JobsPanel() {
       try {
         const [workers, statuses] = await Promise.all([
           loadTechnicianOptions(),
-          fetchJobStatusesPage(1, 500),
+          fetchJobStatusesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setWorkerOptions(workers);
@@ -291,9 +291,9 @@ export function JobsPanel() {
     (async () => {
       try {
         const [clients, projects, sites] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchSitesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setMassClientOptions(clients.items.map((c) => ({ value: String(c.id), label: c.name })));
@@ -330,13 +330,12 @@ export function JobsPanel() {
       setLoading(true);
       setLoadError(null);
       try {
-        const { items: nextItems, pagination: p } = await fetchJobsPage(page, pageSize, {
-          search: search || undefined,
-          job_status: jobStatusFilter,
-          assigned_worker: assignedWorkerFilter,
-          job_type: jobTypeParam || undefined,
-          job_category: jobCategoryParam || undefined,
-        });
+        const isMapView = listViewMode === "map";
+        const { items: nextItems, pagination: p } = await fetchJobsPage(
+          isMapView ? 1 : page,
+          isMapView ? 10 : pageSize,
+          listFilters,
+        );
         if (!cancelled) {
           setItems(nextItems);
           setPagination(p);
@@ -354,13 +353,10 @@ export function JobsPanel() {
       cancelled = true;
     };
   }, [
+    listViewMode,
     page,
     pageSize,
-    search,
-    jobCategoryParam,
-    jobStatusFilter,
-    assignedWorkerFilter,
-    jobTypeParam,
+    listFilters,
     refreshNonce,
     t,
   ]);
@@ -533,9 +529,7 @@ export function JobsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -582,7 +576,13 @@ export function JobsPanel() {
         />
       ) : null}
 
-      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
+      <SurfaceShell
+        className={cn(
+          listPageSurfaceShellClassName(hideListChrome),
+          // Map view stacks map + unmapped table — allow the shell to scroll.
+          listViewMode === "map" && "overflow-y-auto",
+        )}
+      >
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
         ) : listLoading ? (
@@ -595,7 +595,13 @@ export function JobsPanel() {
               </ListPageCardGrid>
             </div>
           ) : listViewMode === "map" ? (
-            <div className="min-h-[min(72vh,640px)] w-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+            <div
+              className="flex min-h-[min(72vh,640px)] w-full flex-col items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800"
+              aria-busy="true"
+            >
+              <div className="size-8 animate-spin rounded-full border-2 border-slate-300 border-t-[color:var(--dash-accent,#0f766e)] dark:border-slate-600 dark:border-t-[color:var(--dash-accent,#2dd4bf)]" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t("mapView.loadingMap")}</p>
+            </div>
           ) : (
             <div className="space-y-2 p-6">
               <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -606,7 +612,7 @@ export function JobsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "jobStatus",
+              iconName: "jobs",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,
@@ -722,7 +728,7 @@ export function JobsPanel() {
           />
         )}
 
-        {!listLoading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 && listViewMode !== "map" ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

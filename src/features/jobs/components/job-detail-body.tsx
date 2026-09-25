@@ -571,13 +571,13 @@ export function JobDetailBody({
   const [jobStatuses, setJobStatuses] = React.useState<WorkflowColourStatus[]>([]);
 
   React.useEffect(() => {
-    fetchPinStatusesPage(1, 500, { is_active: true })
+    fetchPinStatusesPage(1, 20, { is_active: true, dropdown: true })
       .then((res) => setPinStatuses(res.items))
       .catch((err) => console.error("Failed to load pin statuses", err));
   }, []);
 
   React.useEffect(() => {
-    fetchJobStatusesPage(1, 500)
+    fetchJobStatusesPage(1, 20, { dropdown: true })
       .then((res) => setJobStatuses(res.items.filter((s) => s.is_active !== false)))
       .catch((err) => console.error("Failed to load job statuses", err));
   }, []);

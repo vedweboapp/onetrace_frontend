@@ -5,7 +5,7 @@ function auditTrailActor(row: AuditTrailEntry): AuditTrailUserRef | null {
   return row.actor ?? row.created_by ?? row.user ?? null;
 }
 
-function auditTrailUserLabel(user: AuditTrailUserRef | null | undefined): string | null {
+export function auditTrailUserLabel(user: AuditTrailUserRef | null | undefined): string | null {
   if (!user) return null;
   const displayName = user.name?.trim();
   if (displayName) return displayName;
@@ -16,6 +16,10 @@ function auditTrailUserLabel(user: AuditTrailUserRef | null | undefined): string
   const email = user.email?.trim();
   if (email) return email;
   return null;
+}
+
+export function auditTrailActorFromEntry(row: AuditTrailEntry): AuditTrailUserRef | null {
+  return auditTrailActor(row);
 }
 
 export function auditTrailActionLabel(row: AuditTrailEntry): string {
@@ -43,7 +47,7 @@ export function formatAuditTrailDescription(raw: string | null | undefined): str
   return text;
 }
 
-function auditTrailPrimaryText(row: AuditTrailEntry): string {
+export function auditTrailPrimaryText(row: AuditTrailEntry): string {
   const direct = formatAuditTrailDescription(
     row.description?.trim() || row.message?.trim() || row.details?.trim() || "",
   );
@@ -57,14 +61,20 @@ function auditTrailPrimaryText(row: AuditTrailEntry): string {
   return "";
 }
 
-function auditTrailOccurredAt(row: AuditTrailEntry): string | null {
+export function auditTrailOccurredAt(row: AuditTrailEntry): string | null {
   return row.created_at?.trim() || row.occurred_at?.trim() || row.timestamp?.trim() || null;
 }
 
-function auditTrailObjectId(row: AuditTrailEntry): number | null {
+export function auditTrailObjectId(row: AuditTrailEntry): number | null {
   const raw = row.object_id ?? row.record_id;
   if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
   return null;
+}
+
+export function auditTrailModuleLabel(row: AuditTrailEntry): string {
+  const raw = row.module?.trim() || row.model_name?.trim() || "";
+  if (!raw) return "";
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function auditTrailDispatchId(row: AuditTrailEntry): number | undefined {
@@ -84,6 +94,68 @@ function auditTrailDispatchId(row: AuditTrailEntry): number | undefined {
   }
 
   return undefined;
+}
+
+export type AuditTrailFieldChange = {
+  field: string;
+  from: string;
+  to: string;
+};
+
+function formatChangeValue(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || "—";
+  }
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/** Normalize API `changes` into rows for the Field changes modal. */
+export function parseAuditTrailFieldChanges(changes: unknown): AuditTrailFieldChange[] {
+  if (changes == null) return [];
+
+  if (Array.isArray(changes)) {
+    const rows: AuditTrailFieldChange[] = [];
+    for (const item of changes) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const field =
+        String(row.field ?? row.name ?? row.key ?? row.attribute ?? "").trim() || "Field";
+      const from = formatChangeValue(row.from ?? row.old ?? row.previous ?? row.before);
+      const to = formatChangeValue(row.to ?? row.new ?? row.next ?? row.after);
+      rows.push({ field, from, to });
+    }
+    return rows;
+  }
+
+  if (typeof changes === "object") {
+    const rows: AuditTrailFieldChange[] = [];
+    for (const [field, value] of Object.entries(changes as Record<string, unknown>)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        const pair = value as Record<string, unknown>;
+        rows.push({
+          field,
+          from: formatChangeValue(pair.from ?? pair.old ?? pair.previous ?? pair.before),
+          to: formatChangeValue(pair.to ?? pair.new ?? pair.next ?? pair.after),
+        });
+      } else {
+        rows.push({ field, from: "—", to: formatChangeValue(value) });
+      }
+    }
+    return rows;
+  }
+
+  return [];
+}
+
+export function auditTrailHasFieldChanges(row: AuditTrailEntry): boolean {
+  return parseAuditTrailFieldChanges(row.changes).length > 0;
 }
 
 /** Map audit-trail API rows into material-request timeline entries. */

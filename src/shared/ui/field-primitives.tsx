@@ -26,10 +26,10 @@ export const fieldControlClassName = "field-control";
 /** Multi-value / wrapping triggers (chips) — must not use fixed control height. */
 export const fieldControlGrowClassName = "field-control field-control--grow";
 
-/** Multiline fields: no fixed height; caret and text start at the top. */
+/** Multiline fields: no fixed height; caret and text start at the top with room from the border. */
 export const surfaceTextareaClassName = cn(
   surfaceInputClassName,
-  "h-auto min-h-[5rem] resize-y py-2 leading-relaxed [field-sizing:content]",
+  "h-auto min-h-[5rem] resize-y px-3.5 py-2.5 leading-relaxed [field-sizing:content]",
 );
 
 export const surfaceSelectClassName = cn(

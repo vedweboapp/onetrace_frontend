@@ -167,9 +167,9 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     (async () => {
       try {
         const [clientsRes, sitesRes, tagsRes] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500),
-          fetchTagsPage(1, 500, { is_active: true }),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchSitesPage(1, 20, { dropdown: true }),
+          fetchTagsPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (!cancelled) {
           setClientOptions(clientsRes.items.map((c) => ({ value: String(c.id), label: c.name })));
@@ -326,7 +326,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
-                iconName: "clients",
+                iconName: "quotations",
                 title: t("emptyTitle"),
                 description: t("emptyDescription"),
                 action: null,

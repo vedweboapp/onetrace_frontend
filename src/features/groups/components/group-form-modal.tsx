@@ -120,7 +120,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     (async () => {
       setCompositeLoadError(null);
       try {
-        const { items } = await fetchCompositeItemsPage(1, 500);
+        const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
         if (!cancelled) setCompositeOptions(items);
       } catch {
         if (!cancelled) setCompositeLoadError(t("compositeLoadError"));

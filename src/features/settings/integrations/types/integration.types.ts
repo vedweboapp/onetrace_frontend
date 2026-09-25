@@ -147,3 +147,60 @@ export type ZohoMappingRow = {
   /** Required SimHo fields seeded from the catalog — field cannot be cleared. */
   required?: boolean;
 };
+
+export type ZohoSyncHistoryDetailsType = "sync_job" | "event_log" | string;
+
+export type ZohoSyncHistorySyncJobDetails = {
+  id: number;
+  resource?: string | null;
+  mode?: string | null;
+  status?: string | null;
+  processed_count?: number | null;
+  created_count?: number | null;
+  updated_count?: number | null;
+  restored_count?: number | null;
+  skipped_count?: number | null;
+  error?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  duration?: string | number | null;
+  retry_record_count?: number | null;
+};
+
+export type ZohoSyncHistoryEventLogDetails = {
+  status?: string | null;
+  error?: string | null;
+  retry_count?: number | null;
+  payload?: Record<string, unknown> | null;
+};
+
+export type ZohoSyncHistoryErrorRow = {
+  message?: string | null;
+  reason?: string | null;
+  error_message?: string | null;
+  record_id?: string | number | null;
+  resource?: string | null;
+  resolved_at?: string | null;
+  resolved_by_job_id?: number | null;
+  created_at?: string | null;
+  [key: string]: unknown;
+};
+
+export type ZohoSyncHistoryEntry = {
+  id: number;
+  provider?: string | null;
+  resource?: string | null;
+  event_type?: string | null;
+  created_at: string;
+  details_type: ZohoSyncHistoryDetailsType;
+  details: ZohoSyncHistorySyncJobDetails | ZohoSyncHistoryEventLogDetails | Record<string, unknown> | null;
+  failed_record_count?: number | null;
+  errors?: ZohoSyncHistoryErrorRow[] | null;
+};
+
+export type ZohoSyncHistoryPage = {
+  items: ZohoSyncHistoryEntry[];
+  count: number;
+  limit: number;
+  offset: number;
+};

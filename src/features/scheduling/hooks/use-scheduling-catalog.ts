@@ -42,7 +42,7 @@ export type SchedulingCatalog = {
 type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "userGroups">;
 
 /** Bump when filter/technician shape changes so in-memory caches reset. */
-const CATALOG_VERSION = 6;
+const CATALOG_VERSION = 8;
 let techniciansCacheVersion = 0;
 let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
@@ -121,7 +121,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
 
   const run = (async () => {
     await Promise.all([
-      fetchClientsPage(1, 500, { is_active: true }, { silent: true })
+      fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true })
         .then((res) => {
           publish({
             clients: res.items.map((c) => ({ id: c.id, name: c.name })),
@@ -130,7 +130,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
         .catch(() => {
           if (partial.clients.length === 0) publish({ clients: [] });
         }),
-      fetchJobsPage(1, 500, { is_active: true }, { silent: true })
+      fetchJobsPage(1, 20, { is_active: true, dropdown: true }, { silent: true })
         .then((res) => {
           publish({
             jobs: res.items.map((job) => ({
@@ -144,7 +144,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
         .catch(() => {
           if (partial.jobs.length === 0) publish({ jobs: [] });
         }),
-      fetchProjectsPage(1, 500, { is_active: true })
+      fetchProjectsPage(1, 20, { is_active: true, dropdown: true })
         .then((res) => {
           publish({
             projects: res.items.map((p) => ({
@@ -157,7 +157,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
         .catch(() => {
           if (partial.projects.length === 0) publish({ projects: [] });
         }),
-      fetchUserGroupsPage(1, 100)
+      fetchUserGroupsPage(1, 20, { dropdown: true, fetchAllPages: true })
         .then((groupsRes) => {
           publish({
             userGroups: Array.isArray(groupsRes.items) ? groupsRes.items : [],
@@ -279,7 +279,7 @@ export function useSchedulingCatalog(
 
 export async function loadUnassignedJobsForClient(clientId: number): Promise<Job[]> {
   if (jobsByClientCache.has(clientId)) return jobsByClientCache.get(clientId)!;
-  const { items } = await fetchJobsPage(1, 500, { client: clientId, is_active: true }, { silent: true });
+  const { items } = await fetchJobsPage(1, 20, { client: clientId, is_active: true, dropdown: true }, { silent: true });
   const scoped = items.filter((job) => getJobClientId(job.client) === clientId);
   jobsByClientCache.set(clientId, scoped);
   return scoped;

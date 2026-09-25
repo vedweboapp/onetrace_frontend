@@ -65,7 +65,7 @@ export function VendorDetailBody({
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchVendorTypesPage(1, 200, { is_active: true });
+        const { items } = await fetchVendorTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setVendorTypeOptions(items.map((row) => ({ value: String(row.id), label: row.name?.trim() || `#${row.id}` })));
         }

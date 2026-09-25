@@ -45,12 +45,7 @@ export function MaterialRequestAddJobsModal({
       setLoading(true);
       setLoadError(null);
       try {
-        const { items } = await fetchJobsPage(
-          1,
-          500,
-          { is_active: true, assigned_worker: workerId },
-          { silent: true },
-        );
+        const { items } = await fetchJobsPage(1, 20, { is_active: true, assigned_worker: workerId, dropdown: true }, { silent: true });
         if (cancelled) return;
         setJobOptions(
           items.map((job) => ({

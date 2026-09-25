@@ -246,8 +246,6 @@ export function WorkerFormsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={t("searchPlaceholder")}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -291,7 +289,7 @@ export function WorkerFormsPanel() {
           <ListPageEmptyStates
             emptyStateKind={items.length === 0 ? emptyStateKind : "filtered"}
             onboarding={{
-              iconName: "default",
+              iconName: "forms",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
             }}

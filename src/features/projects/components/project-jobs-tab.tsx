@@ -208,7 +208,7 @@ export function ProjectJobsTab({ projectId }: Props) {
       try {
         const [workers, statuses] = await Promise.all([
           loadTechnicianOptions(),
-          fetchJobStatusesPage(1, 500),
+          fetchJobStatusesPage(1, 20, { dropdown: true }),
         ]);
         if (cancelled) return;
 
@@ -243,9 +243,9 @@ export function ProjectJobsTab({ projectId }: Props) {
     (async () => {
       try {
         const [clients, projects, sites] = await Promise.all([
-          fetchClientsPage(1, 500, { is_active: true }, { silent: true }),
-          fetchProjectsPage(1, 500, { is_active: true }),
-          fetchSitesPage(1, 500),
+          fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true }),
+          fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
+          fetchSitesPage(1, 20, { dropdown: true }),
         ]);
         if (cancelled) return;
 
@@ -532,7 +532,7 @@ export function ProjectJobsTab({ projectId }: Props) {
             <ListPageEmptyStates
               emptyStateKind={emptyStateKind}
               onboarding={{
-                iconName: "jobStatus",
+                iconName: "jobs",
                 title: t("emptyTitle"),
                 description: t("emptyDescription"),
                 action: null,

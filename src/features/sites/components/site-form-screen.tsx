@@ -92,7 +92,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
 
   const reloadClients = React.useCallback(async () => {
     try {
-      const { items } = await fetchClientsPage(1, 500, { is_active: true });
+      const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
       setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
@@ -326,6 +326,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
               trailing={
                 <SiteContactPersonsFields
                   control={control}
+                  setValue={setValue}
                   errors={errors}
                   disabled={saving}
                   pendingContactRowRef={pendingContactRowRef}

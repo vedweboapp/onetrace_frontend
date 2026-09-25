@@ -123,8 +123,8 @@ export function CompositeItemsPanel() {
     (async () => {
       try {
         const [groupsRes, typesRes] = await Promise.all([
-          fetchGroupsPage(1, 500),
-          fetchInstallationTypesPage(1, 500, { is_active: true }),
+          fetchGroupsPage(1, 20, { dropdown: true }),
+          fetchInstallationTypesPage(1, 20, { is_active: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setGroupOptions(groupsRes.items.map((g) => ({ value: String(g.id), label: g.name })));
@@ -323,9 +323,7 @@ export function CompositeItemsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
             </div>

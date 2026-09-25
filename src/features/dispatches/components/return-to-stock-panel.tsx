@@ -178,7 +178,7 @@ export function ReturnToStockPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: dispatches } = await fetchDispatchesPage(1, 500);
+        const { items: dispatches } = await fetchDispatchesPage(1, 20, { dropdown: true });
         if (cancelled) return;
         const seen = new Set<number>();
         const options: { value: string; label: string }[] = [];
@@ -342,9 +342,7 @@ export function ReturnToStockPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
-                placeholder={t("return.searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -469,7 +467,7 @@ export function ReturnToStockPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "items",
+              iconName: "returnToStock",
               title: t("return.emptyListTitle"),
               description: t("return.emptyListDescription"),
               action: (

@@ -91,7 +91,7 @@ export function VendorsPanel() {
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   const loadTypeOptions = React.useCallback(async () => {
-    const { items: types } = await fetchVendorTypesPage(1, 200, { is_active: true });
+    const { items: types } = await fetchVendorTypesPage(1, 20, { is_active: true, dropdown: true });
     return types.map((row) => ({ value: String(row.id), label: row.name }));
   }, []);
 
@@ -285,9 +285,7 @@ export function VendorsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
             </div>
@@ -326,7 +324,7 @@ export function VendorsPanel() {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "clients",
+              iconName: "vendors",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,

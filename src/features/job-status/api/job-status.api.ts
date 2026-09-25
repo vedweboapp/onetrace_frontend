@@ -5,6 +5,7 @@ const jobStatusApi = createWorkflowColourStatusApi(JOB_STATUS_PATHS);
 
 export type JobStatusListFilters = {
   search?: string;
+  dropdown?: boolean;
 };
 
 export const fetchJobStatusesPage = jobStatusApi.fetchPage;

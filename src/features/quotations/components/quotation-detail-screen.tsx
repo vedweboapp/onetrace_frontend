@@ -4,6 +4,8 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
@@ -38,10 +40,11 @@ import {
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
+import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { AppButton } from "@/shared/ui";
+import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 type Props = {
@@ -50,6 +53,7 @@ type Props = {
 
 export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
@@ -61,9 +65,18 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const [detailForSite, setDetailForSite] = React.useState<QuotationDetail | null>(null);
   const [contactOptions, setContactOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [salespersonOptions, setSalespersonOptions] = React.useState<CheckmarkSelectOption[]>([]);
+  const [activeTab, setActiveTab] = React.useState("details");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: tAudit("tabDetails") },
+      { id: "timeline", label: tAudit("tabTimeline") },
+    ],
+    [tAudit],
+  );
 
   /** Keep header/sidebar quote category in sync when opening detail without `?quote_category=`. */
   React.useEffect(() => {
@@ -80,7 +93,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: clients } = await fetchClientsPage(1, 500);
+        const { items: clients } = await fetchClientsPage(1, 20, { dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of clients) mapped[row.id] = row.name;
@@ -102,7 +115,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       try {
         const filters: { is_active?: boolean; client?: number } = { is_active: true };
         if (customerId && customerId > 0) filters.client = customerId;
-        const { items: projects } = await fetchProjectsPage(1, 500, filters);
+        const { items: projects } = await fetchProjectsPage(1, 20, { ...filters, dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of projects) mapped[row.id] = row.name;
@@ -196,7 +209,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 500, { client: customerId, is_active: true });
+        const { items } = await fetchContactsPage(1, 20, { client: customerId, is_active: true, dropdown: true });
         if (!cancelled) {
           setContactOptions(
             items.map((c) => ({
@@ -218,7 +231,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items: tags } = await fetchTagsPage(1, 500, { is_active: true });
+        const { items: tags } = await fetchTagsPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           const mapped: Record<number, string> = {};
           for (const row of tags) {
@@ -281,6 +294,16 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
+      headerExtension={
+        <AppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          ariaLabel={tAudit("tabTimeline")}
+          panelIdPrefix="quotation-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, listBack, retry, reloadQuiet }) => (
         <QuotationDetailActions
           quotationId={quotationId}
@@ -293,6 +316,23 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       )}
     >
       {({ detail, dateFmt, retry }) => {
+        if (activeTab === "timeline") {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-timeline"
+              aria-labelledby="quotation-detail-tab-trigger-timeline"
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAuditTimeline
+                module={AUDIT_TRAIL_MODULES.quotation}
+                objectId={detail.id}
+                dateFmt={dateFmt}
+              />
+            </div>
+          );
+        }
+
         const customerIdForLookup = getQuotationCustomerId(detail.customer);
         const projectIdForLookup = getQuotationProjectId(detail.project);
         const clientOptions = Object.entries(clientNames).map(([id, name]) => ({
@@ -312,24 +352,31 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           label: name,
         }));
         return (
-          <QuotationDetailBody
-            detail={detail}
-            customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
-            projectName={projectIdForLookup != null ? projectNames[projectIdForLookup] : undefined}
-            siteNames={siteNames}
-            tagLookup={tagNames}
-            siteDetails={siteDetails}
-            siteDetailsLoading={siteDetailsLoading}
-            dateFmt={dateFmt}
-            dueFmt={dueFmt}
-            onSaved={retry}
-            clientOptions={clientOptions}
-            projectOptions={projectOptions}
-            siteOptions={siteOptions}
-            tagOptions={tagOptions}
-            contactOptions={contactOptions}
-            salespersonOptions={salespersonOptions}
-          />
+          <div
+            role="tabpanel"
+            id="quotation-detail-tab-details"
+            aria-labelledby="quotation-detail-tab-trigger-details"
+            className={entityDetailTabPanelClassName}
+          >
+            <QuotationDetailBody
+              detail={detail}
+              customerName={customerIdForLookup != null ? clientNames[customerIdForLookup] : undefined}
+              projectName={projectIdForLookup != null ? projectNames[projectIdForLookup] : undefined}
+              siteNames={siteNames}
+              tagLookup={tagNames}
+              siteDetails={siteDetails}
+              siteDetailsLoading={siteDetailsLoading}
+              dateFmt={dateFmt}
+              dueFmt={dueFmt}
+              onSaved={retry}
+              clientOptions={clientOptions}
+              projectOptions={projectOptions}
+              siteOptions={siteOptions}
+              tagOptions={tagOptions}
+              contactOptions={contactOptions}
+              salespersonOptions={salespersonOptions}
+            />
+          </div>
         );
       }}
     </EntityDetailScreen>

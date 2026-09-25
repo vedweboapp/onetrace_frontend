@@ -94,7 +94,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const itemQuickCreate = useQuickCreate({ kind: "item" });
   const reloadItemOptions = React.useCallback(async () => {
     try {
-      const itemsRes = await fetchItemsPage(1, 500, { isActive: true });
+      const itemsRes = await fetchItemsPage(1, 20, { isActive: true, dropdown: true });
       const options = itemsRes.items.map((item) => ({
         value: String(item.id),
         label: item.name?.trim() || item.sku?.trim() || `#${item.id}`,
@@ -125,7 +125,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
       try {
         const [row, itemsRes] = await Promise.all([
           fetchMaterialRequest(materialRequestId),
-          fetchItemsPage(1, 500, { isActive: true }),
+          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (cancelled) return;
         setDetail(row);

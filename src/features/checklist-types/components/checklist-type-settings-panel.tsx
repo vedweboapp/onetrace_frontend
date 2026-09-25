@@ -47,7 +47,7 @@ import {
 } from "@/shared/hooks/use-list-url-state";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
-  applySequencesToItems,
+  applyFullListSequences,
   checklistSequenceUpdates,
 } from "@/features/checklist-types/utils/checklist-type-sequence.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -181,9 +181,7 @@ export function ChecklistTypeSettingsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { items: projectTypes } = await fetchProjectTypesPage(1, 500, {
-          is_active: true,
-        });
+        const { items: projectTypes } = await fetchProjectTypesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectTypeOptions(
             projectTypes.map((pt) => ({
@@ -211,6 +209,8 @@ export function ChecklistTypeSettingsPanel() {
           await fetchChecklistTypesPage(page, pageSize, {
             search: search || undefined,
             project_type: projectTypeFilter,
+            // Full list for drag-reorder (follows dropdown pages).
+            dropdown: true,
           });
         if (!cancelled) {
           setItems(nextItems);
@@ -305,7 +305,7 @@ function openCreate() {
         return;
       const prev = items;
       const reordered = reorderArray(items, fromIndex, toIndex);
-      const withSequences = applySequencesToItems(reordered, page, pageSize);
+      const withSequences = applyFullListSequences(reordered);
       const updates = checklistSequenceUpdates(prev, withSequences);
       if (updates.length === 0) return;
 
@@ -327,7 +327,7 @@ function openCreate() {
         setDragFromIndex(null);
       }
     },
-    [items, page, pageSize, reordering, t],
+    [items, reordering, t],
   );
 
 
@@ -467,8 +467,7 @@ if (editing && initialValues) {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={t("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
+
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -516,7 +515,7 @@ if (editing && initialValues) {
           <ListPageEmptyStates
             emptyStateKind={emptyStateKind}
             onboarding={{
-              iconName: "projects",
+              iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
               action: <AddButton type="button" onClick={openCreate} />,
@@ -534,7 +533,7 @@ if (editing && initialValues) {
             }
           />
         ) : listViewMode === "list" ? (
-          <div className="p-4 sm:p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
               {t("reorderHint")}
             </p>
@@ -608,35 +607,37 @@ if (editing && initialValues) {
             </ListPageCardGrid>
           </div>
         ) : (
-          <div className="p-4 sm:p-6">
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 sm:p-6">
+            <p className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
               {t("reorderHint")}
             </p>
-            <ChecklistTypeSortableTable
-              items={items}
-              reordering={reordering}
-              dragFromIndex={dragFromIndex}
-              onDragFromIndexChange={setDragFromIndex}
-              onReorder={(from, to) => void handleReorder(from, to)}
-              onRowClick={(row) => setDetailRow(row)}
-              formatCreated={formatCreatedCell}
-              labels={{
-                sequence: t("table.sequence"),
-                title: t("table.title"),
-                projectType: t("table.projectType"),
-                required: t("table.required"),
-                requiredYes: t("required.yes"),
-                requiredNo: t("required.no"),
-                status: t("table.status"),
-                active: t("status.active"),
-                inactive: t("status.inactive"),
-                created: t("table.created"),
-              }}
-            />
+            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <ChecklistTypeSortableTable
+                items={items}
+                reordering={reordering}
+                dragFromIndex={dragFromIndex}
+                onDragFromIndexChange={setDragFromIndex}
+                onReorder={(from, to) => void handleReorder(from, to)}
+                onRowClick={(row) => setDetailRow(row)}
+                formatCreated={formatCreatedCell}
+                labels={{
+                  sequence: t("table.sequence"),
+                  title: t("table.title"),
+                  projectType: t("table.projectType"),
+                  required: t("table.required"),
+                  requiredYes: t("required.yes"),
+                  requiredNo: t("required.no"),
+                  status: t("table.status"),
+                  active: t("status.active"),
+                  inactive: t("status.inactive"),
+                  created: t("table.created"),
+                }}
+              />
+            </div>
           </div>
         )}
 
-        {!listLoading && !loadError && items.length > 0 ? (
+        {!listLoading && !loadError && items.length > 0 && pagination.total_pages > 1 ? (
           <DataTablePaginationBar
             pagination={pagination}
             summary={t("pageLabel", {

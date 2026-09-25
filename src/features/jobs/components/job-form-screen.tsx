@@ -229,7 +229,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   const reloadClients = React.useCallback(async () => {
     try {
-      const { items } = await fetchClientsPage(1, 500, { is_active: true }, { silent: true });
+      const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true });
       setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
     } catch {
       setClientOptions([]);
@@ -248,11 +248,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
     try {
       setChecklistLoading(true);
-      const response = await fetchChecklistTypesPage(1, 100, {
-        is_active: true,
+      const response = await fetchChecklistTypesPage(1, 20, { is_active: true,
         project_type: isProjectJob ? projectTypeId ?? undefined : undefined,
-        search: searchTerm || undefined,
-      });
+        search: searchTerm || undefined, dropdown: true });
       setChecklistOptions((prev) => {
         const byValue = new Map(isProjectJob ? [] : prev.map((opt) => [opt.value, opt]));
         for (const item of response.items) {
@@ -284,10 +282,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchProjectsPage(1, 500, {
-        client: clientId,
-        search: searchTerm || undefined,
-      });
+      const { items } = await fetchProjectsPage(1, 20, { client: clientId,
+        search: searchTerm || undefined, dropdown: true });
       setProjectOptions((prev) => {
         const byValue = new Map(prev.map((opt) => [opt.value, opt]));
         for (const p of items) {
@@ -313,7 +309,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 500, { client: clientId });
+      const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
       setSiteOptions([]);
@@ -329,7 +325,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 500, { search: searchTerm || undefined }, { silent: true });
+      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true }, { silent: true });
       setFormOptions((prev) => {
         const byValue = new Map(prev.map((opt) => [opt.value, opt]));
         for (const f of items) {
@@ -354,7 +350,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
-      const [groups, items] = await Promise.all([fetchGroupsPage(1, 500), fetchItemsPage(1, 500, { isActive: true })]);
+      const [groups, items] = await Promise.all([fetchGroupsPage(1, 20, { dropdown: true }), fetchItemsPage(1, 20, { isActive: true, dropdown: true })]);
       setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
       setItemOptions(
         items.items.map((it) => ({
@@ -423,7 +419,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     (async () => {
       try {
         const [statuses] = await Promise.all([
-          fetchJobStatusesPage(1, 500),
+          fetchJobStatusesPage(1, 20, { dropdown: true }),
         ]);
         if (!cancelled) {
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
