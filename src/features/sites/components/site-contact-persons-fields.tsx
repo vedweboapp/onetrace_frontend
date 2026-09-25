@@ -3,18 +3,27 @@
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Controller, useFieldArray, useWatch, type Control, type FieldErrors } from "react-hook-form";
+import {
+  Controller,
+  useFieldArray,
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
+import { TitleFormModal } from "@/features/titles/components/title-form-modal";
 import type { Title } from "@/features/titles/types/title.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
-import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { AppButton, CheckmarkSelect, FieldErrorSlot, FieldErrorText } from "@/shared/ui";
 
 type Props = {
   control: Control<SiteFormValues>;
+  setValue: UseFormSetValue<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
   pendingContactRowRef: React.MutableRefObject<number | null>;
@@ -24,6 +33,7 @@ type Props = {
 
 export function SiteContactPersonsFields({
   control,
+  setValue,
   errors,
   disabled,
   pendingContactRowRef,
@@ -31,12 +41,15 @@ export function SiteContactPersonsFields({
   getFormDraft,
 }: Props) {
   const t = useTranslations("Dashboard.sites");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const clientValue = useWatch({ control, name: "client" });
   const clientId =
     clientValue && /^\d+$/.test(clientValue) ? Number.parseInt(clientValue, 10) : undefined;
 
   const [contactOptions, setContactOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [loadingContacts, setLoadingContacts] = React.useState(false);
+  const [titleModalOpen, setTitleModalOpen] = React.useState(false);
+  const pendingTitleRowRef = React.useRef<number | null>(null);
 
   const reloadContacts = React.useCallback(async () => {
     if (!clientId || clientId <= 0) {
@@ -71,9 +84,7 @@ export function SiteContactPersonsFields({
     void (async () => {
       try {
         const { items } = await fetchTitlesPage(1, 20, { dropdown: true });
-        if (!cancelled) {
-          setTitles(items);
-        }
+        if (!cancelled) setTitles(items);
       } catch {
         if (!cancelled) setTitles([]);
       }
@@ -147,8 +158,31 @@ export function SiteContactPersonsFields({
     getFormDraft,
   });
 
+  const titleQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setTitleModalOpen(true),
+    addLabel: tQuick("add.title"),
+    addDisabled: disabled,
+  });
+
   function addRow() {
     append({ title: "", contact: "" });
+  }
+
+  function handleTitleCreated(row: Title) {
+    setTitles((prev) => {
+      if (prev.some((item) => item.id === row.id)) {
+        return prev.map((item) => (item.id === row.id ? row : item));
+      }
+      return [...prev, row];
+    });
+    const rowIndex = pendingTitleRowRef.current;
+    pendingTitleRowRef.current = null;
+    if (rowIndex != null && rowIndex >= 0) {
+      setValue(`contacts.${rowIndex}.title`, String(row.id), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
   }
 
   return (
@@ -213,6 +247,16 @@ export function SiteContactPersonsFields({
                           className="w-full min-w-0"
                           onBlur={titleField.onBlur}
                           onChange={titleField.onChange}
+                          onAdd={
+                            titleQuickAdd.onAdd
+                              ? () => {
+                                  pendingTitleRowRef.current = index;
+                                  titleQuickAdd.onAdd?.();
+                                }
+                              : undefined
+                          }
+                          addAriaLabel={titleQuickAdd.addAriaLabel}
+                          addLabel={titleQuickAdd.addLabel}
                         />
                       )}
                     />
@@ -289,6 +333,15 @@ export function SiteContactPersonsFields({
           </AppButton>
         </div>
       ) : null}
+
+      <TitleFormModal
+        open={titleModalOpen}
+        onClose={() => {
+          setTitleModalOpen(false);
+          pendingTitleRowRef.current = null;
+        }}
+        onSaved={handleTitleCreated}
+      />
     </section>
   );
 }

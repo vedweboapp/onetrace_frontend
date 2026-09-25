@@ -31,6 +31,7 @@ import {
   sortFieldsInGroup,
 } from "@/features/settings/integrations/utils/zoho-key-mapping.util";
 import { routes } from "@/shared/config/routes";
+import { buildZohoConnectionTabUrl } from "@/features/settings/integrations/utils/zoho-callback-url.util";
 import {
   toastError,
   toastSuccess,
@@ -46,21 +47,43 @@ import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 
 const MAPPING_ROW_GRID =
   "grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)_2.5rem] lg:items-center";
-const SYNC_POLL_MS = 2500;
+/** Poll historical sync status every 7 seconds (was ~2.5s). */
+const SYNC_POLL_MS = 7000;
 
+/** Only active pipeline statuses — stop polling for anything else (succeeded, partial, rejected, …). */
 function isSyncJobInProgress(status: string | undefined): boolean {
   const value = (status ?? "").toLowerCase();
-  return value !== "" && !["succeeded", "success", "completed", "failed", "error", "cancelled"].includes(value);
+  return ["queued", "pending", "running", "processing", "in_progress"].includes(value);
 }
 
 function isSyncJobFailed(status: string | undefined): boolean {
   const value = (status ?? "").toLowerCase();
-  return value === "failed" || value === "error";
+  return (
+    value === "failed" ||
+    value === "error" ||
+    value === "rejected" ||
+    value === "cancelled" ||
+    value === "canceled"
+  );
 }
 
 function isSyncJobSucceeded(status: string | undefined): boolean {
   const value = (status ?? "").toLowerCase();
   return value === "succeeded" || value === "success" || value === "completed";
+}
+
+function isSyncJobPartial(status: string | undefined): boolean {
+  const value = (status ?? "").toLowerCase();
+  return (
+    value === "partially_succeeded" ||
+    value === "partial_success" ||
+    value === "completed_with_errors" ||
+    value.includes("partial")
+  );
+}
+
+function isSyncJobTerminal(status: string | undefined): boolean {
+  return Boolean(status?.trim()) && !isSyncJobInProgress(status);
 }
 
 function syncStatusBadgeClass(status: string | undefined): string {
@@ -73,6 +96,9 @@ function syncStatusBadgeClass(status: string | undefined): string {
   }
   if (isSyncJobSucceeded(value)) {
     return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200";
+  }
+  if (isSyncJobPartial(value)) {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100";
   }
   if (isSyncJobFailed(value)) {
     return "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200";
@@ -125,7 +151,7 @@ function inferZohoGroupByInternal(
 
 export type ZohoKeyMappingFormProps = {
   resource?: ZohoResource;
-  onSaveSuccess?: () => void;
+  onSaveSuccess?: (resource: ZohoResource) => void;
   onCancel?: () => void;
   showCancelButton?: boolean;
 };
@@ -255,7 +281,7 @@ export function ZohoKeyMappingForm({
       toastSuccess(result.message ?? t("saved"));
       setMappingSaved(true);
       if (onSaveSuccess) {
-        onSaveSuccess();
+        onSaveSuccess(resource);
       } else {
         router.replace(routes.dashboard.settingsZohoConnection);
       }
@@ -289,16 +315,21 @@ export function ZohoKeyMappingForm({
       try {
         const result = await fetchZohoSyncJobStatus(jobId);
         setSyncJob(result.job);
+        if (!isSyncJobTerminal(result.job.status)) return;
+
+        stopSyncPolling();
+        setPullingHistoricalData(false);
+        await refreshSyncMeta();
+
         if (isSyncJobSucceeded(result.job.status)) {
-          stopSyncPolling();
-          setPullingHistoricalData(false);
           toastSuccess(t("pullSyncComplete"));
-          await refreshSyncMeta();
+          return;
+        }
+        if (isSyncJobPartial(result.job.status)) {
+          toastSuccess(t("pullSyncPartialComplete"));
           return;
         }
         if (isSyncJobFailed(result.job.status)) {
-          stopSyncPolling();
-          setPullingHistoricalData(false);
           toastError(result.job.error?.trim() || t("pullSyncFailed"));
         }
       } catch (error) {
@@ -321,14 +352,12 @@ export function ZohoKeyMappingForm({
       const result = await pullZohoHistoricalRecords(resource, mode);
       setSyncJob(result.job);
       toastSuccess(result.message ?? t("pullHistoricalDataSuccess"));
-      if (isSyncJobSucceeded(result.job.status)) {
+      if (isSyncJobTerminal(result.job.status)) {
         setPullingHistoricalData(false);
         await refreshSyncMeta();
-        return;
-      }
-      if (isSyncJobFailed(result.job.status)) {
-        setPullingHistoricalData(false);
-        toastError(result.job.error?.trim() || t("pullSyncFailed"));
+        if (isSyncJobFailed(result.job.status)) {
+          toastError(result.job.error?.trim() || t("pullSyncFailed"));
+        }
         return;
       }
       pollTimerRef.current = setInterval(() => {
@@ -344,10 +373,17 @@ export function ZohoKeyMappingForm({
   function syncStatusLabel(status: string): string {
     const value = status.toLowerCase();
     if (value === "queued" || value === "pending") return t("pullSyncStatusQueued");
-    if (value === "running" || value === "processing" || value === "in_progress") return t("pullSyncStatusRunning");
+    if (value === "running" || value === "processing" || value === "in_progress") {
+      return t("pullSyncStatusRunning");
+    }
     if (isSyncJobSucceeded(value)) return t("pullSyncStatusSucceeded");
+    if (isSyncJobPartial(value)) return t("pullSyncStatusPartial");
     if (isSyncJobFailed(value)) return t("pullSyncStatusFailed");
     return status;
+  }
+
+  function goToSyncHistory() {
+    router.replace(buildZohoConnectionTabUrl("history"), { scroll: false });
   }
 
   function handleCancel() {
@@ -583,31 +619,42 @@ export function ZohoKeyMappingForm({
                 <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                   {t("pullHistoricalDataDescription")}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-slate-700 dark:text-slate-300">
                   <span>{t("pullFullSyncCount", { count: fullSyncCount ?? 0 })}</span>
                   <span>
                     {lastSyncedAt
                       ? t("pullLastSynced", { datetime: formatFlexibleApiDate(lastSyncedAt, dateFmt) })
                       : t("pullLastSyncedNever")}
                   </span>
+                  <button
+                    type="button"
+                    className="font-semibold text-[color:var(--dash-accent,#111111)] underline-offset-2 hover:underline"
+                    onClick={goToSyncHistory}
+                  >
+                    {t("viewHistory")}
+                  </button>
                 </div>
               </div>
-              {pullingHistoricalData || isSyncJobInProgress(syncJob?.status) ? (
-                <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950 sm:max-w-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-slate-900 dark:text-slate-100">{t("pullSyncInProgress")}</p>
-                    {syncJob?.status ? (
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                          syncStatusBadgeClass(syncJob.status),
-                        )}
-                      >
-                        {syncStatusLabel(syncJob.status)}
-                      </span>
-                    ) : null}
-                  </div>
-                  {syncJob ? (
+              <div className="flex min-w-0 flex-col items-stretch gap-2 sm:max-w-sm sm:items-end">
+                {syncJob ? (
+                  <div className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-slate-900 dark:text-slate-100">
+                        {isSyncJobInProgress(syncJob.status) || pullingHistoricalData
+                          ? t("pullSyncInProgress")
+                          : t("pullSyncLastResult")}
+                      </p>
+                      {syncJob.status ? (
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                            syncStatusBadgeClass(syncJob.status),
+                          )}
+                        >
+                          {syncStatusLabel(syncJob.status)}
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
                       <span>{t("pullSyncProcessed", { count: syncJob.processed_count })}</span>
                       <span>{t("pullSyncCreated", { count: syncJob.created_count })}</span>
@@ -615,55 +662,46 @@ export function ZohoKeyMappingForm({
                       <span>{t("pullSyncRestored", { count: syncJob.restored_count })}</span>
                       <span>{t("pullSyncSkipped", { count: syncJob.skipped_count })}</span>
                     </div>
-                  ) : null}
-                  {syncJob?.error ? (
-                    <p className="mt-1.5 text-red-600 dark:text-red-400">{syncJob.error}</p>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  {syncJob?.status && (isSyncJobSucceeded(syncJob.status) || isSyncJobFailed(syncJob.status)) ? (
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                        syncStatusBadgeClass(syncJob.status),
-                      )}
-                    >
-                      {syncStatusLabel(syncJob.status)}
-                    </span>
-                  ) : null}
-                  <span
-                    className="inline-flex"
-                    title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullFullSyncHint")}
-                  >
-                    <AppButton
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={saving || !mappingSaved}
-                      onClick={() => void handlePullHistoricalData("full")}
-                    >
-                      {t("pullFullSync")}
-                    </AppButton>
-                  </span>
-                  {(fullSyncCount ?? 0) > 0 ? (
+                    {syncJob.error ? (
+                      <p className="mt-1.5 text-red-600 dark:text-red-400">{syncJob.error}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!pullingHistoricalData && !isSyncJobInProgress(syncJob?.status) ? (
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <span
                       className="inline-flex"
-                      title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullIncrementalSyncHint")}
+                      title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullFullSyncHint")}
                     >
                       <AppButton
                         type="button"
                         variant="secondary"
                         size="sm"
                         disabled={saving || !mappingSaved}
-                        onClick={() => void handlePullHistoricalData("incremental")}
+                        onClick={() => void handlePullHistoricalData("full")}
                       >
-                        {t("pullIncrementalSync")}
+                        {t("pullFullSync")}
                       </AppButton>
                     </span>
-                  ) : null}
-                </div>
-              )}
+                    {(fullSyncCount ?? 0) > 0 ? (
+                      <span
+                        className="inline-flex"
+                        title={!mappingSaved ? t("pullSaveMappingFirst") : t("pullIncrementalSyncHint")}
+                      >
+                        <AppButton
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={saving || !mappingSaved}
+                          onClick={() => void handlePullHistoricalData("incremental")}
+                        >
+                          {t("pullIncrementalSync")}
+                        </AppButton>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -676,6 +714,7 @@ export function ZohoKeyMappingScreen() {
   const tResources = useTranslations("Dashboard.integrations.zohoResources");
   const tConnection = useTranslations("Dashboard.integrations.zohoConnection");
   const searchParams = useSearchParams();
+  const [openResource, setOpenResource] = React.useState<ZohoResource | null>(null);
   const safeBack = React.useMemo(() => {
     const raw = searchParams.get("back");
     if (raw) {
@@ -708,18 +747,23 @@ export function ZohoKeyMappingScreen() {
 
       <SurfaceShell className="rounded-xl">
         <div className="space-y-4 p-4 sm:p-6">
-          {ZOHO_RESOURCES.map((resource, index) => (
+          {ZOHO_RESOURCES.map((resource) => (
             <DetailCollapsibleSection
               key={resource}
               title={tResources(`${resource}.title`)}
-              defaultOpen={index === 0}
+              open={openResource === resource}
+              onOpenChange={(next) => setOpenResource(next ? resource : null)}
               toggleAriaLabel={tResources(`${resource}.toggleSection`)}
               bodyClassName="space-y-4 pt-4"
             >
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {tResources(`${resource}.mappingDescription`)}
               </p>
-              <ZohoKeyMappingForm resource={resource} showCancelButton={false} />
+              <ZohoKeyMappingForm
+                resource={resource}
+                showCancelButton={false}
+                onSaveSuccess={(saved) => setOpenResource(saved)}
+              />
             </DetailCollapsibleSection>
           ))}
         </div>

@@ -252,6 +252,7 @@ export function SiteFormModal({
           trailing={
             <SiteContactPersonsFields
               control={control}
+              setValue={setValue}
               errors={errors}
               disabled={saving}
               pendingContactRowRef={pendingContactRowRef}

@@ -18,7 +18,10 @@ import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
 import { isFieldKeyedApiErrors, getRawApiErrors } from "@/core/errors/api-field-errors.util";
 import { isApiNotFoundError } from "@/core/errors/api-not-found.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
-import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
+import {
+  forceSessionExpiredLogout,
+} from "@/features/auth/utils/auth-redirect.util";
+import { isInvalidAuthTokenError } from "@/features/auth/utils/auth-token-error.util";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 declare module "axios" {
@@ -103,9 +106,14 @@ function rejectIfEnvelopeFailed(
       typeof raw.message === "string" ? raw.message : "Request failed";
     const code =
       typeof raw.error_code === "string" ? raw.error_code : null;
-    return Promise.reject(
-      new ApiBusinessError(msg, { errorCode: code, errors: raw.errors }),
-    );
+    const businessError = new ApiBusinessError(msg, {
+      errorCode: code,
+      errors: raw.errors,
+    });
+    if (typeof window !== "undefined" && isInvalidAuthTokenError(businessError)) {
+      forceSessionExpiredLogout();
+    }
+    return Promise.reject(businessError);
   }
   return response;
 }
@@ -222,6 +230,8 @@ function shouldSuppressApiErrorToast(
   if (isFieldKeyedApiErrors(getRawApiErrors(error))) return true;
   // Detail/list screens render their own not-found UI for missing records.
   if (isApiNotFoundError(error)) return true;
+  // Session expired → redirect to login; do not toast the raw JWT dump.
+  if (isInvalidAuthTokenError(error)) return true;
   if (!axios.isAxiosError(error)) return false;
   if (error.response?.status !== 401) return false;
   const original = error.config as InternalAxiosRequestConfig & {
@@ -268,14 +278,30 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (!original || error.response?.status !== 401 || original._retry) {
+    // Auth login/refresh/logout URLs: expired session → login (no refresh loop).
+    const url = original?.url ?? "";
+    if (original && isAuthNoRetryUrl(url) && isInvalidAuthTokenError(error)) {
+      forceSessionExpiredLogout();
       return Promise.reject(error);
     }
 
-    const url = original.url ?? "";
-    if (isAuthNoRetryUrl(url)) {
-      useAuthStore.getState().clearAuth();
-      navigateToLoginIfBrowser();
+    // Already retried once still unauthorized / invalid token → force logout.
+    if (original?._retry && isInvalidAuthTokenError(error)) {
+      forceSessionExpiredLogout();
+      return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+    const shouldTryRefresh =
+      Boolean(original) &&
+      !original._retry &&
+      !isAuthNoRetryUrl(url) &&
+      (status === 401 || isInvalidAuthTokenError(error));
+
+    if (!shouldTryRefresh) {
+      if (isInvalidAuthTokenError(error)) {
+        forceSessionExpiredLogout();
+      }
       return Promise.reject(error);
     }
 
@@ -284,16 +310,14 @@ api.interceptors.response.use(
     try {
       const newToken = await queueRefresh();
       if (!newToken) {
-        useAuthStore.getState().clearAuth();
-        navigateToLoginIfBrowser();
+        forceSessionExpiredLogout();
         return Promise.reject(error);
       }
       original.headers.Authorization = `Bearer ${newToken}`;
       return api(original);
-    } catch {
-      useAuthStore.getState().clearAuth();
-      navigateToLoginIfBrowser();
-      return Promise.reject(error);
+    } catch (refreshError) {
+      forceSessionExpiredLogout();
+      return Promise.reject(refreshError ?? error);
     }
   },
 );

@@ -273,6 +273,7 @@
         "unitType": "Add Unit Type",
         "installationType": "Add Installation Type",
         "materialStatus": "Add Material Status",
+        "title": "Add Title",
         "user": "Add New User"
       }
     },
@@ -389,6 +390,8 @@
       "jobStatus": "Job Statuses",
       "materialStatus": "Material Statuses",
       "tags": "Tags",
+      "paymentModes": "Payment Modes",
+      "paymentTerms": "Payment Terms",
       "titles": "Titles",
       "projectTypes": "Project Types",
       "installationTypes": "Installation Types",
@@ -459,6 +462,14 @@
           "tags": {
             "title": "Tags",
             "description": "Tags for organizing pins and records."
+          },
+          "paymentModes": {
+            "title": "Payment Modes",
+            "description": "Payment methods such as bank transfer, Google Pay, or remittance."
+          },
+          "paymentTerms": {
+            "title": "Payment Terms",
+            "description": "Net days and discount terms used on invoices and purchase orders."
           },
           "title": {
             "title": "Titles",
@@ -601,11 +612,14 @@
         "pullLastSynced": "Last synced: {datetime}",
         "pullLastSyncedNever": "Last synced: Never",
         "pullSyncInProgress": "Sync in progress…",
+        "pullSyncLastResult": "Last sync result",
         "pullSyncComplete": "Sync completed",
+        "pullSyncPartialComplete": "Sync finished with some skipped or failed records",
         "pullSyncFailed": "Sync failed",
         "pullSyncStatusQueued": "Queued",
         "pullSyncStatusRunning": "Running",
         "pullSyncStatusSucceeded": "Succeeded",
+        "pullSyncStatusPartial": "Partially succeeded",
         "pullSyncStatusFailed": "Failed",
         "pullSyncProcessed": "Processed: {count}",
         "pullSyncCreated": "Created: {count}",
@@ -613,6 +627,7 @@
         "pullSyncRestored": "Restored: {count}",
         "pullSyncSkipped": "Skipped: {count}",
         "pullSyncStatusError": "Failed to check sync status. Please try again.",
+        "viewHistory": "View history",
         "saveMapping": "Save mapping",
         "cancel": "Cancel",
         "loadError": "Failed to load field mapping options. Please try again.",
@@ -731,7 +746,8 @@
           "duration": "Duration",
           "error": "Error",
           "retries": "Retries",
-          "records": "Records"
+          "records": "Records",
+          "recordId": "Record ID"
         }
       },
       "zohoResources": {
@@ -1402,6 +1418,113 @@
       "toggleActiveError": "Could not update unit type status. Try again.",
       "validationName": "Enter a unit name.",
       "validationShortForm": "Enter a unit short form (e.g. kg)."
+    },
+    "paymentModes": {
+      "metaTitle": "Payment Modes",
+      "title": "Payment Modes",
+      "subtitle": "Manage payment methods used on invoices and purchases.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "yes": "Yes",
+      "no": "No",
+      "table": {
+        "name": "Name",
+        "systemName": "System name",
+        "default": "Default",
+        "mandatory": "Mandatory",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last Updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No Payment Modes Yet",
+      "emptyDescription": "Create your first payment mode (e.g. Bank Transfer, Google Pay).",
+      "loadError": "Could not load payment modes. Try again.",
+      "modal": {
+        "createTitle": "New Payment Mode",
+        "editTitle": "Edit Payment Mode",
+        "name": "Name",
+        "namePlaceholder": "e.g. Bank Transfer",
+        "systemName": "System name",
+        "systemNamePlaceholder": "e.g. bank_transfer",
+        "isDefault": "Default payment mode",
+        "isMandatory": "Mandatory",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete This Payment Mode?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} payment modes",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Payment mode updated",
+      "created": "Payment mode created",
+      "deleted": "Payment mode deleted",
+      "validationName": "Enter a payment mode name.",
+      "validationSystemName": "Enter a system name (e.g. bank_transfer)."
+    },
+    "paymentTerms": {
+      "metaTitle": "Payment Terms",
+      "title": "Payment Terms",
+      "subtitle": "Manage net days and discount terms for invoices and purchases.",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "yes": "Yes",
+      "no": "No",
+      "table": {
+        "label": "Label",
+        "days": "Days",
+        "default": "Default",
+        "type": "Type",
+        "discount": "Discount",
+        "discountDueDays": "Discount due days",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Created",
+        "updatedAt": "Last Updated",
+        "byUser": "By {user}"
+      },
+      "emptyTitle": "No Payment Terms Yet",
+      "emptyDescription": "Create your first payment term (e.g. Net 30, Due on Receipt).",
+      "loadError": "Could not load payment terms. Try again.",
+      "modal": {
+        "createTitle": "New Payment Term",
+        "editTitle": "Edit Payment Term",
+        "label": "Label",
+        "labelPlaceholder": "e.g. Net 30",
+        "days": "Payment term days",
+        "discount": "Discount %",
+        "discountDueDays": "Discount due days",
+        "discountDueDaysPlaceholder": "Optional",
+        "type": "Type",
+        "isDefault": "Default payment term",
+        "isSystemTerms": "System term",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete This Payment Term?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} payment terms",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Payment term updated",
+      "created": "Payment term created",
+      "deleted": "Payment term deleted",
+      "validationLabel": "Enter a payment term label.",
+      "validationDays": "Enter payment term days (0 or more).",
+      "validationDiscount": "Enter a valid discount percentage."
     },
     "rejectionReasons": {
       "metaTitle": "Rejection Reasons",
