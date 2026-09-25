@@ -7,6 +7,7 @@ import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { SITE_CONTACT_PERSON_TITLES } from "@/features/sites/constants/site-contact-person.constants";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
+import { TitleFormModal } from "@/features/titles/components/title-form-modal";
 import type { Title } from "@/features/titles/types/title.types";
 import type { Site, SiteContactPersonPayload } from "@/features/sites/types/site.types";
 import {
@@ -17,6 +18,7 @@ import {
 import { DetailEntityLink } from "@/shared/components/entity";
 import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { AppButton, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { ReactNode } from "react";
@@ -75,6 +77,7 @@ export function SiteDetailContactPersonsEditor({
 }: Props) {
   const t = useTranslations("Dashboard.sites");
   const tActions = useTranslations("Dashboard.common.actions");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const clientId =
     typeof detail.client === "number"
       ? detail.client
@@ -87,6 +90,8 @@ export function SiteDetailContactPersonsEditor({
   const [draftRows, setDraftRows] = React.useState<DraftRow[]>([]);
   const [contactOptions, setContactOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [titles, setTitles] = React.useState<Title[]>([]);
+  const [titleModalOpen, setTitleModalOpen] = React.useState(false);
+  const pendingTitleRowRef = React.useRef<number | null>(null);
 
   const displayRows = normalizeSiteContactPersonsFromApi(detail);
 
@@ -164,6 +169,28 @@ export function SiteDetailContactPersonsEditor({
       });
     }
     return list;
+  }
+
+  const titleQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setTitleModalOpen(true),
+    addLabel: tQuick("add.title"),
+    addDisabled: saving || !clientId,
+  });
+
+  function handleTitleCreated(row: Title) {
+    setTitles((prev) => {
+      if (prev.some((item) => item.id === row.id)) {
+        return prev.map((item) => (item.id === row.id ? row : item));
+      }
+      return [...prev, row];
+    });
+    const rowIndex = pendingTitleRowRef.current;
+    pendingTitleRowRef.current = null;
+    if (rowIndex != null && rowIndex >= 0) {
+      setDraftRows((prev) =>
+        prev.map((r, i) => (i === rowIndex ? { ...r, title: String(row.id) } : r)),
+      );
+    }
   }
 
   const contactSelectOptions = React.useMemo(() => {
@@ -329,6 +356,16 @@ export function SiteDetailContactPersonsEditor({
                     prev.map((r, i) => (i === index ? { ...r, title: v } : r)),
                   );
                 }}
+                onAdd={
+                  titleQuickAdd.onAdd
+                    ? () => {
+                        pendingTitleRowRef.current = index;
+                        titleQuickAdd.onAdd?.();
+                      }
+                    : undefined
+                }
+                addAriaLabel={titleQuickAdd.addAriaLabel}
+                addLabel={titleQuickAdd.addLabel}
               />
               <CheckmarkSelect
                 listLabel={t("contactPerson.contactLabel")}
@@ -369,6 +406,14 @@ export function SiteDetailContactPersonsEditor({
           {tActions("add")}
         </button>
       </div>
+      <TitleFormModal
+        open={titleModalOpen}
+        onClose={() => {
+          setTitleModalOpen(false);
+          pendingTitleRowRef.current = null;
+        }}
+        onSaved={handleTitleCreated}
+      />
     </DetailPanelCard>
   );
 }

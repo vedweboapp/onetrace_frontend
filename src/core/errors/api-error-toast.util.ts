@@ -1,5 +1,7 @@
 import { toastError } from "@/shared/feedback/app-toast";
 import { parseApiFailurePayload, resolveApiErrorUserText, isHtmlOrDebugDump, sanitizeApiErrorLine } from "./api-error-text";
+import { isInvalidAuthTokenError } from "@/features/auth/utils/auth-token-error.util";
+import { forceSessionExpiredLogout } from "@/features/auth/utils/auth-redirect.util";
 
 const TOASTED = Symbol("apiErrorToastShown");
 
@@ -14,6 +16,11 @@ export function wasApiErrorToasted(error: unknown): boolean {
 }
 
 export function getApiErrorDisplayMessage(error: unknown, fallback?: string): string {
+  // Expired/invalid token → logout + login; never show raw JWT error on the page.
+  if (isInvalidAuthTokenError(error)) {
+    forceSessionExpiredLogout();
+    return "";
+  }
   const text = resolveApiErrorUserText(parseApiFailurePayload(error)).trim();
   if (text && text !== "Request failed" && !isHtmlOrDebugDump(text)) return text;
   return fallback?.trim() || "Something went wrong. Please try again.";
@@ -25,6 +32,10 @@ export function getApiErrorDisplayMessage(error: unknown, fallback?: string): st
  */
 export function toastApiError(error: unknown, fallback?: string): void {
   if (wasApiErrorToasted(error)) return;
+  if (isInvalidAuthTokenError(error)) {
+    forceSessionExpiredLogout();
+    return;
+  }
 
   const payload = parseApiFailurePayload(error);
   const fromApi = resolveApiErrorUserText(payload);

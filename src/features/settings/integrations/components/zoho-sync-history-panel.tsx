@@ -312,10 +312,10 @@ export function ZohoSyncHistoryPanel() {
                 {selected.details.updated_count != null ? (
                   <DetailRow label={t("fields.updated")} value={String(selected.details.updated_count)} />
                 ) : null}
-                {selected.details.restored_count != null && selected.details.restored_count > 0 ? (
+                {selected.details.restored_count != null ? (
                   <DetailRow label={t("fields.restored")} value={String(selected.details.restored_count)} />
                 ) : null}
-                {selected.details.skipped_count != null && selected.details.skipped_count > 0 ? (
+                {selected.details.skipped_count != null ? (
                   <DetailRow label={t("fields.skipped")} value={String(selected.details.skipped_count)} />
                 ) : null}
                 {selected.details.started_at ? (
@@ -375,18 +375,43 @@ export function ZohoSyncHistoryPanel() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   {t("sections.errors")}
                 </p>
-                <ul className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/50">
+                <ul className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/50">
                   {selected.errors.map((err, index) => {
+                    const recordId =
+                      err.record_id != null && String(err.record_id).trim()
+                        ? String(err.record_id).trim()
+                        : null;
                     const message =
+                      (typeof err.error_message === "string" && err.error_message.trim()) ||
                       (typeof err.message === "string" && err.message.trim()) ||
                       (typeof err.reason === "string" && err.reason.trim()) ||
                       t("unknownError");
                     return (
                       <li
-                        key={`${index}-${message}`}
-                        className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        key={`${index}-${recordId ?? "err"}-${message.slice(0, 32)}`}
+                        className="rounded-md border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-950"
                       >
-                        {message}
+                        {recordId ? (
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            {t("fields.recordId")}
+                          </p>
+                        ) : null}
+                        {recordId ? (
+                          <p className="mt-0.5 break-all font-mono text-xs font-medium text-slate-800 dark:text-slate-200">
+                            {recordId}
+                          </p>
+                        ) : null}
+                        <p
+                          className={cn(
+                            "text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400",
+                            recordId ? "mt-2" : undefined,
+                          )}
+                        >
+                          {t("fields.error")}
+                        </p>
+                        <pre className="mt-0.5 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-slate-50 px-2 py-1.5 font-sans text-sm leading-relaxed text-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                          {message}
+                        </pre>
                       </li>
                     );
                   })}
