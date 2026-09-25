@@ -313,19 +313,6 @@ export const KIOSK_FIELD_TYPES: Record<string, KioskFieldTypeDefinition> = {
         placeholder: "e.g. Please enter any specific preferences",
       },
       {
-        type: "select",
-        label: "Input Type",
-        key: "input_type",
-        options: [
-          { label: "Text", value: "text" },
-          { label: "Number", value: "number" },
-          { label: "Email", value: "email" },
-          { label: "Phone", value: "tel" },
-          { label: "Textarea (Multi-line)", value: "textarea" },
-        ],
-        description: "Choose keyboard and format type for this input",
-      },
-      {
         type: "text",
         label: "Placeholder",
         key: "placeholder",
