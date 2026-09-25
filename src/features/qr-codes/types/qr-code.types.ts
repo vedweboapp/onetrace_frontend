@@ -1,0 +1,100 @@
+export type QrCodeStatus = "assigned" | "not_assigned";
+
+export type QrCodeUserRef = {
+  id: number;
+  email?: string | null;
+  username?: string | null;
+  name?: string | null;
+};
+
+export type QrCodeBatchDetail = {
+  id: number;
+  batch_number: string;
+};
+
+/** Pin nested under `assigned_to_detail` when a QR is assigned. */
+export type QrCodeAssignedPinRef = {
+  id: number;
+  name?: string | null;
+  plot_id?: number | null;
+};
+
+/** Job nested under `assigned_to_detail` when a QR is assigned. */
+export type QrCodeAssignedJobRef = {
+  id: number;
+  title?: string | null;
+  job_serial_number?: string | null;
+  name?: string | null;
+  status?: string | null;
+};
+
+/**
+ * Assignment payload from API.
+ * `assigned_to_id` is the pin id (not the job id).
+ * Job + pin live under `assigned_to_detail`.
+ */
+export type QrCodeAssignedToDetail = {
+  pin?: QrCodeAssignedPinRef | null;
+  job?: QrCodeAssignedJobRef | null;
+};
+
+export type QrCode = {
+  id: number;
+  qr_code_id: string;
+  public_uuid?: string | null;
+  qr_image: string | null;
+  status: QrCodeStatus;
+  is_assigned: boolean;
+  /** Assigned pin id (API name); not the job id. */
+  assigned_to_id: number | null;
+  last_scanned_at: string | null;
+  scan_count: number;
+  created_at: string;
+  modified_at: string | null;
+  created_by?: QrCodeUserRef | null;
+  modified_by?: QrCodeUserRef | null;
+  assigned_to_detail?: QrCodeAssignedToDetail | null;
+  batch_detail?: QrCodeBatchDetail | null;
+  /** Scan landing URL, e.g. `http://host:5001/org1/{uuid}`. */
+  public_url?: string | null;
+};
+
+export type QrCodePagination = {
+  total_records: number;
+  total_pages: number;
+  current_page: number;
+  page_size: number;
+  next: string | null;
+  previous: string | null;
+};
+
+export type QrCodeListResponse = {
+  success: boolean;
+  message: string;
+  data: QrCode[];
+  pagination: QrCodePagination;
+};
+
+export type QrCodeGeneratePayload = {
+  number_of_qr_codes: number;
+};
+
+export type QrCodeBatch = {
+  id: number;
+  batch_number: string;
+  quantity: number;
+  created_at: string;
+  created_by?: QrCodeUserRef | null;
+};
+
+export type QrCodeGenerateResult = {
+  batch: QrCodeBatch;
+  qr_codes: QrCode[];
+  message?: string;
+};
+
+export type QrCodeGenerateResponse = {
+  success: boolean;
+  message: string;
+  data: QrCodeGenerateResult;
+};

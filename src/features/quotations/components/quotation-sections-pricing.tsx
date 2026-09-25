@@ -189,10 +189,6 @@ export function QuotationSectionsPricing({
                   </div>
                 ) : null}
 
-                {included && plots.length === 0 ? (
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t("noPlotsInSection")}</p>
-                ) : null}
-
                 {included ? (
                   <div className="mt-3 flex justify-end border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:text-slate-50">
                     <span>

@@ -21,13 +21,22 @@ function lineCatalogQty(line: QuotationDraftLine): number {
 }
 
 /** Strip duplicate suffixes so copies aggregate and display as the same composite. */
-export function normalizeCompositeDisplayName(name: string): string {
-  const trimmed = name.trim();
+export function normalizeCompositeDisplayName(name: string | null | undefined): string {
+  const trimmed = (typeof name === "string" ? name : "").trim();
   const withoutSuffix = trimmed
     .replace(/\s*\(copy(?:\s*\d+)?\)\s*$/i, "")
     .replace(/\s+copy\s*\d+\s*$/i, "")
     .trim();
   return withoutSuffix || trimmed;
+}
+
+export function quotationDraftLineDisplayName(line: QuotationDraftLine): string {
+  const normalized = normalizeCompositeDisplayName(line.name);
+  if (normalized) return normalized;
+  if (line.composite_item_id != null && line.composite_item_id > 0) {
+    return `Composite #${line.composite_item_id}`;
+  }
+  return "—";
 }
 
 function aggregateKey(line: QuotationDraftLine): string {
@@ -61,12 +70,15 @@ export function aggregateDraftCompositeLines(pins: QuotationDraftLine[]): Aggreg
       prev.totalQty += catalogQty;
       prev.lineTotal += lineTotal;
       prev.lineIndices.push(index);
+      if (prev.compositeItemId == null && line.composite_item_id != null && line.composite_item_id > 0) {
+        prev.compositeItemId = line.composite_item_id;
+      }
     } else {
       order.push(key);
       map.set(key, {
         key,
         compositeItemId: line.composite_item_id,
-        displayName: normalizeCompositeDisplayName(line.name),
+        displayName: quotationDraftLineDisplayName(line),
         repeatCount: pinCount,
         totalQty: catalogQty,
         unitPrice: Number.isFinite(line.selling_price) ? line.selling_price : 0,

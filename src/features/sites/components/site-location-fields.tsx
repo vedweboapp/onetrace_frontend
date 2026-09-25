@@ -5,20 +5,18 @@ import dynamic from "next/dynamic";
 import { Country, State } from "country-state-city";
 import { useTranslations } from "next-intl";
 import type { Control, FieldErrors, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { Controller, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
-import { AddressPlaceAutocomplete } from "@/shared/components/maps/address-place-autocomplete";
+import { applyPlaceSuggestionToForm } from "@/shared/utils/address-place-form.util";
 import {
   DetailPageMapLayout,
   detailMapFillClassName,
+  detailMapFormGridClassName,
 } from "@/shared/components/layout/detail-page-map-layout";
 import {
-  CascadingLocationFields,
-  FieldErrorText,
-  FieldGroup,
-  FormFieldRow,
-  surfaceInputClassName,
+  AddressLineAutocompleteFields,
+  AddressLocationFields,
 } from "@/shared/ui";
 
 const SiteLocationMapPicker = dynamic(
@@ -30,11 +28,19 @@ const SiteLocationMapPicker = dynamic(
 );
 
 type Props = {
-  control: Control<SiteFormValues>;
+  control: Control<SiteFormValues, any, any>;
   register: UseFormRegister<SiteFormValues>;
   setValue: UseFormSetValue<SiteFormValues>;
   errors: FieldErrors<SiteFormValues>;
   disabled?: boolean;
+  /** Site name, client, etc. — left column above address. */
+  leading?: React.ReactNode;
+  /** what3words and similar — left column below address, beside the map. */
+  afterAddress?: React.ReactNode;
+  /** Contact persons and similar — left column below address (map stays full-height on the right). */
+  trailing?: React.ReactNode;
+  /** @deprecated Prefer `trailing` so content stays in the map column beside the extended map. */
+  footer?: React.ReactNode;
 };
 
 function parseCoordField(raw: string | undefined): number | null {
@@ -44,7 +50,29 @@ function parseCoordField(raw: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function SiteLocationFields({ control, register, setValue, errors, disabled }: Props) {
+function placeToPinnedKey(place: PlaceSuggestion): string {
+  return JSON.stringify({
+    line1: (place.line1 ?? "").trim(),
+    line2: (place.line2 ?? "").trim(),
+    city: (place.city ?? "").trim(),
+    state: (place.state ?? "").trim(),
+    pincode: (place.pincode ?? "").trim(),
+    country: (place.country ?? "").trim(),
+    countryIso: (place.countryIso ?? "").toUpperCase(),
+  });
+}
+
+export function SiteLocationFields({
+  control,
+  register,
+  setValue,
+  errors,
+  disabled,
+  leading,
+  afterAddress,
+  trailing,
+  footer,
+}: Props) {
   const t = useTranslations("Dashboard.sites");
 
   const countryIso = useWatch({ control, name: "country_iso" }) ?? "";
@@ -67,45 +95,6 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
     if (!iso || !st) return "";
     return State.getStatesOfCountry(iso).find((s) => s.isoCode === st)?.name ?? st;
   }, [countryIso, stateIso]);
-
-  const searchContext = React.useMemo(
-    () => ({
-      city: typeof city === "string" ? city : "",
-      state: stateName,
-      country: countryName,
-      pincode: typeof pincode === "string" ? pincode : "",
-    }),
-    [city, stateName, countryName, pincode],
-  );
-
-  const applyPlace = React.useCallback(
-    (place: PlaceSuggestion, line: "1" | "2" | "reverse") => {
-      if (line === "1" || line === "reverse") {
-        if (place.line1) setValue("address_line_1", place.line1, { shouldValidate: true });
-        if (place.line2) setValue("address_line_2", place.line2);
-        if (place.countryIso) setValue("country_iso", place.countryIso, { shouldValidate: true });
-        setValue("state_iso", place.stateIso, { shouldValidate: true });
-        setValue("city", place.city, { shouldValidate: true });
-        if (place.pincode) setValue("pincode", place.pincode, { shouldValidate: true });
-      } else if (place.line2) {
-        setValue("address_line_2", place.line2);
-      }
-      setValue("latitude", String(place.lat));
-      setValue("longitude", String(place.lon));
-      setPinnedAddressKey(
-        JSON.stringify({
-          line1: (place.line1 ?? "").trim(),
-          line2: (place.line2 ?? "").trim(),
-          city: (place.city ?? "").trim(),
-          state: (place.state ?? "").trim(),
-          pincode: (place.pincode ?? "").trim(),
-          country: (place.country ?? "").trim(),
-          countryIso: (place.countryIso ?? "").toUpperCase(),
-        }),
-      );
-    },
-    [setValue],
-  );
 
   const lat = parseCoordField(latitudeRaw);
   const lon = parseCoordField(longitudeRaw);
@@ -132,88 +121,53 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
     }
   }, [addressSnapshotKey, pinnedAddressKey]);
 
+  const onPlaceApplied = React.useCallback((place: PlaceSuggestion) => {
+    setPinnedAddressKey(placeToPinnedKey(place));
+  }, []);
+
   const addressFields = (
     <div className="space-y-6">
-      <FormFieldRow cols="2">
-        <Controller
-          control={control}
-          name="address_line_1"
-          render={({ field }) => (
-            <AddressPlaceAutocomplete
-              id="site-line1"
-              label={t("fields.addressLine1")}
-              required
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              countryIso={typeof countryIso === "string" ? countryIso : ""}
-              contextCity={searchContext.city}
-              contextState={searchContext.state}
-              contextCountry={searchContext.country}
-              disabled={disabled}
-              invalid={!!errors.address_line_1}
-              error={errors.address_line_1?.message}
-              onSelectPlace={(place) => applyPlace(place, "1")}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="address_line_2"
-          render={({ field }) => (
-            <AddressPlaceAutocomplete
-              id="site-line2"
-              label={t("fields.addressLine2")}
-              variant="secondary"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              countryIso={typeof countryIso === "string" ? countryIso : ""}
-              contextCity={searchContext.city}
-              contextState={searchContext.state}
-              contextCountry={searchContext.country}
-              contextPincode={searchContext.pincode}
-              disabled={disabled}
-              onSelectPlace={(place) => applyPlace(place, "2")}
-            />
-          )}
-        />
-      </FormFieldRow>
-
-      <CascadingLocationFields<SiteFormValues>
-        control={control}
+      <AddressLineAutocompleteFields
+        idPrefix="site"
+        control={control as any}
         setValue={setValue}
-        countryIsoName="country_iso"
-        stateIsoName="state_iso"
-        cityName="city"
+        withCoordinates
+        rowCols="2"
+        disabled={disabled}
+        onPlaceApplied={onPlaceApplied}
+        labels={{
+          addressLine1: t("fields.addressLine1"),
+          addressLine2: t("fields.addressLine2"),
+        }}
+        errors={{
+          address_line_1: errors.address_line_1?.message,
+          address_line_2: errors.address_line_2?.message,
+        }}
+      />
+
+      <AddressLocationFields
+        idPrefix="site"
+        control={control as any}
+        register={register}
+        setValue={setValue}
+        disabled={disabled}
         labels={{
           country: t("fields.country"),
           state: t("fields.stateProvince"),
           city: t("fields.city"),
+          pincode: t("fields.pincode"),
         }}
         placeholders={{
           country: t("placeholders.country"),
           state: t("placeholders.state"),
           city: t("placeholders.city"),
         }}
-        disabled={disabled}
         errors={{
-          country: errors.country_iso?.message,
-          state: errors.state_iso?.message,
+          country_iso: errors.country_iso?.message,
+          state_iso: errors.state_iso?.message,
           city: errors.city?.message,
+          pincode: errors.pincode?.message,
         }}
-        trailingSlot={
-          <FieldGroup label={t("fields.pincode")} htmlFor="site-pincode" required>
-            <input
-              id="site-pincode"
-              aria-invalid={errors.pincode ? true : undefined}
-              className={surfaceInputClassName}
-              disabled={disabled}
-              {...register("pincode")}
-            />
-            <FieldErrorText>{errors.pincode?.message}</FieldErrorText>
-          </FieldGroup>
-        }
       />
 
       <input type="hidden" {...register("latitude")} />
@@ -221,10 +175,20 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
     </div>
   );
 
+  const applyPlaceFromMap = React.useCallback(
+    (place: PlaceSuggestion) => {
+      applyPlaceSuggestionToForm(setValue, place, { line: "reverse", withCoordinates: true });
+      setPinnedAddressKey(placeToPinnedKey(place));
+    },
+    [setValue],
+  );
+
   return (
     <DetailPageMapLayout
       showMap
-      mapTitle={t("detail.sectionMap")}
+      mapFillHeight
+      gridClassName={detailMapFormGridClassName}
+      footer={footer}
       map={
         <SiteLocationMapPicker
           embedded
@@ -246,11 +210,16 @@ export function SiteLocationFields({ control, register, setValue, errors, disabl
             setValue("latitude", String(nextLat));
             setValue("longitude", String(nextLon));
           }}
-          onReverseGeocoded={(place) => applyPlace(place, "reverse")}
+          onReverseGeocoded={applyPlaceFromMap}
         />
       }
     >
-      {addressFields}
+      <div className="space-y-6">
+        {leading}
+        {addressFields}
+        {afterAddress}
+        {trailing}
+      </div>
     </DetailPageMapLayout>
   );
 }

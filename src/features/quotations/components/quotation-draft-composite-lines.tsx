@@ -17,6 +17,7 @@ export type CompositeLineLabels = {
   duplicateLine: string;
   removeLine: string;
   rowActions: string;
+  unitPrice: string;
 };
 
 type Props = {
@@ -28,6 +29,12 @@ type Props = {
   labels: CompositeLineLabels;
   onDuplicateLine: (firstLineIndex: number) => void;
   onRemoveLines: (lineIndices: number[]) => void;
+  onCompositeClick?: (args: {
+    compositeItemId: number;
+    repeatCount: number;
+    displayName: string;
+    lineIndices: number[];
+  }) => void;
   readOnly?: boolean;
 };
 
@@ -40,6 +47,7 @@ export function QuotationDraftCompositeLines({
   labels,
   onDuplicateLine,
   onRemoveLines,
+  onCompositeClick,
   readOnly = false,
 }: Props) {
   const aggregated = React.useMemo(() => aggregateDraftCompositeLines(pins), [pins]);
@@ -83,7 +91,24 @@ export function QuotationDraftCompositeLines({
             >
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100">
-                  <span>{row.displayName}</span>
+                  {row.compositeItemId ? (
+                    <button
+                      type="button"
+                      className="truncate text-left text-blue-600 underline-offset-2 hover:underline"
+                      onClick={() =>
+                        onCompositeClick?.({
+                          compositeItemId: row.compositeItemId as number,
+                          repeatCount: row.repeatCount,
+                          displayName: row.displayName,
+                          lineIndices: row.lineIndices,
+                        })
+                      }
+                    >
+                      {row.displayName}
+                    </button>
+                  ) : (
+                    <span>{row.displayName}</span>
+                  )}
                   {row.totalQty > 1 ? (
                     <span
                       className="inline-flex shrink-0 items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300"
@@ -95,6 +120,14 @@ export function QuotationDraftCompositeLines({
                 </p>
               </div>
               <div className="ml-auto flex items-center justify-end gap-3">
+                {row.unitPrice > 0 ? (
+                  <span
+                    className="min-w-[5rem] shrink-0 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400"
+                    title={labels.unitPrice}
+                  >
+                    {formatMoneyDisplay(row.unitPrice, locale)}
+                  </span>
+                ) : null}
                 <span className="min-w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-[color:var(--dash-accent)] sm:min-w-[6rem]">
                   {formatMoneyDisplay(row.lineTotal, locale)}
                 </span>

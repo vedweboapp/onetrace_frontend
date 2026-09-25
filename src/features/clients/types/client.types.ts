@@ -1,21 +1,20 @@
+import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
+
 export type ClientUserRef = {
   id: number;
   email: string;
   username: string;
 };
 
+export type ClientAddress = EntityAddress;
+export type ClientAddressPayload = EntityAddressPayload;
 
 export type ClientUpsertPayload = {
-  organization: number;
+  organization?: number;
   name: string;
   email: string;
   phone: string;
-  address_line_1: string;
-  address_line_2: string;
-  city: string;
-  state: string;
-  country: string;
-  pincode: string;
+  addresses: ClientAddressPayload[];
 };
 
 export type ClientCreatePayload = ClientUpsertPayload;
@@ -25,13 +24,16 @@ export type Client = {
   id: number;
   created_by: ClientUserRef | null;
   modified_by: ClientUserRef | null;
-  created_at: string;
-  modified_at: string;
+  created_at?: string | null;
+  modified_at?: string | null;
   deleted_at: string | null;
   is_deleted: boolean;
   name: string;
   email: string;
   phone?: string | null;
+  /** Multi-address API shape. */
+  addresses?: ClientAddress[] | null;
+  /** Legacy flat fields (read fallback only). */
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

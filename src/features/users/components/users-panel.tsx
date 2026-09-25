@@ -1,20 +1,27 @@
 "use client";
 
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { UsersSettingsTabs } from "@/features/users/components/users-settings-tabs";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { userProfileLabel } from "@/features/users/utils/user-profile-select.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import {
   AddButton,
   AppButton,
-  DashboardEmptyState,
+  ListPageEmptyStates,
+  listPageSurfaceShellClassName,
+  listPageRootClassName,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -25,7 +32,7 @@ import {
   SurfaceShell,
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
-import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
@@ -37,6 +44,10 @@ function fullName(row: UserProfile) {
 
 function roleLabel(row: UserProfile): string {
   return row.role_detail?.role_name?.trim() || row.role_detail?.name?.trim() || "—";
+}
+
+function profileLabel(row: UserProfile): string {
+  return userProfileLabel(row);
 }
 
 export function UsersPanel() {
@@ -90,9 +101,9 @@ export function UsersPanel() {
           setItems(nextItems);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -105,7 +116,12 @@ export function UsersPanel() {
   }, [page, pageSize, search, refreshNonce, t]);
 
   const hasActiveFilters = hasListActiveFilters({ search });
-  const hideListChrome = !loadError && !loading && items.length === 0 && !hasActiveFilters;
+  const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
+    loading,
+    loadError,
+    itemsLength: items.length,
+    hasActiveFilters,
+  });
   const pageRange = getListPageRange(pagination);
 
   const tableColumns = React.useMemo(() => {
@@ -115,6 +131,7 @@ export function UsersPanel() {
       c.truncate("email", t("table.email"), (r) => r.user_detail.email, { title: (r) => r.user_detail.email }),
       c.phone("phone", t("table.phone"), (r) => r.user_detail.phone_number),
       c.text("role", t("table.role"), (r) => roleLabel(r)),
+      c.text("profile", t("table.profile"), (r) => profileLabel(r)),
       c.text("invite", t("table.inviteStatus"), (r) => r.user_detail.invite_status ?? "—"),
       c.date("created", t("table.created"), (r) => r.created_at, dateFmt),
       c.actions("actions", t("table.actions"), (row) => (
@@ -125,7 +142,7 @@ export function UsersPanel() {
               id: "edit",
               label: t("edit"),
               icon: Pencil,
-              onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`),
+              onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)),
             },
           ]}
         />
@@ -134,10 +151,12 @@ export function UsersPanel() {
   }, [t, tList, dateFmt, router, pathname, listHref]);
 
   return (
-    <div className="space-y-4">
+    <div className={listPageRootClassName()}>
       {!hideListChrome ? (
-        <ListPageHeader
-          filtersActive={hasActiveFilters}
+        <>
+          <UsersSettingsTabs />
+          <ListPageHeader
+          filtersActive={filtersActive}
           viewMode={listViewMode}
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
@@ -147,7 +166,7 @@ export function UsersPanel() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)}
+              onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
              
             >
               {t("invite")}
@@ -158,26 +177,35 @@ export function UsersPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-                placeholder={tList("searchPlaceholder")}
-                ariaLabel={tList("searchAria")}
                 className="sm:max-w-sm"
               />
             </div>
           }
         />
+        </>
       ) : null}
 
-      <SurfaceShell className={hideListChrome ? "rounded-none border-dashed" : "rounded-none"}>
+      <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
           <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
-        ) : loading ? (
+        ) : listLoading ? (
           listViewMode === "list" ? <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div> : <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
         ) : items.length === 0 ? (
-          hasActiveFilters ? (
-            <DashboardEmptyState iconName="noResults" title={tList("noResultsTitle")} description={tList("noResultsDescription")} action={<AppButton type="button" variant="secondary" size="sm" onClick={() => setUrl({ search: null, page: null }, { replace: true })}>{tList("clearFilters")}</AppButton>} />
-          ) : (
-            <DashboardEmptyState iconName="clients" title={t("emptyTitle")} description={t("emptyDescription")} action={<AddButton type="button" onClick={() => router.push(`${pathname}/new?back=${encodeURIComponent(listHref)}`)} />} />
-          )
+          <ListPageEmptyStates
+            emptyStateKind={emptyStateKind}
+            onboarding={{
+              iconName: "users",
+              title: t("emptyTitle"),
+              description: t("emptyDescription"),
+              action: (
+                <AddButton
+                  type="button"
+                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
+                />
+              ),
+            }}
+            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+          />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
             <ListPageCardGrid>
@@ -188,11 +216,11 @@ export function UsersPanel() {
                   className={highlightClassName(row.id)}
                   title={fullName(row)}
                   subtitle={row.user_detail.email}
-                  meta={roleLabel(row)}
+                  meta={`${roleLabel(row)} · ${profileLabel(row)}`}
                   description={`${t("fields.inviteStatus")}: ${row.user_detail.invite_status ?? "—"}`}
                   footer={<span className="text-xs text-slate-500 dark:text-slate-400">{tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}</span>}
                   onCardClick={() => openDetail(row.id)}
-                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(`${pathname}/${row.id}/edit?back=${encodeURIComponent(listHref)}`) }]} />}
+                  menu={<DataTableRowActionsMenu menuAriaLabel={tList("openRowActions")} items={[{ id: "edit", label: t("edit"), icon: Pencil, onSelect: () => router.push(buildPathWithStoredBack(`${pathname}/${row.id}/edit`, listHref)) }]} />}
                 />
               ))}
             </ListPageCardGrid>
