@@ -8,7 +8,7 @@ import {
   connectZohoInventory,
   fetchZohoConnection,
 } from "@/features/settings/integrations/api/integration.api";
-import { ZOHO_RESOURCES } from "@/features/settings/integrations/api/integration.paths";
+import { ZOHO_RESOURCES, type ZohoResource } from "@/features/settings/integrations/api/integration.paths";
 import { ZohoWebhooksPanel } from "@/features/settings/integrations/components/zoho-webhooks-panel";
 import { ZohoIntegrationGuide } from "@/features/settings/integrations/components/zoho-integration-guide";
 import { ZohoKeyMappingForm } from "@/features/settings/integrations/components/zoho-key-mapping-screen";
@@ -77,6 +77,8 @@ export function ZohoConnectionDetailsScreen() {
   const [reconnecting, setReconnecting] = React.useState(false);
   const [mappingResetNonce, setMappingResetNonce] = React.useState<Record<string, number>>({});
   const [webhookRefreshKey, setWebhookRefreshKey] = React.useState(0);
+  /** Only the resource the user opened or just saved — never default to items. */
+  const [openMappingResource, setOpenMappingResource] = React.useState<ZohoResource | null>(null);
 
   const tabs: TabsType[] = [
     {
@@ -96,8 +98,8 @@ export function ZohoConnectionDetailsScreen() {
       label: t("tabs.history"),
     },
   ];
-  const loadConnection = React.useCallback(async () => {
-    setLoading(true);
+  const loadConnection = React.useCallback(async (opts?: { soft?: boolean }) => {
+    if (!opts?.soft) setLoading(true);
     setLoadError(null);
     try {
       const data = await fetchZohoConnection();
@@ -106,7 +108,7 @@ export function ZohoConnectionDetailsScreen() {
       setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
       setConnection(null);
     } finally {
-      setLoading(false);
+      if (!opts?.soft) setLoading(false);
     }
   }, [t]);
 
@@ -114,8 +116,20 @@ export function ZohoConnectionDetailsScreen() {
     void loadConnection();
   }, [loadConnection]);
 
-  function handleMappingSaveSuccess() {
-    void loadConnection();
+  React.useEffect(() => {
+    if (hasOAuthCallback) {
+      setActiveTab("help");
+      return;
+    }
+    if (tabParam === "configure" || tabParam === "configuration") setActiveTab("configure");
+    else if (tabParam === "webhook") setActiveTab("webhook");
+    else if (tabParam === "history" || tabParam === "sync-history") setActiveTab("history");
+    else if (tabParam === "help") setActiveTab("help");
+  }, [tabParam, hasOAuthCallback]);
+
+  function handleMappingSaveSuccess(resource: ZohoResource) {
+    setOpenMappingResource(resource);
+    void loadConnection({ soft: true });
     setWebhookRefreshKey((key) => key + 1);
   }
 
@@ -135,12 +149,6 @@ export function ZohoConnectionDetailsScreen() {
       setReconnecting(false);
     }
   }
-
-  React.useEffect(() => {
-    if (hasOAuthCallback) {
-      setActiveTab("help");
-    }
-  }, [hasOAuthCallback]);
 
   function clearOAuthCallbackUrl(tab: "help" | "configure" | "webhook" | "history" = "help") {
     router.replace(buildZohoConnectionTabUrl(tab), { scroll: false });
@@ -282,11 +290,12 @@ export function ZohoConnectionDetailsScreen() {
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tResources("mappingPageTitle")}</h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tResources("mappingPageDescription")}</p>
               </div>
-              {ZOHO_RESOURCES.map((resource, index) => (
+              {ZOHO_RESOURCES.map((resource) => (
                 <DetailCollapsibleSection
                   key={resource}
                   title={tResources(`${resource}.title`)}
-                  defaultOpen={index === 0}
+                  open={openMappingResource === resource}
+                  onOpenChange={(next) => setOpenMappingResource(next ? resource : null)}
                   toggleAriaLabel={tResources(`${resource}.toggleSection`)}
                   bodyClassName="space-y-4 pt-4"
                 >

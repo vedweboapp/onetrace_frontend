@@ -1,5 +1,20 @@
 import type { LucideIcon } from "lucide-react";
-import { Ban, ClipboardList, ListChecks, ListTodo, MapPin, Plug, Ruler, Shapes, Store, Tag, Tags, Text } from "lucide-react";
+import {
+  Ban,
+  ClipboardList,
+  CreditCard,
+  CalendarClock,
+  ListChecks,
+  ListTodo,
+  MapPin,
+  Plug,
+  Ruler,
+  Shapes,
+  Store,
+  Tag,
+  Tags,
+  Text,
+} from "lucide-react";
 import {
   CUSTOMIZATION_SETTINGS_HREFS,
   type CustomizationSettingsItemId,
@@ -23,7 +38,9 @@ const ICON_BY_ID: Record<CustomizationSettingsItemId, LucideIcon> = {
   jobStatus: ListTodo,
   materialStatus: ClipboardList,
   tags: Tag,
-  title: Text
+  paymentModes: CreditCard,
+  paymentTerms: CalendarClock,
+  title: Text,
 };
 
 export const CUSTOMIZATION_SETTINGS_ITEMS: CustomizationSettingsItem[] = CUSTOMIZATION_SETTINGS_HREFS.map(

@@ -177,7 +177,12 @@ export type ZohoSyncHistoryEventLogDetails = {
 export type ZohoSyncHistoryErrorRow = {
   message?: string | null;
   reason?: string | null;
+  error_message?: string | null;
   record_id?: string | number | null;
+  resource?: string | null;
+  resolved_at?: string | null;
+  resolved_by_job_id?: number | null;
+  created_at?: string | null;
   [key: string]: unknown;
 };
 

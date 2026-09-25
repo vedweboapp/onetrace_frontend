@@ -61,6 +61,8 @@ export const routes = {
     settingsJobStatus: "/settings/job-status",
     settingsMaterialStatus: "/settings/material-status",
     settingsTags: "/settings/tag",
+    settingsPaymentModes: "/settings/payment-mode",
+    settingsPaymentTerms: "/settings/payment-term",
     settingsProjectTypes: "/settings/project-type",
     settingsInstallationTypes: "/settings/installation-type",
     settingsVendorTypes: "/settings/vendor-type",

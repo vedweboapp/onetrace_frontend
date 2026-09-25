@@ -267,6 +267,7 @@
         "unitType": "Añadir tipo de unidad",
         "installationType": "Añadir tipo de instalación",
         "materialStatus": "Añadir estado de material",
+        "title": "Añadir título",
         "user": "Añadir nuevo usuario"
       }
     },
@@ -382,6 +383,8 @@
       "jobStatus": "Estados de Trabajo",
       "materialStatus": "Estados de Material",
       "tags": "Etiquetas",
+      "paymentModes": "Modos de pago",
+      "paymentTerms": "Términos de pago",
       "titles": "Títulos",
       "projectTypes": "Tipos de Proyecto",
       "installationTypes": "Tipos de Instalación",
@@ -452,6 +455,14 @@
           "tags": {
             "title": "Etiquetas",
             "description": "Etiquetas para organizar pins y registros."
+          },
+          "paymentModes": {
+            "title": "Modos de pago",
+            "description": "Métodos de pago como transferencia bancaria, Google Pay o remesa."
+          },
+          "paymentTerms": {
+            "title": "Términos de pago",
+            "description": "Días netos y descuentos usados en facturas y órdenes de compra."
           },
           "title": {
             "title": "Títulos",
@@ -594,11 +605,14 @@
         "pullLastSynced": "Última sincronización: {datetime}",
         "pullLastSyncedNever": "Última sincronización: Nunca",
         "pullSyncInProgress": "Sincronización en curso…",
+        "pullSyncLastResult": "Último resultado de sincronización",
         "pullSyncComplete": "Sincronización completada",
+        "pullSyncPartialComplete": "Sincronización finalizada con algunos registros omitidos o fallidos",
         "pullSyncFailed": "La sincronización falló",
         "pullSyncStatusQueued": "En cola",
         "pullSyncStatusRunning": "En ejecución",
         "pullSyncStatusSucceeded": "Correcta",
+        "pullSyncStatusPartial": "Parcialmente correcta",
         "pullSyncStatusFailed": "Fallida",
         "pullSyncProcessed": "Procesados: {count}",
         "pullSyncCreated": "Creados: {count}",
@@ -606,6 +620,7 @@
         "pullSyncRestored": "Restaurados: {count}",
         "pullSyncSkipped": "Omitidos: {count}",
         "pullSyncStatusError": "No se pudo consultar el estado de la sincronización. Inténtalo de nuevo.",
+        "viewHistory": "Ver historial",
         "saveMapping": "Guardar mapeo",
         "cancel": "Cancelar",
         "loadError": "No se pudieron cargar las opciones de mapeo. Inténtalo de nuevo.",
@@ -720,7 +735,8 @@
           "duration": "Duración",
           "error": "Error",
           "retries": "Reintentos",
-          "records": "Registros"
+          "records": "Registros",
+          "recordId": "ID del registro"
         }
       },
       "zohoResources": {
@@ -1391,6 +1407,113 @@
       "toggleActiveError": "No se pudo actualizar el estado. Inténtalo de nuevo.",
       "validationName": "Introduce un nombre de unidad.",
       "validationShortForm": "Introduce una abreviatura de unidad (p. ej. kg)."
+    },
+    "paymentModes": {
+      "metaTitle": "Modos de pago",
+      "title": "Modos de pago",
+      "subtitle": "Gestiona los métodos de pago usados en facturas y compras.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "yes": "Sí",
+      "no": "No",
+      "table": {
+        "name": "Nombre",
+        "systemName": "Nombre de sistema",
+        "default": "Predeterminado",
+        "mandatory": "Obligatorio",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay modos de pago",
+      "emptyDescription": "Crea tu primer modo de pago (p. ej. Transferencia bancaria, Google Pay).",
+      "loadError": "No se pudieron cargar los modos de pago. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo modo de pago",
+        "editTitle": "Editar modo de pago",
+        "name": "Nombre",
+        "namePlaceholder": "p. ej. Transferencia bancaria",
+        "systemName": "Nombre de sistema",
+        "systemNamePlaceholder": "p. ej. bank_transfer",
+        "isDefault": "Modo de pago predeterminado",
+        "isMandatory": "Obligatorio",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este modo de pago?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} modos de pago",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Modo de pago actualizado",
+      "created": "Modo de pago creado",
+      "deleted": "Modo de pago eliminado",
+      "validationName": "Introduce un nombre de modo de pago.",
+      "validationSystemName": "Introduce un nombre de sistema (p. ej. bank_transfer)."
+    },
+    "paymentTerms": {
+      "metaTitle": "Términos de pago",
+      "title": "Términos de pago",
+      "subtitle": "Gestiona días netos y descuentos para facturas y compras.",
+      "add": "Añadir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "yes": "Sí",
+      "no": "No",
+      "table": {
+        "label": "Etiqueta",
+        "days": "Días",
+        "default": "Predeterminado",
+        "type": "Tipo",
+        "discount": "Descuento",
+        "discountDueDays": "Días de descuento",
+        "status": "Estado",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "detail": {
+        "idLabel": "ID {id}",
+        "createdAt": "Creado",
+        "updatedAt": "Última actualización",
+        "byUser": "Por {user}"
+      },
+      "emptyTitle": "Aún no hay términos de pago",
+      "emptyDescription": "Crea tu primer término de pago (p. ej. Net 30, Al recibir).",
+      "loadError": "No se pudieron cargar los términos de pago. Inténtalo de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo término de pago",
+        "editTitle": "Editar término de pago",
+        "label": "Etiqueta",
+        "labelPlaceholder": "p. ej. Net 30",
+        "days": "Días del término",
+        "discount": "Descuento %",
+        "discountDueDays": "Días de descuento",
+        "discountDueDaysPlaceholder": "Opcional",
+        "type": "Tipo",
+        "isDefault": "Término de pago predeterminado",
+        "isSystemTerms": "Término de sistema",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este término de pago?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} términos de pago",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Término de pago actualizado",
+      "created": "Término de pago creado",
+      "deleted": "Término de pago eliminado",
+      "validationLabel": "Introduce una etiqueta de término de pago.",
+      "validationDays": "Introduce los días del término (0 o más).",
+      "validationDiscount": "Introduce un porcentaje de descuento válido."
     },
     "rejectionReasons": {
       "metaTitle": "Motivos de rechazo",

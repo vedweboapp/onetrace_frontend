@@ -326,6 +326,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
               trailing={
                 <SiteContactPersonsFields
                   control={control}
+                  setValue={setValue}
                   errors={errors}
                   disabled={saving}
                   pendingContactRowRef={pendingContactRowRef}
