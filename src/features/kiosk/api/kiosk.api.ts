@@ -1,5 +1,7 @@
+import axios from "axios";
 import api from "@/core/api/axios";
 import type { KioskConfig, KioskListItem } from "../types/kiosk.types";
+import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 export interface GetKiosksParams {
   search?: string;
@@ -105,4 +107,23 @@ export async function submitKioskResponse(
 ): Promise<any> {
   const res = await api.post("/service-forms/submissions/", payload);
   return res.data;
+}
+
+/**
+ * Fetch a kiosk config via the public (unauthenticated) API endpoint.
+ * Endpoint: /api/v1/public/{organization_uuid}/service-forms/{id}/
+ */
+export async function getPublicKioskById(
+  organizationUuid: string,
+  id: string | number,
+): Promise<KioskConfig | null> {
+  try {
+    const baseUrl = resolvePublicApiBaseUrl();
+    const res = await axios.get(
+      `${baseUrl}/public/${organizationUuid}/service-forms/${id}/`,
+    );
+    return res.data?.data ?? res.data;
+  } catch {
+    return null;
+  }
 }

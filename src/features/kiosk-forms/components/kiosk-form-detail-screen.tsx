@@ -15,9 +15,11 @@ import {
   DataTableTh,
   AppTabs,
   SurfaceShell,
+  AppButton,
   type AppTabItem,
 } from "@/shared/ui";
 import { Link } from "@/i18n/navigation";
+import { ExternalLink } from "lucide-react";
 
 function countQuestions(config: KioskConfig): number {
   return (config.questions ?? []).filter((question) => question.is_deleted !== true).length;
@@ -27,6 +29,30 @@ function formatDate(value?: string): string {
   if (!value) return "-";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function getOrgUuid(): string | null {
+  if (typeof window === "undefined") return null;
+  // Try common localStorage keys for organization UUID
+  const keys = ["organization_uuid", "org_uuid", "orgUuid", "organizationUuid"];
+  for (const key of keys) {
+    const val = localStorage.getItem(key);
+    if (val) return val;
+  }
+  // Fallback: check inside auth-storage
+  try {
+    const auth = localStorage.getItem("auth-storage");
+    if (auth) {
+      const parsed = JSON.parse(auth);
+      const orgs = parsed?.state?.organizations;
+      if (Array.isArray(orgs) && orgs.length > 0) {
+        return orgs[0]?.organization_uuid ?? orgs[0]?.uuid ?? null;
+      }
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
 }
 
 export function KioskFormDetailScreen() {
@@ -76,6 +102,24 @@ export function KioskFormDetailScreen() {
         backHref="/kiosk-forms"
         backAriaLabel="Back to kiosk forms"
         subtitle={detail?.api_name ? <span>{detail.api_name}</span> : undefined}
+        actions={
+          detail ? (
+            <button
+              type="button"
+              onClick={() => {
+                const orgUuid = getOrgUuid();
+                const url = orgUuid
+                  ? `/public/kiosk/${detail.id}?token=${orgUuid}`
+                  : `/public/kiosk/${detail.id}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--dash-accent,#111111)] px-3 py-1.5 text-xs font-medium text-[color:var(--dash-on-accent,#ffffff)] shadow-sm hover:brightness-110"
+            >
+              Open
+              <ExternalLink size={14} className="opacity-70" />
+            </button>
+          ) : undefined
+        }
       />
 
       <div className="mx-auto w-full max-w-350 px-4 pt-4 sm:px-6">

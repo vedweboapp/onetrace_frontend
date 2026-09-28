@@ -1,4 +1,6 @@
+import axios from "axios";
 import api from "@/core/api/axios";
+import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
@@ -75,4 +77,24 @@ export async function updateGroup(id: number, body: GroupUpdatePayload): Promise
 export async function deleteGroup(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<unknown>>(GROUP_PATHS.detail(id));
   assertApiSuccess(data);
+}
+
+/**
+ * Fetch a group via the public (unauthenticated) API endpoint.
+ * Endpoint: /api/v1/public/{organization_uuid}/groups/{id}/
+ */
+export async function fetchPublicGroup(
+  organizationUuid: string,
+  id: number | string,
+): Promise<Group> {
+  const baseUrl = resolvePublicApiBaseUrl();
+  const res = await axios.get(
+    `${baseUrl}/public/${organizationUuid}/groups/${id}/`,
+  );
+  const data = res.data;
+  // Handle both envelope and plain responses
+  if (data && typeof data === "object" && "success" in data) {
+    return data.data as Group;
+  }
+  return data as Group;
 }

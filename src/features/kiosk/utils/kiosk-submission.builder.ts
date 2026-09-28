@@ -59,7 +59,10 @@ function resolveSelectedOption(
     option_api_name: option.api_name || "",
     option_label: option.label || "",
     value: rawValue,
-    price: parseFloat(String(option.price || 0)) || 0,
+    price:
+      typeof (option.price ?? (option as any).selling_price) === "number"
+        ? ((option.price ?? (option as any).selling_price) as number)
+        : parseFloat(String((option.price ?? (option as any).selling_price) || 0).replace(/[^0-9.-]/g, "")) || 0,
 
     // Color extras
     color: isColor
@@ -98,8 +101,13 @@ function buildOptionMap(
   questions.forEach((q) => {
     const allOptions = getQuestionOptions(q);
     allOptions.forEach((opt) => {
-      const optId = opt.uid || opt._uid;
-      if (optId) map.set(optId, { option: opt, question: q });
+      const ids = [
+        opt.o_id,
+        opt.uid,
+        opt._uid,
+        opt.id != null ? String(opt.id) : undefined,
+      ].filter(Boolean);
+      ids.forEach((id) => map.set(id as string, { option: opt, question: q }));
     });
   });
   return map;

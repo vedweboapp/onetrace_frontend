@@ -1170,14 +1170,30 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
               }
 
               if (field.type === "textarea") {
+                const getMaxLength = () => {
+                  if (field.key === "label") return 40;
+                  if (field.key === "sub_label") return 70;
+                  if (field.key === "placeholder") return 20;
+                  if (field.key === "price") return 10;
+                  return undefined;
+                };
+                const maxLen = getMaxLength();
                 return (
                   <div key={String(field.key)}>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                      {field.label}
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {field.label}
+                      </label>
+                      {maxLen && (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {String(val).length}/{maxLen}
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       value={String(val)}
                       placeholder={field.placeholder}
+                      maxLength={maxLen}
                       onChange={(e) => handleChange(field.key, e.target.value)}
                       rows={2}
                       className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -1296,19 +1312,43 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                 );
               }
 
+              const getMaxLength = () => {
+                if (field.key === "label") return 40;
+                if (field.key === "sub_label") return 70;
+                if (field.key === "placeholder") return 20;
+                if (field.key === "price") return 10;
+                return undefined;
+              };
+              const maxLen = getMaxLength();
+
               return (
                 <div key={String(field.key)}>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                    {field.label}
-                    {field.required && (
-                      <span className="ml-0.5 text-red-500">*</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                      {field.label}
+                      {field.required && (
+                        <span className="ml-0.5 text-red-500">*</span>
+                      )}
+                    </label>
+                    {maxLen && (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        {String(val).length}/{maxLen}
+                      </span>
                     )}
-                  </label>
+                  </div>
                   <input
                     type="text"
                     value={String(val)}
                     placeholder={field.placeholder}
-                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    maxLength={maxLen}
+                    onChange={(e) => {
+                      if (field.key === "price") {
+                        const priceVal = e.target.value.replace(/[^0-9.]/g, '');
+                        handleChange(field.key, priceVal);
+                      } else {
+                        handleChange(field.key, e.target.value);
+                      }
+                    }}
                     className="w-full rounded-sm border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                   {field.description && (

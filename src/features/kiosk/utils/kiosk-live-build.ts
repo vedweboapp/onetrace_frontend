@@ -307,12 +307,12 @@ export function computeLiveBuildScene(
 
     for (const cb of checkboxes) {
       if (cb.label) checkboxFeatures.push(cb.label);
-      totalPrice += parsePrice(cb.price);
+      totalPrice += parsePrice(cb.price ?? (cb as any).selling_price);
     }
 
     const inputs = resolveInputSelections(question, answers);
     for (const inp of inputs) {
-      totalPrice += parsePrice(inp.option.price);
+      totalPrice += parsePrice(inp.option.price ?? (inp.option as any).selling_price);
       summaries.push({
         questionLabel: inp.option.label || "Input",
         option: inp.option,
@@ -321,7 +321,7 @@ export function computeLiveBuildScene(
 
     if (!selected) continue;
 
-    totalPrice += parsePrice(selected.price);
+    totalPrice += parsePrice(selected.price ?? (selected as any).selling_price);
 
     const resolvedColor = isColorType(selected)
       ? resolveOptionColor(selected, question, answers)

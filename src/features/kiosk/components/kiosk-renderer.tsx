@@ -1,13 +1,14 @@
 "use client";
 
 import React, { forwardRef, useImperativeHandle, useState, useCallback, useEffect, useRef } from "react";
-import { CheckCircle, Check, Layers, Send, Palette, X } from "lucide-react";
+import { CheckCircle, Check, Layers, Send, Palette, X, ArrowLeft, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
 import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
 import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
+import { computeLiveBuildScene, type LiveBuildScene } from "../utils/kiosk-live-build";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import {
   getLookupGroupId,
@@ -16,7 +17,7 @@ import {
   isLookupQuestion,
 } from "../utils/kiosk-lookup";
 import { buildLookupOptions } from "../utils/kiosk-lookup";
-import { fetchGroup } from "@/features/groups/api/group.api";
+import { fetchGroup, fetchPublicGroup } from "@/features/groups/api/group.api";
 
 const SWATCH_PALETTE = [
   { name: "Royal Blue", hex: "#2563EB" },
@@ -191,12 +192,27 @@ export interface KioskRendererRef {
 
 export interface KioskRendererProps {
   config?: KioskConfig;
-  onSubmit?: (payload: KioskSubmissionPayload) => void;
+  onSubmit?: (
+    payload: KioskSubmissionPayload,
+    meta?: { answers: Record<string, any>; scene: LiveBuildScene },
+  ) => void;
   renderMode?: "desktop" | "phone";
   isSubmitting?: boolean;
   /** Per-question draft option while configuring (live builder sync) */
   livePreviewOptions?: Record<string, KioskOption | null | undefined>;
   onPlacementChange?: (optionUid: string, coordinates: PlacementCoordinates) => void;
+  /** When provided, lookup groups are fetched via the public unauthenticated API */
+  organizationUuid?: string;
+  /** When true, only the questions column scrolls; the Live Build panel stays fixed */
+  scrollableLayout?: boolean;
+  /** Action for back button in the kiosk title header */
+  onBack?: () => void;
+  /** Custom text for configure/submit button */
+  submitButtonText?: string;
+  /** Initial answers to pre-populate */
+  initialAnswers?: Record<string, any>;
+  /** Callback fired after answers change */
+  onAnswersChange?: (answers: Record<string, any>) => void;
 }
 
 const getGridClass = (cols: number = 2) => {
@@ -204,13 +220,13 @@ const getGridClass = (cols: number = 2) => {
     case 1:
       return "grid-cols-1";
     case 2:
-      return "grid-cols-1 md:grid-cols-2";
+      return "grid-cols-1 sm:grid-cols-2";
     case 3:
-      return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+      return "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
     case 4:
-      return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+      return "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
     default:
-      return "grid-cols-1 md:grid-cols-2";
+      return "grid-cols-1 sm:grid-cols-2";
   }
 };
 
@@ -223,11 +239,32 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       isSubmitting = false,
       livePreviewOptions,
       onPlacementChange,
+      organizationUuid,
+      scrollableLayout = false,
+      onBack,
+      submitButtonText,
+      initialAnswers,
+      onAnswersChange,
     },
     ref,
   ) {
     const [submitted, setSubmitted] = useState(false);
-    const [answers, setAnswers] = useState<Record<string, any>>({});
+    const [answers, setAnswers] = useState<Record<string, any>>(() => initialAnswers || {});
+    const isFirstMount = useRef(true);
+
+    useEffect(() => {
+      if (initialAnswers && Object.keys(initialAnswers).length > 0) {
+        setAnswers((prev) => (Object.keys(prev).length === 0 ? initialAnswers : prev));
+      }
+    }, [initialAnswers]);
+
+    useEffect(() => {
+      if (isFirstMount.current) {
+        isFirstMount.current = false;
+        return;
+      }
+      onAnswersChange?.(answers);
+    }, [answers, onAnswersChange]);
     const [activeSwatchPicker, setActiveSwatchPicker] = useState<{
       question: KioskQuestion;
       option: KioskOption;
@@ -258,7 +295,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       Promise.all(
         lookupQuestions.map(async (question) => {
           const groupId = getLookupGroupId(question);
-          const group = await fetchGroup(Number(groupId));
+          const group = organizationUuid
+            ? await fetchPublicGroup(organizationUuid, Number(groupId))
+            : await fetchGroup(Number(groupId));
           return { question, group, groupId };
         }),
       )
@@ -284,7 +323,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       return () => {
         cancelled = true;
       };
-    }, [config.questions]);
+    }, [config.questions, organizationUuid]);
 
     const renderedQuestions = React.useMemo(
       () => activeQuestions.map((question) => {
@@ -413,7 +452,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       if (onSubmit) {
         // Build the full structured payload the backend expects
         const payload = buildKioskSubmissionPayload(renderedConfig, answers);
-        onSubmit(payload);
+        const scene = computeLiveBuildScene(renderedConfig, answers, livePreviewOptions);
+        onSubmit(payload, { answers, scene });
       } else {
         setSubmitted(true);
       }
@@ -764,7 +804,14 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
     }
 
     return (
-      <form onSubmit={handleFormSubmit} className="space-y-6">
+      <form
+        onSubmit={handleFormSubmit}
+        className={cn(
+          "space-y-4 sm:space-y-6",
+          scrollableLayout &&
+            "lg:flex lg:flex-col lg:h-full lg:min-h-0 lg:overflow-hidden lg:space-y-0 lg:gap-4"
+        )}
+      >
         {/* Color Swatch Picker Modal */}
         {activeSwatchPicker && (
           <ColorSwatchModal
@@ -794,32 +841,76 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           />
         )}
 
-        {/* Kiosk Title & Subtitle */}
-        {config.name && (
-          <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              {config.name}
-            </h2>
-            {config.description && (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {config.description}
-              </p>
-            )}
+        {/* Kiosk Title & Subtitle with Back Button */}
+        <div
+          className={cn(
+            "border-b border-slate-200/80 pb-3 sm:pb-4 dark:border-slate-800 flex items-center justify-between gap-4",
+            scrollableLayout && "lg:shrink-0"
+          )}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={
+                onBack
+                  ? onBack
+                  : () => {
+                      if (typeof window !== "undefined" && window.history.length > 1) {
+                        window.history.back();
+                      }
+                    }
+              }
+              className="flex size-8 sm:size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition shadow-2xs shrink-0 cursor-pointer"
+              title="Back"
+              aria-label="Back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl truncate">
+                {config.name || "Configure Product"}
+              </h2>
+              {config.description && (
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                  {config.description}
+                </p>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div
+          className={cn(
+            "flex gap-4 sm:gap-6",
+            scrollableLayout
+              ? "flex-col lg:flex-row lg:flex-1 lg:min-h-0 lg:overflow-hidden"
+              : "flex-col lg:flex-row lg:items-start"
+          )}
+        >
           <KioskLiveBuildPanel
             config={renderedConfig}
             answers={answers}
             livePreviewOptions={livePreviewOptions}
             onPlacementChange={onPlacementChange}
-            className="order-1 lg:order-2 lg:sticky lg:top-2 lg:self-start"
+            className={cn(
+              "order-1 lg:order-2 shrink-0",
+              "w-full lg:w-[280px] xl:w-1/5 2xl:w-[15%]",
+              scrollableLayout
+                ? "lg:self-start lg:max-h-full lg:overflow-y-auto"
+                : "lg:sticky lg:top-4 lg:self-start"
+            )}
             compact={isPhone}
           />
 
           {/* Questions List */}
-          <div className="order-2 min-w-0 flex-1 space-y-6 lg:order-1">
+          <div
+            className={cn(
+              "order-2 min-w-0 flex-1 lg:order-1",
+              scrollableLayout
+                ? "space-y-4 sm:space-y-6 lg:h-full lg:overflow-y-auto lg:pr-3 custom-scrollbar"
+                : "space-y-4 sm:space-y-6"
+            )}
+          >
           {renderedQuestions.map((question, qIdx) => {
             const qKey = question.api_name || question.q_id || question._uid || "";
             const selectedVal = answers[qKey];
@@ -828,7 +919,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             return (
               <div
                 key={question.q_id || question._uid || qIdx}
-                className="rounded-sm border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
+                className="rounded-sm border border-slate-200 bg-white p-3.5 sm:p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900"
               >
                 {/* Question Title & Subtitle */}
                 <div className="mb-4">
@@ -901,16 +992,25 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           </div>
         </div>
 
-          {/* Submit Action */}
-          <div className="flex items-center justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
+          {/* Configure Product Action */}
+          <div
+            className={cn(
+              "flex items-center justify-end border-t border-slate-200/80 pt-3 sm:pt-4 dark:border-slate-800",
+              scrollableLayout && "lg:shrink-0"
+            )}
+          >
             <AppButton
               type="submit"
               size="md"
               loading={isSubmitting}
               className="w-full px-6 font-semibold sm:w-auto"
             >
-              <Send className="mr-1.5 size-4" />
-              {config.submitting?.button_text || "Submit"}
+              <SlidersHorizontal className="mr-1.5 size-4" />
+              {submitButtonText ||
+                (config.submitting?.button_text &&
+                config.submitting.button_text.toLowerCase() !== "submit"
+                  ? config.submitting.button_text
+                  : "Configure Product")}
             </AppButton>
           </div>
       </form>

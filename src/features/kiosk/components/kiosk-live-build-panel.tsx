@@ -254,14 +254,14 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
     return (
       <div
         className={cn(
-          "rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-6 text-center dark:border-slate-700 dark:bg-slate-900/40",
+          "rounded-lg border border-dashed border-slate-300 bg-slate-100/80 p-4 sm:p-6 text-center dark:border-slate-700 dark:bg-slate-900/40",
           className,
         )}
       >
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Live build
         </p>
-        <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+        <p className="mt-1 sm:mt-2 text-xs text-slate-600 dark:text-slate-400">
           Select image, placement, and color options across questions to see your
           product build here.
         </p>
@@ -283,7 +283,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
       className={cn(
         "shrink-0 rounded-lg border border-slate-200 bg-[#ececec] shadow-sm dark:border-slate-700 dark:bg-slate-900",
         "overflow-y-auto max-h-[85vh] custom-scrollbar",
-        compact ? "w-full" : "w-full lg:w-[300px] xl:w-[320px]",
+        "w-full",
         className,
       )}
     >
@@ -298,7 +298,7 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
           </span>
         </div>
 
-        <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden">
+        <div className="relative flex min-h-[150px] sm:min-h-[190px] items-center justify-center overflow-hidden">
           {/* Dimension guides (decorative, like reference kiosk) */}
           <div className="hidden">
             <div className="relative h-[160px] w-[120px]">
@@ -314,15 +314,15 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
             </div>
           </div>
 
-          <div className="relative z-10 flex max-h-[190px] w-full items-center justify-center">
+          <div className="relative z-10 flex max-h-[150px] sm:max-h-[190px] w-full items-center justify-center">
             {tintLoading && !mainImageSrc && !showSolidBlock ? (
               <div className="text-[10px] text-slate-500">Updating…</div>
             ) : mainImageSrc ? (
-              <div className="relative w-fit max-h-[190px] max-w-full overflow-hidden">
+              <div className="relative w-fit max-h-[150px] sm:max-h-[190px] max-w-full overflow-hidden">
                 <img
                   src={mainImageSrc}
                   alt="Live build"
-                  className="relative z-0 block max-h-[190px] max-w-full object-contain drop-shadow-md"
+                  className="relative z-0 block max-h-[150px] sm:max-h-[190px] max-w-full object-contain drop-shadow-md"
                 />
                 {scene.overlays.map((layer, idx) => (
                   <LiveBuildOverlayItem
@@ -362,8 +362,8 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
         </div>
       </div>
 
-      {/* Summary — independently scrollable so long feature lists are reachable */}
-      <div className="space-y-3 bg-white px-3 py-3 dark:bg-slate-950 overflow-y-auto max-h-[320px] custom-scrollbar">
+      {/* Summary */}
+      <div className="space-y-3 bg-white px-3 py-3 dark:bg-slate-950">
         {primarySummary && (
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
