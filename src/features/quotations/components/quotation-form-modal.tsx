@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
@@ -124,7 +125,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     (async () => {
       try {
         const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+        if (!cancelled) setClientOptions(clientsToSelectOptions(clients));
       } catch {
         if (!cancelled) setClientOptions([]);
       }
