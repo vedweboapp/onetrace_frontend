@@ -132,14 +132,25 @@ export function MultiCheckSelect({
     for (const raw of values) {
       const id = raw.trim();
       if (!id || byValue.has(id)) continue;
-      const label = fallbackLabels?.[id]?.trim() || `#${id}`;
-      byValue.set(id, { value: id, label });
+      const label = fallbackLabels?.[id]?.trim();
+      if (label) byValue.set(id, { value: id, label });
     }
     return Array.from(byValue.values());
   }, [options, values, fallbackLabels]);
   const selectedOptions = React.useMemo(
-    () => resolvedOptions.filter((o) => selectedMap.has(o.value)),
-    [resolvedOptions, selectedMap],
+    () =>
+      values
+        .map((raw) => {
+          const id = raw.trim();
+          if (!id) return null;
+          const fromList = resolvedOptions.find((o) => o.value === id) ?? options.find((o) => o.value === id);
+          if (fromList) return fromList;
+          const fb = fallbackLabels?.[id]?.trim();
+          if (fb) return { value: id, label: fb };
+          return { value: id, label: "\u2026" };
+        })
+        .filter((o): o is { value: string; label: string } => o != null),
+    [values, resolvedOptions, options, fallbackLabels],
   );
   const filteredOptions = React.useMemo(() => {
     if (onSearchChange && query.trim()) {
