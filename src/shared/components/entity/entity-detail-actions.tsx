@@ -1,27 +1,35 @@
 "use client";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { buildCurrentPageBackHref, buildEntityEditHrefFromDetail, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { useDashboardActions } from "@/shared/ui/dashboard-action-buttons";
 import { DeleteButton, EditButton } from "@/shared/ui/dashboard-action-buttons";
 
 type EditButtonProps = {
   /** Defaults to shared “Edit”. */
   label?: string;
-  listBack: string;
-  fallbackRoute: string;
+  /** @deprecated Edit back uses the current detail page; kept for call-site compatibility. */
+  listBack?: string;
+  /** @deprecated Edit back uses the current detail page; kept for call-site compatibility. */
+  fallbackRoute?: string;
   className?: string;
 };
 
-export function EntityDetailEditButton({ label, listBack, fallbackRoute, className }: EditButtonProps) {
+export function EntityDetailEditButton({ label, className }: EditButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useDashboardActions();
+  const detailBackHref = buildCurrentPageBackHref(pathname, searchParams);
 
   return (
     <EditButton
       className={className}
       onClick={() =>
-        router.push(`${pathname}/edit?back=${encodeURIComponent(listBack || fallbackRoute)}`)
+        router.push(
+          buildPathWithStoredBack(buildEntityEditHrefFromDetail(pathname, searchParams), detailBackHref),
+        )
       }
     >
       {label ?? t("edit")}

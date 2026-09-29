@@ -1,22 +1,35 @@
 "use client";
 
+import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+
 import * as React from "react";
-import { ArrowUpRight, LayoutGrid, List, Layers, MapPinned, User } from "lucide-react";
+import { ArrowUpRight, Check, Layers, MapPinned, Pencil, User, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchDrawingsPage } from "@/features/projects/api/drawing.api";
+import { fetchDrawingsPage, updateDrawingName } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
+import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
 import type { Drawing } from "@/features/projects/types/drawing.types";
+import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  detailTabBodyClassName,
+  detailTabErrorClassName,
+  detailTabFilterBarClassName,
+  detailTabSectionClassName,
+  detailTabStandaloneFillClassName,
+  detailTabToolbarClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
-  AppButton,
   DataTablePaginationBar,
-  ListPageSearchField,
+  ListPageEmptyStates,
+  ListViewModeToggle,
+  surfaceInputClassName,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -32,6 +45,29 @@ function formatBytes(bytes: number): string {
   }
   const rounded = i === 0 ? Math.round(v) : v < 10 ? Number(v.toFixed(1)) : Math.round(v);
   return `${rounded} ${units[i]}`;
+}
+
+/**
+ * Defers the mount of a heavy child component until after the first paint.
+ * Returns `true` once the browser is idle / a frame has been committed,
+ * letting the card text render immediately on the first pass.
+ */
+function useDeferredMount(): boolean {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(() => setReady(true), { timeout: 300 });
+      return () => cancelIdleCallback(id);
+    }
+    // Fallback: two animation frames to guarantee layout + paint are done
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, []);
+  return ready;
 }
 
 function shortFileTypeLabel(mime: string | undefined): string {
@@ -66,20 +102,161 @@ function parseDrawingsListViewParam(param: string | null): ListPageViewMode {
   return param === "table" ? "table" : "list";
 }
 
+function DrawingNameEditor({
+  projectId,
+  drawing,
+  onRenamed,
+  className,
+  titleClassName,
+}: {
+  projectId: number;
+  drawing: Drawing;
+  onRenamed: (next: Drawing) => void;
+  className?: string;
+  titleClassName?: string;
+}) {
+  const t = useTranslations("Dashboard.projects.drawings");
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(drawing.name);
+  const [saving, setSaving] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!editing) setDraft(drawing.name);
+  }, [drawing.name, editing]);
+
+  React.useEffect(() => {
+    if (!editing) return;
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [editing]);
+
+  async function commit() {
+    const nextName = draft.trim();
+    if (!nextName) {
+      setDraft(drawing.name);
+      setEditing(false);
+      return;
+    }
+    if (nextName === drawing.name.trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateDrawingName(projectId, drawing.id, nextName);
+      onRenamed({ ...drawing, ...updated, name: updated.name?.trim() || nextName });
+      toastSuccess(t("renamedToast"));
+      setEditing(false);
+    } catch (error) {
+      toastApiError(error, t("renameError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setDraft(drawing.name);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div
+        className={cn("flex min-w-0 flex-1 items-center gap-1", className)}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          disabled={saving}
+          aria-label={t("renameAria")}
+          className={cn(surfaceInputClassName, "h-8 min-w-0 flex-1 !px-2 !py-1 text-sm")}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commit();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+        />
+        <button
+          type="button"
+          disabled={saving}
+          aria-label={t("renameSaveAria")}
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+          onClick={() => void commit()}
+        >
+          <Check className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          aria-label={t("renameCancelAria")}
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800"
+          onClick={cancel}
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("group/name flex min-w-0 flex-1 items-center gap-1.5", className)}>
+      <h3 className={cn("min-w-0 flex-1 truncate", titleClassName)}>{drawing.name}</h3>
+      <button
+        type="button"
+        aria-label={t("renameAria")}
+        title={t("rename")}
+        className={cn(
+          "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-500",
+          "opacity-0 transition group-hover:opacity-100 group-hover/name:opacity-100 group-focus-within/name:opacity-100",
+          "hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300",
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setEditing(true);
+        }}
+      >
+        <Pencil className="size-3.5" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 function DrawingGridCard({
   row,
   locale,
+  projectId,
   onOpen,
+  onRenamed,
 }: {
   row: Drawing;
   locale: string;
+  projectId: number;
   onOpen: () => void;
+  onRenamed: (next: Drawing) => void;
 }) {
   const t = useTranslations("Dashboard.projects.drawings");
   const createdBy = row.created_by?.username || row.created_by?.email || "—";
-  const pinCount = row.pin_count ?? row.pins_count;
+  const pinCount = countDrawingPins(row.plots, row.pin_count ?? row.pins_count);
   const hasLocation = Boolean(row.block?.trim() || row.level?.trim());
   const typeLabel = shortFileTypeLabel(row.drawing_file_type);
+  const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  // Defer the heavy preview mount so card text paints on the first frame
+  const previewReady = useDeferredMount();
 
   return (
     <div
@@ -103,12 +280,21 @@ function DrawingGridCard({
       )}
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-950">
-        <DrawingFilePreviewFill
-          key={`${row.id}-${row.drawing_file}`}
-          drawingFile={row.drawing_file}
-          fileType={row.drawing_file_type}
-          alt=""
-        />
+        {previewReady ? (
+          <>
+            <DrawingFilePreviewFill
+              key={`${row.id}-${row.drawing_file}`}
+              drawingFile={row.drawing_file}
+              fileType={row.drawing_file_type}
+              alt=""
+              onNaturalAspect={setNaturalAspect}
+            />
+            <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+          </>
+        ) : (
+          /* Shimmer placeholder shown during first paint */
+          <div className="absolute inset-0 animate-pulse bg-slate-100 dark:bg-slate-900" />
+        )}
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent opacity-0 transition-opacity",
@@ -130,17 +316,18 @@ function DrawingGridCard({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 border-t border-slate-100 p-4 dark:border-slate-800/90">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 truncate text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
-            {row.name}
-          </h3>
-        </div>
+        <DrawingNameEditor
+          projectId={projectId}
+          drawing={row}
+          onRenamed={onRenamed}
+          titleClassName="text-base font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100"
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex tabular-nums rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
             {formatBytes(row.drawing_file_size)}
           </span>
-          {typeof pinCount === "number" ? (
+          {typeof pinCount === "number" && pinCount > 0 ? (
             <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-300">
               {t("cardPinCount", { count: pinCount })}
             </span>
@@ -183,6 +370,32 @@ function DrawingGridCard({
   );
 }
 
+/** Small thumbnail used in the table row — needs its own state for naturalAspect. */
+function DrawingTableRowThumbnail({ row }: { row: Drawing }) {
+  const [naturalAspect, setNaturalAspect] = React.useState<number | null>(null);
+  const previewReady = useDeferredMount();
+  return (
+    <span className="relative h-12 w-[4.75rem] shrink-0 overflow-hidden border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+      {previewReady ? (
+        <>
+          <DrawingFilePreview
+            key={`${row.id}-${row.drawing_file}`}
+            drawingFile={row.drawing_file}
+            fileType={row.drawing_file_type}
+            alt=""
+            widthPx={76}
+            className="size-full"
+            onNaturalAspect={setNaturalAspect}
+          />
+          <DrawingPinThumbnailOverlay plots={row.plots} naturalAspect={naturalAspect} />
+        </>
+      ) : (
+        <span className="block size-full animate-pulse bg-slate-100 dark:bg-slate-800" />
+      )}
+    </span>
+  );
+}
+
 export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const t = useTranslations("Dashboard.projects.drawings");
   const tList = useTranslations("Dashboard.list");
@@ -205,14 +418,13 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }
 
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(100);
-  const [search, setSearch] = React.useState("");
+  const [pageSize, setPageSize] = React.useState(20);
   const [items, setItems] = React.useState<Drawing[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
     total_pages: 1,
     current_page: 1,
-    page_size: 100,
+    page_size: 20,
     next: null as string | null,
     previous: null as string | null,
   });
@@ -224,11 +436,6 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
-  const commitSearch = React.useCallback((q: string) => {
-    setSearch(q.trim());
-    setPage(1);
-  }, []);
-
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -239,15 +446,14 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           projectId,
           page,
           pageSize,
-          search || undefined,
         );
         if (!cancelled) {
           setItems(next);
           setPagination(p);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setLoadError(t("loadError"));
+          setLoadError(getApiErrorDisplayMessage(error, t("loadError")));
           setItems([]);
         }
       } finally {
@@ -257,7 +463,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, search, refreshNonce, t]);
+  }, [projectId, page, pageSize, refreshNonce, t]);
 
   const suggestedOrder = React.useMemo(() => {
     if (items.length === 0) return 1;
@@ -265,7 +471,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   }, [items]);
 
   function openDrawing(row: Drawing) {
-    router.push(`/dashboard/projects/${projectId}/drawings/${row.id}`);
+    router.push(`/projects/${projectId}/drawings/${row.id}`);
   }
 
   function handleCreated() {
@@ -273,22 +479,48 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setPage(1);
   }
 
+  const handleRenamed = React.useCallback((next: Drawing) => {
+    setItems((prev) => prev.map((row) => (row.id === next.id ? { ...row, ...next } : row)));
+  }, []);
+
   const pageRange = getListPageRange(pagination);
+  const isEmpty = !loading && !loadError && items.length === 0;
+
+  const emptyState = (
+    <div className={detailTabStandaloneFillClassName}>
+      <ListPageEmptyStates
+        emptyStateKind="onboarding"
+        onboarding={{
+          iconName: "projects",
+          title: t("emptyTitle"),
+          description: t("emptyDescription"),
+          action: (
+            <AddButton
+              type="button"
+              onClick={() => {
+                setUploadSession((s) => s + 1);
+                setUploadOpen(true);
+              }}
+            />
+          ),
+        }}
+        onClearFilters={() => {}}
+      />
+    </div>
+  );
 
   const tableColumns = React.useMemo(() => {
     const c = entityCol<Drawing>();
     return [
       c.custom("drawing", t("table.drawing"), (row) => (
-        <span className="flex min-w-0 items-center gap-3">
-          <DrawingFilePreview
-            key={`${row.id}-${row.drawing_file}`}
-            drawingFile={row.drawing_file}
-            fileType={row.drawing_file_type}
-            alt=""
-            widthPx={76}
-            className="h-12 w-[4.75rem] shrink-0 border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
+        <span className="group flex min-w-0 items-center gap-3">
+          <DrawingTableRowThumbnail row={row} />
+          <DrawingNameEditor
+            projectId={projectId}
+            drawing={row}
+            onRenamed={handleRenamed}
+            titleClassName="font-semibold text-slate-900 dark:text-slate-100"
           />
-          <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100">{row.name}</span>
         </span>
       )),
       c.custom(
@@ -317,49 +549,24 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         { responsive: "md", cellClassName: "text-slate-600 dark:text-slate-400" },
       ),
     ];
-  }, [t, locale]);
+  }, [t, locale, projectId, handleRenamed]);
 
   const viewToggle = (
-    <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-      <button
-        type="button"
-        onClick={() => setListViewMode("list")}
-        title={tList("tableView")}
-        aria-label={tList("tableView")}
-        aria-pressed={listViewMode === "list"}
-        className={cn(
-          "inline-flex size-8 items-center justify-center rounded-md transition",
-          listViewMode === "list"
-            ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-        )}
-      >
-        <LayoutGrid className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => setListViewMode("table")}
-        title={tList("listView")}
-        aria-label={tList("listView")}
-        aria-pressed={listViewMode === "table"}
-        className={cn(
-          "inline-flex size-8 items-center justify-center rounded-md transition",
-          listViewMode === "table"
-            ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-        )}
-      >
-        <List className="size-4" />
-      </button>
-    </div>
+    <ListViewModeToggle
+      viewMode={listViewMode}
+      onViewModeChange={setListViewMode}
+      tableViewLabel={tList("tableView")}
+      listViewLabel={tList("listView")}
+      size="md"
+    />
   );
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
-        <div className="min-w-0">
+    <div className={detailTabSectionClassName}>
+      <div className={detailTabToolbarClassName}>
+        <div className="min-w-0 flex-1 text-left">
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+          <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
         <AddButton
           type="button"
@@ -371,19 +578,12 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         />
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <ListPageSearchField
-          value={search}
-          onCommit={commitSearch}
-          placeholder={t("searchPlaceholder")}
-          ariaLabel={t("searchAria")}
-          className="sm:max-w-md"
-        />
+      <div className={cn(detailTabFilterBarClassName, "sm:justify-end")}>
         {viewToggle}
       </div>
 
       {loadError ? (
-        <p className="px-4 py-10 text-center text-sm text-red-600 dark:text-red-400 sm:px-6">{loadError}</p>
+        <p className={detailTabErrorClassName}>{loadError}</p>
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
@@ -405,30 +605,34 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             ))}
           </div>
         ) : (
-          <div className="space-y-2 px-4 py-6 sm:px-6">
+          <div className={cn("space-y-2", detailTabBodyClassName)}>
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
             <div className="h-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
           </div>
         )
+      ) : isEmpty ? (
+        emptyState
       ) : listViewMode === "list" ? (
-        <>
-          {items.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-slate-400 sm:px-6">{t("empty")}</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
-              {items.map((row) => (
-                <DrawingGridCard key={row.id} row={row} locale={locale} onOpen={() => openDrawing(row)} />
-              ))}
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
+          {items.map((row) => (
+            <DrawingGridCard
+              key={row.id}
+              row={row}
+              locale={locale}
+              projectId={projectId}
+              onOpen={() => openDrawing(row)}
+              onRenamed={handleRenamed}
+            />
+          ))}
+        </div>
       ) : (
         <EntityDataTable
           columns={tableColumns}
           rows={items}
           onRowClick={(row) => openDrawing(row)}
           emptyMessage={t("empty")}
+          fillHeight={false}
         />
       )}
 

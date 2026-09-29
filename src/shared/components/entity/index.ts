@@ -1,11 +1,15 @@
+export { DetailEntityLink, entityNameLinkClassName } from "./detail-entity-link";
+export { EntityLabelOverflowGroup } from "./entity-label-overflow-group";
+export type { EntityLabelOverflowItem } from "./entity-label-overflow-group";
 export { EntityDetailScreen } from "./entity-detail-screen";
 export type {
   EntityDetailScreenLabels,
   EntityDetailScreenProps,
   EntityDetailScreenContext,
 } from "./entity-detail-screen";
-export { EntityDetailLoadingSkeleton } from "./entity-detail-loading";
+export { EntityDetailLoadingSkeleton, EntityDetailTabLoadingState } from "./entity-detail-loading";
 export { EntityDetailErrorState } from "./entity-detail-error";
+export { EntityDetailNotFoundState } from "./entity-detail-not-found";
 export {
   EntityDetailEditButton,
   EntityDetailDeleteEditActions,

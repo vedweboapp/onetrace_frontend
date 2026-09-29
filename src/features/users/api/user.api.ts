@@ -2,6 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  applyDropdownListParam,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { USER_PATHS } from "./user.paths";
 import type {
   InviteUserPayload,
@@ -21,9 +26,15 @@ function assertEnvelopeSuccess(envelope: { success: boolean; message?: string })
 export async function fetchUsersPage(
   page = 1,
   pageSize = 20,
-  filters?: { search?: string; role?: number | string },
+  filters?: {
+    search?: string;
+    role?: number | string;
+    dropdown?: boolean;
+    /** Follow cursor/next until exhausted (e.g. scheduling technician calendar). */
+    fetchAllPages?: boolean;
+  },
 ): Promise<{ items: UserProfile[]; pagination: UserListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.role === "number" && Number.isFinite(filters.role) && filters.role > 0) {
@@ -31,10 +42,16 @@ export async function fetchUsersPage(
   } else if (typeof filters?.role === "string" && filters.role.trim()) {
     params.role = filters.role.trim();
   }
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<UserListResponse>(USER_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    fetchAllPages: filters?.fetchAllPages === true,
+    fetchFirst: async () => {
+      const { data } = await api.get<UserListResponse>(USER_PATHS.list, { params });
+      return parseListApiPage(data, pageSize);
+    },
+  });
 }
 
 export async function fetchUserProfile(id: number): Promise<UserProfile> {
@@ -53,7 +70,7 @@ export async function inviteUser(body: InviteUserPayload): Promise<{ id: number;
 }
 
 export async function updateUserProfile(id: number, body: UpdateUserProfilePayload): Promise<UserProfile> {
-  const { data } = await api.put<ApiEnvelope<UserProfile>>(USER_PATHS.detail(id), body);
+  const { data } = await api.patch<ApiEnvelope<UserProfile>>(USER_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }

@@ -2,7 +2,11 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type { Job, JobListResponse } from "@/features/jobs/types/job.types";
+import { resolveDropdownListPages, parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { QUOTATION_PATHS } from "./quotation.paths";
+import { QUOTE_CATEGORY } from "../constants/quotation-category";
 import type {
   ProjectLevelForQuotation,
   QuotationCreatePayload,
@@ -10,8 +14,29 @@ import type {
   QuotationListItem,
   QuotationListResponse,
   QuotationLevelRef,
+  QuotationUpdatePayload,
   WorkspaceUserRow,
 } from "../types/quotation.types";
+
+function normalizeQuotationWriteBody(body: QuotationUpdatePayload): QuotationUpdatePayload {
+  if (!("additional_customer_contact" in body)) return body;
+
+  const raw = body.additional_customer_contact as unknown;
+  let additional_customer_contact: number[] = [];
+  if (Array.isArray(raw)) {
+    const seen = new Set<number>();
+    for (const item of raw) {
+      const id = typeof item === "number" ? item : Number.parseInt(String(item), 10);
+      if (Number.isFinite(id) && id > 0 && !seen.has(id)) {
+        seen.add(id);
+        additional_customer_contact.push(id);
+      }
+    }
+  } else if (typeof raw === "number" && raw > 0) {
+    additional_customer_contact = [raw];
+  }
+  return { ...body, additional_customer_contact };
+}
 
 function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
   if (!envelope.success) {
@@ -27,6 +52,8 @@ export type QuotationListFilters = {
   site?: number;
   project?: number;
   status?: string;
+  /** `servicequote` | `projectquote` — omit for all categories. */
+  quote_category?: string;
 };
 
 export async function fetchQuotationsPage(
@@ -45,20 +72,36 @@ export async function fetchQuotationsPage(
   if (typeof filters?.site === "number" && filters.site > 0) params.site = filters.site;
   if (typeof filters?.project === "number" && filters.project > 0) params.project = filters.project;
   if (filters?.status?.trim()) params.status = filters.status.trim();
+  if (filters?.quote_category?.trim()) params.quote_category = filters.quote_category.trim();
 
   const { data } = await api.get<QuotationListResponse>(QUOTATION_PATHS.list, { params });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+  return parseListApiPage(data, pageSize);
 }
 
-export async function fetchQuotation(id: number): Promise<QuotationDetail> {
-  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id));
+export async function fetchAllQuotationIds(filters?: QuotationListFilters): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchQuotationsPage(page, pageSize, filters));
+}
+
+export type FetchQuotationOptions = {
+  include?: string;
+};
+
+export async function fetchQuotation(
+  id: number,
+  options?: FetchQuotationOptions,
+): Promise<QuotationDetail> {
+  const params: Record<string, string> = {};
+  if (options?.include) params.include = options.include;
+  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function createQuotation(body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, body);
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, payload);
   assertApiSuccess(data);
   return data.data;
 }
@@ -68,13 +111,15 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
   const { data } = await api.post<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.list, {
     project: projectId,
     select_all_levels: true,
+    quote_category: QUOTE_CATEGORY.project,
   });
   assertApiSuccess(data);
   return data.data;
 }
 
-export async function updateQuotation(id: number, body: QuotationCreatePayload): Promise<QuotationDetail> {
-  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), body);
+export async function updateQuotation(id: number, body: QuotationUpdatePayload): Promise<QuotationDetail> {
+  const payload = normalizeQuotationWriteBody(body);
+  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
 }
@@ -82,13 +127,20 @@ export async function updateQuotation(id: number, body: QuotationCreatePayload):
 /** Loads selectable levels for a project when composing a quotation. */
 export async function fetchProjectLevelsForQuotation(projectId: number): Promise<QuotationLevelRef[]> {
   try {
-    const { data } = await api.get<ApiEnvelope<ProjectLevelForQuotation[]>>(QUOTATION_PATHS.projectLevels(projectId), {
-      skipErrorToast: true,
-      params: { page_size: 100 },
+    const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
+      dropdown: true,
+      // Rarely >100 levels; larger page cuts page-2+ spam while still covering select-all.
+      fetchAllPages: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
+          skipErrorToast: true,
+          params: { page_size: 100, dropdown: true },
+        });
+        return parseListApiPage<ProjectLevelForQuotation>(data, 100);
+      },
     });
-    assertApiSuccess(data);
-    const rows = Array.isArray(data.data) ? data.data : [];
-    return rows
+    return items
       .map((r) => ({ id: r.id, name: r.name }))
       .filter((r) => Number.isFinite(r.id) && r.id > 0 && typeof r.name === "string");
   } catch {
@@ -98,12 +150,19 @@ export async function fetchProjectLevelsForQuotation(projectId: number): Promise
 
 export async function fetchProjectLevelRowsForQuotation(projectId: number): Promise<ProjectLevelForQuotation[]> {
   try {
-    const { data } = await api.get<ApiEnvelope<ProjectLevelForQuotation[]>>(QUOTATION_PATHS.projectLevels(projectId), {
-      skipErrorToast: true,
-      params: { page_size: 100 },
+    const { items } = await resolveDropdownListPages<ProjectLevelForQuotation>({
+      dropdown: true,
+      fetchAllPages: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get(QUOTATION_PATHS.projectLevels(projectId), {
+          skipErrorToast: true,
+          params: { page_size: 100, dropdown: true },
+        });
+        return parseListApiPage<ProjectLevelForQuotation>(data, 100);
+      },
     });
-    assertApiSuccess(data);
-    return Array.isArray(data.data) ? data.data : [];
+    return items;
   } catch {
     return [];
   }
@@ -131,11 +190,18 @@ export async function createProjectLevelForQuotation(
 /** Optional; used to populate user role dropdowns when the route exists. */
 export async function fetchWorkspaceUsers(): Promise<WorkspaceUserRow[]> {
   try {
-    const { data } = await api.get<{ success: boolean; data: WorkspaceUserRow[] }>("users/", {
-      params: { page_size: 500 },
-      skipErrorToast: true,
+    const { items } = await resolveDropdownListPages<WorkspaceUserRow>({
+      dropdown: true,
+      silent: true,
+      fetchFirst: async () => {
+        const { data } = await api.get("users/", {
+          params: { page_size: 20, dropdown: true },
+          skipErrorToast: true,
+        });
+        return parseListApiPage(data, 20);
+      },
     });
-    if (data?.success && Array.isArray(data.data)) return data.data;
+    return items;
   } catch {
     /* route may be absent or named differently on the API */
   }
@@ -232,4 +298,53 @@ export async function exportQuotation(
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export type SendQuotationPayload =
+  | {
+      notification_send_to: "client";
+    }
+  | {
+      notification_send_to: "vendors";
+      vendor_ids: number[];
+    };
+
+export async function sendQuotation(id: number, body?: SendQuotationPayload): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(QUOTATION_PATHS.send(id), body);
+  assertApiSuccess(data);
+}
+
+function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
+  if ("pagination" in data && Array.isArray(data.data) && data.data[0]) {
+    assertEnvelopeSuccess(data);
+    return data.data[0];
+  }
+  assertApiSuccess(data as ApiEnvelope<Job>);
+  return (data as ApiEnvelope<Job>).data;
+}
+
+/** POST `quotations/:id/create-job/` — creates a service job from an approved quotation. */
+export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
+  return parseJobCreateResponse(data);
+}
+
+export type CreatePurchaseOrderItemPayload = {
+  composite_item: number;
+  quantity: number;
+  vendor: number;
+  [key: string]: any;
+};
+
+export type CreatePurchaseOrderPayload = {
+  items: CreatePurchaseOrderItemPayload[];
+};
+
+/** POST `quotations/:id/create-purchase-order/` — creates purchase order for selected quotation items. */
+export async function createPurchaseOrderFromQuotation(
+  quotationId: number,
+  payload: CreatePurchaseOrderPayload,
+): Promise<{ success: boolean; message?: string; data?: any }> {
+  const { data } = await api.post<ApiEnvelope<any>>(QUOTATION_PATHS.createPurchaseOrder(quotationId), payload);
+  return data;
 }

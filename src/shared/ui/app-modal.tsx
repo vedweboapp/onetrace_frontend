@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 
@@ -41,6 +42,7 @@ export type AppModalProps = {
   showCloseButton?: boolean;
   /** Accessible name for the close control (translate in forms if needed). */
   closeButtonAriaLabel?: string;
+  className?: string;
 };
 
 /**
@@ -60,6 +62,7 @@ export function AppModal({
   isBusy = false,
   showCloseButton = true,
   closeButtonAriaLabel = "Close",
+  className,
 }: AppModalProps) {
   const autoTitleId = React.useId();
   const autoDescId = React.useId();
@@ -77,7 +80,7 @@ export function AppModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
       role="presentation"
@@ -89,9 +92,10 @@ export function AppModal({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         className={cn(
-          "relative max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-7",
+          "app-modal relative max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-7",
           sizeClass[size],
           "dark:border-slate-700 dark:bg-slate-900",
+          className,
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -136,6 +140,7 @@ export function AppModal({
         </div>
         {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

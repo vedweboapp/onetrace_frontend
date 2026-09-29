@@ -1,20 +1,125 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
-import { ActiveStatusBadge } from "@/shared/ui";
+import { ActiveStatusBadge, FormFieldRow, FormFieldSpanFull } from "@/shared/ui";
+import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { DetailEditableField, detailFieldLabelClassName, detailValueSurfaceClassName } from "./detail-editable-field";
+import { DetailCollapsibleSection } from "./detail-collapsible-section";
 
-/** Soft canvas behind white section cards on entity detail routes. */
+/** Soft canvas behind a single flat detail surface (avoid card-in-card). */
 export const detailRecordSurfaceShellClassName = cn(
-  "overflow-visible rounded-none border-0 border-t border-slate-200/90 bg-slate-100/90 shadow-none ring-0",
+  "overflow-visible rounded-none border border-slate-200/90 bg-white shadow-none ring-0",
   "dark:border-slate-800 dark:bg-slate-950",
 );
 
-/** Vertical gap between white detail section cards. */
-export const detailPageStackClassName = "space-y-3.5";
+/** Detail record shell — full width, left-aligned (matches create/edit forms). */
+export const detailRecordInnerClassName = "w-full min-w-0";
 
-/** Responsive grid for label/value pairs inside a detail section */
-export function DetailMetricsGrid({ children, className }: { children: ReactNode; className?: string }) {
+/** Form-like max width for detail field blocks on wide screens (CRM-style). */
+export const detailFieldsLayoutClassName = "w-full min-w-0 max-w-5xl";
+
+export function DetailFieldsLayout({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn(detailFieldsLayoutClassName, className)}>{children}</div>;
+}
+
+/** Span full row inside `DetailMetricsGrid` (same as form `FormFieldSpanFull`). */
+export { FormFieldSpanFull as DetailFieldSpanFull };
+
+/** Vertical stack for detail sections with clear CRM-style horizontal rules. */
+export const detailPageStackClassName =
+  "flex flex-col divide-y divide-slate-200/90 dark:divide-slate-800";
+
+/** Flat detail body: no extra padding inside the white record shell. */
+export const detailPageBodyPaddingClassName = "!px-0 !py-0 sm:!px-0 sm:!py-0";
+
+/** Shared flat section chrome (title row + body padding). */
+export const detailFlatSectionHeaderClassName =
+  "flex flex-row items-center justify-between gap-2 px-4 py-2.5 sm:px-5 sm:py-3";
+export const detailFlatSectionBodyClassName = "px-4 pt-2.5 pb-4 sm:px-5 sm:pt-3 sm:pb-4";
+export const detailFlatSectionTitleClassName =
+  "text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100";
+
+/** Inline sub-heading inside a section (e.g. Contact information). */
+export const detailSubsectionTitleClassName =
+  "mb-3 text-xs font-semibold tracking-normal text-slate-500 dark:text-slate-400";
+
+export function activeStatusSelectOptions(
+  activeLabel: string,
+  inactiveLabel: string,
+): CheckmarkSelectOption[] {
+  return [
+    { value: "true", label: activeLabel },
+    { value: "false", label: inactiveLabel },
+  ];
+}
+
+/** Inline-editable active/inactive status (shared across entity detail pages). */
+export function DetailActiveStatusField({
+  label,
+  isActive,
+  activeLabel,
+  inactiveLabel,
+  editAriaLabel,
+  onSave,
+}: {
+  label: ReactNode;
+  isActive: boolean;
+  activeLabel: string;
+  inactiveLabel: string;
+  editAriaLabel: string;
+  onSave: (next: boolean) => Promise<void>;
+}) {
   return (
-    <div className={cn("grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-2", className)}>{children}</div>
+    <DetailEditableField
+      label={label}
+      value={isActive ? "true" : "false"}
+      kind="select"
+      options={activeStatusSelectOptions(activeLabel, inactiveLabel)}
+      editAriaLabel={editAriaLabel}
+      onSave={(next) => onSave(next === "true")}
+    >
+      <ActiveStatusBadge active={isActive} label={isActive ? activeLabel : inactiveLabel} />
+    </DetailEditableField>
+  );
+}
+
+/** Responsive grid — max **two** fields per row; reuses form field row layout. */
+export function DetailMetricsGrid({
+  children,
+  className,
+  compact,
+  columns = 2,
+  wide = false,
+  /** Delay 2-col until this breakpoint (use `xl` next to a map side column). */
+  from = "sm",
+}: {
+  children: ReactNode;
+  className?: string;
+  /** @deprecated Same 2-column grid; kept for call-site compatibility. */
+  compact?: boolean;
+  /** Only `1` or `2` columns; default is two fields per row. */
+  columns?: 1 | 2;
+  /** When true, field grid spans full record width (e.g. beside a map column). */
+  wide?: boolean;
+  from?: "sm" | "md" | "lg" | "xl";
+}) {
+  void compact;
+  return (
+    <div className="detail-metrics-host">
+      <FormFieldRow
+        cols={columns === 1 ? "1" : "2"}
+        from={from}
+        className={cn(
+          "detail-metrics-grid",
+          !wide && detailFieldsLayoutClassName,
+          "gap-x-6 gap-y-0",
+          className,
+        )}
+      >
+        {children}
+      </FormFieldRow>
+    </div>
   );
 }
 
@@ -28,12 +133,10 @@ export function DetailMetricCard({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-      <div className="mt-2 min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
-        {children}
+    <div className={cn("field-group detail-field min-w-0", className)}>
+      <p className={detailFieldLabelClassName}>{label}</p>
+      <div className="field-control-wrap min-w-0 flex-1">
+        <div className={cn(detailValueSurfaceClassName, "flex-wrap gap-x-2 gap-y-1")}>{children}</div>
       </div>
     </div>
   );
@@ -68,11 +171,11 @@ export function DetailWideCard({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-      <div className="mt-2 min-w-0 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{children}</div>
+    <div className={cn("field-group detail-field min-w-0", className)}>
+      <p className={detailFieldLabelClassName}>{label}</p>
+      <div className="field-control-wrap min-w-0 flex-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+        {children}
+      </div>
     </div>
   );
 }
@@ -83,24 +186,97 @@ export function DetailSectionTitle({ children }: { children: ReactNode }) {
   );
 }
 
+/** Quiet sub-heading inside a detail section body. */
+export function DetailSubsectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h4 className={cn(detailSubsectionTitleClassName, className)}>{children}</h4>;
+}
+
 export function DetailPagePadding({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-4 py-5 sm:px-6 sm:py-6", className)}>{children}</div>;
+  return <div className={cn("w-full", detailPageBodyPaddingClassName, className)}>{children}</div>;
 }
 
 /** White section card for detail pages (overview, address, system metadata, etc.). */
+export { DetailCollapsibleSection, type DetailCollapsibleSectionProps } from "./detail-collapsible-section";
+export { DetailSectionCountBadge } from "./detail-section-count-badge";
+
 export function DetailPanelCard({
   title,
   headerRight,
+  badge,
   children,
   className,
   bodyClassName,
+  defaultOpen = true,
+  collapsible = true,
+  /** Flat section (WMS/Zoho detail style); supports collapse chevron when `collapsible`. */
+  variant = "flat",
+  toggleAriaLabel = "Toggle section",
 }: {
   title?: ReactNode;
   headerRight?: ReactNode;
+  badge?: ReactNode;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  defaultOpen?: boolean;
+  collapsible?: boolean;
+  variant?: "card" | "flat";
+  toggleAriaLabel?: string;
 }) {
+  if (variant === "flat") {
+    if (title && collapsible) {
+      return (
+        <DetailCollapsibleSection
+          title={title}
+          badge={badge}
+          headerRight={headerRight}
+          defaultOpen={defaultOpen}
+          className={cn(
+            "overflow-visible rounded-none border-0 bg-transparent shadow-none dark:bg-transparent",
+            className,
+          )}
+          bodyClassName={cn(detailFlatSectionBodyClassName, bodyClassName)}
+          toggleAriaLabel={toggleAriaLabel}
+        >
+          {children}
+        </DetailCollapsibleSection>
+      );
+    }
+
+    return (
+      <section className={cn("bg-transparent", className)}>
+        {title ? (
+          <div className={detailFlatSectionHeaderClassName}>
+            <h2 className={detailFlatSectionTitleClassName}>{title}</h2>
+            {headerRight || badge ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                {badge}
+                {headerRight}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <div className={cn(detailFlatSectionBodyClassName, bodyClassName)}>{children}</div>
+      </section>
+    );
+  }
+
+  if (title && collapsible) {
+    return (
+      <DetailCollapsibleSection
+        title={title}
+        badge={badge}
+        headerRight={headerRight}
+        defaultOpen={defaultOpen}
+        className={className}
+        bodyClassName={bodyClassName}
+        toggleAriaLabel={toggleAriaLabel}
+      >
+        {children}
+      </DetailCollapsibleSection>
+    );
+  }
+
   return (
     <section
       className={cn(
@@ -110,14 +286,14 @@ export function DetailPanelCard({
       )}
     >
       {title ? (
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-slate-800">
+        <div className="flex flex-col gap-1.5 border-b border-slate-100 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-slate-800">
           <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h2>
           {headerRight ? (
             <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{headerRight}</div>
           ) : null}
         </div>
       ) : null}
-      <div className={cn("px-4 py-3 sm:px-5 sm:py-4", bodyClassName)}>{children}</div>
+      <div className={cn("px-4 py-2 sm:px-5 sm:py-2.5", bodyClassName)}>{children}</div>
     </section>
   );
 }

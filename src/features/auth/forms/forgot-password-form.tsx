@@ -5,12 +5,20 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
-import { Mail, Loader2 } from "lucide-react";
-import { AUTH_OTP_PURPOSE, requestForgotPasswordOtp } from "@/features/auth/api/auth.api";
+import { Mail, Loader2, Eye, EyeClosed } from "lucide-react";
+import { AUTH_OTP_PURPOSE, requestForgotPasswordOtp, resetPasswordConfirm, verifyOtp } from "@/features/auth/api/auth.api";
+import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { cn } from "@/core/utils/http.util";
+import { Link, useRouter } from "@/i18n/navigation";
+import { routes } from "@/shared/config/routes";
+import { AppButton } from "@/shared/ui";
+
 
 const forgotPasswordSchema = z.object({
   email: z.string().min(1, "emailRequired").email("emailInvalid"),
+  otp: z.string(),
+  new_password: z.string(),
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -21,31 +29,145 @@ export function ForgotPasswordForm() {
 
   const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: "", otp: "", new_password: "" },
   });
+  const router = useRouter();
+  const otpRefs = React.useRef<Array<HTMLInputElement | null>>([]);
+  const resendPressedRef = React.useRef(false);
+  function handleOtpDigit(index: number, raw: string) {
+    const val = raw.replace(/\D/g, "").slice(-1);
+    const current = form.getValues("otp") ?? "";
+    const digits = current.split("");
+    digits[index] = val;
+    form.setValue("otp", digits.join(""));
+    if (val && index < 5) otpRefs.current[index + 1]?.focus();
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !e.currentTarget.value && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [apiError, setApiError] = React.useState<string | null>(null);
+  const [curerntStep, setCurrentStep] = React.useState<string>("send-otp");
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [mode] = React.useState<"password" | "otp">("password"); // visual only (matches screenshot)
-
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [resendVisible, setResendVisible] = React.useState(false)
+  const [resendPressed, setResendPressed] = React.useState(false);
+  const [timeLeft, setTimeLeft] = React.useState<number>();
   async function onSubmit(values: ForgotPasswordValues) {
     setApiError(null);
     setSuccessMessage(null);
+
+    // Per-step validation — only validate what's needed for the current step
+    if (curerntStep === "reset-password") {
+      if (!values.new_password || values.new_password.length < 8) {
+        form.setError("new_password", {
+          message: "Password must be at least 8 characters",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
-      await requestForgotPasswordOtp({
-        email: values.email,
-        purpose: AUTH_OTP_PURPOSE.passwordReset,
-      });
-      setSuccessMessage(t("otpSent", { email: values.email }));
-    } catch {
-      setApiError(t("otpSendError"));
+
+      const ApiCalls: { key: string, call: () => Promise<void> }[] = [
+        {
+          key: "send-otp",
+          call: () => requestForgotPasswordOtp({
+            email: values.email,
+            purpose: AUTH_OTP_PURPOSE.passwordReset,
+          }),
+        },
+        {
+          key: "verify-otp",
+          call: () => verifyOtp({
+            email: values.email,
+            otp: values.otp,
+            purpose: AUTH_OTP_PURPOSE.passwordReset,
+          })
+        },
+        {
+          key: "reset-password",
+          call: () => resetPasswordConfirm({
+            email: values.email,
+            new_password: values.new_password,
+            new_password_confirm: values.new_password
+          })
+        }
+      ]
+      if (curerntStep == "verify-otp" && resendPressedRef.current == true) {
+        await requestForgotPasswordOtp({
+          email: values.email,
+          purpose: AUTH_OTP_PURPOSE.passwordReset,
+        })
+        setResendVisible(false)
+        toastSuccess(t("otpSent", { email: values.email }));
+      } else {
+        await ApiCalls.find((call) => call.key === curerntStep)?.call();
+      }
+
+      if (curerntStep == "reset-password") {
+        toastSuccess(t("forgotPassword.passwordResetSuccess"));
+        router.push(routes.auth.login);
+        return;
+      }
+
+      const nextStep = curerntStep == "send-otp"
+        ? "verify-otp"
+        : (curerntStep == "verify-otp" && !resendPressedRef.current)
+          ? "reset-password"
+          : "verify-otp";
+
+      if (curerntStep == "send-otp" || (curerntStep == "verify-otp" && resendPressedRef.current)) {
+        toastSuccess(t("otpSent", { email: values.email }));
+        setSuccessMessage(t("otpSent", { email: values.email }));
+      } else if (curerntStep == "verify-otp") {
+        toastSuccess(t("forgotPassword.otpVerified"));
+      }
+
+      setCurrentStep(nextStep);
+      setResendPressed(false);
+      resendPressedRef.current = false;
+    } catch (err: any) {
+      const fieldErrors = getApiFieldErrorMap(err);
+      const errMsg = fieldErrors.email || fieldErrors.otp || fieldErrors.new_password || getApiErrorDisplayMessage(err, t("otpSendError"));
+      setApiError(errMsg);
+      toastApiError(err, errMsg);
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  React.useEffect(() => {
+    if (curerntStep != "verify-otp") return;
+    setTimeLeft(50)
+    const timeUntillResend = Date.now() + 50 * 1000;
+    console.log("called the fucntion after resend")
+    const Intervel = setInterval(() => {
+      const CurrentTime = Date.now();
+      const TimeLeft = Math.max(0, Math.floor((timeUntillResend - CurrentTime) / 1000));
+      setTimeLeft(TimeLeft);
+      console.log("So this is the time left" + TimeLeft);
+      if (TimeLeft <= 0) {
+        setResendVisible(true)
+        clearInterval(Intervel)
+      }
+    }, 1000)
+    return () => clearInterval(Intervel);
+  }, [curerntStep, resendPressed])
+
+  function formatTime(totalSeconds: number): string {
+    const safeSeconds = Math.floor(totalSeconds); // force whole number first
+    const minutes = Math.floor(safeSeconds / 60);
+    const seconds = safeSeconds % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
   const inputCls =
     "h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/8";
 
@@ -102,34 +224,105 @@ export function ForgotPasswordForm() {
               );
             })}
           </div>
-
           {/* ── Fields ── */}
-          <div className="space-y-1.5">
-            <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
-              {t("workEmail")} <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                {...form.register("email")}
-                type="email"
-                autoComplete="email"
-                placeholder={t("emailPlaceholder")}
-                className={cn(inputCls, "pl-10")}
-                onBlur={() => void form.trigger("email")}
-              />
-            </div>
-            {form.formState.errors.email ? (
-              <p className="text-[12px] text-red-500">
-                {tVal(form.formState.errors.email.message ?? "")}
-              </p>
-            ) : null}
-            {apiError ? <p className="text-[12px] text-red-500">{apiError}</p> : null}
-            {successMessage ? (
-              <p className="text-[12px] text-emerald-600">{successMessage}</p>
-            ) : null}
-          </div>
+          {
+            curerntStep === "send-otp" && (
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
+                  {t("workEmail")} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    {...form.register("email")}
+                    type="email"
+                    autoComplete="email"
+                    placeholder={t("emailPlaceholder")}
+                    className={cn(inputCls, "pl-10")}
+                    onBlur={() => void form.trigger("email")}
+                  />
+                </div>
+                {form.formState.errors.email ? (
+                  <p className="text-[12px] text-red-500">
+                    {tVal(form.formState.errors.email.message ?? "")}
+                  </p>
+                ) : null}
+                {apiError ? <p className="text-[12px] text-red-500">{apiError}</p> : null}
+                {successMessage ? (
+                  <p className="text-[12px] text-emerald-600">{successMessage}</p>
+                ) : null}
+              </div>
+            )
+          }
+          {
+            curerntStep === "verify-otp" && (
+              <div className="space-y-3">
+                <label className="block text-[13px] font-semibold text-slate-700" style={{ letterSpacing: "0.01em" }}>
+                  {t("forgotPassword.otpInput")}
+                </label>
+                <div className="flex gap-2 justify-center">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { otpRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      className="h-12 w-12 rounded-xl border border-slate-200 bg-slate-50 text-center text-lg font-semibold text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/8"
+                      onChange={(e) => handleOtpDigit(i, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center justify-end">
+                  {
+                    resendVisible ? (
+                      <button className="text-md font-semibold text-slate-800 hover:underline cursor-pointer" onClick={() => { setResendPressed(true), resendPressedRef.current = true, void form.handleSubmit(onSubmit)() }}>
+                        {t("forgotPassword.resend")}
+                      </button>
+                    ) : (
+                      <div>
+                        <span className="font-medium text-slate-600">
+                          {
+                            t("resendIn")
+                          }
+                        </span>
+                        <span className="font-semibold text-slate-800">{formatTime(timeLeft ?? 0)}</span>
+                      </div>
+                    )
+                  }
 
+
+                </div>
+
+              </div>
+            )
+          }
+          {
+            curerntStep === "reset-password" && (
+              <div className="space-y-4">
+                <label htmlFor="" className="block text-[13px] font-semibold text-slate-700">
+                  {t("forgotPassword.newPassword")}
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} placeholder="Enter new password" className={cn(inputCls, "")} {...form.register("new_password", {
+                    required: "New password is required",
+
+                  })} />
+                  <button className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                  </button>
+                </div>
+                {form.formState.errors.new_password ? (
+                  <p className="text-[12px] text-red-500">
+                    {form.formState.errors.new_password.message}
+                  </p>
+                ) : null}
+
+              </div>
+            )
+          }
           {/* ── CTA button ── */}
           <button
             type="button"
@@ -145,6 +338,12 @@ export function ForgotPasswordForm() {
             {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : t("sendOtp")}
           </button>
         </div>
+      </div>
+      <div className="flex items-center justify-center p-2 gap-3">
+        <span className="mt-1.5 text-[14px] text-slate-500 ">
+          {t("forgotPassword.rememberThePassword")}
+        </span>
+        <Link href={routes.auth.login} className="mt-1.5 text-[14px] hover:underline text-slate-900 font-bold">{t("forgotPassword.backToLogin")}</Link>
       </div>
     </div>
   );

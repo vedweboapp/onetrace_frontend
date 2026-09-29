@@ -5,13 +5,23 @@ import * as React from "react";
 import { useSyncExternalStore } from "react";
 import { useTheme } from "@teispace/next-themes";
 import { useShallow } from "zustand/react/shallow";
-import type { DashboardAccentId } from "@/features/dashboard/store/dashboard-appearance.store";
-import { useDashboardAppearanceStore } from "@/features/dashboard/store/dashboard-appearance.store";
+import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import {
+  setDashboardAppearanceUserKey,
+  useDashboardAppearanceStore,
+} from "@/features/settings/personal-profile/store/dashboard-appearance.store";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import {
   ACCENT_HEX,
   accentOnAccentHex,
   normalizeAccentHex,
 } from "@/features/dashboard/utils/accent-hex.util";
+import {
+  FONT_FAMILY_CSS,
+  GOOGLE_FONTS_STYLESHEET,
+  applyDashTextScaleVars,
+  buildDashTextScale,
+} from "@/features/dashboard/utils/appearance-typography.util";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -38,18 +48,42 @@ function useIsClient() {
 }
 
 /**
- * Sets `--dash-accent` and `--dash-on-accent` for dashboard + settings UI
- * (auth/public use root defaults from globals.css).
+ * Applies dashboard appearance tokens (accent, typography, form layout, chrome layout)
+ * via CSS variables + data attributes for the whole dashboard shell.
+ * Also mirrors tokens onto `document.documentElement` so portaled menus/modals match.
  */
 export function DashboardAppearanceScope({ children, className }: Props) {
   const { resolvedTheme } = useTheme();
   const mounted = useIsClient();
+  const userId = useAuthStore((s) => s.user?.id);
 
-  const { accentKind, accent, customAccentHex } = useDashboardAppearanceStore(
+  React.useEffect(() => {
+    setDashboardAppearanceUserKey(userId);
+  }, [userId]);
+
+  const {
+    accentKind,
+    accent,
+    customAccentHex,
+    fontFamily,
+    fontSize,
+    sidebarLayout,
+    formLabelPlacement,
+    requiredIndicator,
+    detailRowLineWidth,
+    detailRowLineStyle,
+  } = useDashboardAppearanceStore(
     useShallow((s) => ({
       accentKind: s.accentKind,
       accent: s.accent,
       customAccentHex: s.customAccentHex,
+      fontFamily: s.fontFamily,
+      fontSize: s.fontSize,
+      sidebarLayout: s.sidebarLayout,
+      formLabelPlacement: s.formLabelPlacement,
+      requiredIndicator: s.requiredIndicator,
+      detailRowLineWidth: s.detailRowLineWidth,
+      detailRowLineStyle: s.detailRowLineStyle,
     })),
   );
 
@@ -62,14 +96,102 @@ export function DashboardAppearanceScope({ children, className }: Props) {
   }
 
   const onHex = accentOnAccentHex(hex);
+  const typeScale = buildDashTextScale(fontSize);
 
   const style = {
     "--dash-accent": hex,
     "--dash-on-accent": onHex,
+    "--dash-font-family": FONT_FAMILY_CSS[fontFamily],
+    "--dash-font-size": typeScale.root,
+    "--dash-label-size": typeScale.label,
+    "--dash-body-size": typeScale.body,
+    "--dash-type-scale": typeScale.scale,
+    "--dash-text-xs": typeScale.textXs,
+    "--dash-text-sm": typeScale.textSm,
+    "--dash-text-base": typeScale.textBase,
+    "--dash-text-lg": typeScale.textLg,
+    "--dash-text-xl": typeScale.textXl,
+    "--dash-text-2xl": typeScale.text2xl,
+    "--dash-detail-row-line-width": `${detailRowLineWidth}px`,
+    "--dash-detail-row-line-style": detailRowLineStyle,
+    fontFamily: "var(--dash-font-family)",
+    fontSize: "var(--dash-font-size)",
   } as CSSProperties;
 
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "dash-appearance-google-fonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = GOOGLE_FONTS_STYLESHEET;
+    document.head.appendChild(link);
+  }, []);
+
+  // Keep document from scrolling under the h-dvh shell (double scrollbar + bottom gap
+  // when the sidebar width changes and content briefly overflows the viewport).
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const html = document.documentElement;
+    const { body } = document;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.style.setProperty("--dash-accent", hex);
+    root.style.setProperty("--dash-on-accent", onHex);
+    root.style.setProperty("--dash-font-family", FONT_FAMILY_CSS[fontFamily]);
+    applyDashTextScaleVars(root.style, fontSize);
+    root.style.setProperty("--dash-detail-row-line-width", `${detailRowLineWidth}px`);
+    root.style.setProperty("--dash-detail-row-line-style", detailRowLineStyle);
+    root.style.fontFamily = "var(--dash-font-family)";
+    root.style.fontSize = typeScale.root;
+    root.setAttribute("data-font-size", String(fontSize));
+    root.setAttribute("data-font-family", fontFamily);
+    root.setAttribute("data-form-label", formLabelPlacement);
+    root.setAttribute("data-required-indicator", requiredIndicator);
+    root.setAttribute("data-detail-row-line-width", detailRowLineWidth);
+    root.setAttribute("data-detail-row-line-style", detailRowLineStyle);
+  }, [
+    hex,
+    onHex,
+    fontFamily,
+    fontSize,
+    formLabelPlacement,
+    requiredIndicator,
+    detailRowLineWidth,
+    detailRowLineStyle,
+    typeScale.root,
+    typeScale.label,
+    typeScale.body,
+    typeScale.scale,
+    typeScale.textXs,
+    typeScale.textSm,
+    typeScale.textBase,
+  ]);
+
   return (
-    <div className={cn(className)} style={style}>
+    <div
+      className={cn("dash-appearance-scope", className)}
+      style={style}
+      data-sidebar-layout={sidebarLayout}
+      data-form-label={formLabelPlacement}
+      data-required-indicator={requiredIndicator}
+      data-detail-row-line-width={detailRowLineWidth}
+      data-detail-row-line-style={detailRowLineStyle}
+      data-font-family={fontFamily}
+      data-font-size={String(fontSize)}
+    >
       {children}
     </div>
   );

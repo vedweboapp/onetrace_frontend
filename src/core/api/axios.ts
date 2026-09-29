@@ -14,8 +14,15 @@ import {
   parseApiFailurePayload,
   resolveApiErrorUserText,
 } from "@/core/errors/api-error-text";
+import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
+import { isFieldKeyedApiErrors, getRawApiErrors } from "@/core/errors/api-field-errors.util";
+import { isApiNotFoundError } from "@/core/errors/api-not-found.util";
 import { AuthRefreshEnvelope } from "@/features/auth/types/auth.types";
-import { navigateToLoginIfBrowser } from "@/features/auth/utils/auth-redirect.util";
+import {
+  forceSessionExpiredLogout,
+} from "@/features/auth/utils/auth-redirect.util";
+import { isInvalidAuthTokenError } from "@/features/auth/utils/auth-token-error.util";
+import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -25,9 +32,51 @@ declare module "axios" {
 }
 
 function resolveApiBaseUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return "/api/v1";
+  return resolvePublicApiBaseUrl();
+}
+
+/** Axios treats `/path` as site-root absolute and ignores baseURL — strip leading slash. */
+function toBaseRelativeApiPath(url: string): string {
+  if (!url.startsWith("/") || url.startsWith("//")) return url;
+  return url.replace(/^\/+/, "");
+}
+
+function ensureTrailingSlashUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  // Do not append trailing slash to files with extensions (e.g. .pdf, .png, .jpg, .svg)
+  const pathWithoutQuery = trimmed.split("?")[0].split("#")[0];
+  const lastSegment = pathWithoutQuery.split("/").pop() || "";
+  if (lastSegment.includes(".") && !lastSegment.endsWith(".")) {
+    return trimmed;
+  }
+
+  // Absolute URLs — mutate pathname only.
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      if (!parsed.pathname.endsWith("/")) {
+        parsed.pathname = `${parsed.pathname}/`;
+      }
+      return parsed.toString();
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // Relative to axios baseURL (e.g. "clients/26" or "/api/v1/clients/26").
+  // Do NOT resolve with `new URL(rel, origin)` — that turns "clients/26" into "/clients/26"
+  // and bypasses baseURL, hitting Next.js page routes instead of the API proxy.
+  const hashIndex = trimmed.indexOf("#");
+  const queryIndex = trimmed.indexOf("?");
+  let pathEnd = trimmed.length;
+  if (hashIndex >= 0) pathEnd = Math.min(pathEnd, hashIndex);
+  if (queryIndex >= 0) pathEnd = Math.min(pathEnd, queryIndex);
+  const path = trimmed.slice(0, pathEnd);
+  const suffix = trimmed.slice(pathEnd);
+  if (!path || path.endsWith("/")) return trimmed;
+  return `${path}/${suffix}`;
 }
 
 const baseURL = resolveApiBaseUrl();
@@ -35,7 +84,12 @@ const baseURL = resolveApiBaseUrl();
 function rejectIfEnvelopeFailed(
   response: AxiosResponse,
 ): AxiosResponse | Promise<never> {
-  if (response.config.responseType === "blob") return response;
+  if (
+    response.config.responseType === "blob" ||
+    response.config.responseType === "arraybuffer"
+  ) {
+    return response;
+  }
   const d = response.data;
   if (
     d &&
@@ -52,9 +106,14 @@ function rejectIfEnvelopeFailed(
       typeof raw.message === "string" ? raw.message : "Request failed";
     const code =
       typeof raw.error_code === "string" ? raw.error_code : null;
-    return Promise.reject(
-      new ApiBusinessError(msg, { errorCode: code, errors: raw.errors }),
-    );
+    const businessError = new ApiBusinessError(msg, {
+      errorCode: code,
+      errors: raw.errors,
+    });
+    if (typeof window !== "undefined" && isInvalidAuthTokenError(businessError)) {
+      forceSessionExpiredLogout();
+    }
+    return Promise.reject(businessError);
   }
   return response;
 }
@@ -75,6 +134,9 @@ const refreshClient = axios.create({
 
 refreshClient.interceptors.request.use((config) => {
   delete config.headers.Authorization;
+  if (typeof config.url === "string" && config.url.length > 0) {
+    config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
+  }
   return config;
 });
 
@@ -85,6 +147,20 @@ const api = axios.create({
     Accept: "application/json",
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  if (typeof config.url === "string" && config.url.length > 0) {
+    config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
+  }
+  // Tip backend to localize when supported; FE also maps known English strings.
+  if (typeof document !== "undefined") {
+    const lang = (document.documentElement.lang || "en").trim() || "en";
+    const headers = AxiosHeaders.from(config.headers ?? {});
+    headers.set("Accept-Language", lang);
+    config.headers = headers;
+  }
+  return config;
 });
 
 attachJsonEnvelopeGuard(api);
@@ -104,6 +180,7 @@ api.interceptors.response.use(
     }
     const payload = parseApiFailurePayload(error);
     toastError(resolveApiErrorUserText(payload));
+    markApiErrorToasted(error);
     return Promise.reject(error);
   },
 );
@@ -149,6 +226,12 @@ function shouldSuppressApiErrorToast(
   config?: InternalAxiosRequestConfig,
 ): boolean {
   if (config?.skipErrorToast) return true;
+  // Field-level validation errors are shown under form fields — skip global toast.
+  if (isFieldKeyedApiErrors(getRawApiErrors(error))) return true;
+  // Detail/list screens render their own not-found UI for missing records.
+  if (isApiNotFoundError(error)) return true;
+  // Session expired → redirect to login; do not toast the raw JWT dump.
+  if (isInvalidAuthTokenError(error)) return true;
   if (!axios.isAxiosError(error)) return false;
   if (error.response?.status !== 401) return false;
   const original = error.config as InternalAxiosRequestConfig & {
@@ -179,6 +262,12 @@ api.interceptors.request.use((config) => {
   } else {
     delete config.headers.Authorization;
   }
+
+  const method = (config.method ?? "get").toLowerCase();
+  if (method === "get" && config.skipErrorToast === undefined) {
+    config.skipErrorToast = true;
+  }
+
   return config;
 });
 
@@ -189,14 +278,30 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (!original || error.response?.status !== 401 || original._retry) {
+    // Auth login/refresh/logout URLs: expired session → login (no refresh loop).
+    const url = original?.url ?? "";
+    if (original && isAuthNoRetryUrl(url) && isInvalidAuthTokenError(error)) {
+      forceSessionExpiredLogout();
       return Promise.reject(error);
     }
 
-    const url = original.url ?? "";
-    if (isAuthNoRetryUrl(url)) {
-      useAuthStore.getState().clearAuth();
-      navigateToLoginIfBrowser();
+    // Already retried once still unauthorized / invalid token → force logout.
+    if (original?._retry && isInvalidAuthTokenError(error)) {
+      forceSessionExpiredLogout();
+      return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+    const shouldTryRefresh =
+      Boolean(original) &&
+      !original._retry &&
+      !isAuthNoRetryUrl(url) &&
+      (status === 401 || isInvalidAuthTokenError(error));
+
+    if (!shouldTryRefresh) {
+      if (isInvalidAuthTokenError(error)) {
+        forceSessionExpiredLogout();
+      }
       return Promise.reject(error);
     }
 
@@ -205,16 +310,14 @@ api.interceptors.response.use(
     try {
       const newToken = await queueRefresh();
       if (!newToken) {
-        useAuthStore.getState().clearAuth();
-        navigateToLoginIfBrowser();
+        forceSessionExpiredLogout();
         return Promise.reject(error);
       }
       original.headers.Authorization = `Bearer ${newToken}`;
       return api(original);
-    } catch {
-      useAuthStore.getState().clearAuth();
-      navigateToLoginIfBrowser();
-      return Promise.reject(error);
+    } catch (refreshError) {
+      forceSessionExpiredLogout();
+      return Promise.reject(refreshError ?? error);
     }
   },
 );

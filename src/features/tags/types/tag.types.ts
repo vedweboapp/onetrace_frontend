@@ -46,4 +46,6 @@ export type TagCreatePayload = {
   text_colour: string;
 };
 
-export type TagUpdatePayload = Partial<TagCreatePayload>;
+export type TagUpdatePayload = Partial<TagCreatePayload> & {
+  is_active?: boolean;
+};

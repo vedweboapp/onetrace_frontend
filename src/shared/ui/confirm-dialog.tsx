@@ -10,8 +10,8 @@ export type ConfirmDialogProps = {
   onConfirm: () => void | Promise<void>;
   title: string;
   body: ReactNode;
-  /** Highlight (e.g. entity name) shown in a subdued box under the body */
-  highlight?: string;
+  /** Highlight (e.g. entity name / structured summary) shown in a subdued box under the body */
+  highlight?: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   isBusy?: boolean;
@@ -61,9 +61,13 @@ export function ConfirmDialog({
       <>
         <p className="text-sm text-slate-600 dark:text-slate-400">{body}</p>
         {highlight ? (
-          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-100">
-            {highlight}
-          </p>
+          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-100">
+            {typeof highlight === "string" ? (
+              <p className="font-medium">{highlight}</p>
+            ) : (
+              highlight
+            )}
+          </div>
         ) : null}
       </>
     </AppModal>

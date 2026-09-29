@@ -2,6 +2,13 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import { fetchAllEntityIds } from "@/shared/mass-actions";
+import {
+  applyDropdownListParam,
+  DROPDOWN_LIST_PAGE_SIZE,
+  resolveDropdownListPages,
+  parseListApiPage,
+} from "@/shared/utils/list-dropdown-fetch.util";
 import { CLIENT_PATHS } from "./client.paths";
 import type {
   Client,
@@ -10,16 +17,10 @@ import type {
   ClientUpdatePayload,
 } from "../types/client.types";
 
-function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
-  if (!envelope.success) {
-    const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
-    throw new ApiBusinessError(msg);
-  }
-}
-
 export type ClientListFilters = {
   search?: string;
   is_active?: boolean;
+  dropdown?: boolean;
 };
 
 type ClientRequestOptions = {
@@ -28,21 +29,34 @@ type ClientRequestOptions = {
 
 export async function fetchClientsPage(
   page = 1,
-  pageSize = 20,
+  pageSize = DROPDOWN_LIST_PAGE_SIZE,
   filters?: ClientListFilters,
   options?: ClientRequestOptions,
 ): Promise<{ items: Client[]; pagination: ClientListResponse["pagination"] }> {
-  const params: Record<string, string | number> = { page, page_size: pageSize };
+  const params: Record<string, string | number | boolean> = { page, page_size: pageSize };
   const q = filters?.search?.trim();
   if (q) params.search = q;
   if (typeof filters?.is_active === "boolean") params.is_active = String(filters.is_active);
+  applyDropdownListParam(params, filters?.dropdown);
 
-  const { data } = await api.get<ClientListResponse>(CLIENT_PATHS.list, {
-    params,
-    skipErrorToast: options?.silent === true,
+  return resolveDropdownListPages({
+    dropdown: filters?.dropdown,
+    silent: options?.silent,
+    fetchFirst: async () => {
+      const { data } = await api.get<ClientListResponse>(CLIENT_PATHS.list, {
+        params,
+        skipErrorToast: options?.silent === true,
+      });
+      return parseListApiPage(data, pageSize);
+    },
   });
-  assertEnvelopeSuccess(data);
-  return { items: data.data, pagination: data.pagination };
+}
+
+export async function fetchAllClientIds(
+  filters?: ClientListFilters,
+  options?: ClientRequestOptions,
+): Promise<number[]> {
+  return fetchAllEntityIds((page, pageSize) => fetchClientsPage(page, pageSize, filters, options));
 }
 
 export async function fetchClient(id: number, options?: ClientRequestOptions): Promise<Client> {

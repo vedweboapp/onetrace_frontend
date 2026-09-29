@@ -34,7 +34,7 @@ function pickLine2(addr: NominatimAddress): string {
   return filtered.join(", ").trim();
 }
 
-function resolveStateIso(countryIso: string, stateName: string): string {
+export function resolveStateIso(countryIso: string, stateName: string): string {
   const name = stateName.trim();
   if (!countryIso || !name) return "";
   const states = State.getStatesOfCountry(countryIso);
@@ -46,7 +46,7 @@ function resolveStateIso(countryIso: string, stateName: string): string {
   return partial?.isoCode ?? "";
 }
 
-function resolveCityInDataset(countryIso: string, stateIso: string, cityName: string): string {
+export function resolveCityInDataset(countryIso: string, stateIso: string, cityName: string): string {
   const city = cityName.trim();
   if (!countryIso || !stateIso || !city) return city;
   const cities = City.getCitiesOfState(countryIso, stateIso);

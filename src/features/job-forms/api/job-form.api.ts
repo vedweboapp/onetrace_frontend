@@ -1,0 +1,337 @@
+import api from "@/core/api/axios";
+import type { ApiEnvelope } from "@/core/types/api.types";
+import { assertApiSuccess } from "@/core/types/api.types";
+import type {
+  JobFormSubmission,
+  SubmitJobFormSummary,
+  WorkerFormSubmissionListItem,
+} from "@/features/job-forms/types/job-form-submission.types";
+import { normalizeProjectFormMetadataResponse } from "@/features/job-forms/utils/job-form-schema.util";
+import { JOB_FORM_PATHS } from "./job-form.paths";
+
+export async function fetchJobFormSchema(formId: number, jobId?: number | string) {
+  const { data: raw } = await api.get(`project-forms/${formId}/metadata/`, {
+    params: jobId != null ? { job_id: jobId } : undefined,
+  });
+  return normalizeProjectFormMetadataResponse(raw);
+}
+
+export function normalizeSubmissionRow(
+  row: JobFormSubmission & {
+    submission_id?: number;
+    project_form?: number | { id?: number };
+  },
+): JobFormSubmission {
+  const projectFormFromNested =
+    typeof row.project_form === "number"
+      ? row.project_form
+      : row.project_form && typeof row.project_form === "object"
+        ? Number(row.project_form.id)
+        : undefined;
+  const projectFormId =
+    row.project_form_id ??
+    (Number.isFinite(projectFormFromNested) && (projectFormFromNested as number) > 0
+      ? (projectFormFromNested as number)
+      : undefined) ??
+    row.form_id;
+
+  return {
+    ...row,
+    id: row.id ?? row.submission_id ?? 0,
+    project_form_id: projectFormId,
+    form_id: row.form_id ?? projectFormId ?? 0,
+    values: Array.isArray(row.values) ? row.values : [],
+    files: Array.isArray(row.files) ? row.files : [],
+  };
+}
+
+function normalizeWorkerFormSubmissionListItem(row: Partial<WorkerFormSubmissionListItem> & {
+  job?: number | { id?: number; job_serial_number?: string | null; name?: string | null } | null;
+  job_serial?: string | null;
+}): WorkerFormSubmissionListItem | null {
+  const id = Number(row.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const projectFormId = Number(row.project_form_id);
+  const jobFormId = Number(row.job_form_id);
+  const nestedJob =
+    row.job && typeof row.job === "object" && !Array.isArray(row.job) ? row.job : null;
+  const jobIdRaw =
+    Number(row.job_id) ||
+    (typeof row.job === "number" ? row.job : 0) ||
+    Number(nestedJob?.id) ||
+    0;
+  const jobSerial =
+    (typeof row.job_serial_number === "string" && row.job_serial_number.trim()) ||
+    (typeof row.job_serial === "string" && row.job_serial.trim()) ||
+    (typeof nestedJob?.job_serial_number === "string" && nestedJob.job_serial_number.trim()) ||
+    null;
+  const jobName =
+    (typeof row.job_name === "string" && row.job_name.trim()) ||
+    (typeof nestedJob?.name === "string" && nestedJob.name.trim()) ||
+    null;
+  const jobCategory =
+    (typeof row.job_category === "string" && row.job_category.trim()) ||
+    (typeof (nestedJob as { job_category?: string } | null | undefined)?.job_category === "string"
+      ? (nestedJob as { job_category?: string }).job_category?.trim()
+      : null) ||
+    null;
+  return {
+    id,
+    worker_id: Number(row.worker_id) || 0,
+    worker_name: typeof row.worker_name === "string" ? row.worker_name : "",
+    project_form_name: typeof row.project_form_name === "string" ? row.project_form_name : "",
+    project_form_id:
+      Number.isFinite(projectFormId) && projectFormId > 0 ? projectFormId : null,
+    job_form_id: Number.isFinite(jobFormId) && jobFormId > 0 ? jobFormId : null,
+    job_id: Number.isFinite(jobIdRaw) && jobIdRaw > 0 ? jobIdRaw : null,
+    job_serial_number: jobSerial,
+    job_name: jobName,
+    job_category: jobCategory,
+    status: typeof row.status === "string" ? row.status : "",
+    submitted_at: row.submitted_at ?? null,
+  };
+}
+
+function unwrapWorkerFormSubmissionRows(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    if (Array.isArray(obj.data)) return obj.data;
+    if (Array.isArray(obj.results)) return obj.results;
+    if (Array.isArray(obj.items)) return obj.items;
+  }
+  return [];
+}
+
+/** GET /jobs/{id}/worker-form-submissions/ — flat paginated list of worker submissions. */
+export async function fetchJobWorkerFormSubmissions(
+  jobId: number,
+): Promise<WorkerFormSubmissionListItem[]> {
+  const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionListItem[]>>(
+    JOB_FORM_PATHS.workerFormSubmissions(jobId),
+  );
+  assertApiSuccess(data);
+  const rows = unwrapWorkerFormSubmissionRows(data.data);
+  return rows
+    .map((row) =>
+      normalizeWorkerFormSubmissionListItem(
+        (row && typeof row === "object" ? row : {}) as Partial<WorkerFormSubmissionListItem>,
+      ),
+    )
+    .filter((row): row is WorkerFormSubmissionListItem => row != null)
+    .map((row) => ({ ...row, job_id: row.job_id ?? jobId }));
+}
+
+/** GET /jobs/worker-form-submissions/ — submissions across all jobs. */
+export async function fetchAllWorkerFormSubmissions(filters?: {
+  job_category?: string;
+}): Promise<WorkerFormSubmissionListItem[]> {
+  const params: Record<string, string> = {};
+  if (filters?.job_category) {
+    params.job_category = filters.job_category;
+  }
+  const { data } = await api.get<ApiEnvelope<WorkerFormSubmissionListItem[]>>(
+    JOB_FORM_PATHS.workerFormSubmissionsAll,
+    { params: Object.keys(params).length > 0 ? params : undefined },
+  );
+  assertApiSuccess(data);
+  const rows = unwrapWorkerFormSubmissionRows(data.data);
+  return rows
+    .map((row) =>
+      normalizeWorkerFormSubmissionListItem(
+        (row && typeof row === "object" ? row : {}) as Partial<WorkerFormSubmissionListItem>,
+      ),
+    )
+    .filter((row): row is WorkerFormSubmissionListItem => row != null);
+}
+
+export async function fetchJobSubmittedForms(jobId: number): Promise<JobFormSubmission[]> {
+  const { data } = await api.get<ApiEnvelope<JobFormSubmission[]>>(
+    JOB_FORM_PATHS.submittedList(jobId),
+  );
+  assertApiSuccess(data);
+  return data.data.map((row) => normalizeSubmissionRow(row));
+}
+
+export async function fetchJobSubmittedForm(
+  jobId: number,
+  submissionId: number,
+): Promise<JobFormSubmission> {
+  const { data } = await api.get<ApiEnvelope<JobFormSubmission>>(
+    JOB_FORM_PATHS.submittedDetail(jobId, submissionId),
+  );
+  assertApiSuccess(data);
+  return normalizeSubmissionRow({ ...data.data, id: data.data.id ?? submissionId });
+}
+
+/** List rows often omit `values`; load detail when we have a submission id. */
+export async function resolveSubmissionWithValues(
+  jobId: number,
+  row: JobFormSubmission | null | undefined,
+): Promise<JobFormSubmission | null> {
+  if (!row) return null;
+  if (Array.isArray(row.values) && row.values.length > 0) return row;
+  if (!row.id || row.id <= 0) return row;
+  try {
+    return await fetchJobSubmittedForm(jobId, row.id);
+  } catch {
+    return row;
+  }
+}
+
+function submissionMatchesJobForm(
+  row: JobFormSubmission,
+  jobFormId: number,
+  projectFormId: number,
+): boolean {
+  if (Number.isFinite(jobFormId) && jobFormId > 0 && row.job_form_id === jobFormId) return true;
+  if (projectFormId > 0) {
+    if (row.project_form_id === projectFormId) return true;
+    if (row.form_id === projectFormId) return true;
+  }
+  return false;
+}
+
+/** Resolve an existing submission for a job form (list summary → detail). */
+export async function loadJobFormSubmission(
+  jobId: number,
+  jobFormId: number,
+  projectFormId: number,
+  submissionIdHint?: number,
+): Promise<JobFormSubmission | null> {
+  if (submissionIdHint != null && submissionIdHint > 0) {
+    try {
+      const detail = await fetchJobSubmittedForm(jobId, submissionIdHint);
+      return normalizeSubmission(detail, jobId, jobFormId, projectFormId);
+    } catch {
+      // Fall back to list lookup.
+    }
+  }
+
+  let rows: JobFormSubmission[] = [];
+  try {
+    rows = await fetchJobSubmittedForms(jobId);
+  } catch {
+    return null;
+  }
+
+  const summary =
+    rows.find((row) => submissionMatchesJobForm(row, jobFormId, projectFormId)) ?? null;
+  const resolved = await resolveSubmissionWithValues(jobId, summary);
+  if (!resolved) return null;
+  return normalizeSubmission(resolved, jobId, jobFormId, projectFormId);
+}
+
+function isSubmitSummary(
+  row: JobFormSubmission | SubmitJobFormSummary,
+): row is SubmitJobFormSummary {
+  return "submission_id" in row && !("values" in row);
+}
+
+function normalizeSubmission(
+  row: JobFormSubmission,
+  jobId: number,
+  jobFormId: number,
+  projectFormId: number,
+): JobFormSubmission {
+  return {
+    ...row,
+    id: row.id > 0 ? row.id : 0,
+    job_id: row.job_id ?? jobId,
+    job_form_id: row.job_form_id ?? jobFormId,
+    form_id: row.form_id ?? row.project_form_id ?? projectFormId,
+    project_form_id: row.project_form_id ?? row.form_id ?? projectFormId,
+    values: row.values ?? [],
+    files: row.files ?? [],
+  };
+}
+
+export async function updateJobFormSubmission(
+  jobId: number,
+  submissionId: number,
+  formData: FormData,
+  projectFormId?: number,
+): Promise<JobFormSubmission> {
+  const { data } = await api.patch<ApiEnvelope<JobFormSubmission>>(
+    JOB_FORM_PATHS.submittedUpdate(jobId, submissionId),
+    formData,
+  );
+  assertApiSuccess(data);
+  // Extract job_form_id from the job_form_id field inside FormData
+  const jobFormId = Number(formData.get("job_form_id")) || 0;
+  const resolvedProjectFormId =
+    projectFormId ?? data.data.project_form_id ?? data.data.form_id ?? 0;
+  const normalized = normalizeSubmission(
+    normalizeSubmissionRow(data.data),
+    jobId,
+    jobFormId,
+    resolvedProjectFormId,
+  );
+  return {
+    ...normalized,
+    id: normalized.id > 0 ? normalized.id : submissionId,
+    submission_id:
+      typeof (data.data as any)?.submission_id === "number" && (data.data as any).submission_id > 0
+        ? (data.data as any).submission_id
+        : submissionId,
+  };
+}
+
+export async function submitJobForm(
+  jobId: number,
+  formData: FormData,
+  projectFormId?: number,
+): Promise<JobFormSubmission> {
+  const { data } = await api.post<ApiEnvelope<JobFormSubmission | SubmitJobFormSummary>>(
+    JOB_FORM_PATHS.submit(jobId),
+    formData,
+  );
+  assertApiSuccess(data);
+  const body = data.data;
+  // Extract job_form_id from the job_form_id field inside FormData
+  const jobFormId = Number(formData.get("job_form_id")) || 0;
+  if (isSubmitSummary(body)) {
+    const summarySubmissionId = body.submission_id;
+    try {
+      const detail = await fetchJobSubmittedForm(jobId, summarySubmissionId);
+      const normalized = normalizeSubmission(
+        detail,
+        jobId,
+        jobFormId,
+        projectFormId ?? body.project_form_id ?? 0,
+      );
+      return {
+        ...normalized,
+        id: normalized.id > 0 ? normalized.id : summarySubmissionId,
+        submission_id: summarySubmissionId,
+      };
+    } catch {
+      return {
+        id: summarySubmissionId,
+        submission_id: summarySubmissionId,
+        job_id: body.job_id,
+        job_form_id: jobFormId,
+        form_id: body.project_form_id,
+        project_form_id: body.project_form_id,
+        status: "submitted",
+        values: [],
+      };
+    }
+  }
+  const rawSid = (body as any)?.submission_id ?? (body as any)?.id;
+  const normalized = normalizeSubmission(
+    body,
+    jobId,
+    jobFormId,
+    projectFormId ?? body.project_form_id ?? body.form_id ?? 0,
+  );
+  return {
+    ...normalized,
+    submission_id:
+      typeof rawSid === "number" && rawSid > 0
+        ? rawSid
+        : normalized.id > 0
+          ? normalized.id
+          : undefined,
+  };
+}

@@ -38,8 +38,11 @@ function buildCityStatePinLine(parts: Pick<DetailAddressParts, "city" | "state" 
 
 type LabeledRowsProps = DetailAddressParts & { line2Fallback?: string };
 
-/** Same breakpoints as record cards: 1 col mobile, 2 columns from `sm` through `lg`. */
-const ADDRESS_FIELD_GRID = cn("grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-2");
+/** Address fields: 2 columns from `sm` so pairs stay on one row (not a stretched 3-col grid). */
+const ADDRESS_FIELD_GRID = cn(
+  "grid grid-cols-1 gap-x-5 gap-y-2.5",
+  "sm:grid-cols-2",
+);
 
 function LabeledAddressRows({ line1, line2, city, state, pincode, country, line2Fallback }: LabeledRowsProps) {
   const t = useTranslations("Dashboard.common.address");
@@ -54,8 +57,8 @@ function LabeledAddressRows({ line1, line2, city, state, pincode, country, line2
       <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{label}</p>
       <p
         className={cn(
-          "mt-1.5 break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100",
-          valueMuted && "font-normal text-slate-500 dark:text-slate-400",
+          "mt-0.5 break-words text-sm font-normal leading-snug text-slate-700 dark:text-slate-300",
+          valueMuted && "text-slate-500 dark:text-slate-400",
         )}
       >
         {value.trim() ? value : "—"}
@@ -112,7 +115,7 @@ export function DetailFormattedAddress({
         <div className={ADDRESS_FIELD_GRID}>
           <div className="min-w-0 sm:col-span-2">
             <p className="text-xs font-medium leading-snug text-slate-500 dark:text-slate-400">{t("legacy")}</p>
-            <p className="mt-1.5 whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-900 dark:text-slate-100">
+            <p className="mt-0.5 whitespace-pre-wrap text-sm font-normal leading-relaxed text-slate-700 dark:text-slate-300">
               {legacy}
             </p>
           </div>
@@ -164,9 +167,9 @@ export function DetailFormattedAddress({
             <p
               key={`${row.text}-${i}`}
               className={cn(
-                row.prominent && "font-medium text-slate-900 dark:text-slate-100",
-                !row.prominent && !row.muted && "text-slate-800 dark:text-slate-200",
-                row.muted && "text-slate-500 dark:text-slate-400",
+                row.prominent && "font-medium text-slate-700 dark:text-slate-200",
+                !row.prominent && !row.muted && "font-normal text-slate-700 dark:text-slate-300",
+                row.muted && "font-normal text-slate-500 dark:text-slate-400",
               )}
             >
               {row.text}

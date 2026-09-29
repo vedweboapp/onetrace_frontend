@@ -1,10 +1,13 @@
 import { City, Country, State } from "country-state-city";
+import { isSiteContactPersonTitle } from "@/features/sites/utils/site-contact-person.util";
+import { normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
+import { getSiteContactPersonContactId } from "@/features/sites/utils/site-contact-person.util";
 import { normalizeWhat3WordsInput } from "@/shared/utils/what3words-display.util";
 import type { Site } from "@/features/sites/types/site.types";
 import type { SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { SiteUpsertPayload } from "@/features/sites/types/site.types";
 
-export function mapSiteFormToPayload(values: SiteFormValues, organizationId: number): SiteUpsertPayload {
+export function mapSiteFormToPayload(values: SiteFormValues): SiteUpsertPayload {
   const country = Country.getCountryByCode(values.country_iso);
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
@@ -23,8 +26,17 @@ export function mapSiteFormToPayload(values: SiteFormValues, organizationId: num
     cityPayload = values.city.trim();
   }
 
+  const contacts = (values.contacts ?? [])
+    .map((row) => {
+      const contactId = Number.parseInt(row.contact, 10);
+      if (!isSiteContactPersonTitle(row.title) || !Number.isFinite(contactId) || contactId <= 0) {
+        return null;
+      }
+      return { title: row.title, contact: contactId };
+    })
+    .filter((row): row is NonNullable<typeof row> => row != null);
+
   return {
-    organization: organizationId,
     site_name: values.site_name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
     address_line_1: values.address_line_1.trim(),
@@ -35,6 +47,7 @@ export function mapSiteFormToPayload(values: SiteFormValues, organizationId: num
     pincode: values.pincode.trim(),
     what3words: normalizeWhat3WordsInput(values.what3words),
     ...parseLatLngPayload(values.latitude, values.longitude),
+    contacts,
   };
 }
 
@@ -57,13 +70,14 @@ export function emptySiteFormDefaults(): SiteFormValues {
     client: "",
     address_line_1: "",
     address_line_2: "",
-    country_iso: "IN",
+    country_iso: "",
     state_iso: "",
     city: "",
     pincode: "",
     what3words: "",
     latitude: "",
     longitude: "",
+    contacts: [],
   };
 }
 
@@ -71,7 +85,7 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
   const inferredIso =
     Country.getAllCountries().find((c) => c.name.toLowerCase() === (site.country ?? "").trim().toLowerCase())
       ?.isoCode ?? "";
-  const countryIso = (inferredIso || "IN").toUpperCase();
+  const countryIso = inferredIso ? inferredIso.toUpperCase() : "";
   const states = State.getStatesOfCountry(countryIso);
   const stateIso = states.find((s) => s.name.toLowerCase() === (site.state ?? "").trim().toLowerCase())?.isoCode ?? "";
 
@@ -94,5 +108,21 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
     what3words: site.what3words?.trim() ?? "",
     latitude: site.latitude != null && Number.isFinite(site.latitude) ? String(site.latitude) : "",
     longitude: site.longitude != null && Number.isFinite(site.longitude) ? String(site.longitude) : "",
+    contacts: normalizeSiteContactPersonsFromApi(site).map((row) => {
+      const contactId = getSiteContactPersonContactId(row.contact);
+      const rawTitle = row.title;
+      let formTitle = "";
+      if (rawTitle && typeof rawTitle === "object") {
+        const titleId = (rawTitle as Record<string, unknown>).id;
+        const titleStr = (rawTitle as Record<string, unknown>).title ?? (rawTitle as Record<string, unknown>).name;
+        formTitle = titleId != null ? String(titleId) : titleStr != null ? String(titleStr) : "";
+      } else {
+        formTitle = rawTitle ? String(rawTitle) : "";
+      }
+      return {
+        title: formTitle,
+        contact: contactId ? String(contactId) : "",
+      };
+    }),
   };
 }

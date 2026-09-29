@@ -28,9 +28,10 @@ const variants = {
     "focus-visible:ring-slate-400/45",
   ),
   ghost: cn(
-    "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-    "focus-visible:ring-slate-400/40",
+    "text-[color:var(--dash-accent,#111111)] hover:bg-[color:var(--dash-accent,#111111)]/10",
+    "focus-visible:ring-[color:color-mix(in_srgb,var(--dash-accent,#111111)_42%,transparent)]",
   ),
+
   danger: cn(
     "bg-red-600 text-white shadow-sm hover:bg-red-700",
     "focus-visible:ring-red-400/40",
@@ -39,9 +40,9 @@ const variants = {
 
 /** Compact dashboard actions — text only, no icons. */
 const sizes = {
-  sm: "h-8 min-h-8 rounded-md px-3 text-xs font-medium",
-  md: "h-9 min-h-9 rounded-md px-3.5 text-xs font-medium",
-  lg: "h-10 min-h-10 rounded-lg px-4 text-sm font-medium",
+  sm: "h-8 min-h-8 rounded-md px-3 text-[length:var(--dash-text-xs,0.75rem)] font-medium",
+  md: "h-9 min-h-9 rounded-md px-3.5 text-[length:var(--dash-text-sm,0.875rem)] font-medium",
+  lg: "h-10 min-h-10 rounded-lg px-4 text-[length:var(--dash-body-size,0.875rem)] font-medium",
 } as const;
 
 export type AppButtonVariant = keyof typeof variants;
@@ -59,7 +60,7 @@ export type AppButtonProps = Omit<
 };
 
 const base = cn(
-  "inline-flex cursor-pointer items-center justify-center transition outline-none",
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 transition outline-none",
   "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950",
   "data-[disabled]:cursor-not-allowed data-[disabled]:pointer-events-none data-[disabled]:opacity-55",
 );

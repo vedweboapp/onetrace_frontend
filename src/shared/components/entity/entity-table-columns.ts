@@ -5,6 +5,7 @@ export type EntityTableCellVariant =
   | "primary"
   | "text"
   | "truncate"
+  | "link"
   | "phone"
   | "mono"
   | "tabular"
@@ -12,6 +13,7 @@ export type EntityTableCellVariant =
   | "date"
   | "status"
   | "actions"
+  | "selection"
   | "custom";
 
 export type ColumnLayoutOpts = {
@@ -38,11 +40,19 @@ export type EntityTableColumn<T> = EntityTableColumnBase<T> &
         maxWidth?: "sm" | "md" | "lg";
         title?: (row: T) => string | undefined;
       }
+    | {
+        /** Related entity name styled as a blue link (optional href for navigation). */
+        variant: "link";
+        label: (row: T) => string;
+        href?: (row: T) => string | null | undefined;
+        maxWidth?: "sm" | "md" | "lg";
+        title?: (row: T) => string | undefined;
+      }
     | { variant: "phone"; value: (row: T) => string | null | undefined }
     | { variant: "mono"; value: (row: T) => ReactNode }
     | { variant: "tabular"; value: (row: T) => ReactNode }
     | { variant: "muted"; value: (row: T) => ReactNode }
-    | { variant: "date"; value: (row: T) => string | Date; dateFmt: Intl.DateTimeFormat }
+    | { variant: "date"; value: (row: T) => string | Date | number | null | undefined; dateFmt: Intl.DateTimeFormat }
     | {
         variant: "status";
         isActive: (row: T) => boolean;
@@ -50,6 +60,7 @@ export type EntityTableColumn<T> = EntityTableColumnBase<T> &
         inactiveLabel: string;
       }
     | { variant: "actions"; render: (row: T) => ReactNode }
+    | { variant: "selection"; render: (row: T) => ReactNode }
     | { variant: "custom"; render: (row: T) => ReactNode }
   );
 
@@ -74,6 +85,16 @@ export function entityCol<T>() {
       const { maxWidth, title, ...opts } = config ?? {};
       return applyOpts({ id, header, variant: "truncate", value, maxWidth, title }, opts);
     },
+    link: (
+      id: string,
+      header: ReactNode,
+      label: (row: T) => string,
+      href?: (row: T) => string | null | undefined,
+      config?: ColumnLayoutOpts & { maxWidth?: "sm" | "md" | "lg"; title?: (row: T) => string | undefined },
+    ) => {
+      const { maxWidth, title, ...opts } = config ?? {};
+      return applyOpts({ id, header, variant: "link", label, href, maxWidth, title }, opts);
+    },
     phone: (id: string, header: ReactNode, value: (row: T) => string | null | undefined, opts?: ColumnLayoutOpts) =>
       applyOpts({ id, header, variant: "phone", value }, opts),
     mono: (id: string, header: ReactNode, value: (row: T) => ReactNode, opts?: ColumnLayoutOpts) =>
@@ -85,7 +106,7 @@ export function entityCol<T>() {
     date: (
       id: string,
       header: ReactNode,
-      value: (row: T) => string | Date,
+      value: (row: T) => string | Date | number | null | undefined,
       dateFmt: Intl.DateTimeFormat,
       opts?: ColumnLayoutOpts,
     ) => applyOpts({ id, header, variant: "date", value, dateFmt }, opts),
@@ -106,6 +127,18 @@ export function entityCol<T>() {
           render,
           narrow: true,
           headerSrOnly: opts?.headerSrOnly ?? true,
+        },
+        opts,
+      ),
+    selection: (id: string, header: ReactNode, render: (row: T) => ReactNode, opts?: ColumnLayoutOpts) =>
+      applyOpts(
+        {
+          id,
+          header,
+          variant: "selection",
+          render,
+          narrow: true,
+          headerSrOnly: opts?.headerSrOnly,
         },
         opts,
       ),

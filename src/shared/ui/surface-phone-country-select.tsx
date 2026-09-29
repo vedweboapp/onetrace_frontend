@@ -46,8 +46,10 @@ export function SurfacePhoneCountrySelect({
   "aria-label": ariaLabel,
 }: SurfacePhoneCountrySelectProps) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const listRef = React.useRef<HTMLUListElement>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const [portalAccent, setPortalAccent] = React.useState("#111111");
   const [portalOnAccent, setPortalOnAccent] = React.useState("#ffffff");
   const [popover, setPopover] = React.useState({ top: 0, left: 0, width: 220 });
@@ -61,6 +63,14 @@ export function SurfacePhoneCountrySelect({
     }
     return out;
   }, [options]);
+
+  const filteredOptions = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return selectOptions;
+    return selectOptions.filter(
+      (opt) => opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q),
+    );
+  }, [selectOptions, search]);
 
   const selectedRow = React.useMemo(() => {
     const current = value ?? "ZZ";
@@ -96,6 +106,15 @@ export function SurfacePhoneCountrySelect({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (open) setSearch("");
+  }, [open]);
+
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    searchInputRef.current?.focus();
   }, [open]);
 
   React.useEffect(() => {
@@ -137,11 +156,9 @@ export function SurfacePhoneCountrySelect({
 
       {open && !effectiveDisabled && typeof document !== "undefined"
         ? createPortal(
-            <ul
+            <div
               ref={listRef}
-              role="listbox"
-              aria-label={ariaLabel ?? "Country"}
-              className="max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
+              className="flex max-h-72 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
               style={
                 {
                   position: "fixed",
@@ -154,42 +171,80 @@ export function SurfacePhoneCountrySelect({
                 } as React.CSSProperties
               }
             >
-              {selectOptions.map((opt) => {
-                const isSelected = opt.value === selectValue;
-                return (
-                  <li key={opt.value} role="presentation">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => {
-                        onChange(opt.value === "ZZ" ? undefined : (opt.value as Country));
-                        setOpen(false);
-                      }}
-                      className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition",
-                        isSelected
-                          ? "bg-[color:color-mix(in_srgb,var(--dash-accent,#111111)_10%,transparent)] text-[color:var(--dash-accent,#111111)]"
-                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
-                      )}
-                    >
-                      <span className="inline-flex w-6 items-center justify-center" aria-hidden>
-                        <Icon country={opt.value === "ZZ" ? undefined : (opt.value as Country)} label={opt.label} />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{opt.label}</span>
-                      <span
-                        className={cn(
-                          "inline-flex size-4 items-center justify-center rounded-sm",
-                          isSelected ? "text-[color:var(--dash-accent,#111111)]" : "text-transparent",
-                        )}
-                      >
-                        <Check className="size-3.5" strokeWidth={2.5} />
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>,
+              <div className="shrink-0 border-b border-slate-200 p-2 dark:border-slate-700">
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search country..."
+                  aria-label="Search country"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.stopPropagation();
+                      setOpen(false);
+                    }
+                  }}
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none",
+                    "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
+                    "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
+                  )}
+                />
+              </div>
+              <ul role="listbox" aria-label={ariaLabel ?? "Country"} className="min-h-0 flex-1 overflow-auto py-1">
+                {filteredOptions.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No countries found</li>
+                ) : (
+                  filteredOptions.map((opt) => {
+                    const isSelected = opt.value === selectValue;
+                    return (
+                      <li key={opt.value} role="presentation">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => {
+                            const next = opt.value === "ZZ" ? undefined : (opt.value as Country);
+                            setOpen(false);
+                            queueMicrotask(() => {
+                              onChange(next);
+                              const phoneRoot = triggerRef.current?.closest(".PhoneInput");
+                              const numberInput = phoneRoot?.querySelector(
+                                ".PhoneInputInput",
+                              ) as HTMLInputElement | null;
+                              numberInput?.focus({ preventScroll: true });
+                            });
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition",
+                            isSelected
+                              ? "bg-[color:color-mix(in_srgb,var(--dash-accent,#111111)_10%,transparent)] text-[color:var(--dash-accent,#111111)]"
+                              : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+                          )}
+                        >
+                          <span className="inline-flex w-6 items-center justify-center" aria-hidden>
+                            <Icon
+                              country={opt.value === "ZZ" ? undefined : (opt.value as Country)}
+                              label={opt.label}
+                            />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                          <span
+                            className={cn(
+                              "inline-flex size-4 items-center justify-center rounded-sm",
+                              isSelected ? "text-[color:var(--dash-accent,#111111)]" : "text-transparent",
+                            )}
+                          >
+                            <Check className="size-3.5" strokeWidth={2.5} />
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
+            </div>,
             document.body,
           )
         : null}
