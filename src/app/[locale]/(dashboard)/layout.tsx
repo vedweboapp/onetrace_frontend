@@ -2,6 +2,7 @@ import { DashboardAppearanceScope } from "@/features/dashboard/components/dashbo
 import { DashboardAuthGuard } from "@/features/dashboard/components/dashboard-auth-guard";
 import { DashboardShellLayout } from "@/features/dashboard/components/dashboard-shell-layout";
 import { NavigationBackTracker } from "@/shared/components/navigation/navigation-back-tracker";
+import { CatalogSessionReset } from "@/shared/catalog/catalog-session-reset";
 import { OrgCurrencyBootstrap } from "@/shared/money/use-org-currency";
 import { cn } from "@/core/utils/http.util";
 import type { ReactNode } from "react";
@@ -10,6 +11,7 @@ import { Suspense } from "react";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <DashboardAuthGuard>
+      <CatalogSessionReset />
       <OrgCurrencyBootstrap />
       <Suspense fallback={null}>
         <NavigationBackTracker />

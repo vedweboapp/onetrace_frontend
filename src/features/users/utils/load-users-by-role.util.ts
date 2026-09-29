@@ -50,22 +50,42 @@ export async function resolveAppRoleIdMap(): Promise<Map<AppRoleKey, number>> {
 /**
  * Loads users for one role via `GET user-profile/?role=<id>` (page 1 only).
  * Returns [] when that role does not exist — never falls back to an unfiltered list.
- * Cached per session so quotation/job screens don't repeat the same call.
+ * Cached per session after a non-empty result so quotation/job screens don't repeat the call.
  */
 export async function fetchUsersForAppRole(role: AppRoleKey): Promise<UserProfile[]> {
   const cached = usersByRoleCache.get(role);
   if (cached) return cached;
 
   const promise = (async () => {
-    const roleIds = await resolveAppRoleIdMap();
-    const roleId = roleIds.get(role);
-    if (roleId == null) return [];
-    const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
-    return items;
-  })().catch((error) => {
-    usersByRoleCache.delete(role);
-    throw error;
-  });
+    async function loadOnce(): Promise<UserProfile[] | "no-role"> {
+      const roleIds = await resolveAppRoleIdMap();
+      const roleId = roleIds.get(role);
+      if (roleId == null) return "no-role";
+      const { items } = await fetchUsersPage(1, 20, { role: roleId, dropdown: true });
+      return items;
+    }
+
+    let result = await loadOnce();
+    if (result === "no-role") return [];
+
+    // After login the first paint can race roles/token and return []. Retry once.
+    if (result.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      roleIdMapPromise = null;
+      result = await loadOnce();
+      if (result === "no-role") return [];
+    }
+    return result;
+  })()
+    .then((items) => {
+      // Do not cache empty — next open should try again until users exist.
+      if (items.length === 0) usersByRoleCache.delete(role);
+      return items;
+    })
+    .catch((error) => {
+      usersByRoleCache.delete(role);
+      throw error;
+    });
 
   usersByRoleCache.set(role, promise);
   return promise;
@@ -97,11 +117,12 @@ export function userProfileSelectLabel(user: UserProfile): string {
 export function userProfilesToSelectOptions(
   users: UserProfile[],
 ): Array<{ value: string; label: string }> {
-  return users.map((user) => {
+  const byId = new Map<string, { value: string; label: string }>();
+  for (const user of users) {
     const id = resolveUserProfileSelectId(user);
-    return {
-      value: String(id),
-      label: userProfileSelectLabel(user),
-    };
-  });
+    const value = String(id);
+    if (byId.has(value)) continue;
+    byId.set(value, { value, label: userProfileSelectLabel(user) });
+  }
+  return [...byId.values()];
 }
