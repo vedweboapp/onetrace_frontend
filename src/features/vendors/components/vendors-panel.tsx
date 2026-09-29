@@ -95,7 +95,7 @@ export function VendorsPanel() {
     return types.map((row) => ({ value: String(row.id), label: row.name }));
   }, []);
 
-  const { options: typeOptions } = useDeferredListOptions(loadTypeOptions, fetchTypeOptions);
+  const { options: typeOptions } = useDeferredListOptions(loadTypeOptions, fetchTypeOptions, 0, ["vendorTypes"]);
 
   const listFilters = React.useMemo(
     () => ({
@@ -285,7 +285,7 @@ export function VendorsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
             </div>

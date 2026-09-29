@@ -13,6 +13,7 @@ import {
   userGroupMemberIds,
 } from "@/features/user-groups/utils/user-group-display.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { resolveUserProfileSelectId } from "@/features/users/utils/load-users-by-role.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
@@ -70,6 +71,7 @@ function mergeMemberOptions(base: MemberOption[], extras: MemberOption[]): Membe
 }
 
 export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"; groupId?: number }) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.userGroups");
   const router = useRouter();
   const safeBack = useFormBackUrl("settings/user-groups", routes.dashboard.settingsUserGroups);
@@ -98,7 +100,7 @@ export function UserGroupFormScreen({ mode, groupId }: { mode: "create" | "edit"
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, catalogEpoch]);
 
   React.useEffect(() => {
     if (!isEdit || groupId == null) return;

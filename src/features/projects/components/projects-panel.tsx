@@ -113,7 +113,7 @@ export function ProjectsPanel() {
     return clients.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
-  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions);
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions, 0, ["clients"]);
   const [fetchProjectTypeOptions, setFetchProjectTypeOptions] = React.useState(false);
   const [projectTypeById, setProjectTypeById] = React.useState<Record<number, ProjectType>>({});
 
@@ -401,7 +401,7 @@ export function ProjectsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
             </div>

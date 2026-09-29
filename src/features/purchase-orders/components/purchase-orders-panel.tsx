@@ -115,7 +115,7 @@ export function PurchaseOrdersPanel() {
     return vendors.map((v) => ({ value: String(v.id), label: v.name }));
   }, []);
 
-  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, fetchVendorOptions);
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, fetchVendorOptions, 0, ["vendors"]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 

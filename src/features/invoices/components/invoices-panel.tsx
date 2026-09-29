@@ -114,7 +114,7 @@ export function InvoicesPanel() {
     return items.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
-  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions);
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, fetchClientOptions, 0, ["clients"]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 

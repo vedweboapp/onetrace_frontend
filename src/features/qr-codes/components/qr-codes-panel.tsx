@@ -122,7 +122,7 @@ export function QrCodesPanel() {
     }));
   }, []);
 
-  const { options: jobOptions } = useDeferredListOptions(loadJobOptions, fetchJobOptions);
+  const { options: jobOptions } = useDeferredListOptions(loadJobOptions, fetchJobOptions, 0, ["jobs"]);
 
   const statusFilterOptions = React.useMemo(
     () => [

@@ -66,6 +66,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -142,6 +143,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
   const isEdit = mode === "edit";
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+    "tags",
+  ]);
 
   const createFromProjectId = React.useMemo(() => {
     if (isEdit) return null;
@@ -384,7 +393,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -402,7 +411,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
+
+  const projectCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (projectCustomerRef.current === customerId) return;
+    projectCustomerRef.current = customerId;
+    setProjectRows([]);
+  }, [customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -419,7 +435,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -442,7 +458,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
+
+  const siteSourceKeyRef = React.useRef(`${customerId ?? ""}:${projectId ?? ""}:${isServiceQuotation}`);
+  React.useEffect(() => {
+    const key = `${customerId ?? ""}:${projectId ?? ""}:${isServiceQuotation}`;
+    if (siteSourceKeyRef.current === key) return;
+    siteSourceKeyRef.current = key;
+    setSiteRows([]);
+  }, [customerId, projectId, isServiceQuotation]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -468,7 +492,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isServiceQuotation, customerId, projectId]);
+  }, [isServiceQuotation, customerId, projectId, catalogEpoch]);
+
+  const contactCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (contactCustomerRef.current === customerId) return;
+    contactCustomerRef.current = customerId;
+    setContactOptions([]);
+  }, [customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -489,14 +520,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, catalogEpoch]);
 
   React.useEffect(() => {
     const selectedProject = getValues("project")?.trim();
     if (!selectedProject || !customerId) return;
     const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
     if (!stillExists) {
-      if (isEdit && existingDetail) {
+      const savedCustomerId = existingDetail ? getQuotationCustomerId(existingDetail.customer) : null;
+      const sameCustomer = savedCustomerId != null && customerId === savedCustomerId;
+      if (isEdit && existingDetail && sameCustomer) {
         const pid = getQuotationProjectId(existingDetail.project);
         if (pid != null && String(pid) === selectedProject) return;
       }
@@ -637,7 +670,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       existingDetail?.project && typeof existingDetail.project === "object"
         ? existingDetail.project
         : null;
-    if (isEdit && pid != null) {
+    const savedCustomerId = existingDetail ? getQuotationCustomerId(existingDetail.customer) : null;
+    const sameCustomer = savedCustomerId != null && customerId === savedCustomerId;
+    if (isEdit && sameCustomer && pid != null) {
       const exists = base.some((o) => o.value === String(pid));
       if (!exists) {
         const label = nested?.name?.trim() || `Project #${pid}`;
@@ -645,7 +680,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
     }
     return base;
-  }, [projectRows, isEdit, existingDetail]);
+  }, [projectRows, isEdit, existingDetail, customerId]);
 
   const sortedLevelRows = React.useMemo(() => {
     const rows = Array.isArray(levelRows) ? levelRows : [];
@@ -687,8 +722,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
       const reloadProjectId = parseFormIdField(values.project);
-      const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
+      const [{ items: clients }, byRole, tagsRes] = await Promise.all([
+        fetchClientsPage(1, 20, { is_active: true, dropdown: true }),
+        fetchUsersForAppRoles(["technician", "sales", "manager"]),
+        fetchTagsPage(1, 20, { is_active: true, dropdown: true }),
+      ]);
       setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+      setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+      setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+      setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
+      const toLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
+      setTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: toLabel(row) })));
       if (reloadCustomerId) {
         const [projects, contacts] = await Promise.all([
           fetchProjectsPage(1, 20, { client: reloadCustomerId, dropdown: true }),

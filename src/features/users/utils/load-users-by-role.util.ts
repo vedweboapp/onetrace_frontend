@@ -1,5 +1,6 @@
 import { fetchRoles, fetchUsersPage } from "@/features/users/api/user.api";
 import type { UserProfile } from "@/features/users/types/user.types";
+import { registerDropdownCatalogInvalidator } from "@/shared/catalog/dropdown-catalog-bus";
 
 export type AppRoleKey = "technician" | "manager" | "sales";
 
@@ -15,6 +16,16 @@ function matchAppRoleKey(roleName: string): AppRoleKey | null {
   if (name.includes("manager")) return "manager";
   return null;
 }
+
+/** Drops role and user lists so the next dropdown load hits the API. */
+export function invalidateUsersByRoleCache(): void {
+  roleIdMapPromise = null;
+  usersByRoleCache.clear();
+}
+
+registerDropdownCatalogInvalidator((kind) => {
+  if (kind === "users" || kind === "roles") invalidateUsersByRoleCache();
+});
 
 /** Resolves role ids once per session (cached). */
 export async function resolveAppRoleIdMap(): Promise<Map<AppRoleKey, number>> {

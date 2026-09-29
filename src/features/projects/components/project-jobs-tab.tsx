@@ -20,6 +20,7 @@ import {
   type ProjectJobsSourceFilter,
 } from "@/features/projects/utils/project-jobs-list.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDataTable, EntityLabelOverflowGroup, entityCol } from "@/shared/components/entity";
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
@@ -56,6 +57,7 @@ type Props = {
 };
 
 export function ProjectJobsTab({ projectId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users", "clients", "projects", "sites", "jobStatuses"]);
   const t = useTranslations("Dashboard.projects.jobsTab");
   const tJobs = useTranslations("Dashboard.jobs");
   const tList = useTranslations("Dashboard.list");
@@ -235,7 +237,7 @@ export function ProjectJobsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     if (!fetchMassOptions) return;
@@ -263,7 +265,7 @@ export function ProjectJobsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [fetchMassOptions]);
+  }, [fetchMassOptions, catalogEpoch]);
 
   React.useEffect(() => {
     if (mass.selectedCount > 0) setFetchMassOptions(true);

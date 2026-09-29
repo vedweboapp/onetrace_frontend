@@ -110,7 +110,7 @@ export function MaterialRequestsPanel() {
     return loadTechnicianOptions();
   }, []);
 
-  const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions);
+  const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions, 0, ["users"]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
