@@ -39,6 +39,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
@@ -55,6 +56,14 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+    "tags",
+  ]);
 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
@@ -106,7 +115,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -136,7 +145,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -181,7 +190,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -198,7 +207,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
@@ -225,7 +234,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -247,7 +256,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     if (!detailForSite) {

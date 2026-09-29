@@ -31,6 +31,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -65,6 +66,13 @@ type Props = {
 };
 
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+  ]);
   const t = useTranslations("Dashboard.quotations");
   const router = useRouter();
   const [saving, setSaving] = React.useState(false);
@@ -124,7 +132,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
 
   const customerId =
     customerIdStr && /^\d+$/.test(customerIdStr.trim())
@@ -134,6 +142,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     projectIdStr && /^\d+$/.test(projectIdStr.trim())
       ? Number.parseInt(projectIdStr.trim(), 10)
       : undefined;
+
+  const projectCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (projectCustomerRef.current === customerId) return;
+    projectCustomerRef.current = customerId;
+    setProjectRows([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -151,7 +167,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -175,7 +191,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
+
+  const siteProjectRef = React.useRef(projectId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (siteProjectRef.current === projectId) return;
+    siteProjectRef.current = projectId;
+    setSiteRows([]);
+  }, [open, projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -197,7 +221,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, projectId]);
+  }, [open, projectId, catalogEpoch]);
+
+  const contactCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (contactCustomerRef.current === customerId) return;
+    contactCustomerRef.current = customerId;
+    setContactOptions([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -218,7 +250,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
