@@ -203,13 +203,16 @@ export function MultiCheckSelect({
     if (closeOnSelect && isAdding) setOpen(false);
   }
 
+  const showAdd = Boolean(onAdd);
+  const canOpen = !disabled || showAdd;
+
   const triggerClass = cn(
     "field-control field-control--grow flex min-h-[var(--form-control-height,2.5rem)] w-full min-w-0 items-start rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left text-slate-900 outline-none transition",
     "text-[length:var(--dash-body-size,0.875rem)]",
     "hover:border-[color:var(--dash-accent,#111111)] hover:bg-slate-50",
     "focus-visible:border-[color:var(--dash-accent,#111111)] focus-visible:ring-2 focus-visible:ring-[color:var(--dash-accent,#111111)]/20",
     "dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800/90",
-    disabled && "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80",
+    !canOpen && "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80",
     invalid && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20 dark:border-red-500",
   );
 
@@ -278,7 +281,7 @@ export function MultiCheckSelect({
           <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No results</li>
         ) : null}
       </ul>
-      {onAdd && !disabled ? (
+      {showAdd ? (
         <div className="shrink-0 border-t border-slate-200 p-2 dark:border-slate-600">
           <button
             type="button"
@@ -286,7 +289,7 @@ export function MultiCheckSelect({
             aria-label={addAriaLabel ?? "Add new"}
             onClick={() => {
               setOpen(false);
-              onAdd();
+              onAdd?.();
             }}
           >
             <Plus className="size-4" strokeWidth={2.5} aria-hidden />
@@ -303,11 +306,11 @@ export function MultiCheckSelect({
         ref={triggerRef}
         id={id}
         type="button"
-        disabled={disabled}
+        disabled={!canOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
         onBlur={onBlur}
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={() => canOpen && setOpen((v) => !v)}
         className={triggerClass}
       >
         <div className="flex w-full items-start justify-between gap-2">
@@ -346,7 +349,7 @@ export function MultiCheckSelect({
           <ChevronDown className={cn("mt-1 size-4 shrink-0 transition", open && "rotate-180")} />
         </div>
       </button>
-      {open && !disabled && (portaled && typeof document !== "undefined" ? createPortal(panel, document.body) : panel)}
+      {open && canOpen && (portaled && typeof document !== "undefined" ? createPortal(panel, document.body) : panel)}
     </div>
   );
 }
