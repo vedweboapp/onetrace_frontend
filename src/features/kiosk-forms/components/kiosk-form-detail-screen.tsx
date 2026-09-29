@@ -19,6 +19,8 @@ import {
   type AppTabItem,
 } from "@/shared/ui";
 import { Link } from "@/i18n/navigation";
+import { DetailEntityLink } from "@/shared/components/entity";
+import { routes } from "@/shared/config/routes";
 import { ExternalLink } from "lucide-react";
 
 function countQuestions(config: KioskConfig): number {
@@ -145,7 +147,19 @@ export function KioskFormDetailScreen() {
               </div>
             ) : detail ? (
               <div className="space-y-6">
-                <dl className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
+                <dl className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
+                  {/* Title — hyperlink to the kiosk editor */}
+                  <div className="lg:col-span-1">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title</dt>
+                    <dd className="mt-1 text-sm">
+                      <DetailEntityLink
+                        href={`${routes.dashboard.settingsKiosks}/${detail.id}?kiosk_mode=edit`}
+                        className="font-semibold break-words"
+                      >
+                        {detail.name || "—"}
+                      </DetailEntityLink>
+                    </dd>
+                  </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">API Name</dt>
                     <dd className="mt-1 font-mono text-sm text-slate-900 dark:text-slate-100">{detail.api_name || "-"}</dd>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef, useImperativeHandle, useState, useCallback, useEffect, useRef } from "react";
-import { CheckCircle, Check, Layers, Send, Palette, X, ArrowLeft, ArrowRight, SlidersHorizontal } from "lucide-react";
+import { CheckCircle, Check, Layers, Send, Palette, X, ArrowLeft, ArrowRight, SlidersHorizontal, ShoppingCart } from "lucide-react";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
@@ -213,6 +213,8 @@ export interface KioskRendererProps {
   initialAnswers?: Record<string, any>;
   /** Callback fired after answers change */
   onAnswersChange?: (answers: Record<string, any>) => void;
+  /** Hide internal title bar when an external header/banner is present */
+  hideTitle?: boolean;
 }
 
 const getGridClass = (cols: number = 2) => {
@@ -245,6 +247,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       submitButtonText,
       initialAnswers,
       onAnswersChange,
+      hideTitle = false,
     },
     ref,
   ) {
@@ -271,6 +274,15 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       currentColor: string;
     } | null>(null);
     const [lookupOptionsByQuestion, setLookupOptionsByQuestion] = useState<Record<string, KioskOption[]>>({});
+
+    // Stores user-edited placement coordinates (uid → PlacementCoordinates) so
+    // drag/resize changes persist when re-rendering the live build panel.
+    const [placementOverrides, setPlacementOverrides] = useState<Record<string, PlacementCoordinates>>({});
+
+    const handlePlacementChange = (optionUid: string, coordinates: PlacementCoordinates) => {
+      setPlacementOverrides((prev) => ({ ...prev, [optionUid]: coordinates }));
+      onPlacementChange?.(optionUid, coordinates);
+    };
 
     // Must be declared before optionByUid which depends on it
     const isPhone = renderMode === "phone";
@@ -541,16 +553,33 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         );
       }
 
-      // answeredColor: only resolve if selectedVal belongs to THIS option (uid match)
+      // answeredColor: only resolve if selectedVal belongs to THIS option (uid or o_id match)
       const answeredColor =
         isColorSwatch &&
-        typeof selectedVal === "object" &&
-        selectedVal !== null &&
-        selectedVal.uid === optUid &&
-        typeof selectedVal.value === "string" &&
-        selectedVal.value.startsWith("#")
-          ? selectedVal.value
-          : undefined;
+        (() => {
+          if (!selectedVal) return undefined;
+          if (Array.isArray(selectedVal)) {
+            const found = selectedVal.find(
+              (v) =>
+                typeof v === "object" &&
+                v !== null &&
+                (String(v.uid) === String(optUid) || String((v as any).o_id) === String(optUid)),
+            );
+            return typeof found?.value === "string" && found.value.startsWith("#")
+              ? found.value
+              : undefined;
+          }
+          if (
+            typeof selectedVal === "object" &&
+            selectedVal !== null &&
+            (String(selectedVal.uid) === String(optUid) || String((selectedVal as any).o_id) === String(optUid)) &&
+            typeof selectedVal.value === "string" &&
+            selectedVal.value.startsWith("#")
+          ) {
+            return selectedVal.value;
+          }
+          return undefined;
+        })();
 
       const currentColor =
         answeredColor ||
@@ -559,19 +588,21 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           ? option.value
           : "#0EA5E9");
 
-      // Use uid for selection identity — prevents cross-option collision
+      // Use uid/o_id for selection identity — prevents cross-option collision
       const isSelected = isCheckbox
         ? Array.isArray(selectedVal) &&
           selectedVal.some((v) =>
-            typeof v === "object" ? v.uid === optUid : v === optUid,
+            typeof v === "object" && v !== null
+              ? String(v.uid) === String(optUid) || String((v as any).o_id) === String(optUid)
+              : String(v) === String(optUid),
           )
         : isColorSwatch
         ? (typeof selectedVal === "object" && selectedVal !== null
-            ? selectedVal.uid === optUid
-            : selectedVal === optUid) || !!answeredColor
+            ? String(selectedVal.uid) === String(optUid) || String((selectedVal as any).o_id) === String(optUid)
+            : String(selectedVal) === String(optUid)) || !!answeredColor
         : typeof selectedVal === "object" && selectedVal !== null
-        ? selectedVal.uid === optUid
-        : selectedVal === optUid;
+        ? String(selectedVal.uid) === String(optUid) || String((selectedVal as any).o_id) === String(optUid)
+        : String(selectedVal) === String(optUid);
       const inputId = `opt_${question.q_id || question._uid || ""}_${option.o_id || option.uid || option._uid || optIdx}`;
 
       const handleCardClick = () => {
@@ -819,22 +850,50 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             option={activeSwatchPicker.option}
             initialColor={activeSwatchPicker.currentColor}
             onSelect={(chosenColor) => {
+              const q = activeSwatchPicker.question;
+              const opt = activeSwatchPicker.option;
               const qKey =
-                activeSwatchPicker.question.api_name ||
-                activeSwatchPicker.question.q_id ||
-                activeSwatchPicker.question._uid ||
+                q.api_name ||
+                q.q_id ||
+                q._uid ||
                 "";
               const optUid =
-                activeSwatchPicker.option.uid ||
-                activeSwatchPicker.option._uid ||
+                opt.o_id ||
+                opt.uid ||
+                opt._uid ||
+                (opt.id != null ? String(opt.id) : "") ||
                 "";
-              setAnswers((prev) => ({
-                ...prev,
-                [qKey]: {
-                  uid: optUid,
-                  value: chosenColor,
-                },
-              }));
+
+              const newEntry = {
+                uid: optUid,
+                o_id: optUid,
+                value: chosenColor,
+                color: chosenColor,
+                api_name: opt.api_name,
+                label: opt.label,
+              };
+
+              setAnswers((prev) => {
+                const current = prev[qKey];
+                if (Array.isArray(current)) {
+                  const allQuestionOpts = getQuestionOptions(q);
+                  const inputOptionUids = new Set(
+                    allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.o_id || o.uid || o._uid)
+                  );
+                  const keptInputs = current.filter((item) => {
+                    const u = typeof item === "object" ? (item.o_id || item.uid) : item;
+                    return inputOptionUids.has(u);
+                  });
+                  return {
+                    ...prev,
+                    [qKey]: [...keptInputs, newEntry],
+                  };
+                }
+                return {
+                  ...prev,
+                  [qKey]: newEntry,
+                };
+              });
               setActiveSwatchPicker(null);
             }}
             onClose={() => setActiveSwatchPicker(null)}
@@ -842,42 +901,44 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         )}
 
         {/* Kiosk Title & Subtitle with Back Button */}
-        <div
-          className={cn(
-            "border-b border-slate-200/80 pb-3 sm:pb-4 dark:border-slate-800 flex items-center justify-between gap-4",
-            scrollableLayout && "lg:shrink-0"
-          )}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={
-                onBack
-                  ? onBack
-                  : () => {
-                      if (typeof window !== "undefined" && window.history.length > 1) {
-                        window.history.back();
+        {!hideTitle && (
+          <div
+            className={cn(
+              "border-b border-slate-200/80 pb-3 sm:pb-4 dark:border-slate-800 flex items-center justify-between gap-4",
+              scrollableLayout && "lg:shrink-0"
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={
+                  onBack
+                    ? onBack
+                    : () => {
+                        if (typeof window !== "undefined" && window.history.length > 1) {
+                          window.history.back();
+                        }
                       }
-                    }
-              }
-              className="flex size-8 sm:size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition shadow-2xs shrink-0 cursor-pointer"
-              title="Back"
-              aria-label="Back"
-            >
-              <ArrowLeft className="size-4" />
-            </button>
-            <div className="min-w-0">
-              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl truncate">
-                {config.name || "Configure Product"}
-              </h2>
-              {config.description && (
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                  {config.description}
-                </p>
-              )}
+                }
+                className="flex size-8 sm:size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition shadow-2xs shrink-0 cursor-pointer"
+                title="Back"
+                aria-label="Back"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl truncate">
+                  {config.name || "Configure Product"}
+                </h2>
+                {config.description && (
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                    {config.description}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div
           className={cn(
@@ -891,7 +952,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
             config={renderedConfig}
             answers={answers}
             livePreviewOptions={livePreviewOptions}
-            onPlacementChange={onPlacementChange}
+            placementOverrides={placementOverrides}
+            onPlacementChange={handlePlacementChange}
             className={cn(
               "order-1 lg:order-2 shrink-0",
               "w-full lg:w-[280px] xl:w-1/5 2xl:w-[15%]",
@@ -992,26 +1054,38 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           </div>
         </div>
 
-          {/* Configure Product Action */}
+          {/* Configure Product / Add to Cart Action */}
           <div
             className={cn(
               "flex items-center justify-end border-t border-slate-200/80 pt-3 sm:pt-4 dark:border-slate-800",
               scrollableLayout && "lg:shrink-0"
             )}
           >
-            <AppButton
-              type="submit"
-              size="md"
-              loading={isSubmitting}
-              className="w-full px-6 font-semibold sm:w-auto"
-            >
-              <SlidersHorizontal className="mr-1.5 size-4" />
-              {submitButtonText ||
+            {(() => {
+              const label =
+                submitButtonText ||
                 (config.submitting?.button_text &&
                 config.submitting.button_text.toLowerCase() !== "submit"
                   ? config.submitting.button_text
-                  : "Configure Product")}
-            </AppButton>
+                  : "Configure Product");
+              const isCart = label.toLowerCase().includes("cart");
+
+              return (
+                <AppButton
+                  type="submit"
+                  size="md"
+                  loading={isSubmitting}
+                  className="w-full px-6 font-semibold sm:w-auto bg-[#701524] hover:bg-[#5a101c] text-white border-none"
+                >
+                  {isCart ? (
+                    <ShoppingCart className="mr-1.5 size-4" />
+                  ) : (
+                    <SlidersHorizontal className="mr-1.5 size-4" />
+                  )}
+                  {label}
+                </AppButton>
+              );
+            })()}
           </div>
       </form>
     );

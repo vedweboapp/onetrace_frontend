@@ -6,6 +6,7 @@ import { getPublicKioskById, submitKioskResponse } from "@/features/kiosk/api/ki
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
 import { KioskRenderer } from "@/features/kiosk/components/kiosk-renderer";
 import { KioskCartReview } from "@/features/kiosk/components/kiosk-cart-review";
+import { KioskInvoiceDetails, type KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import { computeLiveBuildScene, type LiveBuildScene } from "@/features/kiosk/utils/kiosk-live-build";
 import { CheckCircle, AlertCircle, ShoppingCart } from "lucide-react";
 
@@ -18,7 +19,7 @@ export default function PublicKioskPage() {
   const [config, setConfig] = useState<KioskConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"configure" | "cart" | "submitted">("configure");
+  const [view, setView] = useState<"configure" | "cart" | "invoice" | "submitted">("configure");
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [configuredData, setConfiguredData] = useState<{
     payload: any;
@@ -26,6 +27,7 @@ export default function PublicKioskPage() {
     scene: LiveBuildScene;
   } | null>(null);
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
+  const [cartTotals, setCartTotals] = useState<{ grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number } | undefined>();
 
   // Restore saved draft answers from sessionStorage
   useEffect(() => {
@@ -110,14 +112,21 @@ export default function PublicKioskPage() {
     setView("cart");
   };
 
-  // Submit invoice from cart review tab
-  const handleContinueToInvoice = async () => {
+  // From cart -> transition to invoice details tab (carry totals so prices stay in sync)
+  const handleContinueToInvoice = (totals: { grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number }) => {
+    setCartTotals(totals);
+    setView("invoice");
+  };
+
+  // Submit invoice and billing from invoice details tab
+  const handleSubmitInvoiceAndPayment = async (billingDetails: KioskBillingDetails) => {
     if (!kioskId || !configuredData) return;
     try {
       setIsSubmittingInvoice(true);
       await submitKioskResponse({
         ...configuredData.payload,
         form_id: Number(kioskId),
+        billing_details: billingDetails,
       });
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
@@ -185,42 +194,46 @@ export default function PublicKioskPage() {
     );
   }
 
+  const cartCount = configuredData ? 1 : Object.keys(answers).length > 0 ? 1 : 0;
+
   return (
     <>
       {/* Configuration Form view — stays mounted so state and selections are never lost */}
       <div className={view === "configure" ? "min-h-screen w-full bg-slate-100 dark:bg-slate-950 flex flex-col lg:h-screen lg:overflow-hidden" : "hidden"}>
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8 dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
+        <header className="sticky top-0 z-30 shrink-0 w-full bg-white dark:bg-slate-900 shadow-2xs">
+          {/* Top Bar: Brand Logo & Cart Action */}
+          <div className="flex h-14 w-full items-center justify-between border-b border-slate-200 px-4 sm:px-8 lg:px-12 dark:border-slate-800">
+            <div className="flex items-center text-xl sm:text-2xl font-bold tracking-tight select-none">
+              <span className="font-extrabold text-slate-900 dark:text-white">Sim</span>
+              <span className="font-extrabold text-[#dc2626]">Ho</span>
+            </div>
 
-          <div className="flex items-center text-2xl font-bold tracking-tight select-none">
-            <span className="font-extrabold text-slate-900 dark:text-white">Sim</span>
-            <span className="font-extrabold text-[#dc2626]">Ho</span>
-          </div>
-
-          <div className="flex items-center justify-end w-24 sm:w-28">
-            <button
-              type="button"
-              onClick={() => {
-                if (configuredData) {
-                  setView("cart");
-                } else if (config) {
-                  const scene = computeLiveBuildScene(config, answers);
-                  setConfiguredData({
-                    payload: null,
-                    answers,
-                    scene,
-                  });
-                  setView("cart");
-                }
-              }}
-              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#701524] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#5a101c] active:scale-[0.98] transition cursor-pointer"
-            >
-              <ShoppingCart className="size-3.5 sm:size-4" />
-              <span className="whitespace-nowrap">My Cart</span>
-              <span className="flex size-4.5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#701524] leading-none">
-                {configuredData ? 1 : Object.keys(answers).length > 0 ? 1 : 0}
-              </span>
-            </button>
+            <div className="flex items-center pr-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (configuredData) {
+                    setView("cart");
+                  } else if (config) {
+                    const scene = computeLiveBuildScene(config, answers);
+                    setConfiguredData({
+                      payload: null,
+                      answers,
+                      scene,
+                    });
+                    setView("cart");
+                  }
+                }}
+                className="relative inline-flex items-center gap-2 rounded-lg bg-[#701524] px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-[#5a101c] active:scale-[0.98] transition cursor-pointer"
+              >
+                <ShoppingCart className="size-4" />
+                <span className="whitespace-nowrap">My Cart</span>
+                <span className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-white text-[10px] sm:text-[11px] font-bold text-[#701524] border border-[#701524]/20 shadow-xs">
+                  {cartCount}
+                </span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -232,12 +245,8 @@ export default function PublicKioskPage() {
             onSubmit={handleConfigureSubmit}
             organizationUuid={token ?? undefined}
             scrollableLayout
-            onBack={() => {
-              if (typeof window !== "undefined" && window.history.length > 1) {
-                window.history.back();
-              }
-            }}
-            submitButtonText="Configure Product"
+            hideTitle
+            submitButtonText="Add to Cart"
           />
         </div>
       </div>
@@ -252,6 +261,22 @@ export default function PublicKioskPage() {
             payload={configuredData.payload}
             onBack={() => setView("configure")}
             onContinueToInvoice={handleContinueToInvoice}
+            isSubmitting={isSubmittingInvoice}
+          />
+        </div>
+      )}
+
+      {/* Invoice Details / Billing Tab */}
+      {view === "invoice" && configuredData && (
+        <div className="min-h-screen w-full">
+          <KioskInvoiceDetails
+            config={config}
+            answers={answers}
+            scene={configuredData.scene}
+            payload={configuredData.payload}
+            cartTotals={cartTotals}
+            onBack={() => setView("cart")}
+            onSubmitInvoice={handleSubmitInvoiceAndPayment}
             isSubmitting={isSubmittingInvoice}
           />
         </div>

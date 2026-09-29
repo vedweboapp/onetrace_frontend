@@ -59,11 +59,23 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
       style={placementCoordinatesStyle(layer.coordinates)}
       onClick={onClick}
     >
-      <img
-        src={displaySrc}
-        alt={layer.label || "Layer"}
-        className="size-full object-cover"
-      />
+      <div className="relative size-full">
+        <img
+          src={displaySrc}
+          alt={layer.label || "Layer"}
+          className="size-full object-cover"
+        />
+        {layer.color && (
+          <div
+            className="absolute inset-0 pointer-events-none transition-colors duration-200"
+            style={{
+              backgroundColor: layer.color,
+              mixBlendMode: "color",
+              opacity: 0.8,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 };
@@ -72,6 +84,8 @@ interface KioskLiveBuildPanelProps {
   config: KioskConfig;
   answers: Record<string, KioskAnswerValue>;
   livePreviewOptions?: Record<string, KioskOption | null | undefined>;
+  /** User-edited placement coordinates that override static option data */
+  placementOverrides?: Record<string, PlacementCoordinates>;
   className?: string;
   compact?: boolean;
   onPlacementChange?: (optionUid: string, coordinates: PlacementCoordinates) => void;
@@ -142,7 +156,13 @@ const PlacementEditorModal: React.FC<PlacementEditorModalProps> = ({
             <h3 className="text-sm font-semibold text-white">Place overlapping image</h3>
             <p className="text-[11px] text-slate-400">Drag the image to move it. Drag the corner to resize it.</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded border border-slate-600 px-3 py-1 text-xs text-white">Done</button>
+          <button
+            type="button"
+            onClick={() => { onChange(coordinates); onClose(); }}
+            className="rounded border border-slate-600 px-3 py-1 text-xs text-white hover:bg-slate-700 transition"
+          >
+            Done
+          </button>
         </div>
         <div ref={canvasRef} className="relative mx-auto aspect-video max-h-[70vh] w-full overflow-hidden rounded border border-slate-600 bg-slate-800">
           {canvasImage && <img src={canvasImage} alt="Base document" className="size-full object-contain" />}
@@ -179,13 +199,14 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
   config,
   answers,
   livePreviewOptions,
+  placementOverrides,
   className,
   compact = false,
   onPlacementChange,
 }) => {
   const scene = useMemo(
-    () => computeLiveBuildScene(config, answers, livePreviewOptions),
-    [config, answers, livePreviewOptions],
+    () => computeLiveBuildScene(config, answers, livePreviewOptions, placementOverrides),
+    [config, answers, livePreviewOptions, placementOverrides],
   );
 
   const [tintedCanvasSrc, setTintedCanvasSrc] = useState<string | null>(null);
