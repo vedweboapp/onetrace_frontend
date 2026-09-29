@@ -963,11 +963,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       values={field.value ?? []}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      disabled={
-                        saving ||
-                        (isServiceQuotation ? !customerId : !projectId) ||
-                        siteOptions.length === 0
-                      }
+                      disabled={saving || (isServiceQuotation ? !customerId : !projectId)}
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}
                       onAdd={siteQuickCreate.onAdd}
@@ -1123,35 +1119,31 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
               </FieldGroup>
               <FieldGroup label={t("fields.technicians")} htmlFor="quotation-technicians">
-                {technicianOptions.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
-                ) : (
-                  <Controller
-                    control={control}
-                    name="technician_ids"
-                    render={({ field }) => (
-                      <MultiCheckSelect
-                        id="quotation-technicians"
-                        options={technicianOptions}
-                        values={(field.value ?? []).map(String)}
-                        onChange={(next) =>
-                          field.onChange(
-                            next
-                              .map((v) => Number.parseInt(v, 10))
-                              .filter((n) => Number.isFinite(n) && n > 0),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                        disabled={saving}
-                        listLabel={t("fields.technicians")}
-                        placeholder={t("placeholders.userOptional")}
-                        onAdd={openUsersSettings}
-                        addAriaLabel="Add user"
-                        addLabel="Add new"
-                      />
-                    )}
-                  />
-                )}
+                <Controller
+                  control={control}
+                  name="technician_ids"
+                  render={({ field }) => (
+                    <MultiCheckSelect
+                      id="quotation-technicians"
+                      options={technicianOptions}
+                      values={(field.value ?? []).map(String)}
+                      onChange={(next) =>
+                        field.onChange(
+                          next
+                            .map((v) => Number.parseInt(v, 10))
+                            .filter((n) => Number.isFinite(n) && n > 0),
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      disabled={saving}
+                      listLabel={t("fields.technicians")}
+                      placeholder={t("placeholders.userOptional")}
+                      onAdd={openUsersSettings}
+                      addAriaLabel="Add user"
+                      addLabel="Add new"
+                    />
+                  )}
+                />
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">

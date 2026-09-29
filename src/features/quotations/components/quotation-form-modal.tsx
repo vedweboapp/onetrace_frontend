@@ -608,33 +608,29 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("hints.tags")}</p>
           </FieldGroup>
           <FieldGroup label={t("fields.technicians")} htmlFor="quotation-modal-technicians">
-            {technicianOptions.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
-            ) : (
-              <Controller
-                control={control}
-                name="technician_ids"
-                render={({ field }) => (
-                  <MultiCheckSelect
-                    id="quotation-modal-technicians"
-                    options={technicianOptions}
-                    values={(field.value ?? []).map(String)}
-                    onChange={(next) =>
-                      field.onChange(
-                        next.map((v) => Number.parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0),
-                      )
-                    }
-                    onBlur={field.onBlur}
-                    disabled={saving}
-                    listLabel={t("fields.technicians")}
-                    placeholder={t("placeholders.userOptional")}
-                    onAdd={openUsersSettings}
-                    addAriaLabel="Add user"
-                    addLabel="Add new"
-                  />
-                )}
-              />
-            )}
+            <Controller
+              control={control}
+              name="technician_ids"
+              render={({ field }) => (
+                <MultiCheckSelect
+                  id="quotation-modal-technicians"
+                  options={technicianOptions}
+                  values={(field.value ?? []).map(String)}
+                  onChange={(next) =>
+                    field.onChange(
+                      next.map((v) => Number.parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0),
+                    )
+                  }
+                  onBlur={field.onBlur}
+                  disabled={saving}
+                  listLabel={t("fields.technicians")}
+                  placeholder={t("placeholders.userOptional")}
+                  onAdd={openUsersSettings}
+                  addAriaLabel="Add user"
+                  addLabel="Add new"
+                />
+              )}
+            />
           </FieldGroup>
         </FormFieldRow>
 
