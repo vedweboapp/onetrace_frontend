@@ -11,6 +11,7 @@ import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   createMaterialRequest,
@@ -60,6 +61,7 @@ type Props = {
 };
 
 export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users", "jobs", "materialStatuses"]);
   const t = useTranslations("Dashboard.materialRequests");
   const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
@@ -164,7 +166,7 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   const prevWorkerRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
