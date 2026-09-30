@@ -253,9 +253,30 @@ export function PaymentTermSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
-      reportLocalFormSubmitApiError(error, (fieldErrors) => {
-        setErrors((prev) => ({ ...prev, ...fieldErrors }));
-      });
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => {
+          setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        },
+        undefined,
+        {
+          fieldMap: {
+            Payment_Label: "payment_term_label",
+            payment_label: "payment_term_label",
+            Payment_Term_Label: "payment_term_label",
+            payment_term_label: "payment_term_label",
+            label: "payment_term_label",
+            payment_term_days: "payment_term_days",
+            Payment_Term_Days: "payment_term_days",
+            payment_terms_discount_percentage: "payment_terms_discount_percentage",
+          },
+          knownFormKeys: [
+            "payment_term_label",
+            "payment_term_days",
+            "payment_terms_discount_percentage",
+          ],
+        },
+      );
     } finally {
       setSaving(false);
     }
