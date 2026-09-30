@@ -398,42 +398,63 @@ const isValEmpty = (val: any): boolean => {
           });
         });
 
-        // Apply 'show' actions
+        // Apply 'show' actions — AND semantics across all blocks.
+        // A field becomes visible only when EVERY block that references it with "show"
+        // has its condition satisfied (or fires via an else branch).
+        // Previously this used OR logic (first matching block wins), which caused fields
+        // to appear as soon as any ONE of the conditions was true.
         showTargetFields.forEach((targetField) => {
-          let shouldShow = false;
-
+          // Gather all block indices whose THEN or ELSE targets this field with "show"
+          const relevantBlockIndices: number[] = [];
           for (let bIdx = 0; bIdx < rule.blocks!.length; bIdx++) {
             const block = rule.blocks![bIdx];
-            // Check THEN
-            const hasShowInThen = (block.output_fields || []).some(
+            const inThen = (block.output_fields || []).some(
               o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
             );
-            if (hasShowInThen && blockMatches[bIdx]) {
-              shouldShow = true;
-              break;
+            const inElse = (block.else_blocks || []).some(eb =>
+              eb.else_output_fields.some(o =>
+                o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
+              )
+            );
+            const inLegacyElse = (block.else_output_fields || []).some(
+              o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
+            );
+            if (inThen || inElse || inLegacyElse) {
+              relevantBlockIndices.push(bIdx);
             }
+          }
 
-            // Check each else block
+          if (relevantBlockIndices.length === 0) return;
+
+          // ALL relevant blocks must fire (AND condition) for the field to show.
+          const shouldShow = relevantBlockIndices.every((bIdx) => {
+            const block = rule.blocks![bIdx];
             const ebMatches = elseBlockMatches[bIdx] || [];
-            const hasShowInElse = (block.else_blocks || []).some((eb, ebIdx) =>
+
+            // Did the THEN branch fire for this block?
+            const thenFired = blockMatches[bIdx] &&
+              (block.output_fields || []).some(
+                o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
+              );
+            if (thenFired) return true;
+
+            // Did any ELSE branch fire for this block?
+            const elseFired = (block.else_blocks || []).some((eb, ebIdx) =>
               ebMatches[ebIdx] && eb.else_output_fields.some(o =>
                 o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
               )
             );
-            if (hasShowInElse) {
-              shouldShow = true;
-              break;
-            }
+            if (elseFired) return true;
 
-            // Legacy
-            const hasShowInLegacyElse = (block.else_output_fields || []).some(
-              o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
-            );
-            if (hasShowInLegacyElse && legacyElseMatches[bIdx]) {
-              shouldShow = true;
-              break;
-            }
-          }
+            // Did the legacy else fire for this block?
+            const legacyElseFired = legacyElseMatches[bIdx] &&
+              (block.else_output_fields || []).some(
+                o => o.action === "show" && expandRuleTarget(o.field_api_name ?? o.field_id ?? o.f_id, targetGroups).includes(targetField)
+              );
+            if (legacyElseFired) return true;
+
+            return false;
+          });
 
           if (shouldShow) {
             const currentState = nextStateMap.get(targetField);

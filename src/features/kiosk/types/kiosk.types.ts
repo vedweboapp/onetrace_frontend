@@ -1,4 +1,4 @@
-export type PlacementMode = "place" | "group";
+export type PlacementMode = "place";
 
 export type LookupOptionType = "radio" | "checkbox" | "image_radio";
 
