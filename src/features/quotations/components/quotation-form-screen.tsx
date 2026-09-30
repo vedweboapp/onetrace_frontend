@@ -92,10 +92,11 @@ import {
   saveQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -148,6 +149,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
+  const tabsStorageKey = useTabOrderStorageKey("quotationForm");
   const isEdit = mode === "edit";
   const catalogEpoch = useDropdownCatalogEpoch([
     "users",
@@ -955,13 +957,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 {t("noClientsHint")}
               </p>
             ) : null} */}
-            <AppTabs
+            <CustomizableAppTabs
               tabs={[
                 { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
                 { id: "pricing", label: t("formTabs.pricing") },
               ]}
               value={formTab}
               onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+              storageKey={tabsStorageKey}
               ariaLabel={t("formTabs.aria")}
               panelIdPrefix="quotation-form-screen"
             />

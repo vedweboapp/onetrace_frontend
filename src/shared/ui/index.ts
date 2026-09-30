@@ -2,6 +2,8 @@ export { AppModal } from "./app-modal";
 export type { AppModalProps, AppModalSize } from "./app-modal";
 export { AppTabs } from "./app-tabs";
 export type { AppTabItem, AppTabsProps } from "./app-tabs";
+export { CustomizableAppTabs } from "./customizable-app-tabs";
+export type { CustomizableAppTabsLabels, CustomizableAppTabsProps } from "./customizable-app-tabs";
 export { ConfirmDialog } from "./confirm-dialog";
 export type { ConfirmDialogProps } from "./confirm-dialog";
 export {

@@ -45,7 +45,8 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { routes } from "@/shared/config/routes";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 type Props = {
@@ -64,6 +65,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     "projects",
     "tags",
   ]);
+  const tabsStorageKey = useTabOrderStorageKey("quotationDetail");
 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
@@ -304,10 +306,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="quotation-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

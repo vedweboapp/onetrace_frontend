@@ -27,7 +27,8 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { buildCurrentPageBackHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   contactId: number;
@@ -39,6 +40,7 @@ export function ContactDetailScreen({ contactId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("contactDetail");
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [togglingActive, setTogglingActive] = React.useState(false);
@@ -138,10 +140,11 @@ export function ContactDetailScreen({ contactId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="contact-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

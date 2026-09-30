@@ -30,7 +30,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { cn } from "@/core/utils/http.util";
@@ -65,6 +66,7 @@ export function JobDetailScreen({ jobId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("jobDetail");
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
@@ -146,10 +148,11 @@ export function JobDetailScreen({ jobId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={handleTabChange}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="job-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

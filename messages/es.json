@@ -271,9 +271,18 @@
         "user": "Añadir nuevo usuario"
       }
     },
-    "common": {
+      "common": {
       "back": "Atrás",
       "breadcrumbNav": "Migas de pan",
+      "customizeTabs": {
+        "aria": "Organizar pestañas",
+        "title": "Organizar pestañas",
+        "hint": "Arrastra para reordenar. Se guarda para ti en esta pantalla.",
+        "reset": "Restablecer predeterminado",
+        "moveUp": "Subir",
+        "moveDown": "Bajar",
+        "drag": "Arrastrar para reordenar"
+      },
       "actions": {
         "add": "Añadir",
         "save": "Guardar",
@@ -398,11 +407,11 @@
       "personalProfile": "Perfil personal",
       "companySettings": "Ajustes de la empresa",
       "documentation": "Documentación",
-      "formBuilder": "Creador de formularios",
-      "projectForms": "Formularios de proyecto",
+      "formBuilder": "Form Builder",
+      "projectForms": "Form Builder",
       "modules": "Módulos",
       "kiosk": "Kiosco",
-      "kiosks": "Formularios de kiosco",
+      "kiosks": "Kiosk Builder",
       "integrations": "Integraciones",
       "auditLogs": "Registros de auditoría",
       "hint": "Personaliza el tema y el color de acento de este espacio.",
@@ -953,14 +962,14 @@
     },
     "settingsProjectForms": {
       "createNewForm": "Crear nuevo formulario",
-      "headerLabel": "Formularios de proyecto",
-      "headerDescription": "Crea y gestiona formularios de proyectos aquí.",
-      "searchPlaceholder": "Buscar formularios de tipo de proyecto",
-      "searchAria": "Buscar formularios de tipo de proyecto",
+      "headerLabel": "Form Builder",
+      "headerDescription": "Crea y gestiona formularios aquí.",
+      "searchPlaceholder": "Buscar formularios",
+      "searchAria": "Buscar formularios",
       "loadError": "No se pudieron cargar los formularios. Inténtalo de nuevo.",
       "projectTypesLoadError": "No se pudieron cargar los tipos de proyecto. Inténtalo de nuevo.",
       "empty": "No se encontraron formularios. Crea tu primer formulario para empezar.",
-      "emptyTitle": "Aún no hay formularios de proyecto",
+      "emptyTitle": "Aún no hay formularios",
       "emptyDescription": "Crea tu primer formulario para empezar.",
       "pageLabel": "{start}-{end} de {total}",
       "prev": "Anterior",
@@ -4625,7 +4634,7 @@
         "tabs": {
           "details": "Resumen",
           "forms": "Formularios",
-          "drawings": "Planos",
+          "drawings": "Take Off",
           "jobsheets": "Hojas de trabajo",
           "jobs": "Trabajos",
           "quotations": "Cotizaciones",
@@ -4678,7 +4687,7 @@
         "actionFieldQuantity": "Cantidad"
       },
       "drawings": {
-        "title": "Planos",
+        "title": "Take Off",
         "subtitle": "Administra y consulta planos y proyectos de construcción.",
         "createDrawing": "Subir planos",
         "searchPlaceholder": "Buscar planos…",

@@ -277,9 +277,18 @@
         "user": "Add New User"
       }
     },
-    "common": {
+      "common": {
       "back": "Back",
       "breadcrumbNav": "Breadcrumb",
+      "customizeTabs": {
+        "aria": "Arrange tabs",
+        "title": "Arrange tabs",
+        "hint": "Drag to reorder. Saved for you on this screen.",
+        "reset": "Reset to default",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "drag": "Drag to reorder"
+      },
       "actions": {
         "add": "Add",
         "save": "Save",
@@ -406,10 +415,10 @@
       "companySettings": "Company Settings",
       "documentation": "Documentation",
       "formBuilder": "Form Builder",
-      "projectForms": "Project forms",
+      "projectForms": "Form Builder",
       "modules": "Modules",
       "kiosk": "Kiosk",
-      "kiosks": "Kiosk Forms",
+      "kiosks": "Kiosk Builder",
       "integrations": "Integrations",
       "auditLogs": "Audit Logs",
       "hint": "Customize theme and accent for this workspace.",
@@ -881,7 +890,7 @@
       },
       "settings": {
         "title": "Relevant settings sections",
-        "description": "The main settings area includes profile, documentation, company settings, modules, project forms, customization, users, and integrations.",
+        "description": "The main settings area includes profile, documentation, company settings, modules, Form Builder, customization, users, and integrations.",
         "flow": {
           "personalProfile": "Access the personal profile page through Settings → Personal Profile to update contact and address details.",
           "integration": "Connect and configure Zoho integration under Settings → Integrations, then follow callback/connection/key mapping flows.",
@@ -964,14 +973,14 @@
     },
     "settingsProjectForms": {
       "createNewForm": "Create new form",
-      "headerLabel": "Project Forms",
-      "headerDescription": "Create and manage project in here.",
-      "searchPlaceholder": "Search project type forms",
-      "searchAria": "Search project type forms",
+      "headerLabel": "Form Builder",
+      "headerDescription": "Create and manage forms here.",
+      "searchPlaceholder": "Search forms",
+      "searchAria": "Search forms",
       "loadError": "Failed to load forms. Please try again.",
       "projectTypesLoadError": "Failed to load project types. Please try again.",
       "empty": "No forms found. Create your first form to get started.",
-      "emptyTitle": "No Project Forms Yet",
+      "emptyTitle": "No Forms Yet",
       "emptyDescription": "Create your first form to get started.",
       "pageLabel": "{start}-{end} of {total}",
       "prev": "Previous",
@@ -4643,7 +4652,7 @@
         "tabs": {
           "details": "Overview",
           "forms": "Forms",
-          "drawings": "Drawings",
+          "drawings": "Take Off",
           "jobsheets": "Job Sheets",
           "jobs": "Jobs",
           "location": "Locations",
@@ -4698,7 +4707,7 @@
         "actionFieldQuantity": "Quantity"
       },
       "drawings": {
-        "title": "Drawings",
+        "title": "Take Off",
         "subtitle": "Manage and view all construction blueprints and plans.",
         "createDrawing": "Upload drawings",
         "searchPlaceholder": "Search drawings…",
