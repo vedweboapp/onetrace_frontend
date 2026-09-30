@@ -53,13 +53,30 @@ export async function fetchAllGroupIds(filters?: GroupListFilters): Promise<numb
   return fetchAllEntityIds((page, pageSize) => fetchGroupsPage(page, pageSize, filters));
 }
 
+const groupDetailCache = new Map<string, Promise<Group>>();
+
 export async function fetchGroup(id: number): Promise<Group> {
-  const { data } = await api.get<ApiEnvelope<Group> | Group>(GROUP_PATHS.detail(id));
-  if (data && typeof data === "object" && "success" in data) {
-    assertApiSuccess(data as ApiEnvelope<Group>);
-    return (data as ApiEnvelope<Group>).data;
+  const cacheKey = `auth:${id}`;
+  if (groupDetailCache.has(cacheKey)) {
+    return groupDetailCache.get(cacheKey)!;
   }
-  return data as Group;
+
+  const promise = (async () => {
+    try {
+      const { data } = await api.get<ApiEnvelope<Group> | Group>(GROUP_PATHS.detail(id));
+      if (data && typeof data === "object" && "success" in data) {
+        assertApiSuccess(data as ApiEnvelope<Group>);
+        return (data as ApiEnvelope<Group>).data;
+      }
+      return data as Group;
+    } catch (err) {
+      groupDetailCache.delete(cacheKey);
+      throw err;
+    }
+  })();
+
+  groupDetailCache.set(cacheKey, promise);
+  return promise;
 }
 
 export async function createGroup(body: GroupCreatePayload): Promise<Group> {
@@ -69,12 +86,14 @@ export async function createGroup(body: GroupCreatePayload): Promise<Group> {
 }
 
 export async function updateGroup(id: number, body: GroupUpdatePayload): Promise<Group> {
+  groupDetailCache.delete(`auth:${id}`);
   const { data } = await api.patch<ApiEnvelope<Group>>(GROUP_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function deleteGroup(id: number): Promise<void> {
+  groupDetailCache.delete(`auth:${id}`);
   const { data } = await api.delete<ApiEnvelope<unknown>>(GROUP_PATHS.detail(id));
   assertApiSuccess(data);
 }
@@ -87,14 +106,28 @@ export async function fetchPublicGroup(
   organizationUuid: string,
   id: number | string,
 ): Promise<Group> {
-  const baseUrl = resolvePublicApiBaseUrl();
-  const res = await axios.get(
-    `${baseUrl}/public/${organizationUuid}/groups/${id}/`,
-  );
-  const data = res.data;
-  // Handle both envelope and plain responses
-  if (data && typeof data === "object" && "success" in data) {
-    return data.data as Group;
+  const cacheKey = `public:${organizationUuid}:${id}`;
+  if (groupDetailCache.has(cacheKey)) {
+    return groupDetailCache.get(cacheKey)!;
   }
-  return data as Group;
+
+  const promise = (async () => {
+    try {
+      const baseUrl = resolvePublicApiBaseUrl();
+      const res = await axios.get(
+        `${baseUrl}/public/${organizationUuid}/groups/${id}/`,
+      );
+      const data = res.data;
+      if (data && typeof data === "object" && "success" in data) {
+        return data.data as Group;
+      }
+      return data as Group;
+    } catch (err) {
+      groupDetailCache.delete(cacheKey);
+      throw err;
+    }
+  })();
+
+  groupDetailCache.set(cacheKey, promise);
+  return promise;
 }

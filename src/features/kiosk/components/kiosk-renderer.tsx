@@ -6,9 +6,10 @@ import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import type { KioskConfig, KioskQuestion, KioskOption, PlacementCoordinates } from "../types/kiosk.types";
 import { DEFAULT_KIOSK_CONFIG } from "../types/kiosk.types";
-import type { KioskSubmissionPayload } from "../types/kiosk-submission.types";
-import { buildKioskSubmissionPayload } from "../utils/kiosk-submission.builder";
-import { computeLiveBuildScene, type LiveBuildScene } from "../utils/kiosk-live-build";
+import type { CheckoutItem } from "../types/kiosk-submission.types";
+import { buildKioskCheckoutItems } from "../utils/kiosk-submission.builder";
+import { computeLiveBuildScene, preloadKioskImages, type LiveBuildScene } from "../utils/kiosk-live-build";
+import { preloadImage } from "../utils/kiosk-color-fill";
 import { KioskLiveBuildPanel } from "./kiosk-live-build-panel";
 import {
   getLookupGroupId,
@@ -187,14 +188,14 @@ export interface KioskRendererRef {
   submit: () => void;
   reset: () => void;
   getConfig: () => KioskConfig;
-  getValues: () => Record<string, any>;
+  getValues: () => Record<string, unknown>;
 }
 
 export interface KioskRendererProps {
   config?: KioskConfig;
   onSubmit?: (
-    payload: KioskSubmissionPayload,
-    meta?: { answers: Record<string, any>; scene: LiveBuildScene },
+    payload: { items: CheckoutItem[] } | Record<string, unknown>,
+    meta?: { answers: Record<string, unknown>; scene: LiveBuildScene; renderedConfig?: KioskConfig },
   ) => void;
   renderMode?: "desktop" | "phone";
   isSubmitting?: boolean;
@@ -259,6 +260,10 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
     const isFirstMount = useRef(true);
 
     useEffect(() => {
+      preloadKioskImages(config);
+    }, [config]);
+
+    useEffect(() => {
       if (initialAnswers && Object.keys(initialAnswers).length > 0) {
         setAnswers((prev) => (Object.keys(prev).length === 0 ? initialAnswers : prev));
       }
@@ -318,16 +323,24 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       )
         .then(async (lookupResults) => {
           const entries = lookupResults.map(({ question, group, groupId }) => {
-              const questionUid = question.q_id || question._uid || "";
-              return [
-                questionUid,
-                buildLookupOptions(
-                  group.items || [],
-                  groupId as string | number,
-                  getLookupPresentation(question),
-                ),
-              ] as const;
-            });
+            if (group?.items && Array.isArray(group.items)) {
+              for (const item of group.items) {
+                const img = (item as any).image || (item as any).photo || (item as any).picture || (item as any).target_image_field;
+                if (img && typeof img === "string") {
+                  void preloadImage(img);
+                }
+              }
+            }
+            const questionUid = String(question.q_id ?? question.id ?? question._uid ?? "");
+            return [
+              questionUid,
+              buildLookupOptions(
+                group.items || [],
+                groupId as string | number,
+                getLookupPresentation(question),
+              ),
+            ] as const;
+          });
 
           if (!cancelled) setLookupOptionsByQuestion(Object.fromEntries(entries));
         })
@@ -342,7 +355,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
     const renderedQuestions = React.useMemo(
       () => activeQuestions.map((question) => {
-        const questionUid = question.q_id || question._uid || "";
+        const questionUid = String(question.q_id ?? question.id ?? question._uid ?? "");
         const lookupOptions = lookupOptionsByQuestion[questionUid];
         if (!lookupOptions) return question;
 
@@ -419,56 +432,165 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
     const handleSelectOption = (question: KioskQuestion, option: KioskOption) => {
       const qKey = question.api_name || question.q_id || question._uid || "";
-      const optUid = option.o_id || option.uid || option._uid || "";
-      const payloadVal = option.value || option.color || option.label || optUid;
+      const optUid = option.o_id || option.uid || option._uid || (option.id != null ? String(option.id) : "");
+      const payloadVal = option.value ?? option.color ?? option.label ?? optUid;
+      const hasGroups = !question.is_lookup && Boolean(question.groups && question.groups.length > 0);
+
+      const targetGroup = hasGroups
+        ? question.groups?.find((g) =>
+            (g.options || []).some(
+              (o) => (o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : "")) === optUid,
+            ),
+          )
+        : null;
+
+      const groupOptUids = targetGroup
+        ? new Set(
+            (targetGroup.options || []).map(
+              (o) => o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : ""),
+            ),
+          )
+        : null;
+
+      const allQuestionOpts = getQuestionOptions(question);
+      const inputOptUids = new Set(
+        allQuestionOpts
+          .filter((o) => o.field_type === "input")
+          .map((o) => o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : "")),
+      );
 
       if (option.field_type === "checkbox") {
         setAnswers((prev) => {
-          const current: any[] = Array.isArray(prev[qKey]) ? prev[qKey] : [];
-          const exists = current.some((v) => (typeof v === "object" ? v.uid === optUid : v === optUid));
+          const current: unknown[] = Array.isArray(prev[qKey])
+            ? (prev[qKey] as unknown[])
+            : prev[qKey] && typeof prev[qKey] === "object"
+            ? [prev[qKey]]
+            : [];
+
+          const exists = current.some((v) => {
+            if (!v) return false;
+            if (typeof v === "object") {
+              const u =
+                (v as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                (v as { o_id?: string }).o_id ||
+                (v as { id?: string | number }).id;
+              return String(u) === String(optUid);
+            }
+            return String(v) === String(optUid);
+          });
+
           return {
             ...prev,
             [qKey]: exists
-              ? current.filter((v) => (typeof v === "object" ? v.uid !== optUid : v !== optUid))
-              : [...current, { uid: optUid, value: payloadVal }],
+              ? current.filter((v) => {
+                  if (!v) return false;
+                  if (typeof v === "object") {
+                    const u =
+                      (v as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                      (v as { o_id?: string }).o_id ||
+                      (v as { id?: string | number }).id;
+                    return String(u) !== String(optUid);
+                  }
+                  return String(v) !== String(optUid);
+                })
+              : [...current, { uid: optUid, o_id: optUid, value: payloadVal, label: option.label }],
+          };
+        });
+      } else if (targetGroup && groupOptUids) {
+        // Grouped questions: preserve other groups' selections, replace only within this group
+        setAnswers((prev) => {
+          const current: unknown[] = Array.isArray(prev[qKey])
+            ? (prev[qKey] as unknown[])
+            : prev[qKey] && typeof prev[qKey] === "object"
+            ? [prev[qKey]]
+            : [];
+
+          const keptOtherGroups = current.filter((item) => {
+            if (!item) return false;
+            const u =
+              typeof item === "object"
+                ? String(
+                    (item as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                      (item as { o_id?: string }).o_id ||
+                      (item as { id?: string | number }).id ||
+                      "",
+                  )
+                : String(item);
+            return !groupOptUids.has(u);
+          });
+
+          return {
+            ...prev,
+            [qKey]: [...keptOtherGroups, { uid: optUid, o_id: optUid, value: payloadVal, label: option.label }],
           };
         });
       } else {
+        // Flat single-choice question: replace single choice while preserving input fields
         setAnswers((prev) => {
           const current = prev[qKey];
           if (Array.isArray(current)) {
-            // Keep input field answers, replace single choice
-            const allQuestionOpts = [
-              ...getQuestionOptions(question),
-            ];
-            const inputOptionUids = new Set(
-              allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.o_id || o.uid || o._uid)
-            );
-            const keptInputs = current.filter((item) => {
-              const u = typeof item === "object" ? item.uid : item;
-              return inputOptionUids.has(u);
+            const keptInputs = (current as unknown[]).filter((item) => {
+              if (!item) return false;
+              const u =
+                typeof item === "object"
+                  ? String(
+                      (item as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                        (item as { o_id?: string }).o_id ||
+                        (item as { id?: string | number }).id ||
+                        "",
+                    )
+                  : String(item);
+              return inputOptUids.has(u);
             });
             return {
               ...prev,
-              [qKey]: [...keptInputs, { uid: optUid, value: payloadVal }],
+              [qKey]: [...keptInputs, { uid: optUid, o_id: optUid, value: payloadVal, label: option.label }],
             };
           }
           return {
             ...prev,
-            [qKey]: { uid: optUid, value: payloadVal },
+            [qKey]: { uid: optUid, o_id: optUid, value: payloadVal, label: option.label },
           };
         });
       }
     };
 
+    /**
+     * Returns true when the user has selected at least one non-empty option
+     * across all active questions. Input-only answers count only when they
+     * have a non-blank value. Empty arrays / null / undefined are ignored.
+     */
+    const hasAnyOptionSelected = React.useMemo(() => {
+      const vals = Object.values(answers);
+      if (vals.length === 0) return false;
+      return vals.some((val) => {
+        if (val === null || val === undefined) return false;
+        if (Array.isArray(val)) {
+          return val.some((item) => {
+            if (!item) return false;
+            if (typeof item === "object") {
+              const v = (item as { value?: unknown }).value;
+              // Input fields: only count when they have a non-blank value
+              return v !== undefined ? String(v).trim() !== "" : true;
+            }
+            return String(item).trim() !== "";
+          });
+        }
+        if (typeof val === "object") {
+          const v = (val as { value?: unknown }).value;
+          return v !== undefined ? String(v).trim() !== "" : true;
+        }
+        return String(val).trim() !== "";
+      });
+    }, [answers]);
+
     const handleFormSubmit = (e?: React.FormEvent) => {
       if (e) e.preventDefault();
       if (isSubmitting) return;
       if (onSubmit) {
-        // Build the full structured payload the backend expects
-        const payload = buildKioskSubmissionPayload(renderedConfig, answers);
         const scene = computeLiveBuildScene(renderedConfig, answers, livePreviewOptions);
-        onSubmit(payload, { answers, scene });
+        const items = buildKioskCheckoutItems(renderedConfig, answers, scene);
+        onSubmit({ items }, { answers, scene, renderedConfig });
       } else {
         setSubmitted(true);
       }
@@ -481,7 +603,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
         setAnswers({});
         setActiveSwatchPicker(null);
       },
-      getConfig: () => config,
+      getConfig: () => renderedConfig,
       getValues: () => answers,
     }));
 
@@ -512,11 +634,15 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                 {option.label || "Input Field"}
                 {option.required && <span className="ml-1 text-red-500">*</span>}
               </label>
-              {option.price && parseFloat(String(option.price)) > 0 && (
-                <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  +${parseFloat(String(option.price)).toFixed(2)}
-                </span>
-              )}
+              {(() => {
+                const rawP = option.price ?? (option as any).selling_price;
+                const p = rawP != null ? parseFloat(String(rawP).replace(/[^0-9.-]/g, "")) : 0;
+                return p > 0 ? (
+                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    +£{p.toFixed(2)}
+                  </span>
+                ) : null;
+              })()}
             </div>
             {option.sub_label && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -591,21 +717,28 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           ? option.value
           : "#0EA5E9");
 
-      // Use uid/o_id for selection identity — prevents cross-option collision
-      const isSelected = isCheckbox
-        ? Array.isArray(selectedVal) &&
-          selectedVal.some((v) =>
-            typeof v === "object" && v !== null
-              ? String(v.uid) === String(optUid) || String((v as any).o_id) === String(optUid)
-              : String(v) === String(optUid),
-          )
-        : isColorSwatch
-        ? (typeof selectedVal === "object" && selectedVal !== null
-            ? String(selectedVal.uid) === String(optUid) || String((selectedVal as any).o_id) === String(optUid)
-            : String(selectedVal) === String(optUid)) || !!answeredColor
+      // Use uid/o_id/id for selection identity — handles arrays (checkboxes, groups, inputs), objects, and primitives
+      const baseSelected = Array.isArray(selectedVal)
+        ? selectedVal.some((v) => {
+            if (!v) return false;
+            if (typeof v === "object") {
+              const u =
+                (v as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                (v as { o_id?: string }).o_id ||
+                (v as { id?: string | number }).id;
+              return String(u) === String(optUid);
+            }
+            return String(v) === String(optUid);
+          })
         : typeof selectedVal === "object" && selectedVal !== null
-        ? String(selectedVal.uid) === String(optUid) || String((selectedVal as any).o_id) === String(optUid)
+        ? String(
+            (selectedVal as { uid?: string; o_id?: string; id?: string | number }).uid ||
+              (selectedVal as { o_id?: string }).o_id ||
+              (selectedVal as { id?: string | number }).id,
+          ) === String(optUid)
         : String(selectedVal) === String(optUid);
+
+      const isSelected = isColorSwatch ? (baseSelected || Boolean(answeredColor)) : baseSelected;
       const inputId = `opt_${question.q_id || question._uid || ""}_${option.o_id || option.uid || option._uid || optIdx}`;
 
       const handleCardClick = () => {
@@ -645,11 +778,13 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
           {/* Full banner image for non-image_radio options with image */}
           {!isImageRadio && option.image && (
-            <div className="w-full overflow-hidden">
+            <div className="w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
               <img
                 src={String(option.image)}
                 alt={option.label || "Option image"}
-                className="h-32 w-full object-cover"
+                className="h-32 w-full object-cover transition-opacity duration-200"
+                loading="lazy"
+                decoding="async"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
@@ -713,7 +848,9 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                   <img
                     src={String(option.image)}
                     alt={option.label || "Option preview"}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-opacity duration-200"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display =
                         "none";
@@ -756,11 +893,15 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
 
             {/* Price + swatch button */}
             <div className="flex items-center gap-2 shrink-0">
-              {option.price && (
-                <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  ${option.price}
-                </span>
-              )}
+              {(() => {
+                const rawP = option.price ?? (option as any).selling_price;
+                const p = rawP != null ? parseFloat(String(rawP).replace(/[^0-9.-]/g, "")) : 0;
+                return p > 0 ? (
+                  <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    +£{p.toFixed(2)}
+                  </span>
+                ) : null;
+              })()}
 
               {isColorSwatch && (
                 <button
@@ -876,15 +1017,66 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                 label: opt.label,
               };
 
+              const hasGroups = !q.is_lookup && Boolean(q.groups && q.groups.length > 0);
+              const targetGroup = hasGroups
+                ? q.groups?.find((g) =>
+                    (g.options || []).some(
+                      (o) => (o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : "")) === optUid,
+                    ),
+                  )
+                : null;
+              const groupOptUids = targetGroup
+                ? new Set(
+                    (targetGroup.options || []).map(
+                      (o) => o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : ""),
+                    ),
+                  )
+                : null;
+              const allQuestionOpts = getQuestionOptions(q);
+              const inputOptionUids = new Set(
+                allQuestionOpts
+                  .filter((o) => o.field_type === "input")
+                  .map((o) => o.o_id || o.uid || o._uid || (o.id != null ? String(o.id) : "")),
+              );
+
               setAnswers((prev) => {
                 const current = prev[qKey];
+                if (targetGroup && groupOptUids) {
+                  const currentArr: unknown[] = Array.isArray(current)
+                    ? (current as unknown[])
+                    : current && typeof current === "object"
+                    ? [current]
+                    : [];
+                  const keptOtherGroups = currentArr.filter((item) => {
+                    if (!item) return false;
+                    const u =
+                      typeof item === "object"
+                        ? String(
+                            (item as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                              (item as { o_id?: string }).o_id ||
+                              (item as { id?: string | number }).id ||
+                              "",
+                          )
+                        : String(item);
+                    return !groupOptUids.has(u);
+                  });
+                  return {
+                    ...prev,
+                    [qKey]: [...keptOtherGroups, newEntry],
+                  };
+                }
                 if (Array.isArray(current)) {
-                  const allQuestionOpts = getQuestionOptions(q);
-                  const inputOptionUids = new Set(
-                    allQuestionOpts.filter((o) => o.field_type === "input").map((o) => o.o_id || o.uid || o._uid)
-                  );
-                  const keptInputs = current.filter((item) => {
-                    const u = typeof item === "object" ? (item.o_id || item.uid) : item;
+                  const keptInputs = (current as unknown[]).filter((item) => {
+                    if (!item) return false;
+                    const u =
+                      typeof item === "object"
+                        ? String(
+                            (item as { uid?: string; o_id?: string; id?: string | number }).uid ||
+                              (item as { o_id?: string }).o_id ||
+                              (item as { id?: string | number }).id ||
+                              "",
+                          )
+                        : String(item);
                     return inputOptionUids.has(u);
                   });
                   return {
@@ -1061,10 +1253,16 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           {!hideSubmitButton && (
           <div
             className={cn(
-              "flex items-center justify-end border-t border-slate-200/80 pt-3 sm:pt-4 dark:border-slate-800",
+              "flex flex-col items-end gap-1.5 border-t border-slate-200/80 pt-3 sm:pt-4 dark:border-slate-800",
               scrollableLayout && "lg:shrink-0"
             )}
           >
+            {/* Validation hint shown when nothing is selected yet */}
+            {!hasAnyOptionSelected && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium select-none">
+                Please select at least one option before adding to cart.
+              </p>
+            )}
             {(() => {
               const label =
                 submitButtonText ||
@@ -1079,6 +1277,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
                   type="submit"
                   size="md"
                   loading={isSubmitting}
+                  disabled={!hasAnyOptionSelected}
+                  title={!hasAnyOptionSelected ? "Select at least one option to continue" : undefined}
                   className="w-full px-6 font-semibold sm:w-auto bg-[#701524] hover:bg-[#5a101c] text-white border-none"
                 >
                   {isCart ? (

@@ -28,9 +28,9 @@ export interface KioskBillingDetails {
 
 export interface KioskInvoiceDetailsProps {
   config: KioskConfig;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
   scene: LiveBuildScene;
-  payload?: any;
+  payload?: { total_price?: number; [key: string]: unknown };
   /** Pre-computed totals passed from the cart to ensure price consistency */
   cartTotals?: { grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number };
   onBack: () => void;
@@ -123,7 +123,7 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
     })
     .filter(Boolean);
 
-  const handleInputChange = (field: keyof KioskBillingDetails, value: any) => {
+  const handleInputChange = (field: keyof KioskBillingDetails, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {

@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { getPublicKioskById, submitKioskResponse } from "@/features/kiosk/api/kiosk.api";
+import { getPublicKioskById, submitKioskCheckout } from "@/features/kiosk/api/kiosk.api";
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
+import type { CheckoutItem } from "@/features/kiosk/types/kiosk-submission.types";
 import { KioskRenderer } from "@/features/kiosk/components/kiosk-renderer";
 import { KioskCartReview } from "@/features/kiosk/components/kiosk-cart-review";
 import { KioskInvoiceDetails, type KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
-import { computeLiveBuildScene, type LiveBuildScene } from "@/features/kiosk/utils/kiosk-live-build";
-import { CheckCircle, AlertCircle, ShoppingCart } from "lucide-react";
+import { computeLiveBuildScene, type LiveBuildScene, type KioskAnswerValue } from "@/features/kiosk/utils/kiosk-live-build";
+import { buildKioskCheckoutFormData, buildKioskCheckoutPayload, captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
+import { toastError } from "@/shared/feedback/app-toast";
+import { CheckCircle, AlertCircle, ShoppingCart, Download, ExternalLink } from "lucide-react";
 
 export default function PublicKioskPage() {
   const params = useParams<{ id?: string | string[] }>();
@@ -20,14 +23,17 @@ export default function PublicKioskPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"configure" | "cart" | "invoice" | "submitted">("configure");
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, KioskAnswerValue>>({});
   const [configuredData, setConfiguredData] = useState<{
-    payload: any;
-    answers: Record<string, any>;
+    payload: { items?: CheckoutItem[] } | unknown;
+    answers: Record<string, KioskAnswerValue>;
     scene: LiveBuildScene;
+    renderedConfig?: KioskConfig;
+    items?: CheckoutItem[];
   } | null>(null);
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
   const [cartTotals, setCartTotals] = useState<{ grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number } | undefined>();
+  const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null);
 
   // Restore saved draft answers from sessionStorage
   useEffect(() => {
@@ -98,16 +104,20 @@ export default function PublicKioskPage() {
 
   // Transition from configure form -> cart review with computed scene & payload
   const handleConfigureSubmit = (
-    payload: any,
-    meta?: { answers: Record<string, any>; scene: LiveBuildScene },
+    payload: { items?: CheckoutItem[] } | unknown,
+    meta?: { answers: Record<string, unknown>; scene: LiveBuildScene; renderedConfig?: KioskConfig },
   ) => {
     if (!config) return;
-    const currentAnswers = meta?.answers || answers;
-    const scene = meta?.scene || computeLiveBuildScene(config, currentAnswers);
+    const currentAnswers = (meta?.answers || answers) as Record<string, KioskAnswerValue>;
+    const effectiveConfig = meta?.renderedConfig || config;
+    const scene = meta?.scene || computeLiveBuildScene(effectiveConfig, currentAnswers);
+    const prebuiltItems = (payload as { items?: CheckoutItem[] })?.items;
     setConfiguredData({
       payload,
       answers: currentAnswers,
       scene,
+      renderedConfig: effectiveConfig,
+      items: prebuiltItems,
     });
     setView("cart");
   };
@@ -120,21 +130,61 @@ export default function PublicKioskPage() {
 
   // Submit invoice and billing from invoice details tab
   const handleSubmitInvoiceAndPayment = async (billingDetails: KioskBillingDetails) => {
-    if (!kioskId || !configuredData) return;
+    if (!kioskId || !config || !configuredData) return;
     try {
       setIsSubmittingInvoice(true);
-      await submitKioskResponse({
-        ...configuredData.payload,
-        form_id: Number(kioskId),
-        billing_details: billingDetails,
+
+      // 1. Capture visual preview snapshot image
+      let snapshotImage = "";
+      try {
+        snapshotImage = await captureLiveBuildSnapshot(configuredData.scene);
+        if (!snapshotImage || snapshotImage.trim() === "" || snapshotImage === "data:,") {
+          throw new Error("Visual snapshot capture produced an invalid image.");
+        }
+      } catch (snapErr) {
+        console.error("Failed to capture snapshot image", snapErr);
+        toastError("Failed to capture visual preview snapshot. Please try again.");
+        setIsSubmittingInvoice(false);
+        return;
+      }
+
+      // 2. Build multipart/form-data checkout payload with binary snapshot file Blob
+      const activeConfig = configuredData.renderedConfig || config;
+      const checkoutFormData = buildKioskCheckoutFormData({
+        config: activeConfig,
+        answers: configuredData.answers || answers,
+        billingDetails,
+        snapshotImage,
+        organizationId: Number(config.organization_id || config.organization?.id || 1),
+        kioskMachineId: Number(config.id || kioskId),
+        items: configuredData.items || (configuredData.payload as { items?: CheckoutItem[] })?.items,
+        scene: configuredData.scene,
       });
+
+      // 3. Post to /api/v1/checkout/ as multipart/form-data
+      await submitKioskCheckout(checkoutFormData);
+
+      // 4. Auto-download snapshot image directly to user's computer on submission
+      if (typeof window !== "undefined" && snapshotImage) {
+        try {
+          const downloadAnchor = document.createElement("a");
+          downloadAnchor.href = snapshotImage;
+          downloadAnchor.download = `kiosk-snapshot-${kioskId || "product"}.png`;
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          document.body.removeChild(downloadAnchor);
+        } catch (downloadErr) {
+          console.error("Failed to auto-download snapshot", downloadErr);
+        }
+      }
+
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
       }
+      setSubmittedSnapshot(snapshotImage);
       setView("submitted");
     } catch (err) {
-      console.error("Failed to submit kiosk invoice", err);
-      alert("Failed to submit response. Please try again.");
+      console.error("Failed to submit checkout", err);
     } finally {
       setIsSubmittingInvoice(false);
     }
@@ -167,7 +217,7 @@ export default function PublicKioskPage() {
   // Submitted / Invoice success state
   if (view === "submitted") {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 text-center dark:bg-slate-950">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 py-8 text-center dark:bg-slate-950">
         <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400">
           <CheckCircle className="size-8" />
         </div>
@@ -178,11 +228,47 @@ export default function PublicKioskPage() {
           Thank you! Your product configuration has been recorded and an invoice
           has been initiated.
         </p>
-        <div className="mt-8 flex items-center gap-3">
+
+        {submittedSnapshot && (
+          <div className="mt-6 max-w-sm w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Configured Snapshot Preview
+            </p>
+            <div className="relative aspect-4/3 w-full overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <img
+                src={submittedSnapshot}
+                alt="Product snapshot"
+                className="max-h-full max-w-full object-contain"
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <a
+                href={submittedSnapshot}
+                download={`kiosk-snapshot-${kioskId || "product"}.png`}
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+              >
+                <Download className="size-3.5" />
+                Download Snapshot (PNG)
+              </a>
+              <a
+                href={submittedSnapshot}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <ExternalLink className="size-3.5" />
+                Open Full Size
+              </a>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 flex items-center gap-3">
           <button
             onClick={() => {
               setAnswers({});
               setConfiguredData(null);
+              setSubmittedSnapshot(null);
               setView("configure");
             }}
             className="rounded-md bg-[#701524] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5a101c] focus:outline-none focus:ring-2 focus:ring-[#701524] focus:ring-offset-2 transition cursor-pointer"
@@ -258,7 +344,7 @@ export default function PublicKioskPage() {
             config={config}
             answers={answers}
             scene={configuredData.scene}
-            payload={configuredData.payload}
+            payload={configuredData.payload as { total_price?: number; [key: string]: unknown } | undefined}
             onBack={() => setView("configure")}
             onContinueToInvoice={handleContinueToInvoice}
             isSubmitting={isSubmittingInvoice}
@@ -273,7 +359,7 @@ export default function PublicKioskPage() {
             config={config}
             answers={answers}
             scene={configuredData.scene}
-            payload={configuredData.payload}
+            payload={configuredData.payload as { total_price?: number; [key: string]: unknown } | undefined}
             cartTotals={cartTotals}
             onBack={() => setView("cart")}
             onSubmitInvoice={handleSubmitInvoiceAndPayment}

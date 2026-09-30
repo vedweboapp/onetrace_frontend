@@ -16,9 +16,9 @@ import type { LiveBuildScene } from "../utils/kiosk-live-build";
 
 export interface KioskCartReviewProps {
   config: KioskConfig;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
   scene: LiveBuildScene;
-  payload?: any;
+  payload?: { total_price?: number; [key: string]: unknown };
   onBack: () => void;
   onContinueToInvoice: (totals: { grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number }) => void;
   isSubmitting?: boolean;

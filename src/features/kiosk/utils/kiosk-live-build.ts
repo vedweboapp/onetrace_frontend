@@ -5,11 +5,14 @@ import type {
   PlacementCoordinates,
 } from "../types/kiosk.types";
 import { DEFAULT_PLACEMENT_COORDINATES } from "./kiosk-placement-styles";
+import { preloadImage } from "./kiosk-color-fill";
 
 export type KioskAnswerValue =
-  | { uid?: string; o_id?: string; value?: string | number }
-  | { uid?: string; o_id?: string; value?: string | number }[]
+  | { uid?: string; o_id?: string; id?: string | number; value?: string | number; [key: string]: unknown }
+  | { uid?: string; o_id?: string; id?: string | number; value?: string | number; [key: string]: unknown }[]
   | string
+  | number
+  | null
   | undefined;
 
 export interface LiveBuildOverlay {
@@ -45,6 +48,33 @@ export interface LiveBuildScene {
   summaries: LiveBuildSelectionSummary[];
   checkboxFeatures: string[];
   totalPrice: number;
+}
+
+/**
+ * Preloads all images in the kiosk configuration into browser memory cache and decodes them in GPU.
+ */
+export function preloadKioskImages(config?: KioskConfig | null) {
+  if (typeof window === "undefined" || !config || !Array.isArray(config.questions)) return;
+  const urls = new Set<string>();
+  for (const q of config.questions) {
+    if (q.is_deleted) continue;
+    const checkOpt = (opt: KioskOption) => {
+      if (opt.image) urls.add(opt.image);
+      if (opt.target_image_field) urls.add(opt.target_image_field);
+      if (opt.selected_image_field) urls.add(opt.selected_image_field);
+    };
+    for (const opt of q.options || []) checkOpt(opt);
+    if (q.groups) {
+      for (const g of q.groups) {
+        for (const opt of g.options || []) checkOpt(opt);
+      }
+    }
+  }
+  urls.forEach((url) => {
+    if (url && typeof url === "string" && (url.startsWith("http") || url.startsWith("/") || url.startsWith("data:"))) {
+      void preloadImage(url);
+    }
+  });
 }
 
 const getOptionKey = (opt: KioskOption): string =>
@@ -90,54 +120,67 @@ function buildOptionIndex(questions: KioskQuestion[]): Map<string, KioskOption> 
   return map;
 }
 
-function resolveSelectedOption(
+function resolveAllQuestionSelections(
   question: KioskQuestion,
   answers: Record<string, KioskAnswerValue>,
   draft?: KioskOption | null,
-): KioskOption | null {
-  if (draft) return draft;
-  const qKey = question.api_name || question.q_id || question._uid || "";
-  const ans = answers[qKey];
+): KioskOption[] {
   const options = getAllQuestionOptions(question);
-  if (!ans) return null;
+  if (draft) return [draft];
 
-  // Array answer: happens when input fields co-exist with single-choice options.
+  const qKey = question.api_name || question.q_id || question._uid || "";
+  const ans =
+    answers[qKey] ??
+    (question.q_id ? answers[question.q_id] : undefined) ??
+    (question._uid ? answers[question._uid] : undefined);
+  if (!ans) return [];
+
+  const selectedList: KioskOption[] = [];
+  const selectedOptIds = new Set<string>();
+
+  const checkAndAdd = (optId: unknown, fallbackVal?: unknown) => {
+    if (optId == null) return;
+    const strId = String(optId);
+    const opt = options.find(
+      (o) =>
+        String(getOptionKey(o)) === strId ||
+        (o.id != null && String(o.id) === strId) ||
+        (o.o_id != null && String(o.o_id) === strId) ||
+        (o.uid != null && String(o.uid) === strId) ||
+        (o.value != null && String(o.value) === strId) ||
+        (o.label != null && String(o.label) === strId) ||
+        (fallbackVal != null &&
+          (String(o.value) === String(fallbackVal) || String(o.label) === String(fallbackVal))),
+    );
+    if (opt && opt.field_type !== "input") {
+      const uniqueKey = getOptionKey(opt) || String(opt.id);
+      if (!selectedOptIds.has(uniqueKey)) {
+        selectedOptIds.add(uniqueKey);
+        selectedList.push(opt);
+      }
+    }
+  };
+
   if (Array.isArray(ans)) {
     for (const entry of ans) {
-      const targetId = typeof entry === "object" && entry ? (entry.o_id || entry.uid) : entry;
-      const opt = options.find((o) => String(getOptionKey(o)) === String(targetId));
-      if (opt && opt.field_type !== "input") return opt;
+      if (entry == null) continue;
+      if (typeof entry === "object") {
+        const targetId = entry.o_id || entry.uid || entry.id;
+        checkAndAdd(targetId, entry.value);
+      } else {
+        checkAndAdd(entry);
+      }
     }
-    return null;
+  } else if (typeof ans === "object") {
+    const targetId = (ans as { o_id?: string; uid?: string; id?: string | number }).o_id ||
+      (ans as { uid?: string }).uid ||
+      (ans as { id?: string | number }).id;
+    checkAndAdd(targetId, (ans as { value?: unknown }).value);
+  } else {
+    checkAndAdd(ans);
   }
 
-  if (typeof ans === "object" && ans !== null) {
-    const targetId = (ans as any).o_id || (ans as any).uid;
-    return options.find((o) => String(getOptionKey(o)) === String(targetId)) ?? null;
-  }
-
-  const key = typeof ans === "string" ? ans : String(ans);
-  return (
-    options.find((o) => String(getOptionKey(o)) === key || o.value === key || o.label === key) ??
-    null
-  );
-}
-
-function resolveCheckboxSelections(
-  question: KioskQuestion,
-  answers: Record<string, KioskAnswerValue>,
-): KioskOption[] {
-  const qKey = question.api_name || question.q_id || question._uid || "";
-  const ans = answers[qKey];
-  if (!Array.isArray(ans)) return [];
-  const options = getAllQuestionOptions(question);
-  return ans
-    .map((entry) => {
-      const targetId = typeof entry === "object" && entry ? (entry.o_id || entry.uid) : entry;
-      const opt = options.find((o) => String(getOptionKey(o)) === String(targetId));
-      return opt && opt.field_type !== "input" ? opt : null;
-    })
-    .filter(Boolean) as KioskOption[];
+  return selectedList;
 }
 
 function resolveInputSelections(
@@ -216,6 +259,19 @@ function parsePrice(price: KioskOption["price"]): number {
   if (price == null || price === "") return 0;
   const n = parseFloat(String(price).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Reads the numeric price from a KioskOption checking all known field name
+ * variants: price, selling_price, unit_price, retail_price.
+ */
+function resolveOptionPrice(option: KioskOption): number {
+  const raw =
+    option.price ??
+    (option as any).selling_price ??
+    (option as any).unit_price ??
+    (option as any).retail_price;
+  return parsePrice(raw as KioskOption["price"]);
 }
 
 export function getTargetOptionUids(
@@ -339,92 +395,148 @@ export function computeLiveBuildScene(
 
   // Pass 1: Collect active selections, prices, and summaries
   for (const question of questions) {
-    const qId = question.q_id || question._uid || "";
-    const draft = livePreviewOptions?.[qId];
-    const selected = resolveSelectedOption(question, answers, draft ?? undefined);
-    const checkboxes = resolveCheckboxSelections(question, answers);
+    const qId = question.api_name || question.q_id || question._uid || "";
+    const draft = livePreviewOptions?.[qId] ?? (question.q_id ? livePreviewOptions?.[question.q_id] : undefined);
+    const selections = resolveAllQuestionSelections(question, answers, draft ?? undefined);
 
-    for (const cb of checkboxes) {
-      if (cb.label) checkboxFeatures.push(cb.label);
-      totalPrice += parsePrice(cb.price ?? (cb as any).selling_price);
+    for (const selected of selections) {
+      if (selected.field_type === "checkbox" && selected.label) {
+        checkboxFeatures.push(selected.label);
+      }
+      totalPrice += resolveOptionPrice(selected);
+
+      const resolvedColor = isColorType(selected)
+        ? resolveOptionColor(selected, question, answers)
+        : undefined;
+
+      summaries.push({
+        questionLabel: question.label || "Option",
+        option: selected,
+        resolvedColor,
+      });
+
+      selectedItems.push({ question, selected, resolvedColor });
     }
 
     const inputs = resolveInputSelections(question, answers);
     for (const inp of inputs) {
-      totalPrice += parsePrice(inp.option.price ?? (inp.option as any).selling_price);
+      totalPrice += resolveOptionPrice(inp.option);
       summaries.push({
         questionLabel: inp.option.label || "Input",
         option: inp.option,
       });
     }
+  }
 
-    if (!selected) continue;
+  // Pass 2: Resolve the base canvas image from user selections using relationship chains
+  const placeModeItems = selectedItems.filter(
+    (item) => isPlaceMode(item.selected) && !!item.selected.image,
+  );
+  const baseImageItems = selectedItems.filter(
+    (item) => !isPlaceMode(item.selected) && !!item.selected.image,
+  );
 
-    totalPrice += parsePrice(selected.price ?? (selected as any).selling_price);
+  // Collect all target option UIDs and target question UIDs from active place overlays
+  const activeOverlayTargetOptionUids = new Set<string>();
+  const activeOverlayTargetQuestionUids = new Set<string>();
 
-    const resolvedColor = isColorType(selected)
-      ? resolveOptionColor(selected, question, answers)
-      : undefined;
+  for (const { selected } of placeModeItems) {
+    const targetUids = getPlacementTargetOptionUids(selected, questions);
+    for (const u of targetUids) activeOverlayTargetOptionUids.add(String(u));
+    const targetQ = selected.placement_target_question || selected.placement?.target_question;
+    if (targetQ) activeOverlayTargetQuestionUids.add(String(targetQ));
+  }
 
-    summaries.push({
-      questionLabel: question.label || "Option",
-      option: selected,
-      resolvedColor,
+  // Priority 1: A selected base option whose UID is explicitly targeted by an active place overlay
+  let primaryBaseItem = baseImageItems.find((item) => {
+    const uid = getOptionKey(item.selected);
+    return uid && activeOverlayTargetOptionUids.has(String(uid));
+  });
+
+  // Priority 2: A selected base option whose question is targeted by an active place overlay
+  if (!primaryBaseItem) {
+    primaryBaseItem = baseImageItems.find((item) => {
+      const qUid = item.question.q_id || item.question._uid;
+      return qUid && activeOverlayTargetQuestionUids.has(String(qUid));
     });
-
-    selectedItems.push({ question, selected, resolvedColor });
   }
 
-  // Pass 2: Resolve the base canvas image from user selections
-  for (const { question, selected } of selectedItems) {
-    if (selected.field_type === "image_radio" && isPlaceMode(selected)) {
-      continue; // overlays handled below
-    }
-    if (selected.image) {
-      canvasUid = getOptionKey(selected) || null;
-      canvasImage = String(selected.image);
-      canvasQuestion = question;
+  // Priority 3: A selected base option targeted by a color fill option
+  if (!primaryBaseItem) {
+    const colorItems = selectedItems.filter((item) => isColorType(item.selected));
+    for (const { selected: colorOpt } of colorItems) {
+      const colorTargets = getTargetOptionUids(colorOpt, questions);
+      primaryBaseItem = baseImageItems.find((item) => {
+        const uid = getOptionKey(item.selected);
+        return uid && colorTargets.includes(String(uid));
+      });
+      if (primaryBaseItem) break;
     }
   }
 
-  // Pass 3: Resolve place-mode overlays
-  for (const { question, selected } of selectedItems) {
-    if (selected.field_type === "image_radio" && isPlaceMode(selected) && selected.image) {
-      const targetUids = getPlacementTargetOptionUids(selected, questions);
-      const primaryTargetUid = targetUids[0] || selected.target_image_field || selected.placement?.target_field || null;
+  // Priority 4: Anchor to the first selected base image in question order (root product visual)
+  // Subsequent unrelated questions (e.g. Question 3 items like standalone tools/items) will NOT overwrite this base canvas
+  if (!primaryBaseItem && baseImageItems.length > 0) {
+    primaryBaseItem = baseImageItems[0];
+  }
 
-      if (!canvasImage && targetUids.length > 0) {
-        for (const tUid of targetUids) {
-          const targetOpt = optionByUid.get(tUid);
-          if (targetOpt?.image) {
-            canvasUid = tUid;
-            canvasImage = String(targetOpt.image);
-            canvasQuestion = question;
+  if (primaryBaseItem) {
+    canvasUid = getOptionKey(primaryBaseItem.selected) || null;
+    canvasImage = String(primaryBaseItem.selected.image);
+    canvasQuestion = primaryBaseItem.question;
+  }
+
+  // Fallback: If no base image was selected by the user, but a place overlay is active with a target image in config, resolve from config
+  if (!canvasImage && activeOverlayTargetOptionUids.size > 0) {
+    for (const tUid of activeOverlayTargetOptionUids) {
+      const targetOpt = optionByUid.get(tUid);
+      if (targetOpt?.image) {
+        canvasUid = tUid;
+        canvasImage = String(targetOpt.image);
+        for (const q of questions) {
+          if (getAllQuestionOptions(q).some((o) => getOptionKey(o) === tUid)) {
+            canvasQuestion = q;
             break;
           }
         }
+        break;
       }
-
-      const optUid = getOptionKey(selected) || null;
-      const qUid = question.q_id || question._uid || null;
-
-      // User-edited coordinates take priority over the static option placement
-      const userCoords = optUid ? placementOverrides?.[optUid] : undefined;
-      const coordinates = userCoords
-        ?? selected.placement?.coordinates
-        ?? DEFAULT_PLACEMENT_COORDINATES;
-
-      overlays.push({
-        uid: optUid,
-        image: String(selected.image),
-        coordinates,
-        label: selected.label || undefined,
-        targetUid: primaryTargetUid,
-        targetUids,
-        questionUid: qUid,
-        color: null,
-      });
     }
+  }
+
+  // Pass 3: Resolve place-mode overlays that belong to the active visual chain
+  for (const { question, selected } of placeModeItems) {
+    const targetUids = getPlacementTargetOptionUids(selected, questions);
+    const primaryTargetUid = targetUids[0] || selected.target_image_field || selected.placement?.target_field || null;
+    const optUid = getOptionKey(selected) || null;
+    const qUid = question.q_id || question._uid || null;
+
+    // Check relationship: Does this overlay target the active canvas, or is there no canvas filter?
+    const targetQuestionId = selected.placement_target_question || selected.placement?.target_question;
+    const matchesCanvas =
+      !canvasUid ||
+      targetUids.length === 0 ||
+      targetUids.includes(String(canvasUid)) ||
+      (targetQuestionId && String(canvasQuestion?.q_id || canvasQuestion?._uid) === String(targetQuestionId));
+
+    if (!matchesCanvas) continue;
+
+    // User-edited coordinates take priority over the static option placement
+    const userCoords = optUid ? placementOverrides?.[optUid] : undefined;
+    const coordinates = userCoords
+      ?? selected.placement?.coordinates
+      ?? DEFAULT_PLACEMENT_COORDINATES;
+
+    overlays.push({
+      uid: optUid,
+      image: String(selected.image),
+      coordinates,
+      label: selected.label || undefined,
+      targetUid: primaryTargetUid,
+      targetUids,
+      questionUid: qUid,
+      color: null,
+    });
   }
 
   // Pass 4: Evaluate color fill — applies to targeted base canvas or overlay images

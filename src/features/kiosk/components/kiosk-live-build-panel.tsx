@@ -29,26 +29,6 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
   shadow = false,
   onClick,
 }) => {
-  const [tintedSrc, setTintedSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!layer.color) {
-      setTintedSrc(null);
-      return;
-    }
-    let cancelled = false;
-    applyColorFill(layer.image, layer.color).then((result) => {
-      if (!cancelled) {
-        setTintedSrc(result);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [layer.image, layer.color]);
-
-  const displaySrc = tintedSrc || layer.image;
-
   return (
     <div
       className={cn(
@@ -56,14 +36,19 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
         sizeClass,
         shadow && "shadow-md",
       )}
-      style={placementCoordinatesStyle(layer.coordinates)}
+      style={{
+        ...placementCoordinatesStyle(layer.coordinates),
+        willChange: "transform, opacity",
+      }}
       onClick={onClick}
     >
       <div className="relative size-full">
         <img
-          src={displaySrc}
+          src={layer.image}
           alt={layer.label || "Layer"}
           className="size-full object-cover"
+          loading="eager"
+          decoding="sync"
         />
         {layer.color && (
           <div
@@ -71,7 +56,7 @@ const LiveBuildOverlayItem: React.FC<LiveBuildOverlayItemProps> = ({
             style={{
               backgroundColor: layer.color,
               mixBlendMode: "color",
-              opacity: 0.8,
+              opacity: 0.85,
             }}
           />
         )}
@@ -233,18 +218,21 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
 
     let cancelled = false;
     setTintLoading(true);
-    setTintedCanvasSrc(null);
-    const timer = setTimeout(() => {
-      applyColorFill(tintSource, scene.colorApply!.color).then((result) => {
+    applyColorFill(tintSource, scene.colorApply.color)
+      .then((result) => {
         if (!cancelled) {
           setTintedCanvasSrc(result);
           setTintLoading(false);
         }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTintLoading(false);
+        }
       });
-    }, 40);
+
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
   }, [tintSource, scene.colorApply?.color]);
 
@@ -336,14 +324,19 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
           </div>
 
           <div className="relative z-10 flex max-h-[150px] sm:max-h-[190px] w-full items-center justify-center">
-            {tintLoading && !mainImageSrc && !showSolidBlock ? (
-              <div className="text-[10px] text-slate-500">Updating…</div>
-            ) : mainImageSrc ? (
+            {mainImageSrc ? (
               <div className="relative w-fit max-h-[150px] sm:max-h-[190px] max-w-full overflow-hidden">
+                {/* Tint-computing shimmer overlay — sits on top of the existing image */}
+                {tintLoading && (
+                  <div className="absolute inset-0 z-30 animate-pulse rounded-sm bg-slate-300/40 dark:bg-slate-700/40" />
+                )}
                 <img
                   src={mainImageSrc}
                   alt="Live build"
-                  className="relative z-0 block max-h-[150px] sm:max-h-[190px] max-w-full object-contain drop-shadow-md"
+                  className="relative z-0 block max-h-[150px] sm:max-h-[190px] max-w-full object-contain drop-shadow-md transition-opacity duration-200"
+                  loading="eager"
+                  decoding="sync"
+                  style={{ willChange: "opacity" }}
                 />
                 {scene.overlays.map((layer, idx) => (
                   <LiveBuildOverlayItem
@@ -354,6 +347,11 @@ export const KioskLiveBuildPanel: React.FC<KioskLiveBuildPanelProps> = ({
                     onClick={() => setEditingLayer(layer)}
                   />
                 ))}
+              </div>
+            ) : tintLoading ? (
+              /* Nothing loaded yet and tint is being applied: show skeleton */
+              <div className="flex h-[150px] sm:h-[190px] w-[120px] animate-pulse items-center justify-center rounded-sm bg-slate-200 dark:bg-slate-800">
+                <span className="text-[10px] text-slate-400">Loading…</span>
               </div>
             ) : showSolidBlock ? (
               <div

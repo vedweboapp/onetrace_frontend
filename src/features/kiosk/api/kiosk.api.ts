@@ -1,6 +1,7 @@
 import axios from "axios";
 import api from "@/core/api/axios";
 import type { KioskConfig, KioskListItem } from "../types/kiosk.types";
+import type { KioskCheckoutPayload, KioskCheckoutResponse } from "../types/kiosk-submission.types";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
 export interface GetKiosksParams {
@@ -102,10 +103,18 @@ export async function deleteKiosk(id: string | number): Promise<any> {
   return res.data;
 }
 
-export async function submitKioskResponse(
-  payload: import("../types/kiosk-submission.types").KioskSubmissionPayload,
-): Promise<any> {
-  const res = await api.post("/service-forms/submissions/", payload);
+/**
+ * Submit checkout payload for public kiosk checkout.
+ * Supports both multipart/form-data (FormData) and JSON payload.
+ * POST /api/v1/checkout/
+ */
+export async function submitKioskCheckout(
+  payload: FormData | KioskCheckoutPayload,
+): Promise<KioskCheckoutResponse> {
+  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
+  const res = await api.post<KioskCheckoutResponse>("/checkout/", payload, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+  });
   return res.data;
 }
 

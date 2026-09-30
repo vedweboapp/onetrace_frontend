@@ -351,18 +351,16 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
     };
   }, [isColorField, activeFillImageSrc, formData.color, formData.value]);
 
-  const handlePlacementModeChange = (mode: PlacementMode) => {
+  const handlePlacementModeChange = (mode: "place" | "none") => {
     setFormData((prev) => {
-      if (mode === "group") {
+      if (mode === "none") {
         return {
           ...prev,
-          placement_mode: "group",
+          placement_mode: undefined,
           target_image_field: undefined,
           placement_targets: undefined,
           placement_target_question: undefined,
-          placement: {
-            mode: "group",
-          },
+          placement: undefined,
         };
       } else {
         const currentTargets = placementTargets.length > 0
@@ -615,21 +613,11 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
           : formData.value;
 
       const cleanData = { ...formData };
-      if (!isImageRadio) {
-        delete cleanData.placement;
-        delete cleanData.placement_mode;
-        delete cleanData.placement_targets;
-        delete cleanData.placement_target_question;
-      } else if (!cleanData.placement_mode) {
-        // User never clicked a placement button — strip the placement props entirely
+      if (!isImageRadio || cleanData.placement_mode !== "place") {
         delete cleanData.placement;
         delete cleanData.placement_mode;
         delete cleanData.placement_position;
         delete cleanData.placement_scale_ratio;
-        delete cleanData.placement_targets;
-        delete cleanData.placement_target_question;
-      } else if (cleanData.placement_mode === "group") {
-        cleanData.placement = { mode: "group" };
         delete cleanData.placement_targets;
         delete cleanData.placement_target_question;
         delete cleanData.target_image_field;
@@ -706,23 +694,21 @@ export const KioskFieldConfigModal: React.FC<KioskFieldConfigModalProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handlePlacementModeChange("group")}
+                      onClick={() => handlePlacementModeChange("none")}
                       className={cn(
                         "flex items-center justify-center rounded-md py-1.5 text-xs font-medium transition",
-                        placementMode === "group"
+                        placementMode !== "place"
                           ? "bg-blue-600 text-white shadow-xs font-semibold"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
                       )}
                     >
-                      Group
+                      None / Standalone
                     </button>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                     {placementMode === "place"
-                      ? "Place mode: Select target image field in kiosk and choose position"
-                      : placementMode === "group"
-                      ? "Group mode: Standard grouped option without positioning coordinates"
-                      : "No placement mode set — option will be grouped by default"}
+                      ? "Place mode: This image will overlap onto the targeted base canvas."
+                      : "Standalone option without overlay positioning."}
                   </p>
                 </div>
 
