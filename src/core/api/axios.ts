@@ -23,6 +23,10 @@ import {
 } from "@/features/auth/utils/auth-redirect.util";
 import { isInvalidAuthTokenError } from "@/features/auth/utils/auth-token-error.util";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
+import {
+  dropdownCatalogKindFromRequest,
+  notifyDropdownCatalogChanged,
+} from "@/shared/catalog/dropdown-catalog-bus";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -161,6 +165,13 @@ api.interceptors.request.use((config) => {
     config.headers = headers;
   }
   return config;
+});
+
+api.interceptors.response.use((response) => {
+  if (typeof window === "undefined") return response;
+  const kind = dropdownCatalogKindFromRequest(response.config.method, response.config.url);
+  if (kind) notifyDropdownCatalogChanged(kind);
+  return response;
 });
 
 attachJsonEnvelopeGuard(api);

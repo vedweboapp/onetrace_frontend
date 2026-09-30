@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
@@ -31,6 +32,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -38,12 +40,13 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -65,8 +68,16 @@ type Props = {
 };
 
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+  ]);
   const t = useTranslations("Dashboard.quotations");
   const router = useRouter();
+  const tabsStorageKey = useTabOrderStorageKey("quotationFormModal");
   const [saving, setSaving] = React.useState(false);
   const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
 
@@ -116,7 +127,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     (async () => {
       try {
         const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+        if (!cancelled) setClientOptions(clientsToSelectOptions(clients));
       } catch {
         if (!cancelled) setClientOptions([]);
       }
@@ -124,7 +135,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
 
   const customerId =
     customerIdStr && /^\d+$/.test(customerIdStr.trim())
@@ -134,6 +145,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     projectIdStr && /^\d+$/.test(projectIdStr.trim())
       ? Number.parseInt(projectIdStr.trim(), 10)
       : undefined;
+
+  const projectCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (projectCustomerRef.current === customerId) return;
+    projectCustomerRef.current = customerId;
+    setProjectRows([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -151,7 +170,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -175,7 +194,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
+
+  const siteProjectRef = React.useRef(projectId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (siteProjectRef.current === projectId) return;
+    siteProjectRef.current = projectId;
+    setSiteRows([]);
+  }, [open, projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -197,7 +224,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, projectId]);
+  }, [open, projectId, catalogEpoch]);
+
+  const contactCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (contactCustomerRef.current === customerId) return;
+    contactCustomerRef.current = customerId;
+    setContactOptions([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -218,7 +253,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -369,13 +404,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           </p>
         ) : null} */}
 
-        <AppTabs
+        <CustomizableAppTabs
           tabs={[
             { id: "project", label: t("formTabs.project") },
             { id: "pricing", label: t("formTabs.pricing") },
           ]}
           value={formTab}
           onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+          storageKey={tabsStorageKey}
           ariaLabel={t("formTabs.aria")}
           panelIdPrefix="quotation-form-modal"
         />

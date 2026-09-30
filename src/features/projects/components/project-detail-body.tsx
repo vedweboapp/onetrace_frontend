@@ -11,6 +11,7 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId, resolveProjectTypeChipData } from "@/features/projects/utils/project-type-id.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import {
   resolveAppRoleIdMap,
   userProfilesToSelectOptions,
@@ -125,6 +126,7 @@ export function ProjectDetailBody({
   const clientId = getProjectClientId(detail);
   const projectTypeId = getProjectTypeId(detail);
   const projectTypeChip = resolveProjectTypeChipData(detail, projectTypeById);
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const [managerOptions, setManagerOptions] = React.useState<CheckmarkSelectOption[]>([]);
 
   const clientSelectOptions = React.useMemo(() => {
@@ -156,7 +158,7 @@ export function ProjectDetailBody({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   const projectTypeSelectOptions = React.useMemo(() => {
     const options = Object.values(projectTypeById).map((row) => ({

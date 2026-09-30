@@ -12,6 +12,10 @@ import {
   loadSchedulingTechnicians,
   type SchedulingTechnician,
 } from "@/features/scheduling/utils/scheduling-technician.util";
+import {
+  registerDropdownCatalogInvalidator,
+  subscribeDropdownCatalogChanged,
+} from "@/shared/catalog/dropdown-catalog-bus";
 
 export type SchedulingJobOption = {
   id: number;
@@ -43,6 +47,16 @@ type FilterCatalog = Pick<SchedulingCatalog, "clients" | "jobs" | "projects" | "
 
 /** Bump when filter/technician shape changes so in-memory caches reset. */
 const CATALOG_VERSION = 8;
+let catalogGeneration = 0;
+
+const SCHEDULING_CATALOG_KINDS = new Set<string>([
+  "users",
+  "roles",
+  "clients",
+  "jobs",
+  "projects",
+  "userGroups",
+]);
 let techniciansCacheVersion = 0;
 let filterCacheVersion = 0;
 let techniciansCache: SchedulingTechnician[] | null = null;
@@ -66,6 +80,7 @@ function publishFilterCatalog(next: FilterCatalog) {
 }
 
 export function invalidateSchedulingCatalog(): void {
+  catalogGeneration += 1;
   techniciansCache = null;
   techniciansPromise = null;
   filterCache = null;
@@ -74,6 +89,10 @@ export function invalidateSchedulingCatalog(): void {
   filterCacheVersion = 0;
   jobsByClientCache.clear();
 }
+
+registerDropdownCatalogInvalidator((kind) => {
+  if (SCHEDULING_CATALOG_KINDS.has(kind)) invalidateSchedulingCatalog();
+});
 
 export function jobSelectLabel(job: Job): string {
   const serial = job.job_serial_number?.trim();
@@ -85,14 +104,16 @@ export function jobSelectLabel(job: Job): string {
 async function loadTechnicians(fallbackTechnicianTitle: string): Promise<SchedulingTechnician[]> {
   if (techniciansCache && techniciansCacheVersion === CATALOG_VERSION) return techniciansCache;
   if (!techniciansPromise) {
+    const generation = catalogGeneration;
     techniciansPromise = loadSchedulingTechnicians(fallbackTechnicianTitle)
       .then((rows) => {
+        if (generation !== catalogGeneration) return rows;
         techniciansCache = rows;
         techniciansCacheVersion = CATALOG_VERSION;
         return rows;
       })
       .finally(() => {
-        techniciansPromise = null;
+        if (generation === catalogGeneration) techniciansPromise = null;
       });
   }
   return techniciansPromise;
@@ -109,12 +130,14 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
   // Always join an in-flight load (even when force) to avoid duplicate Promise.all work.
   if (filterPromise) return filterPromise;
 
+  const generation = catalogGeneration;
   let partial: FilterCatalog =
     filterCache && filterCacheVersion === CATALOG_VERSION
       ? { ...filterCache }
       : { ...EMPTY_FILTERS };
 
   const publish = (patch: Partial<FilterCatalog>) => {
+    if (generation !== catalogGeneration) return;
     partial = { ...partial, ...patch };
     publishFilterCatalog(partial);
   };
@@ -172,7 +195,7 @@ async function loadFilterCatalog(options?: { force?: boolean }): Promise<FilterC
 
   filterPromise = run;
   void run.finally(() => {
-    if (filterPromise === run) filterPromise = null;
+    if (filterPromise === run && generation === catalogGeneration) filterPromise = null;
   });
   return run;
 }
@@ -195,6 +218,13 @@ export function useSchedulingCatalog(
     includeFilters && !(filterCache && filterCacheVersion === CATALOG_VERSION),
   );
   const [error, setError] = React.useState<unknown>(null);
+  const [catalogEpoch, setCatalogEpoch] = React.useState(0);
+
+  React.useEffect(() => {
+    return subscribeDropdownCatalogChanged((kind) => {
+      if (SCHEDULING_CATALOG_KINDS.has(kind)) setCatalogEpoch((n) => n + 1);
+    });
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -218,7 +248,7 @@ export function useSchedulingCatalog(
     return () => {
       cancelled = true;
     };
-  }, [fallbackTechnicianTitle]);
+  }, [fallbackTechnicianTitle, catalogEpoch]);
 
   React.useEffect(() => {
     if (!includeFilters) {
@@ -261,7 +291,7 @@ export function useSchedulingCatalog(
       cancelled = true;
       filterSubscribers.delete(onUpdate);
     };
-  }, [includeFilters]);
+  }, [includeFilters, catalogEpoch]);
 
   const catalog = React.useMemo<SchedulingCatalog>(
     () => ({
@@ -279,8 +309,10 @@ export function useSchedulingCatalog(
 
 export async function loadUnassignedJobsForClient(clientId: number): Promise<Job[]> {
   if (jobsByClientCache.has(clientId)) return jobsByClientCache.get(clientId)!;
+  const generation = catalogGeneration;
   const { items } = await fetchJobsPage(1, 20, { client: clientId, is_active: true, dropdown: true }, { silent: true });
   const scoped = items.filter((job) => getJobClientId(job.client) === clientId);
+  if (generation !== catalogGeneration) return scoped;
   jobsByClientCache.set(clientId, scoped);
   return scoped;
 }

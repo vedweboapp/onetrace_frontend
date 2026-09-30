@@ -14,7 +14,8 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { AppTabs } from "@/shared/ui/app-tabs";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs } from "@/shared/ui";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import api from "@/core/api/axios";
@@ -409,6 +410,7 @@ export default function FormBuilderLayout({
   projectTypeId,
 }: FormBuilderLayoutProps) {
   const t = useTranslations("Dashboard.settingsFormBuilder");
+  const tabsStorageKey = useTabOrderStorageKey("formBuilder");
   const {
     formSchema,
     createForm,
@@ -1837,10 +1839,11 @@ export default function FormBuilderLayout({
         </div>
 
         <div className="flex justify-center w-full lg:w-auto lg:flex-1">
-          <AppTabs
+          <CustomizableAppTabs
             tabs={tabs}
             value={activeTab}
             onValueChange={(val) => setActiveTab(val as "form" | "preview" | "rules")}
+            storageKey={tabsStorageKey}
           />
         </div>
 
