@@ -1518,9 +1518,12 @@
         "discountDueDaysPlaceholder": "Optional",
         "type": "Type",
         "isDefault": "Default payment term",
-        "isSystemTerms": "System term",
         "save": "Save",
         "cancel": "Cancel"
+      },
+      "typeOptions": {
+        "standard": "Standard",
+        "custom": "Custom"
       },
       "deleteConfirmTitle": "Delete This Payment Term?",
       "deleteConfirmBody": "This action cannot be undone.",

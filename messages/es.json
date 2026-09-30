@@ -1507,9 +1507,12 @@
         "discountDueDaysPlaceholder": "Opcional",
         "type": "Tipo",
         "isDefault": "Término de pago predeterminado",
-        "isSystemTerms": "Término de sistema",
         "save": "Guardar",
         "cancel": "Cancelar"
+      },
+      "typeOptions": {
+        "standard": "Estándar",
+        "custom": "Personalizado"
       },
       "deleteConfirmTitle": "¿Eliminar este término de pago?",
       "deleteConfirmBody": "Esta acción no se puede deshacer.",
