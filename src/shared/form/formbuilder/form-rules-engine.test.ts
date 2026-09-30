@@ -396,3 +396,59 @@ test('normalizeConditionValue supports exact option strings containing commas', 
 });
 
 
+
+test('advanced rule blocks use AND semantics -- all conditions must be true for a shared show target', () => {
+  // Bug: Block 1 (status == yes) -> show email, Block 2 (name == karan) -> show email
+  // Before fix: email showed as soon as status==yes even if name was not karan (OR logic).
+  // After fix:  email only shows when BOTH status==yes AND name==karan (AND logic).
+  const rules = [
+    {
+      _uid: 'rule-and',
+      name: 'show email when status is yes AND name is karan',
+      sequence: 1,
+      rule_type: 'advanced',
+      blocks: [
+        {
+          _uid: 'block-status',
+          field_api_name: 'status',
+          condition: 'is',
+          value: 'yes',
+          output_fields: [{ field_api_name: 'email', action: 'show' }],
+          else_blocks: [],
+          else_output_fields: [],
+        },
+        {
+          _uid: 'block-name',
+          field_api_name: 'name',
+          condition: 'is',
+          value: 'karan',
+          output_fields: [{ field_api_name: 'email', action: 'show' }],
+          else_blocks: [],
+          else_output_fields: [],
+        },
+      ],
+    },
+  ] as any;
+
+  const targetGroups = {
+    status: ['status'],
+    name: ['name'],
+    email: ['email'],
+  } as any;
+
+  // Only status matches -- email must NOT show (AND requires both)
+  const s1 = buildFieldRuleState(rules, { status: 'yes', name: 'not-karan' }, targetGroups);
+  assert.equal(s1.get('email')?.visible, false, 'email should be hidden when only status matches');
+
+  // Only name matches -- email must NOT show
+  const s2 = buildFieldRuleState(rules, { status: 'no', name: 'karan' }, targetGroups);
+  assert.equal(s2.get('email')?.visible, false, 'email should be hidden when only name matches');
+
+  // Neither matches -- email must NOT show
+  const s3 = buildFieldRuleState(rules, { status: 'no', name: 'not-karan' }, targetGroups);
+  assert.equal(s3.get('email')?.visible, false, 'email should be hidden when neither matches');
+
+  // BOTH match -- email must show
+  const s4 = buildFieldRuleState(rules, { status: 'yes', name: 'karan' }, targetGroups);
+  assert.equal(s4.get('email')?.visible, true, 'email should be visible when both conditions pass');
+});

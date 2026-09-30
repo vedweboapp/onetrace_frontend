@@ -55,6 +55,7 @@ export const routes = {
     dispatches: "/dispatches",
     returnToStock: "/return-to-stock",
     forms: "/forms",
+    kioskForms: "/kiosk-forms",
     settings: "/settings",
     settingsPinStatus: "/settings/pin-status",
     settingsProjectStatus: "/settings/project-status",

@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { AppButton as Button } from "@/shared/ui/app-button";
+import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import { createKiosk, getKioskById, updateKiosk } from "../api/kiosk.api";
 import {
@@ -998,28 +999,35 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     return { [editingOptionModal.questionUid]: draftOption };
   }, [editingOptionModal, draftOption]);
 
+  const refreshKioskFromServer = useCallback(async () => {
+    if (kioskMode !== "edit" || !routeKioskId) return;
+
+    setIsLoadingKiosk(true);
+    try {
+      const kiosk = await getKioskById(routeKioskId);
+      if (kiosk) {
+        setPersistedLookupCompositeItemIds(getPersistedLookupCompositeItemIds(kiosk));
+        setConfig(sanitizeConfig(kiosk));
+      }
+      return kiosk;
+    } catch (err) {
+      console.error("Failed to load kiosk:", err);
+      toastError(getSaveErrorMessage(err));
+      return null;
+    } finally {
+      setIsLoadingKiosk(false);
+    }
+  }, [kioskMode, routeKioskId]);
+
   useEffect(() => {
     if (initialConfig || kioskMode !== "edit" || !routeKioskId) return;
 
     let cancelled = false;
 
     const loadKiosk = async () => {
-      setIsLoadingKiosk(true);
-      try {
-        const kiosk = await getKioskById(routeKioskId);
-        if (!cancelled && kiosk) {
-          setPersistedLookupCompositeItemIds(getPersistedLookupCompositeItemIds(kiosk));
-          setConfig(sanitizeConfig(kiosk));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Failed to load kiosk:", err);
-          toastError(getSaveErrorMessage(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingKiosk(false);
-        }
+      const kiosk = await refreshKioskFromServer();
+      if (!cancelled && !kiosk) {
+        return;
       }
     };
 
@@ -1028,7 +1036,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [initialConfig, kioskMode, routeKioskId]);
+  }, [initialConfig, kioskMode, routeKioskId, refreshKioskFromServer]);
 
   const previewConfig = useMemo((): KioskConfig => {
     if (!draftOption || !editingOptionModal) return config;
@@ -1418,7 +1426,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         label,
         sub_label: defaultOpt.sub_label || defaultOpt.subLabel || "",
         api_name: apiName,
-        value: initialValue || apiName,
+        value: fieldType === "input" ? "" : initialValue || apiName,
         color:
           defaultOpt.color ||
           (isColorType
@@ -1694,11 +1702,17 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
     if (onSave) {
       onSave(finalConfig, formData);
+      if (kioskMode === "edit" && routeKioskId) {
+        await refreshKioskFromServer();
+      }
       toastSuccess("Kiosk saved successfully");
     } else {
       try {
         if (finalConfig.id) {
           await updateKiosk(finalConfig.id, formData);
+          if (kioskMode === "edit" && routeKioskId) {
+            await refreshKioskFromServer();
+          }
         } else {
           const res = await createKiosk(formData);
           const createdId = getCreatedKioskId(res);
@@ -1728,12 +1742,18 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
 
     if (onSave) {
       onSave(finalConfig, formData);
+      if (kioskMode === "edit" && routeKioskId) {
+        await refreshKioskFromServer();
+      }
       toastSuccess("Kiosk saved successfully");
       router.push(backUrl as Parameters<typeof router.push>[0]);
     } else {
       try {
         if (finalConfig.id) {
           await updateKiosk(finalConfig.id, formData);
+          if (kioskMode === "edit" && routeKioskId) {
+            await refreshKioskFromServer();
+          }
           toastSuccess("Kiosk saved successfully");
           router.push(backUrl as Parameters<typeof router.push>[0]);
         } else {
@@ -1794,49 +1814,29 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           </div>
 
           {/* Center: Tabs (Form, Preview) */}
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-800 dark:bg-slate-800">
-            <button
-              onClick={() => setActiveTab("form")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                activeTab === "form"
-                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Form
-            </button>
-            <button
-              onClick={() => setActiveTab("preview")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                activeTab === "preview"
-                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Preview
-            </button>
+          <div className="flex items-center justify-center">
+            <AppTabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "form" | "preview")}
+              tabs={[
+                { id: "form", label: "Form" },
+                { id: "preview", label: "Preview" },
+              ]}
+              className="border-b-0"
+            />
           </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleClose}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
+            <Button variant="secondary" size="sm" onClick={handleClose}>
               Close
-            </button>
-            <button
-              onClick={handleSaveAndClose}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleSaveAndClose}>
               Save and Close
-            </button>
-            <button
-              onClick={handleSaveOnly}
-              className="rounded-md bg-black px-4 py-1.5 text-xs font-semibold text-white hover:bg-black/90 dark:bg-white dark:text-black"
-            >
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleSaveOnly}>
               Save
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -1988,6 +1988,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                     console.log("Kiosk simulated submit values:", values);
                     toastSuccess("Simulated kiosk submission recorded!");
                   }}
+                  hideSubmitButton
                 />
               </div>
             </div>
