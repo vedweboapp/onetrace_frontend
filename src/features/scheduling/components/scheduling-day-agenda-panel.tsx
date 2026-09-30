@@ -11,7 +11,8 @@ import type { SchedulingTechnician } from "@/features/scheduling/utils/schedulin
 import type { UserGroup } from "@/features/user-groups/types/user-group.types";
 import { formatDayHeader } from "@/features/scheduling/utils/scheduling-week.util";
 import { scheduleJobLabel, scheduleWorkerIds } from "@/features/scheduling/utils/schedule-map.util";
-import { AppButton, AppTabs, CheckmarkSelect, DetailPanel, surfaceInputClassName } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, CheckmarkSelect, DetailPanel, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
 
@@ -69,6 +70,7 @@ export function SchedulingDayAgendaPanel({
 }: Props) {
   const t = useTranslations("Dashboard.scheduling");
   const locale = useLocale();
+  const tabsStorageKey = useTabOrderStorageKey("schedulingDayAgenda");
   const [tab, setTab] = React.useState<AgendaTab>("jobs");
   const [groupId, setGroupId] = React.useState("");
   const [search, setSearch] = React.useState("");
@@ -151,7 +153,7 @@ export function SchedulingDayAgendaPanel({
           </div>
         ) : null}
 
-        <AppTabs
+        <CustomizableAppTabs
           ariaLabel={t("agenda.tabsAria")}
           tabs={[
             { id: "jobs", label: `${t("agenda.jobsTab")} (${filteredSchedules.length})` },
@@ -159,6 +161,7 @@ export function SchedulingDayAgendaPanel({
           ]}
           value={tab}
           onValueChange={(id) => setTab(id === "timeoff" ? "timeoff" : "jobs")}
+          storageKey={tabsStorageKey}
         />
 
         {tab === "jobs" ? (

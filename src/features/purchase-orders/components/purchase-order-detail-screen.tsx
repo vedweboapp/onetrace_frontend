@@ -14,7 +14,8 @@ import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs } from "@/shared/ui";
 
 type Props = {
   purchaseOrderId: number;
@@ -23,6 +24,7 @@ type Props = {
 export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
   const t = useTranslations("Dashboard.purchaseOrders");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tabsStorageKey = useTabOrderStorageKey("purchaseOrderDetail");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -114,10 +116,11 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
       fetch={fetchPurchaseOrder}
       getTitle={(detail) => detail.purchase_order_number}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
+          storageKey={tabsStorageKey}
         />
       }
       actions={({ listBack }) => (
