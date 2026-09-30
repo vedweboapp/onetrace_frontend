@@ -1988,6 +1988,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                     console.log("Kiosk simulated submit values:", values);
                     toastSuccess("Simulated kiosk submission recorded!");
                   }}
+                  hideSubmitButton
                 />
               </div>
             </div>

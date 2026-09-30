@@ -215,6 +215,8 @@ export interface KioskRendererProps {
   onAnswersChange?: (answers: Record<string, any>) => void;
   /** Hide internal title bar when an external header/banner is present */
   hideTitle?: boolean;
+  /** Hide the Configure Product / Add to Cart submit button (e.g. builder preview mode) */
+  hideSubmitButton?: boolean;
 }
 
 const getGridClass = (cols: number = 2) => {
@@ -248,6 +250,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
       initialAnswers,
       onAnswersChange,
       hideTitle = false,
+      hideSubmitButton = false,
     },
     ref,
   ) {
@@ -1054,7 +1057,8 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
           </div>
         </div>
 
-          {/* Configure Product / Add to Cart Action */}
+          {/* Configure Product / Add to Cart Action — only shown on the public kiosk, not in builder preview */}
+          {!hideSubmitButton && (
           <div
             className={cn(
               "flex items-center justify-end border-t border-slate-200/80 pt-3 sm:pt-4 dark:border-slate-800",
@@ -1087,6 +1091,7 @@ export const KioskRenderer = forwardRef<KioskRendererRef, KioskRendererProps>(
               );
             })()}
           </div>
+          )}
       </form>
     );
   }
