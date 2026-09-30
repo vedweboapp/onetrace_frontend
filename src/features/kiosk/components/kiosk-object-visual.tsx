@@ -110,7 +110,7 @@ export const KioskObjectVisual: React.FC<KioskObjectVisualProps> = ({
   const placementScene = useMemo(() => {
     if (!activeOption || activeOption.field_type !== "image_radio") return null;
     const mode =
-      activeOption.placement_mode || activeOption.placement?.mode || "group";
+      activeOption.placement_mode || activeOption.placement?.mode;
     if (mode !== "place") return null;
 
     const targetUid =

@@ -37,12 +37,16 @@ export const STANDARD_DELIVERY_DURATIONS = [
 
 interface VendorLineItem {
   key: string;
+  itemId?: number | null;
   compositeId: number | null;
+  compositeIds?: number[];
   name: string;
   sku: string;
   groupName: string | null;
   quantity: number;
   unit: string;
+  costPrice?: string | null;
+  sellingPrice?: string | null;
   quotedPrice: string;
   deliveryDate: string;
 }
@@ -69,10 +73,10 @@ function fmtMoney(amount: number, symbol = "$"): string {
   })}`;
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  if (!value || value.trim() === "" || value === "—") return null;
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === "" || value === "—") return null;
   return (
-    <div className="flex items-start justify-between gap-2 py-0.5 text-xs">
+    <div className="flex items-start justify-between gap-2 py-1 text-xs">
       <dt className="w-28 shrink-0 font-medium text-slate-500">{label}</dt>
       <dd className="font-semibold text-slate-900 text-right min-w-0 break-words">{value}</dd>
     </div>
@@ -80,45 +84,82 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function getCustomerName(detail: QuotationDetail): string {
-  const c = detail.customer;
+  const d = detail as any;
+  const c = d.customer ?? d.customer_name ?? d.client ?? d.client_name;
   if (!c) return "—";
+  if (typeof c === "string") return c.trim() || "—";
   if (typeof c === "number") return `Customer #${c}`;
-  if (typeof c === "object" && "name" in c) return (c as any).name ?? "—";
+  if (typeof c === "object" && "name" in c) return c.name ?? "—";
   return "—";
 }
 
 function getSiteName(detail: QuotationDetail): string {
-  if (detail.sites && detail.sites.length > 0) {
-    return detail.sites.map((s) => s.site_name).join(", ");
+  const d = detail as any;
+  if (d.sites && Array.isArray(d.sites) && d.sites.length > 0) {
+    return d.sites
+      .map((s: any) => (typeof s === "object" ? s.site_name ?? s.name : `Site #${s}`))
+      .join(", ");
   }
-  const s = detail.site;
+  const s = d.site ?? d.site_name;
   if (!s) return "—";
+  if (typeof s === "string") return s.trim() || "—";
   if (typeof s === "number") return `Site #${s}`;
-  if (typeof s === "object" && "site_name" in s) return (s as any).site_name ?? "—";
+  if (typeof s === "object" && "site_name" in s) return s.site_name ?? "—";
+  if (typeof s === "object" && "name" in s) return s.name ?? "—";
   return "—";
 }
 
 function getProjectName(detail: QuotationDetail): string {
-  const p = (detail as any).project;
+  const d = detail as any;
+  const p = d.project ?? d.project_name;
   if (!p) return "—";
+  if (typeof p === "string") return p.trim() || "—";
   if (typeof p === "number") return `Project #${p}`;
-  if (typeof p === "object" && "name" in p) return (p as any).name ?? "—";
+  if (typeof p === "object" && "name" in p) return p.name ?? "—";
   return "—";
 }
 
 function getContactName(detail: QuotationDetail): string {
-  const c = detail.primary_customer_contact;
+  const d = detail as any;
+  const c = d.primary_customer_contact ?? d.contact ?? d.primary_contact;
   if (!c) return "—";
+  if (typeof c === "string") return c.trim() || "—";
   if (typeof c === "number") return `#${c}`;
   if (typeof c === "object") {
-    const o = c as any;
-    return o.name ?? o.full_name ?? o.first_name ?? "—";
+    return c.name ?? c.full_name ?? c.first_name ?? "—";
   }
   return "—";
 }
 
+function getVendorName(detail: QuotationDetail): string | null {
+  const d = detail as any;
+  const ac = d.access_context;
+  if (ac && typeof ac === "object") {
+    if (ac.vendor_name) return ac.vendor_name;
+    if (ac.name) return ac.name;
+    if (ac.recipient_name) return ac.recipient_name;
+  }
+  if (d.vendor_name) return d.vendor_name;
+  if (d.vendor && typeof d.vendor === "object") return d.vendor.name ?? d.vendor.vendor_name ?? null;
+  if (d.vendor && typeof d.vendor === "string") return d.vendor;
+  return null;
+}
+
+function getResolvedStatus(detail: QuotationDetail | null | undefined): string {
+  if (!detail) return "draft";
+  const ac = (detail as any).access_context;
+  let s: string | null = null;
+  if (typeof ac === "string") {
+    s = ac;
+  } else if (ac && typeof ac === "object") {
+    s = ac.status ?? ac.status_name ?? ac.value ?? ac.state;
+  }
+  s = s ?? (detail as any).vendor_status ?? detail.status ?? "sent";
+  return String(s).toLowerCase().trim();
+}
+
 function getStatusMeta(status: string | null | undefined): { label: string; bg: string; text: string } {
-  switch ((status ?? "").toLowerCase()) {
+  switch ((status ?? "").toLowerCase().trim()) {
     case "approved":
     case "accepted":
       return { label: "Approved", bg: "#dcfce7", text: "#166534" };
@@ -126,8 +167,10 @@ function getStatusMeta(status: string | null | undefined): { label: string; bg: 
     case "submitted":
       return { label: "Submitted", bg: "#dcfce7", text: "#166534" };
     case "rejected":
+    case "declined":
       return { label: "Rejected", bg: "#fee2e2", text: "#991b1b" };
     case "sent":
+    case "pending":
       return { label: "Sent", bg: "#e0f2fe", text: "#0369a1" };
     case "questioned":
       return { label: "Questioned", bg: "#fef3c7", text: "#92400e" };
@@ -137,9 +180,117 @@ function getStatusMeta(status: string | null | undefined): { label: string; bg: 
   }
 }
 
-/* ── Group pins across all quote_sections ── */
+/* ── Group items across composite_items or quote_sections ── */
 
 function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
+  // 1. Primary: Extract and group items from composite_items array
+  let compositeItems = (detail as any).composite_items ?? (detail as any).compositeItems;
+  if (typeof compositeItems === "string") {
+    try {
+      compositeItems = JSON.parse(compositeItems);
+    } catch {
+      compositeItems = null;
+    }
+  }
+
+  if (Array.isArray(compositeItems) && compositeItems.length > 0) {
+    const map = new Map<
+      string,
+      {
+        itemId: number | null;
+        compositeId: number | null;
+        compositeIds: number[];
+        name: string;
+        sku: string;
+        groupName: string | null;
+        unit: string;
+        quantity: number;
+        costPrice?: string | null;
+        sellingPrice?: string | null;
+      }
+    >();
+
+    compositeItems.forEach((compEntry: any) => {
+      const compId =
+        compEntry.composite_item_id != null
+          ? Number(compEntry.composite_item_id)
+          : compEntry.id != null
+          ? Number(compEntry.id)
+          : null;
+
+      const items = Array.isArray(compEntry.items)
+        ? compEntry.items
+        : Array.isArray(compEntry.item_list)
+        ? compEntry.item_list
+        : [];
+
+      items.forEach((item: any) => {
+        const itemId =
+          item.id != null
+            ? Number(item.id)
+            : item.item_id != null
+            ? Number(item.item_id)
+            : null;
+
+        const name = (item.name ?? item.item_name ?? (itemId ? `Item #${itemId}` : "Unknown Item")).trim();
+        const sku = (item.sku ?? item.item_sku ?? "").trim();
+        const qty = Number(item.quantity ?? item.qty ?? 1);
+        const unit = item.unit ?? item.unit_type ?? "Unit";
+        const groupName = item.group_name ?? item.groupName ?? compEntry.group_name ?? null;
+
+        // Group key: prefer item ID, then SKU, then normalized name
+        const key =
+          itemId != null
+            ? `item_${itemId}`
+            : sku
+            ? `sku_${sku.toLowerCase()}`
+            : `name_${name.toLowerCase().replace(/\s+/g, "_")}`;
+
+        if (map.has(key)) {
+          const existing = map.get(key)!;
+          existing.quantity += qty;
+          if (!existing.sku && sku) existing.sku = sku;
+          if (!existing.groupName && groupName) existing.groupName = groupName;
+          if (compId != null && !existing.compositeIds.includes(compId)) {
+            existing.compositeIds.push(compId);
+          }
+        } else {
+          map.set(key, {
+            itemId,
+            compositeId: compId,
+            compositeIds: compId != null ? [compId] : [],
+            name,
+            sku,
+            groupName,
+            unit,
+            quantity: qty,
+            costPrice: item.cost_price != null ? String(item.cost_price) : null,
+            sellingPrice: item.selling_price != null ? String(item.selling_price) : null,
+          });
+        }
+      });
+    });
+
+    if (map.size > 0) {
+      return Array.from(map.entries()).map(([key, data]) => ({
+        key,
+        itemId: data.itemId,
+        compositeId: data.compositeId,
+        compositeIds: data.compositeIds,
+        name: data.name,
+        sku: data.sku,
+        groupName: data.groupName,
+        quantity: data.quantity,
+        unit: data.unit,
+        costPrice: data.costPrice,
+        sellingPrice: data.sellingPrice,
+        quotedPrice: "",
+        deliveryDate: "",
+      }));
+    }
+  }
+
+  // 2. Fallback: Extract from quote_sections if composite_items is not available
   const sections = (detail as any).quote_sections ?? [];
   if (!Array.isArray(sections) || sections.length === 0) return [];
 
@@ -160,6 +311,7 @@ function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
   const map = new Map<
     string,
     {
+      itemId: number | null;
       name: string;
       sku: string;
       groupName: string | null;
@@ -173,7 +325,10 @@ function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
     const compId: number | null =
       pin.composite_item_id != null
         ? Number(pin.composite_item_id)
-        : pin.item_id != null
+        : null;
+
+    const itemId: number | null =
+      pin.item_id != null
         ? Number(pin.item_id)
         : null;
 
@@ -181,7 +336,9 @@ function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
       pin.name ?? pin.item_name ?? (compId ? `Composite Item #${compId}` : "Unknown Item");
 
     const key: string =
-      compId != null
+      itemId != null
+        ? `item_${itemId}`
+        : compId != null
         ? `cmp_${compId}`
         : `name_${name.toLowerCase().trim().replace(/\s+/g, "_")}`;
 
@@ -196,12 +353,13 @@ function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
       if (!existing.groupName && groupName) existing.groupName = groupName;
       if (!existing.sku && sku) existing.sku = sku;
     } else {
-      map.set(key, { name, sku, groupName, unit, quantity: qty, compositeId: compId });
+      map.set(key, { itemId, name, sku, groupName, unit, quantity: qty, compositeId: compId });
     }
   });
 
   return Array.from(map.entries()).map(([key, data]) => ({
     key,
+    itemId: data.itemId,
     compositeId: data.compositeId,
     name: data.name,
     sku: data.sku,
@@ -613,7 +771,8 @@ export function VendorQuotationDetails() {
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
 
   const currencySymbol = (detail as any)?.currency_symbol ?? "$";
-  const statusMeta = detail ? getStatusMeta(detail.status) : { label: "Draft", bg: "#f1f5f9", text: "#475569" };
+  const resolvedStatus = getResolvedStatus(detail);
+  const statusMeta = getStatusMeta(resolvedStatus);
 
   const filledCount = lineItems.filter(
     (it) =>
@@ -623,12 +782,22 @@ export function VendorQuotationDetails() {
   ).length;
   const allFilled = lineItems.length > 0 && filledCount === lineItems.length;
 
-  const accessStatus = getAccessContextStatus(detail);
+  const totalQuantity = useMemo(
+    () => lineItems.reduce((acc, it) => acc + (it.quantity || 0), 0),
+    [lineItems],
+  );
+
+  const totalQuotedAmount = useMemo(
+    () =>
+      lineItems.reduce((acc, it) => {
+        const price = parseFloat(it.quotedPrice) || 0;
+        return acc + price * (it.quantity || 0);
+      }, 0),
+    [lineItems],
+  );
+
   const isSubmitInAccessContext =
-    accessStatus === "submit" ||
-    accessStatus === "submitted" ||
-    (detail?.status ?? "").toLowerCase() === "submit" ||
-    (detail?.status ?? "").toLowerCase() === "submitted";
+    resolvedStatus === "submit" || resolvedStatus === "submitted";
 
   /* ── Render states ── */
   if (loading) return <LoadingScreen />;
@@ -639,6 +808,23 @@ export function VendorQuotationDetails() {
   const siteName = getSiteName(detail);
   const projectName = getProjectName(detail);
   const contactName = getContactName(detail);
+  const vendorName = getVendorName(detail);
+
+  const quoteTitle =
+    detail.quote_name?.trim() ||
+    (detail as any).name?.trim() ||
+    (detail as any).title?.trim() ||
+    (detail as any).quotation_name?.trim() ||
+    (detail.id ? `Quotation #${detail.id}` : "Quotation Details");
+
+  const serialNumber =
+    detail.quotation_serial_number?.trim() ||
+    (detail as any).serial_number?.trim() ||
+    (detail as any).quotation_number?.trim() ||
+    (detail as any).reference_number?.trim() ||
+    (detail.id ? `#${detail.id}` : null);
+
+  const isActioned = ["approved", "accepted", "rejected", "submit", "submitted"].includes(resolvedStatus);
 
   const visibleItems = searchQuery.trim()
     ? lineItems.filter((it) => {
@@ -650,9 +836,6 @@ export function VendorQuotationDetails() {
         );
       })
     : lineItems;
-
-  const statusLower = (detail?.status ?? "").toLowerCase();
-  const isActioned = ["approved", "accepted", "rejected", "submit", "submitted"].includes(statusLower);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
@@ -728,6 +911,9 @@ export function VendorQuotationDetails() {
                                   {item.sku}
                                 </span>
                               )}
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono text-[10px]">
+                                Qty: {item.quantity}
+                              </span>
                               {item.groupName && (
                                 <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 text-[10px] font-medium">
                                   {item.groupName}
@@ -799,11 +985,11 @@ export function VendorQuotationDetails() {
                     QUOTATION
                   </p>
                   <h2 className="text-base font-bold text-slate-900 leading-snug break-words">
-                    {detail.quote_name}
+                    {quoteTitle}
                   </h2>
-                  {detail.quotation_serial_number && (
+                  {serialNumber && (
                     <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                      #{detail.quotation_serial_number}
+                      {serialNumber.startsWith("#") ? serialNumber : `#${serialNumber}`}
                     </p>
                   )}
                 </div>
@@ -816,11 +1002,18 @@ export function VendorQuotationDetails() {
               </div>
 
               <dl className="grid grid-cols-1 gap-1 text-sm border-t border-slate-100 pt-3">
+                {vendorName && <InfoRow label="Vendor" value={vendorName} />}
                 <InfoRow label="Customer" value={customerName} />
                 <InfoRow label="Project" value={projectName} />
                 <InfoRow label="Site" value={siteName} />
                 {detail.order_number?.trim() && (
                   <InfoRow label="Order Ref" value={detail.order_number} />
+                )}
+                {(detail as any).due_date && (
+                  <InfoRow label="Due Date" value={fmtDate((detail as any).due_date)} />
+                )}
+                {(detail as any).created_at && (
+                  <InfoRow label="Created" value={fmtDate((detail as any).created_at)} />
                 )}
               </dl>
             </div>
@@ -836,6 +1029,25 @@ export function VendorQuotationDetails() {
                 </dl>
               </div>
             )}
+
+            {/* 3. Quotation Summary */}
+            {lineItems.length > 0 && (
+              <div className="border border-slate-200 bg-white p-5 shadow-xs">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">
+                  SUMMARY
+                </p>
+                <dl className="grid grid-cols-1 gap-1 text-sm">
+                  <InfoRow label="Total Items" value={String(lineItems.length)} />
+                  <InfoRow label="Total Qty" value={String(totalQuantity)} />
+                  {totalQuotedAmount > 0 && (
+                    <InfoRow
+                      label="Quoted Total"
+                      value={`${currencySymbol}${totalQuotedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    />
+                  )}
+                </dl>
+              </div>
+            )}
           </aside>
         </div>
       </div>
@@ -845,7 +1057,7 @@ export function VendorQuotationDetails() {
         <div className="max-w-[1400px] mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-center text-xs text-slate-500 sm:text-left">
             {isActioned
-              ? `This quotation has already been ${statusLower === "rejected" ? "declined" : "submitted"}.`
+              ? `This quotation has already been ${resolvedStatus === "rejected" || resolvedStatus === "declined" ? "declined" : "submitted"}.`
               : "Please enter your unit price and delivery duration for each item, then submit."}
           </p>
           {!isActioned && (
@@ -887,7 +1099,12 @@ export function VendorQuotationDetails() {
               const price = parseFloat(item.quotedPrice) || 0;
               const itemTotal = price * item.quantity;
               return {
-                composite_itmes: item.compositeId != null ? item.compositeId : item.name,
+                item_id: item.itemId ?? null,
+                composite_itmes: item.compositeId != null ? item.compositeId : item.itemId != null ? item.itemId : item.name,
+                composite_items: item.compositeId != null ? item.compositeId : item.itemId != null ? item.itemId : item.name,
+                name: item.name,
+                item_name: item.name,
+                sku: item.sku,
                 quantity: item.quantity,
                 unit_price: price,
                 item_total: itemTotal,

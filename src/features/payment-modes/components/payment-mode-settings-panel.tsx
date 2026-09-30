@@ -220,9 +220,26 @@ export function PaymentModeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
-      reportLocalFormSubmitApiError(error, (fieldErrors) => {
-        setErrors((prev) => ({ ...prev, ...fieldErrors }));
-      });
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => {
+          setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        },
+        undefined,
+        {
+          fieldMap: {
+            Name: "name",
+            name: "name",
+            Payment_Mode: "name",
+            payment_mode: "name",
+            Payment_Mode_Name: "name",
+            system_name: "system_name",
+            System_Name: "system_name",
+            systemName: "system_name",
+          },
+          knownFormKeys: ["name", "system_name"],
+        },
+      );
     } finally {
       setSaving(false);
     }

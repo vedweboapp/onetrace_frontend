@@ -33,6 +33,7 @@ import { cn } from "@/core/utils/http.util";
 
 export interface VendorRfqLineItem {
   key: string;
+  itemId?: number | null;
   compositeId: number | null;
   name: string;
   sku: string;
@@ -55,6 +56,99 @@ interface GridRow extends VendorRfqLineItem {
 }
 
 function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
+  // 1. Primary: Extract and group items from composite_items array
+  let compositeItems = (detail as any).composite_items ?? (detail as any).compositeItems;
+  if (typeof compositeItems === "string") {
+    try {
+      compositeItems = JSON.parse(compositeItems);
+    } catch {
+      compositeItems = null;
+    }
+  }
+
+  if (Array.isArray(compositeItems) && compositeItems.length > 0) {
+    const map = new Map<
+      string,
+      {
+        itemId: number | null;
+        compositeId: number | null;
+        name: string;
+        sku: string;
+        groupName: string | null;
+        unit: string;
+        quantity: number;
+      }
+    >();
+
+    compositeItems.forEach((compEntry: any) => {
+      const compId =
+        compEntry.composite_item_id != null
+          ? Number(compEntry.composite_item_id)
+          : compEntry.id != null
+          ? Number(compEntry.id)
+          : null;
+
+      const items = Array.isArray(compEntry.items)
+        ? compEntry.items
+        : Array.isArray(compEntry.item_list)
+        ? compEntry.item_list
+        : [];
+
+      items.forEach((item: any) => {
+        const itemId =
+          item.id != null
+            ? Number(item.id)
+            : item.item_id != null
+            ? Number(item.item_id)
+            : null;
+
+        const name = (item.name ?? item.item_name ?? (itemId ? `Item #${itemId}` : "Unknown Item")).trim();
+        const sku = (item.sku ?? item.item_sku ?? "").trim();
+        const qty = Number(item.quantity ?? item.qty ?? 1);
+        const unit = item.unit ?? item.unit_type ?? "Unit";
+        const groupName = item.group_name ?? item.groupName ?? compEntry.group_name ?? null;
+
+        const key =
+          itemId != null
+            ? `item_${itemId}`
+            : sku
+            ? `sku_${sku.toLowerCase()}`
+            : `name_${name.toLowerCase().replace(/\s+/g, "_")}`;
+
+        if (map.has(key)) {
+          const existing = map.get(key)!;
+          existing.quantity += qty;
+          if (!existing.sku && sku) existing.sku = sku;
+          if (!existing.groupName && groupName) existing.groupName = groupName;
+        } else {
+          map.set(key, {
+            itemId,
+            compositeId: compId,
+            name,
+            sku,
+            groupName,
+            unit,
+            quantity: qty,
+          });
+        }
+      });
+    });
+
+    if (map.size > 0) {
+      return Array.from(map.entries()).map(([key, d]) => ({
+        key,
+        itemId: d.itemId,
+        compositeId: d.compositeId,
+        name: d.name,
+        sku: d.sku,
+        groupName: d.groupName,
+        quantity: d.quantity,
+        unit: d.unit,
+      }));
+    }
+  }
+
+  // 2. Fallback: Extract from quote_sections
   const sections = detail.quote_sections ?? [];
   if (!Array.isArray(sections) || sections.length === 0) return [];
   const rawPins: any[] = [];
@@ -97,6 +191,10 @@ function isVendorSubmitted(status?: string): boolean {
 }
 
 function matchBidItem(vi: any, si: VendorRfqLineItem): boolean {
+  const viItemId = vi.item_id != null ? Number(vi.item_id) : null;
+  const siItemId = si.itemId != null ? Number(si.itemId) : null;
+  if (viItemId != null && siItemId != null) return viItemId === siItemId;
+
   const bidId =
     vi.composite_itmes != null
       ? Number(vi.composite_itmes)

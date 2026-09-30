@@ -423,6 +423,7 @@ function DashboardMainSidebar({
   const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
   const formsHref = routes.dashboard.forms;
+  const kioskFormsHref = routes.dashboard.kioskForms;
   const homeHref = routes.dashboard.root;
   const projectsHref = routes.dashboard.projects;
   const groupsHref = routes.dashboard.groups;
@@ -470,6 +471,7 @@ function DashboardMainSidebar({
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
   const qrCodesActive = pathname === qrCodesHref || pathname.startsWith(`${qrCodesHref}/`);
   const formsActive = pathname === formsHref || pathname.startsWith(`${formsHref}/`);
+  const kioskFormsActive = pathname === kioskFormsHref || pathname.startsWith(`${kioskFormsHref}/`);
   const projectsActive =
     pathname === projectsHref || pathname.startsWith(`${projectsHref}/`);
   const groupsActive = pathname === groupsHref || pathname.startsWith(`${groupsHref}/`);
@@ -634,6 +636,14 @@ function DashboardMainSidebar({
           active={formsActive}
           label={t("forms")}
           icon={ClipboardPen}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={kioskFormsHref}
+          active={kioskFormsActive}
+          label={t("kioskForms")}
+          icon={FileText}
           expanded={expanded}
           resolved={resolved}
         />
@@ -803,7 +813,7 @@ function DashboardSettingsSidebar({
         <SidebarNavLink
           href={kiosksHref}
           active={kiosksActive}
-          label={t("kiosks")}
+          label={t("kioskBuilder")}
           icon={Store}
           expanded={expanded}
           resolved={resolved}

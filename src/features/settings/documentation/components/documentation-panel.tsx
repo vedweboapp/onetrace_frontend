@@ -998,8 +998,8 @@ const SECTIONS: DocSection[] = [
       table(
         ["Setting", "Purpose"],
         [
-          ["Modules", "Custom modules and layouts (form builder)"],
-          ["Project forms", "Forms associated with project types / job use"],
+          ["Form Builder", "Custom forms and layouts"],
+          ["Project Forms", "Forms associated with project types / job use"],
         ]
       ),
       p("Design forms here; assign them to pins / jobs in project and job flows."),
