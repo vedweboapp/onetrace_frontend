@@ -20,7 +20,8 @@ import {
 } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
   if (typeof site.client === "number" && Number.isFinite(site.client) && site.client > 0) return site.client;
@@ -140,6 +141,7 @@ function SiteDetailBodyWithContacts({
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tabsStorageKey = useTabOrderStorageKey("siteDetail");
   const [clientNameById, setClientNameById] = React.useState<Record<number, string>>({});
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [activeTab, setActiveTab] = React.useState("details");
@@ -193,10 +195,11 @@ export function SiteDetailScreen({ siteId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="site-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

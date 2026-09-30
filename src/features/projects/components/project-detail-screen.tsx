@@ -30,10 +30,11 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { buildEntityDetailHrefAfterSave, buildProjectOverviewHref } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
-  AppTabs,
+  CustomizableAppTabs,
   type AppTabItem,
   CheckmarkSelect,
   ConfirmDialog,
@@ -59,6 +60,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const searchParams = useSearchParams();
   const dateFmt = useDashboardDateFormat();
   const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
+  const projectTabsStorageKey = useTabOrderStorageKey("projectDetail");
 
   const [clientName, setClientName] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<CheckmarkSelectOption[]>([]);
@@ -148,10 +150,10 @@ export function ProjectDetailScreen({ projectId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
-      { id: "jobs", label: t("detail.tabs.jobs") },
-      { id: "location", label: t("detail.tabs.location") },
       { id: "quotations", label: t("detail.tabs.quotations") },
+      { id: "jobs", label: t("detail.tabs.jobs") },
       { id: "jobsheets", label: t("detail.tabs.jobsheets") },
+      { id: "location", label: t("detail.tabs.location") },
       { id: "docs", label: t("detail.tabs.docs") },
       { id: "approvals", label: t("detail.tabs.approvals") },
       { id: "timeline", label: tAudit("tabTimeline") },
@@ -260,10 +262,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={projectTabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="project-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
