@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Building2,
   Check,
-  CheckCircle2,
   ChevronDown,
   Clock,
   Copy,
@@ -13,7 +12,6 @@ import {
   FileSignature,
   Package,
   Search,
-  ShoppingCart,
   TrendingDown,
   X,
 } from "lucide-react";
@@ -23,10 +21,9 @@ import type {
   QuotationVendorSubmission,
 } from "@/features/quotations/types/quotation.types";
 import { QuotationSendVendorsModal } from "@/features/quotations/components/quotation-send-vendors-modal";
-import { fetchQuotation, createPurchaseOrderFromQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchQuotation, updateQuotationItemsStatus } from "@/features/quotations/api/quotation.api";
 import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { routes } from "@/shared/config/routes";
-import { useRouter } from "@/i18n/navigation";
 import { toastSuccess, toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { AppButton } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
@@ -40,6 +37,8 @@ export interface VendorRfqLineItem {
   groupName: string | null;
   quantity: number;
   unit: string;
+  costPrice?: string | number | null;
+  sellingPrice?: string | number | null;
 }
 
 interface VendorBidRow {
@@ -47,7 +46,7 @@ interface VendorBidRow {
   unitPrice: number | null;
   itemTotal: number | null;
   deliveryDate: string | null;
-  purchased: boolean;
+  comments: string | null;
   matchedItem?: QuotationVendorItem;
 }
 
@@ -55,8 +54,221 @@ interface GridRow extends VendorRfqLineItem {
   bids: VendorBidRow[];
 }
 
-function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
-  // 1. Primary: Extract and group items from composite_items array
+function extractVendorRfqItems(
+  detail: QuotationDetail,
+  vendors?: QuotationVendorSubmission[],
+): VendorRfqLineItem[] {
+  const map = new Map<
+    string,
+    {
+      itemId: number | null;
+      compositeId: number | null;
+      name: string;
+      sku: string;
+      groupName: string | null;
+      unit: string;
+      quantity: number;
+      costPrice?: string | number | null;
+      sellingPrice?: string | number | null;
+    }
+  >();
+
+  // 1. Primary: Extract items from vendor_items / items across all vendor submissions
+  if (Array.isArray(vendors) && vendors.length > 0) {
+    vendors.forEach((sub) => {
+      const vItems = sub.vendor_items ?? sub.items ?? [];
+      vItems.forEach((vi: any) => {
+        const itemObj = vi.item && typeof vi.item === "object" ? vi.item : null;
+        const itemId =
+          itemObj?.id != null
+            ? Number(itemObj.id)
+            : vi.item_id != null
+            ? Number(vi.item_id)
+            : typeof vi.item === "number"
+            ? vi.item
+            : null;
+
+        const name = (
+          itemObj?.name ??
+          vi.name ??
+          vi.item_name ??
+          (itemId ? `Item #${itemId}` : "Unknown Item")
+        ).trim();
+
+        const sku = (itemObj?.sku ?? vi.sku ?? vi.item_sku ?? "").trim();
+        const qty = Number(vi.quantity ?? 1);
+
+        let unit = "PCS";
+        if (itemObj?.unit_type) {
+          if (typeof itemObj.unit_type === "object") {
+            unit = itemObj.unit_type.short_form || itemObj.unit_type.name || "PCS";
+          } else if (typeof itemObj.unit_type === "string") {
+            unit = itemObj.unit_type;
+          }
+        } else if (vi.unit || vi.unit_type) {
+          unit = vi.unit ?? vi.unit_type;
+        }
+
+        const groupName = itemObj?.group_name ?? vi.group_name ?? null;
+        const costPrice = itemObj?.cost_price ?? vi.cost_price ?? null;
+        const sellingPrice = itemObj?.selling_price ?? vi.selling_price ?? null;
+
+        const compId =
+          vi.composite_itmes != null
+            ? Number(vi.composite_itmes)
+            : vi.composite_items != null
+            ? Number(vi.composite_items)
+            : vi.composite_item != null
+            ? Number(vi.composite_item)
+            : vi.composite_item_id != null
+            ? Number(vi.composite_item_id)
+            : null;
+
+        const key =
+          itemId != null
+            ? `item_${itemId}`
+            : sku
+            ? `sku_${sku.toLowerCase()}`
+            : `name_${name.toLowerCase().replace(/\s+/g, "_")}`;
+
+        if (map.has(key)) {
+          const existing = map.get(key)!;
+          existing.quantity = Math.max(existing.quantity, qty);
+          if (!existing.sku && sku) existing.sku = sku;
+          if (!existing.groupName && groupName) existing.groupName = groupName;
+          if (existing.itemId == null && itemId != null) existing.itemId = itemId;
+          if (existing.compositeId == null && compId != null) existing.compositeId = compId;
+          if (!existing.costPrice && costPrice) existing.costPrice = costPrice;
+          if (!existing.sellingPrice && sellingPrice) existing.sellingPrice = sellingPrice;
+        } else {
+          map.set(key, {
+            itemId,
+            compositeId: compId,
+            name,
+            sku,
+            groupName,
+            unit,
+            quantity: qty,
+            costPrice,
+            sellingPrice,
+          });
+        }
+      });
+    });
+
+    if (map.size > 0) {
+      return Array.from(map.entries()).map(([key, d]) => ({
+        key,
+        itemId: d.itemId,
+        compositeId: d.compositeId,
+        name: d.name,
+        sku: d.sku,
+        groupName: d.groupName,
+        quantity: d.quantity,
+        unit: d.unit,
+        costPrice: d.costPrice,
+        sellingPrice: d.sellingPrice,
+      }));
+    }
+  }
+
+  // 2. Secondary: Extract from direct items or vendor_items on quotation detail
+  const detailItems =
+    (detail as any).vendor_items ??
+    (detail as any).items ??
+    (detail as any).line_items;
+  if (Array.isArray(detailItems) && detailItems.length > 0) {
+    detailItems.forEach((vi: any) => {
+      const itemObj = vi.item && typeof vi.item === "object" ? vi.item : null;
+      const itemId =
+        itemObj?.id != null
+          ? Number(itemObj.id)
+          : vi.item_id != null
+          ? Number(vi.item_id)
+          : typeof vi.item === "number"
+          ? vi.item
+          : null;
+
+      const name = (
+        itemObj?.name ??
+        vi.name ??
+        vi.item_name ??
+        (itemId ? `Item #${itemId}` : "Unknown Item")
+      ).trim();
+
+      const sku = (itemObj?.sku ?? vi.sku ?? vi.item_sku ?? "").trim();
+      const qty = Number(vi.quantity ?? 1);
+
+      let unit = "PCS";
+      if (itemObj?.unit_type) {
+        if (typeof itemObj.unit_type === "object") {
+          unit = itemObj.unit_type.short_form || itemObj.unit_type.name || "PCS";
+        } else if (typeof itemObj.unit_type === "string") {
+          unit = itemObj.unit_type;
+        }
+      } else if (vi.unit || vi.unit_type) {
+        unit = vi.unit ?? vi.unit_type;
+      }
+
+      const groupName = itemObj?.group_name ?? vi.group_name ?? null;
+      const costPrice = itemObj?.cost_price ?? vi.cost_price ?? null;
+      const sellingPrice = itemObj?.selling_price ?? vi.selling_price ?? null;
+
+      const compId =
+        vi.composite_itmes != null
+          ? Number(vi.composite_itmes)
+          : vi.composite_items != null
+          ? Number(vi.composite_items)
+          : vi.composite_item != null
+          ? Number(vi.composite_item)
+          : vi.composite_item_id != null
+          ? Number(vi.composite_item_id)
+          : null;
+
+      const key =
+        itemId != null
+          ? `item_${itemId}`
+          : sku
+          ? `sku_${sku.toLowerCase()}`
+          : `name_${name.toLowerCase().replace(/\s+/g, "_")}`;
+
+      if (map.has(key)) {
+        const existing = map.get(key)!;
+        existing.quantity = Math.max(existing.quantity, qty);
+        if (!existing.sku && sku) existing.sku = sku;
+        if (!existing.groupName && groupName) existing.groupName = groupName;
+      } else {
+        map.set(key, {
+          itemId,
+          compositeId: compId,
+          name,
+          sku,
+          groupName,
+          unit,
+          quantity: qty,
+          costPrice,
+          sellingPrice,
+        });
+      }
+    });
+
+    if (map.size > 0) {
+      return Array.from(map.entries()).map(([key, d]) => ({
+        key,
+        itemId: d.itemId,
+        compositeId: d.compositeId,
+        name: d.name,
+        sku: d.sku,
+        groupName: d.groupName,
+        quantity: d.quantity,
+        unit: d.unit,
+        costPrice: d.costPrice,
+        sellingPrice: d.sellingPrice,
+      }));
+    }
+  }
+
+  // 3. Extract and group items from composite_items array
   let compositeItems = (detail as any).composite_items ?? (detail as any).compositeItems;
   if (typeof compositeItems === "string") {
     try {
@@ -67,19 +279,6 @@ function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
   }
 
   if (Array.isArray(compositeItems) && compositeItems.length > 0) {
-    const map = new Map<
-      string,
-      {
-        itemId: number | null;
-        compositeId: number | null;
-        name: string;
-        sku: string;
-        groupName: string | null;
-        unit: string;
-        quantity: number;
-      }
-    >();
-
     compositeItems.forEach((compEntry: any) => {
       const compId =
         compEntry.composite_item_id != null
@@ -105,7 +304,7 @@ function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
         const name = (item.name ?? item.item_name ?? (itemId ? `Item #${itemId}` : "Unknown Item")).trim();
         const sku = (item.sku ?? item.item_sku ?? "").trim();
         const qty = Number(item.quantity ?? item.qty ?? 1);
-        const unit = item.unit ?? item.unit_type ?? "Unit";
+        const unit = item.unit ?? item.unit_type ?? "PCS";
         const groupName = item.group_name ?? item.groupName ?? compEntry.group_name ?? null;
 
         const key =
@@ -148,7 +347,7 @@ function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
     }
   }
 
-  // 2. Fallback: Extract from quote_sections
+  // 4. Fallback: Extract from quote_sections
   const sections = detail.quote_sections ?? [];
   if (!Array.isArray(sections) || sections.length === 0) return [];
   const rawPins: any[] = [];
@@ -164,25 +363,36 @@ function extractVendorRfqItems(detail: QuotationDetail): VendorRfqLineItem[] {
       sec.source_pins.forEach((p: any) => rawPins.push(p));
     }
   });
-  const map = new Map<string, { name: string; sku: string; groupName: string | null; unit: string; quantity: number; compositeId: number | null }>();
+
   rawPins.forEach((pin: any) => {
-    const compId: number | null = pin.composite_item_id != null ? Number(pin.composite_item_id) : pin.item_id != null ? Number(pin.item_id) : null;
-    const name: string = pin.name ?? pin.item_name ?? (compId ? `Composite Item #${compId}` : "Item");
-    const key: string = compId != null ? `cmp_${compId}` : `name_${name.toLowerCase().trim().replace(/\s+/g, "_")}`;
+    const compId: number | null = pin.composite_item_id != null ? Number(pin.composite_item_id) : null;
+    const itemId: number | null = pin.item_id != null ? Number(pin.item_id) : (pin.item?.id != null ? Number(pin.item.id) : null);
+    const name: string = pin.item?.name ?? pin.name ?? pin.item_name ?? (itemId ? `Item #${itemId}` : compId ? `Composite Item #${compId}` : "Item");
+    const key: string = itemId != null ? `item_${itemId}` : compId != null ? `cmp_${compId}` : `name_${name.toLowerCase().trim().replace(/\s+/g, "_")}`;
     const qty = Number(pin.quantity ?? 1);
     const groupName: string | null = pin.group_name ?? null;
-    const sku: string = pin.sku ?? (compId ? `CMP-${compId}` : "");
-    const unit: string = pin.unit ?? "Unit";
+    const sku: string = pin.item?.sku ?? pin.sku ?? (compId ? `CMP-${compId}` : "");
+    const unit: string = pin.item?.unit_type?.short_form ?? pin.unit ?? "PCS";
     if (map.has(key)) {
       const e = map.get(key)!;
       e.quantity += qty;
       if (!e.groupName && groupName) e.groupName = groupName;
       if (!e.sku && sku) e.sku = sku;
     } else {
-      map.set(key, { name, sku, groupName, unit, quantity: qty, compositeId: compId });
+      map.set(key, { itemId, name, sku, groupName, unit, quantity: qty, compositeId: compId });
     }
   });
-  return Array.from(map.entries()).map(([key, d]) => ({ key, compositeId: d.compositeId, name: d.name, sku: d.sku, groupName: d.groupName, quantity: d.quantity, unit: d.unit }));
+
+  return Array.from(map.entries()).map(([key, d]) => ({
+    key,
+    itemId: d.itemId,
+    compositeId: d.compositeId,
+    name: d.name,
+    sku: d.sku,
+    groupName: d.groupName,
+    quantity: d.quantity,
+    unit: d.unit,
+  }));
 }
 
 function isVendorSubmitted(status?: string): boolean {
@@ -191,23 +401,40 @@ function isVendorSubmitted(status?: string): boolean {
 }
 
 function matchBidItem(vi: any, si: VendorRfqLineItem): boolean {
-  const viItemId = vi.item_id != null ? Number(vi.item_id) : null;
+  if (!vi) return false;
+  const viItem = vi.item && typeof vi.item === "object" ? vi.item : null;
+  const viItemId =
+    viItem?.id != null
+      ? Number(viItem.id)
+      : vi.item_id != null
+      ? Number(vi.item_id)
+      : typeof vi.item === "number"
+      ? vi.item
+      : null;
   const siItemId = si.itemId != null ? Number(si.itemId) : null;
-  if (viItemId != null && siItemId != null) return viItemId === siItemId;
+  if (viItemId != null && siItemId != null && viItemId === siItemId) return true;
 
-  const bidId =
+  const viSku = (viItem?.sku ?? vi.sku ?? vi.item_sku ?? "").toLowerCase().trim();
+  const siSku = (si.sku ?? "").toLowerCase().trim();
+  if (viSku && siSku && viSku === siSku) return true;
+
+  const bidCompId =
     vi.composite_itmes != null
       ? Number(vi.composite_itmes)
       : vi.composite_items != null
-        ? Number(vi.composite_items)
-        : vi.composite_item != null
-          ? Number(vi.composite_item)
-          : vi.composite_item_id != null
-            ? Number(vi.composite_item_id)
-            : null;
-  if (bidId != null && si.compositeId != null) return bidId === si.compositeId;
-  const bn = (vi.name ?? vi.item_name ?? "").toLowerCase().trim();
-  return bn !== "" && bn === si.name.toLowerCase().trim();
+      ? Number(vi.composite_items)
+      : vi.composite_item != null
+      ? Number(vi.composite_item)
+      : vi.composite_item_id != null
+      ? Number(vi.composite_item_id)
+      : null;
+  if (bidCompId != null && si.compositeId != null && bidCompId === si.compositeId) return true;
+
+  const viName = (viItem?.name ?? vi.name ?? vi.item_name ?? "").toLowerCase().trim();
+  const siName = (si.name ?? "").toLowerCase().trim();
+  if (viName && siName && viName === siName) return true;
+
+  return false;
 }
 
 function buildGridRows(scope: VendorRfqLineItem[], vendors: QuotationVendorSubmission[]): GridRow[] {
@@ -215,22 +442,39 @@ function buildGridRows(scope: VendorRfqLineItem[], vendors: QuotationVendorSubmi
     ...si,
     bids: vendors.map((sub) => {
       const isSub = isVendorSubmitted(sub.status);
-      const m = isSub
-        ? (sub.items ?? []).find((vi: QuotationVendorItem) => matchBidItem(vi, si))
-        : undefined;
-      const isPurchased =
-        m?.purchased === true ||
-        (m as any)?.purchased === 1 ||
-        (m as any)?.purchased === "true" ||
-        (m as any)?.is_purchased === true ||
-        (m as any)?.is_purchased === 1 ||
-        (m as any)?.is_purchased === "true";
+      const subItems = sub.vendor_items ?? sub.items ?? [];
+      const m = subItems.find((vi: QuotationVendorItem) => matchBidItem(vi, si));
+      const unitPrice =
+        m?.unit_price != null && m.unit_price !== ""
+          ? Number(m.unit_price)
+          : null;
+      const qty = Number(m?.quantity ?? si.quantity ?? 1);
+      const itemTotal =
+        m?.item_total != null && m.item_total !== ""
+          ? Number(m.item_total)
+          : unitPrice != null
+          ? Number((unitPrice * qty).toFixed(2))
+          : null;
+      const deliveryDate =
+        m?.lead_time_days != null && m.lead_time_days !== ""
+          ? String(m.lead_time_days)
+          : m?.date_of_delivery ?? m?.delivery_date ?? null;
+
+      const comments =
+        m?.comments != null && m.comments !== ""
+          ? String(m.comments)
+          : (m as any)?.comment != null && (m as any).comment !== ""
+          ? String((m as any).comment)
+          : (m as any)?.notes != null && (m as any).notes !== ""
+          ? String((m as any).notes)
+          : null;
+
       return {
         submission: sub,
-        unitPrice: m?.unit_price != null ? Number(m.unit_price) : null,
-        itemTotal: m?.item_total != null ? Number(m.item_total) : null,
-        deliveryDate: m?.date_of_delivery ?? m?.delivery_date ?? null,
-        purchased: Boolean(isPurchased),
+        unitPrice,
+        itemTotal,
+        deliveryDate,
+        comments,
         matchedItem: m,
       };
     }),
@@ -251,13 +495,17 @@ function statusStyle(s?: string): { bg: string; text: string; label: string } {
     default: return { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400", label: s ?? "Pending" };
   }
 }
+
 function BidDetailModal({ open, sub, scope, onClose }: { open: boolean; sub: QuotationVendorSubmission | null; scope: VendorRfqLineItem[]; onClose: () => void }) {
   if (!open || !sub) return null;
   const v = sub.vendor;
-  const items = sub.items ?? [];
+  const items = sub.vendor_items ?? sub.items ?? [];
   const ss = statusStyle(sub.status);
   const sentAt = sub.sent_at ? new Date(sub.sent_at).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
-  const grandTotal = items.reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0);
+  const grandTotal = items.reduce((s: number, it: any) => {
+    const total = it.item_total != null && it.item_total !== "" ? Number(it.item_total) : (it.unit_price != null ? Number(it.unit_price) * Number(it.quantity ?? 1) : 0);
+    return s + total;
+  }, 0);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
@@ -289,20 +537,30 @@ function BidDetailModal({ open, sub, scope, onClose }: { open: boolean; sub: Quo
                   <th className="px-4 py-2.5 text-right font-semibold text-slate-600 dark:text-slate-400">Unit Price</th>
                   <th className="px-4 py-2.5 text-right font-semibold text-slate-600 dark:text-slate-400">Total</th>
                   <th className="px-4 py-2.5 text-left font-semibold text-slate-600 dark:text-slate-400">Delivery</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-slate-600 dark:text-slate-400">Comments</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {items.map((it: any, idx: number) => {
                   const ms = scope.find((s) => matchBidItem(it, s));
-                  const nm = ms?.name ?? it.name ?? it.item_name ?? "—";
+                  const nm = it?.item?.name ?? ms?.name ?? it.name ?? it.item_name ?? "—";
+                  const qty = it.quantity ?? ms?.quantity ?? "—";
+                  const unitPrice = it.unit_price != null && it.unit_price !== "" ? Number(it.unit_price) : null;
+                  const itemTotal = it.item_total != null && it.item_total !== "" ? Number(it.item_total) : (unitPrice != null ? unitPrice * Number(qty || 1) : null);
+                  const delivery = it.lead_time_days ?? it.date_of_delivery ?? it.delivery_date ?? "—";
+                  const comments = it.comments ?? it.comment ?? it.notes ?? "—";
                   return (
                     <tr key={idx} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-900/30">
                       <td className="px-4 py-3 font-mono text-slate-400">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{nm}</td>
-                      <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{it.quantity ?? "—"}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">{it.unit_price != null ? fmt(it.unit_price) : "—"}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">{it.item_total != null ? fmt(it.item_total) : "—"}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{it.date_of_delivery ?? it.delivery_date ?? "—"}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                        <div>{nm}</div>
+                        {it?.item?.sku && <div className="font-mono text-[10px] text-slate-400">{it.item.sku}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{qty}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">{unitPrice != null ? fmt(unitPrice) : "—"}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100">{itemTotal != null ? fmt(itemTotal) : "—"}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{delivery}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{comments}</td>
                     </tr>
                   );
                 })}
@@ -336,41 +594,97 @@ function SigDialog({ open, url, name, onClose }: { open: boolean; url: string | 
   );
 }
 
+export function parseVendorsList(input: any): QuotationVendorSubmission[] {
+  if (!input) return [];
+  let val = input;
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(val)) {
+    return val;
+  }
+  if (typeof val === "object") {
+    const candidate =
+      val.vendors ??
+      val.vendors_quote_details ??
+      val.vendor_quotations ??
+      val.vendor_submissions ??
+      val.quotation_vendors ??
+      val.vendor_quotes ??
+      val.vendor_responses ??
+      val.vendors_data ??
+      val.data ??
+      val.results;
+    if (candidate && candidate !== val) {
+      return parseVendorsList(candidate);
+    }
+  }
+  return [];
+}
+
 type Props = { quotationId: number; quoteName?: string; detail: QuotationDetail; onGoToPricingTab?: () => void; onSent?: () => void; };
 
 export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, onGoToPricingTab, onSent }: Props) {
-  const router = useRouter();
   const [sendModalOpen, setSendModalOpen] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [vendorFilter, setVendorFilter] = React.useState("all");
   const [refreshing, setRefreshing] = React.useState(false);
-  const [vendors, setVendors] = React.useState<QuotationVendorSubmission[]>(detail.vendors ?? []);
+  const [vendors, setVendors] = React.useState<QuotationVendorSubmission[]>(() =>
+    parseVendorsList(detail),
+  );
   const [bidModal, setBidModal] = React.useState<{ open: boolean; sub: QuotationVendorSubmission | null }>({ open: false, sub: null });
   const [sigDlg, setSigDlg] = React.useState<{ open: boolean; url: string | null; name: string }>({ open: false, url: null, name: "" });
-  // key = row.key, value = user-edited quantity (defaults to row.quantity)
-  const [qtyOverrides, setQtyOverrides] = React.useState<Record<string, number>>({});
 
-  // Initial fetch with ?include=vendors if not already in detail
+  // Sync state whenever detail prop changes
   React.useEffect(() => {
-    if (detail.vendors != null) { setVendors(detail.vendors); return; }
+    const fromDetail = parseVendorsList(detail);
+    if (fromDetail.length > 0) {
+      setVendors(fromDetail);
+    }
+  }, [detail]);
+
+  // Initial fetch with ?include=vendors if not already in detail or if empty
+  React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const fresh = await fetchQuotation(quotationId, { include: "vendors" });
-        if (!cancelled) setVendors(fresh.vendors ?? []);
-      } catch { /* silent */ }
+        const fromDetail = parseVendorsList(detail);
+        if (fromDetail.length > 0) {
+          setVendors(fromDetail);
+          return;
+        }
+        const fresh: any = await fetchQuotation(quotationId, { include: "vendors" });
+        const vList = parseVendorsList(fresh);
+        if (!cancelled && vList.length > 0) {
+          setVendors(vList);
+          return;
+        }
+        const rawFresh: any = await fetchQuotation(quotationId);
+        const rawList = parseVendorsList(rawFresh);
+        if (!cancelled && rawList.length > 0) {
+          setVendors(rawList);
+        }
+      } catch {
+        /* silent */
+      }
     })();
-    return () => { cancelled = true; };
-  }, [quotationId, detail.vendors]);
+    return () => {
+      cancelled = true;
+    };
+  }, [quotationId, detail]);
 
-  const rfqItems = React.useMemo(() => extractVendorRfqItems(detail), [detail]);
+  const rfqItems = React.useMemo(() => extractVendorRfqItems(detail, vendors), [detail, vendors]);
   const gridRows = React.useMemo(() => buildGridRows(rfqItems, vendors), [rfqItems, vendors]);
 
   const uniqueVendors = React.useMemo(() => {
     const seen = new Map<number, string>();
     vendors.forEach((v) => {
-      if (!seen.has(v.vendor.id)) {
+      if (v?.vendor?.id != null && !seen.has(v.vendor.id)) {
         seen.set(v.vendor.id, v.vendor.name);
       }
     });
@@ -402,7 +716,12 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
     const vals: number[] = [];
     vendors.forEach((v) => {
       if (!isVendorSubmitted(v.status)) return;
-      vals.push((v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0));
+      const vItems = v.vendor_items ?? v.items ?? [];
+      const sum = vItems.reduce((s: number, it: any) => {
+        const lineTot = it.item_total != null && it.item_total !== "" ? Number(it.item_total) : (it.unit_price != null ? Number(it.unit_price) * Number(it.quantity ?? 1) : 0);
+        return s + lineTot;
+      }, 0);
+      if (sum > 0) vals.push(sum);
     });
     return vals.length ? Math.min(...vals) : null;
   }, [vendors]);
@@ -411,7 +730,12 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
     const m = new Map<number, number>();
     vendors.forEach((v) => {
       if (!isVendorSubmitted(v.status)) return;
-      m.set(v.vendor.id, (v.items ?? []).reduce((s: number, it: { item_total?: number }) => s + (it.item_total ?? 0), 0));
+      const vItems = v.vendor_items ?? v.items ?? [];
+      const sum = vItems.reduce((s: number, it: any) => {
+        const lineTot = it.item_total != null && it.item_total !== "" ? Number(it.item_total) : (it.unit_price != null ? Number(it.unit_price) * Number(it.quantity ?? 1) : 0);
+        return s + lineTot;
+      }, 0);
+      if (sum > 0) m.set(v.vendor.id, sum);
     });
     if (!m.size) return null;
     let minId: number | null = null;
@@ -448,90 +772,71 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
   const handleRefresh = React.useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
-    try { const f = await fetchQuotation(quotationId, { include: "vendors" }); setVendors(f.vendors ?? []); } finally { setRefreshing(false); }
+    try {
+      const fresh: any = await fetchQuotation(quotationId, { include: "vendors" });
+      const vList = parseVendorsList(fresh);
+      if (vList.length > 0) {
+        setVendors(vList);
+      } else {
+        const rawFresh: any = await fetchQuotation(quotationId);
+        const rawList = parseVendorsList(rawFresh);
+        setVendors(rawList);
+      }
+    } finally {
+      setRefreshing(false);
+    }
   }, [quotationId, refreshing]);
 
   const hasVendors = vendors.length > 0;
   const visibleVendors = vendorFilter === "all" ? vendors : vendors.filter((v) => String(v.vendor.id) === vendorFilter);
 
-  const [purchasingKey, setPurchasingKey] = React.useState<string | null>(null);
+  const [updatingStatusKey, setUpdatingStatusKey] = React.useState<string | null>(null);
 
-  const handlePurchase = React.useCallback(
-    async (row: GridRow, bid: VendorBidRow, overriddenQty?: number) => {
+  const handleApprove = React.useCallback(
+    async (row: GridRow, bid: VendorBidRow) => {
       const rowKey = `${row.key}-${bid.submission.vendor.id}`;
-      if (purchasingKey) return;
-
-      if (bid.purchased) {
-        toastError("This item has already been purchased.");
-        return;
-      }
+      if (updatingStatusKey) return;
 
       const isSubmitted = isVendorSubmitted(bid.submission.status);
       const hasValidPrice = bid.unitPrice != null && Number(bid.unitPrice) > 0;
       if (!isSubmitted || !hasValidPrice) {
-        toastError("Cannot purchase: Vendor quotation is not submitted or unit price is missing.");
+        toastError("Cannot approve: Vendor quotation is not submitted or unit price is missing.");
         return;
       }
 
-      const matchedBidItem = (bid.submission.items ?? []).find((vi: QuotationVendorItem) => matchBidItem(vi, row));
-      const compId =
-        (matchedBidItem?.composite_itmes != null ? Number(matchedBidItem.composite_itmes) : null) ??
-        (matchedBidItem?.composite_items != null ? Number(matchedBidItem.composite_items) : null) ??
-        (matchedBidItem?.composite_item != null ? Number(matchedBidItem.composite_item) : null) ??
-        (matchedBidItem?.composite_item_id != null ? Number(matchedBidItem.composite_item_id) : null) ??
-        (row.compositeId != null ? Number(row.compositeId) : null);
-
-      if (compId == null) {
-        toastError("Cannot create purchase order: composite item ID is missing.");
+      const nestedItemId =
+        typeof bid.matchedItem?.item === "object"
+          ? bid.matchedItem.item?.id
+          : bid.matchedItem?.item;
+      const itemId = nestedItemId ?? bid.matchedItem?.item_id ?? row.itemId;
+      if (itemId == null) {
+        toastError("Cannot approve: item ID is missing.");
         return;
       }
 
-      // Use the user-overridden quantity if provided, else fall back to bid/row quantity
-      const quantity = overriddenQty != null && overriddenQty > 0
-        ? overriddenQty
-        : Number(matchedBidItem?.quantity ?? row.quantity ?? 1);
-      const vendorId = Number(bid.submission.vendor.id);
+      const quotationVendorId = bid.submission.quotation_vendor_id;
+      if (quotationVendorId == null) {
+        toastError("Cannot approve: vendor quotation ID is missing.");
+        return;
+      }
 
-      const itemPayload = {
-        composite_item: compId,
-        quantity,
-        vendor: vendorId,
-      };
-
-      setPurchasingKey(rowKey);
+      setUpdatingStatusKey(rowKey);
       try {
-        const res = await createPurchaseOrderFromQuotation(quotationId, {
-          items: [itemPayload as any],
+        const res = await updateQuotationItemsStatus(quotationId, {
+          quotation_vendor_id: Number(quotationVendorId),
+          item_ids: [Number(itemId)],
+          status: "approved",
         });
-        toastSuccess(res?.message ?? `Purchase order created for ${row.name}`);
+        toastSuccess(res.message ?? `${row.name} approved`);
+        await handleRefresh();
         onSent?.();
-
-        // Extract created Purchase Order ID from API response
-        let poId: number | string | null = null;
-        if (Array.isArray(res?.data) && res.data.length > 0) {
-          poId = res.data[0]?.id ?? res.data[0]?.purchase_order_id ?? null;
-        } else if (res?.data && typeof res.data === "object") {
-          poId =
-            res.data.id ??
-            res.data.purchase_order_id ??
-            (Array.isArray(res.data.data) ? res.data.data[0]?.id : null) ??
-            null;
-        } else if ((res as any)?.id != null) {
-          poId = (res as any).id;
-        }
-
-        if (poId != null) {
-          router.push(`${routes.dashboard.purchaseOrders}/${poId}`);
-        } else {
-          router.push(routes.dashboard.purchaseOrders);
-        }
       } catch (err: any) {
-        toastApiError(err, "Failed to create purchase order");
+        toastApiError(err, "Failed to approve quotation item");
       } finally {
-        setPurchasingKey(null);
+        setUpdatingStatusKey(null);
       }
     },
-    [purchasingKey, quotationId, onSent, router],
+    [updatingStatusKey, quotationId, handleRefresh, onSent],
   );
 
   return (
@@ -541,6 +846,16 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
         title="Vendor Quotations"
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
+            <AppButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setSendModalOpen(true)}
+              className="h-8 text-xs font-medium"
+            >
+              <Building2 className="mr-1.5 size-3.5" />
+              Send to Vendors
+            </AppButton>
             <div className="relative w-52">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
               <input
@@ -564,7 +879,7 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
                     "dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300",
                   )}
                 >
-                  <option value="all">All Vendors</option>
+                  <option value="all">All Vendors ({uniqueVendors.length})</option>
                   {uniqueVendors.map((v) => (
                     <option key={v.id} value={String(v.id)}>{v.name}</option>
                   ))}
@@ -584,7 +899,7 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
               No line items in quotation scope
             </h3>
             <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-              Add sections, plots, and composite items in the Scope &amp; Pricing tab to generate RFQ line items for vendors.
+              Add sections, plots, and items in the Scope &amp; Pricing tab to generate RFQ line items for vendors.
             </p>
             {onGoToPricingTab && (
               <AppButton type="button" variant="secondary" size="sm" className="mt-4" onClick={onGoToPricingTab}>
@@ -593,84 +908,48 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
               </AppButton>
             )}
           </div>
-        ) : !hasVendors ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-12 text-center dark:border-slate-800">
-            <div className="flex size-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-              <Building2 className="size-6 text-slate-400" />
-            </div>
-            <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              No vendors contacted yet
-            </h3>
-            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-              Click &ldquo;Send to Vendors&rdquo; to dispatch this quotation to one or more vendors for pricing.
-            </p>
-            <AppButton type="button" variant="primary" size="sm" className="mt-4" onClick={() => setSendModalOpen(true)}>
-              <Building2 className="mr-1.5 size-3.5" />
-              Send to Vendors
-            </AppButton>
-          </div>
         ) : (
-          /* ── Flat grid: one row per (scope-item × vendor) ── */
-          <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
-                  <th className="sticky left-0 z-10 min-w-[180px] border-r border-slate-200/60 bg-slate-50 px-4 py-3 font-semibold text-slate-600 dark:border-slate-800/60 dark:bg-slate-900/60 dark:text-slate-400">
-                    Item Name
-                  </th>
-                  <th className="min-w-[140px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
-                    Quantity
-                  </th>
-                  <th className="min-w-[160px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
-                    Vendor
-                  </th>
-                  <th className="min-w-[130px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
-                    Unit Price
-                  </th>
-                  <th className="min-w-[160px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
-                    Expected Delivery
-                  </th>
-                  <th className="min-w-[170px] px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-400">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                {(() => {
-                  const rows = filteredRows.flatMap((row, ri) => {
-                    const bids = getFilteredBids(row);
-                    const lowPrice = lowestPricePerItem.get(row.key);
-                    return bids.map((bid, bi) => {
-                      const isSubmitted = isVendorSubmitted(bid.submission.status);
-                      const hasValidPrice = bid.unitPrice != null && Number(bid.unitPrice) > 0;
-                      const isPurchased = Boolean(bid.purchased);
-                      const isLow =
-                        hasValidPrice &&
-                        lowPrice != null &&
-                        bid.unitPrice === lowPrice &&
-                        isSubmitted;
-                      const hasBid = bid.unitPrice != null || bid.deliveryDate != null;
-                      const isCopied = copied === String(bid.submission.vendor.id);
-                      const ss = statusStyle(bid.submission.status);
-                      const isLowestVendor = lowestVendorId === bid.submission.vendor.id && submitted > 0;
-                      const isFirstBid = bi === 0;
+          <div>
+            {/* Flat grid: grouped by item, with vendors, prices, expected delivery, and actions */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
+                    <th className="sticky left-0 z-10 min-w-[200px] border-r border-slate-200/60 bg-slate-50 px-4 py-3 font-semibold text-slate-600 dark:border-slate-800/60 dark:bg-slate-900/60 dark:text-slate-400">
+                      Item Name
+                    </th>
+                    <th className="min-w-[180px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
+                      Vendor
+                    </th>
+                    <th className="min-w-[130px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
+                      Unit Price
+                    </th>
+                    <th className="min-w-[150px] px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
+                      Expected Delivery
+                    </th>
+                    <th className="min-w-[130px] px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-400">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                  {(() => {
+                    const rows = filteredRows.flatMap((row, ri) => {
+                      const bids = getFilteredBids(row);
+                      const lowPrice = lowestPricePerItem.get(row.key);
                       const rowBg = ri % 2 === 0 ? "bg-white dark:bg-slate-950/20" : "bg-slate-50/40 dark:bg-slate-900/20";
-                      const isPurchaseEnabled = isSubmitted && hasValidPrice && !isPurchased && purchasingKey == null;
 
-                      return (
-                        <tr
-                          key={`${row.key}-${bid.submission.vendor.id}`}
-                          className={cn(
-                            "group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
-                            rowBg,
-                            /* Separate item groups with a slightly stronger top border */
-                            bi === 0 && ri > 0 && "border-t-2 border-slate-200/80 dark:border-slate-800",
-                          )}
-                        >
-                          {/* Item Name — only shown on the first bid row for this scope item */}
-                          {isFirstBid ? (
+                      if (bids.length === 0) {
+                        return [
+                          <tr
+                            key={row.key}
+                            className={cn(
+                              "group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
+                              rowBg,
+                              ri > 0 && "border-t-2 border-slate-200/80 dark:border-slate-800",
+                            )}
+                          >
                             <td
-                              rowSpan={bids.length || 1}
                               className={cn(
                                 "sticky left-0 z-10 border-r border-slate-200/40 px-4 py-3.5 align-top transition-colors dark:border-slate-800/40",
                                 "group-hover:bg-blue-50/30 dark:group-hover:bg-blue-950/10",
@@ -695,185 +974,193 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
                                 <span className="text-slate-400">{row.unit}</span>
                               </div>
                             </td>
-                          ) : null}
+                            <td className="px-4 py-3.5 align-top text-slate-400 dark:text-slate-600">—</td>
+                            <td className="px-4 py-3.5 align-top text-slate-400 dark:text-slate-600">—</td>
+                            <td className="px-4 py-3.5 align-top text-slate-400 dark:text-slate-600">—</td>
+                            <td className="px-4 py-3.5 align-top text-slate-400 dark:text-slate-600">—</td>
+                          </tr>,
+                        ];
+                      }
 
-                          {/* Required Qty — editable stepper, spans all bid rows for this item */}
-                          {isFirstBid && (
-                            <td
-                              rowSpan={bids.length || 1}
-                              className="px-4 py-3.5 align-top"
-                            >
-                              <div className="flex items-center gap-1">
-                                {/* Minus */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const cur = qtyOverrides[row.key] ?? row.quantity;
-                                    setQtyOverrides((prev) => ({ ...prev, [row.key]: Math.max(1, cur - 1) }));
-                                  }}
-                                  className="flex size-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30 dark:hover:text-blue-400"
-                                >
-                                  <span className="text-sm font-bold leading-none">−</span>
-                                </button>
+                      return bids.map((bid, bi) => {
+                        const isSubmitted = isVendorSubmitted(bid.submission.status);
+                        const hasValidPrice = bid.unitPrice != null && Number(bid.unitPrice) > 0;
+                        const isApproved = bid.matchedItem?.status?.toLowerCase() === "approved";
+                        const isLow =
+                          hasValidPrice &&
+                          lowPrice != null &&
+                          bid.unitPrice === lowPrice &&
+                          isSubmitted;
+                        const hasBid = bid.unitPrice != null || bid.deliveryDate != null;
+                        const ss = statusStyle(bid.submission.status);
+                        const isFirstBid = bi === 0;
+                        const isApprovalEnabled = isSubmitted && hasValidPrice && !isApproved && updatingStatusKey == null;
 
-                                {/* Input */}
-                                <input
-                                  id={`qty-input-${row.key}`}
-                                  type="number"
-                                  min={1}
-                                  value={qtyOverrides[row.key] ?? row.quantity}
-                                  onChange={(e) => {
-                                    const v = Math.max(1, Number(e.target.value));
-                                    setQtyOverrides((prev) => ({ ...prev, [row.key]: v }));
-                                  }}
-                                  className={cn(
-                                    "w-12 rounded-md border border-slate-200 bg-white px-2 py-1 text-center text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
-                                    "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
-                                  )}
-                                />
-
-                                {/* Plus */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const cur = qtyOverrides[row.key] ?? row.quantity;
-                                    setQtyOverrides((prev) => ({ ...prev, [row.key]: cur + 1 }));
-                                  }}
-                                  className="flex size-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30 dark:hover:text-blue-400"
-                                >
-                                  <span className="text-sm font-bold leading-none">+</span>
-                                </button>
-                              </div>
-                              <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                                {row.unit}
-                              </div>
-                            </td>
-                          )}
-
-                          {/* Vendor */}
-                          <td className="px-4 py-3.5 align-top">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                {bid.submission.vendor.name}
-                              </span>
-                            </div>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                              <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-semibold", ss.bg, ss.text)}>
-                                {ss.label}
-                              </span>
-                              {bid.submission.vendor.email && (
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                  {bid.submission.vendor.email}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Unit Price */}
-                          <td className="px-4 py-3.5 align-top">
-                            {hasBid ? (
-                              <div>
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <span
-                                    className={cn(
-                                      "text-sm font-bold",
-                                      isLow
-                                        ? "text-emerald-700 dark:text-emerald-400"
-                                        : "text-slate-900 dark:text-slate-100",
-                                    )}
-                                  >
-                                    {fmt(bid.unitPrice)}
-                                  </span>
-                                  {isLow && (
-                                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                      LOWEST
-                                    </span>
-                                  )}
+                        return (
+                          <tr
+                            key={`${row.key}-${bid.submission.vendor.id}`}
+                            className={cn(
+                              "group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-950/10",
+                              rowBg,
+                              /* Separate item groups with a slightly stronger top border */
+                              bi === 0 && ri > 0 && "border-t-2 border-slate-200/80 dark:border-slate-800",
+                            )}
+                          >
+                            {/* Item Name — only shown on the first bid row for this scope item */}
+                            {isFirstBid ? (
+                              <td
+                                rowSpan={bids.length || 1}
+                                className={cn(
+                                  "sticky left-0 z-10 border-r border-slate-200/40 px-4 py-3.5 align-top transition-colors dark:border-slate-800/40",
+                                  "group-hover:bg-blue-50/30 dark:group-hover:bg-blue-950/10",
+                                  rowBg,
+                                )}
+                              >
+                                <div className="font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                                  {row.name}
                                 </div>
-                                {bid.itemTotal != null && (
-                                  <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                                    Total: <span className="font-medium">{fmt(bid.itemTotal)}</span>
+                                {row.sku && (
+                                  <div className="mt-0.5 font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                                    {row.sku}
                                   </div>
                                 )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 dark:text-slate-600">—</span>
-                            )}
-                          </td>
+                                {row.groupName && (
+                                  <span className="mt-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    {row.groupName}
+                                  </span>
+                                )}
+                                <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                                  Required Qty: <span className="font-semibold">{row.quantity}</span>{" "}
+                                  <span className="text-slate-400">{row.unit}</span>
+                                </div>
+                              </td>
+                            ) : null}
 
-                          {/* Expected Delivery */}
-                          <td className="px-4 py-3.5 align-top">
-                            {hasBid && bid.deliveryDate ? (
-                              <div className="flex items-start gap-1">
-                                <Clock className="mt-0.5 size-3 shrink-0 text-slate-400" />
-                                <span className="text-[11px] font-medium leading-tight text-slate-700 dark:text-slate-300">
-                                  {bid.deliveryDate}
+                            {/* Vendor */}
+                            <td className="px-4 py-3.5 align-top">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {bid.submission.vendor.name}
                                 </span>
                               </div>
-                            ) : (
-                              <span className="text-slate-400 dark:text-slate-600">—</span>
-                            )}
-                          </td>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-semibold", ss.bg, ss.text)}>
+                                  {ss.label}
+                                </span>
+                                {bid.submission.vendor.email && (
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                    {bid.submission.vendor.email}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Action */}
-                          <td className="px-4 py-3.5 align-top">
-                            <div className="flex items-center justify-start gap-1.5">
-                              <AppButton
-                                type="button"
-                                size="sm"
-                                variant={isPurchased ? "secondary" : "primary"}
-                                loading={purchasingKey === `${row.key}-${bid.submission.vendor.id}`}
-                                disabled={!isPurchaseEnabled}
-                                onClick={() => void handlePurchase(row, bid, qtyOverrides[row.key] ?? row.quantity)}
-                                className={cn(
-                                  "h-7 px-2.5 text-xs font-semibold",
-                                  isPurchased && "border-emerald-200 bg-emerald-50 text-emerald-700 opacity-90 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-                                )}
-                                title={
-                                  isPurchased
-                                    ? "This item has already been purchased"
-                                    : !isSubmitted
-                                      ? "Vendor quotation must be submitted to purchase"
-                                      : !hasValidPrice
-                                        ? "No valid unit price provided by vendor"
-                                        : `Create Purchase Order for ${row.name}`
-                                }
-                              >
-                                {isPurchased ? (
-                                  <>
-                                    <CheckCircle2 className="mr-1 size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    Purchased
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShoppingCart className="mr-1 size-3.5" />
-                                    Purchase
-                                  </>
-                                )}
-                              </AppButton>
-                            </div>
+                            {/* Unit Price */}
+                            <td className="px-4 py-3.5 align-top">
+                              {hasBid ? (
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    <span
+                                      className={cn(
+                                        "text-sm font-bold",
+                                        isLow
+                                          ? "text-emerald-700 dark:text-emerald-400"
+                                          : "text-slate-900 dark:text-slate-100",
+                                      )}
+                                    >
+                                      {fmt(bid.unitPrice)}
+                                    </span>
+                                    {isLow && (
+                                      <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                        LOWEST
+                                      </span>
+                                    )}
+                                  </div>
+                                  {bid.itemTotal != null && (
+                                    <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                                      Total: <span className="font-medium">{fmt(bid.itemTotal)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-600">—</span>
+                              )}
+                            </td>
+
+                            {/* Expected Delivery */}
+                            <td className="px-4 py-3.5 align-top">
+                              {hasBid && bid.deliveryDate ? (
+                                <div className="flex items-start gap-1">
+                                  <Clock className="mt-0.5 size-3 shrink-0 text-slate-400" />
+                                  <span className="text-[11px] font-medium leading-tight text-slate-700 dark:text-slate-300">
+                                    {bid.deliveryDate}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-600">—</span>
+                              )}
+                            </td>
+
+                            {/* Action */}
+                            <td className="px-4 py-3.5 align-top">
+                              <div className="flex items-center justify-start gap-1.5">
+                                {hasValidPrice && <AppButton
+                                  type="button"
+                                  size="sm"
+                                  variant={isApproved ? "secondary" : "primary"}
+                                  loading={updatingStatusKey === `${row.key}-${bid.submission.vendor.id}`}
+                                  disabled={!isApprovalEnabled}
+                                  onClick={() => void handleApprove(row, bid)}
+                                  className={cn(
+                                    "h-7 px-2.5 text-xs font-semibold",
+                                    isApproved && "border-emerald-200 bg-emerald-50 text-emerald-700 opacity-90 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300",
+                                  )}
+                                  title={
+                                    isApproved
+                                      ? "This item has already been approved"
+                                      : !isSubmitted
+                                        ? "Vendor quotation must be submitted to approve"
+                                        : !hasValidPrice
+                                          ? "No valid unit price provided by vendor"
+                                          : `Approve ${row.name}`
+                                  }
+                                >
+                                  {isApproved ? (
+                                    <>
+                                      <Check className="mr-1 size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                      Approved
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="mr-1 size-3.5" />
+                                      Approve
+                                    </>
+                                  )}
+                                </AppButton>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    });
+
+                    if (rows.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                            {search.trim()
+                              ? <>No items matched &ldquo;{search}&rdquo;</>
+                              : "No items or vendor quotations match the selected filters."}
                           </td>
                         </tr>
                       );
-                    });
-                  });
+                    }
 
-                  if (rows.length === 0) {
-                    return (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                          {search.trim()
-                            ? <>No items matched &ldquo;{search}&rdquo;</>
-                            : "No items or vendor quotations match the selected filters."}
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  return rows;
-                })()}
-              </tbody>
-            </table>
+                    return rows;
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </DetailPanelCard>

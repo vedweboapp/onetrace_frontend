@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams } from "next/navigation";
-import { getKioskById } from "@/features/kiosk/api/kiosk.api";
+import { getCustomerOrders, getKioskById } from "@/features/kiosk/api/kiosk.api";
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
@@ -11,7 +11,9 @@ import {
   DataTableBody,
   DataTableEmptyRow,
   DataTableHead,
+  DataTableRow,
   DataTableScroll,
+  DataTableTd,
   DataTableTh,
   AppTabs,
   SurfaceShell,
@@ -31,6 +33,13 @@ function formatDate(value?: string): string {
   if (!value) return "-";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function formatOrderStatus(value?: string | null): string {
+  if (!value) return "-";
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function getOrgUuid(): string | null {
@@ -64,6 +73,9 @@ export function KioskFormDetailScreen() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState("orders");
+  const [orders, setOrders] = React.useState<Awaited<ReturnType<typeof getCustomerOrders>>>([]);
+  const [ordersLoading, setOrdersLoading] = React.useState(true);
+  const [ordersError, setOrdersError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -91,6 +103,24 @@ export function KioskFormDetailScreen() {
       cancelled = true;
     };
   }, [kioskId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void getCustomerOrders()
+      .then((result) => {
+        if (!cancelled) setOrders(result);
+      })
+      .catch(() => {
+        if (!cancelled) setOrdersError("Submitted orders could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setOrdersLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const tabs = React.useMemo<AppTabItem[]>(
     () => [{ id: "orders", label: "Submitted Orders" }],
@@ -199,10 +229,28 @@ export function KioskFormDetailScreen() {
                           </tr>
                         </DataTableHead>
                         <DataTableBody>
-                          <DataTableEmptyRow
-                            colSpan={4}
-                            message="Submitted orders will appear here."
-                          />
+                          {ordersLoading ? (
+                            <DataTableEmptyRow colSpan={4} message="Loading submitted orders..." />
+                          ) : ordersError ? (
+                            <DataTableEmptyRow colSpan={4} message={ordersError} />
+                          ) : orders.length === 0 ? (
+                            <DataTableEmptyRow colSpan={4} message="Submitted orders will appear here." />
+                          ) : (
+                            orders.map((order) => (
+                              <DataTableRow key={order.id}>
+                                <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
+                                  {order.order_number || `#${order.id}`}
+                                </DataTableTd>
+                                <DataTableTd>
+                                  {order.customer?.full_name || "-"}
+                                </DataTableTd>
+                                <DataTableTd>
+                                  {formatOrderStatus(order.order_status)}
+                                </DataTableTd>
+                                <DataTableTd>{formatDate(order.created_at ?? undefined)}</DataTableTd>
+                              </DataTableRow>
+                            ))
+                          )}
                         </DataTableBody>
                       </DataTable>
                     </DataTableScroll>
