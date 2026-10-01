@@ -15,7 +15,7 @@ export function applyTabOrder(defaultIds: readonly string[], savedIds: readonly 
   }
   return ordered;
 }
-
+//see this is stripe 
 export function readStoredTabOrder(storageKey: string): string[] | null {
   if (typeof window === "undefined") return null;
   try {
