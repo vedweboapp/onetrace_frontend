@@ -111,8 +111,8 @@ export function ContactsPanel() {
   const needsClientOptions = activeContactType === "client" && fetchClientOptions;
   const needsVendorOptions = activeContactType === "vendor" && fetchVendorOptions;
 
-  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, needsClientOptions);
-  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, needsVendorOptions);
+  const { options: clientOptions } = useDeferredListOptions(loadClientOptions, needsClientOptions, 0, ["clients"]);
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, needsVendorOptions, 0, ["vendors"]);
 
   const openCreate = React.useCallback(() => {
     const params = new URLSearchParams();

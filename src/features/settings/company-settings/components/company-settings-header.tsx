@@ -1,6 +1,7 @@
 "use client";
 
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import React from "react";
 
@@ -27,6 +28,8 @@ const CompanySettingsHeader = ({
   showEdit = true,
   ariaLabel = "Company settings sections",
 }: Props) => {
+  const tabsStorageKey = useTabOrderStorageKey("companySettings");
+
   return (
     <div
       className={cn(
@@ -35,10 +38,11 @@ const CompanySettingsHeader = ({
         "bg-slate-50 dark:bg-slate-950",
       )}
     >
-      <AppTabs
+      <CustomizableAppTabs
         tabs={tabs}
         value={activeTab}
         onValueChange={onTabChange}
+        storageKey={tabsStorageKey}
         ariaLabel={ariaLabel}
         className="relative z-10 min-w-0 flex-1"
       />

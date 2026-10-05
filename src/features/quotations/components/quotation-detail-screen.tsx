@@ -39,12 +39,14 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 
 type Props = {
@@ -55,6 +57,15 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+    "tags",
+  ]);
+  const tabsStorageKey = useTabOrderStorageKey("quotationDetail");
 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
@@ -106,7 +117,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -136,7 +147,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -181,7 +192,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -198,7 +209,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     const customerId = detailForSite ? getQuotationCustomerId(detailForSite.customer) : null;
@@ -225,7 +236,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite]);
+  }, [detailForSite, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -247,7 +258,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     if (!detailForSite) {
@@ -295,10 +306,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="quotation-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

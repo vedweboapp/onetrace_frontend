@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import {
@@ -40,11 +41,16 @@ import {
   parseOptionalId,
 } from "@/features/quotations/utils/quotation-form-map";
 import {
+  getQuotationContactId,
   getQuotationCustomerId,
   getQuotationNestedSite,
+  getQuotationOptionalUserId,
   getQuotationProjectId,
   getQuotationSiteId,
+  quotationContactLabel,
+  quotationCustomerLabel,
   quotationNestedSiteToSite,
+  quotationUserLabel,
 } from "@/features/quotations/utils/quotation-nested-fields.util";
 import {
   QUOTATION_STATUS_OPTIONS,
@@ -66,6 +72,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -85,10 +92,11 @@ import {
   saveQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -141,7 +149,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
+  const tabsStorageKey = useTabOrderStorageKey("quotationForm");
   const isEdit = mode === "edit";
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+    "tags",
+  ]);
 
   const createFromProjectId = React.useMemo(() => {
     if (isEdit) return null;
@@ -376,7 +393,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     (async () => {
       try {
         const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+        if (!cancelled) setClientOptions(clientsToSelectOptions(clients));
       } catch {
         if (!cancelled) setClientOptions([]);
       }
@@ -384,7 +401,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -402,7 +419,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
+
+  const projectCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (projectCustomerRef.current === customerId) return;
+    projectCustomerRef.current = customerId;
+    setProjectRows([]);
+  }, [customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -419,7 +443,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -442,7 +466,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
+
+  const siteSourceKeyRef = React.useRef(`${customerId ?? ""}:${projectId ?? ""}:${isServiceQuotation}`);
+  React.useEffect(() => {
+    const key = `${customerId ?? ""}:${projectId ?? ""}:${isServiceQuotation}`;
+    if (siteSourceKeyRef.current === key) return;
+    siteSourceKeyRef.current = key;
+    setSiteRows([]);
+  }, [customerId, projectId, isServiceQuotation]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -468,7 +500,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isServiceQuotation, customerId, projectId]);
+  }, [isServiceQuotation, customerId, projectId, catalogEpoch]);
+
+  const contactCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (contactCustomerRef.current === customerId) return;
+    contactCustomerRef.current = customerId;
+    setContactOptions([]);
+  }, [customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -489,14 +528,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, catalogEpoch]);
 
   React.useEffect(() => {
     const selectedProject = getValues("project")?.trim();
     if (!selectedProject || !customerId) return;
     const stillExists = projectRows.some((p) => String(p.id) === selectedProject);
     if (!stillExists) {
-      if (isEdit && existingDetail) {
+      const savedCustomerId = existingDetail ? getQuotationCustomerId(existingDetail.customer) : null;
+      const sameCustomer = savedCustomerId != null && customerId === savedCustomerId;
+      if (isEdit && existingDetail && sameCustomer) {
         const pid = getQuotationProjectId(existingDetail.project);
         if (pid != null && String(pid) === selectedProject) return;
       }
@@ -637,7 +678,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       existingDetail?.project && typeof existingDetail.project === "object"
         ? existingDetail.project
         : null;
-    if (isEdit && pid != null) {
+    const savedCustomerId = existingDetail ? getQuotationCustomerId(existingDetail.customer) : null;
+    const sameCustomer = savedCustomerId != null && customerId === savedCustomerId;
+    if (isEdit && sameCustomer && pid != null) {
       const exists = base.some((o) => o.value === String(pid));
       if (!exists) {
         const label = nested?.name?.trim() || `Project #${pid}`;
@@ -645,7 +688,67 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
     }
     return base;
-  }, [projectRows, isEdit, existingDetail]);
+  }, [projectRows, isEdit, existingDetail, customerId]);
+
+  const primaryContactIdStr = useWatch({ control, name: "primary_customer_contact" });
+  const salespersonIdStr = useWatch({ control, name: "salesperson" });
+  const projectManagerIdStr = useWatch({ control, name: "project_manager" });
+
+  const customerSelectFallbackLabel = React.useMemo(() => {
+    if (!customerId) return undefined;
+    const fromOptions = clientOptions.find((o) => o.value === String(customerId))?.label?.trim();
+    if (fromOptions) return fromOptions;
+    if (!existingDetail || getQuotationCustomerId(existingDetail.customer) !== customerId) return undefined;
+    const label = quotationCustomerLabel(existingDetail.customer).trim();
+    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+  }, [customerId, clientOptions, existingDetail]);
+
+  const projectSelectFallbackLabel = React.useMemo(() => {
+    if (!projectId) return undefined;
+    const fromOptions = projectOptions.find((o) => o.value === String(projectId))?.label?.trim();
+    if (fromOptions) return fromOptions;
+    if (!existingDetail || getQuotationProjectId(existingDetail.project) !== projectId) return undefined;
+    const nested =
+      existingDetail.project && typeof existingDetail.project === "object" ? existingDetail.project : null;
+    const label = (nested?.name ?? "").trim();
+    return label || undefined;
+  }, [projectId, projectOptions, existingDetail]);
+
+  const primaryContactFallbackLabel = React.useMemo(() => {
+    const id = primaryContactIdStr?.trim();
+    if (!id || !/^\d+$/.test(id)) return undefined;
+    const fromOptions = contactOptions.find((o) => o.value === id)?.label?.trim();
+    if (fromOptions) return fromOptions;
+    if (!existingDetail || String(getQuotationContactId(existingDetail.primary_customer_contact) ?? "") !== id) {
+      return undefined;
+    }
+    const label = quotationContactLabel(existingDetail.primary_customer_contact).trim();
+    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+  }, [primaryContactIdStr, contactOptions, existingDetail]);
+
+  const salespersonFallbackLabel = React.useMemo(() => {
+    const id = salespersonIdStr?.trim();
+    if (!id || !/^\d+$/.test(id)) return undefined;
+    const fromOptions = salesOptions.find((o) => o.value === id)?.label?.trim();
+    if (fromOptions) return fromOptions;
+    if (!existingDetail || String(getQuotationOptionalUserId(existingDetail.salesperson) ?? "") !== id) {
+      return undefined;
+    }
+    const label = quotationUserLabel(existingDetail.salesperson).trim();
+    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+  }, [salespersonIdStr, salesOptions, existingDetail]);
+
+  const projectManagerFallbackLabel = React.useMemo(() => {
+    const id = projectManagerIdStr?.trim();
+    if (!id || !/^\d+$/.test(id)) return undefined;
+    const fromOptions = managerOptions.find((o) => o.value === id)?.label?.trim();
+    if (fromOptions) return fromOptions;
+    if (!existingDetail || String(getQuotationOptionalUserId(existingDetail.project_manager) ?? "") !== id) {
+      return undefined;
+    }
+    const label = quotationUserLabel(existingDetail.project_manager).trim();
+    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+  }, [projectManagerIdStr, managerOptions, existingDetail]);
 
   const sortedLevelRows = React.useMemo(() => {
     const rows = Array.isArray(levelRows) ? levelRows : [];
@@ -687,8 +790,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
       const reloadProjectId = parseFormIdField(values.project);
-      const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-      setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+      const [{ items: clients }, byRole, tagsRes] = await Promise.all([
+        fetchClientsPage(1, 20, { is_active: true, dropdown: true }),
+        fetchUsersForAppRoles(["technician", "sales", "manager"]),
+        fetchTagsPage(1, 20, { is_active: true, dropdown: true }),
+      ]);
+      setClientOptions(clientsToSelectOptions(clients));
+      setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
+      setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
+      setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
+      const toLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
+      setTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: toLabel(row) })));
       if (reloadCustomerId) {
         const [projects, contacts] = await Promise.all([
           fetchProjectsPage(1, 20, { client: reloadCustomerId, dropdown: true }),
@@ -845,13 +957,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 {t("noClientsHint")}
               </p>
             ) : null} */}
-            <AppTabs
+            <CustomizableAppTabs
               tabs={[
                 { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
                 { id: "pricing", label: t("formTabs.pricing") },
               ]}
               value={formTab}
               onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+              storageKey={tabsStorageKey}
               ariaLabel={t("formTabs.aria")}
               panelIdPrefix="quotation-form-screen"
             />
@@ -901,6 +1014,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.customer")}
                       options={clientOptions}
                       value={field.value}
+                      fallbackLabel={customerSelectFallbackLabel}
                       emptyLabel={t("placeholders.customer")}
                       disabled={saving || noClients}
                       invalid={!!errors.customer}
@@ -934,6 +1048,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.project")}
                       options={projectOptions}
                       value={field.value}
+                      fallbackLabel={projectSelectFallbackLabel}
                       emptyLabel={t("placeholders.project")}
                       disabled={saving || !customerId || noProjects}
                       invalid={!!errors.project}
@@ -963,11 +1078,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       values={field.value ?? []}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      disabled={
-                        saving ||
-                        (isServiceQuotation ? !customerId : !projectId) ||
-                        siteOptions.length === 0
-                      }
+                      disabled={saving || (isServiceQuotation ? !customerId : !projectId)}
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}
                       onAdd={siteQuickCreate.onAdd}
@@ -1016,6 +1127,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.primaryContact")}
                       options={contactOptions}
                       value={field.value}
+                      fallbackLabel={primaryContactFallbackLabel}
                       emptyLabel={t("placeholders.contactOptional")}
                       disabled={saving || !customerId}
                       onBlur={field.onBlur}
@@ -1063,6 +1175,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.salesperson")}
                       options={salesOptions}
                       value={field.value}
+                      fallbackLabel={salespersonFallbackLabel}
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
@@ -1086,6 +1199,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.projectManager")}
                       options={managerOptions}
                       value={field.value}
+                      fallbackLabel={projectManagerFallbackLabel}
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
@@ -1123,35 +1237,31 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
               </FieldGroup>
               <FieldGroup label={t("fields.technicians")} htmlFor="quotation-technicians">
-                {technicianOptions.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("hints.noUsers")}</p>
-                ) : (
-                  <Controller
-                    control={control}
-                    name="technician_ids"
-                    render={({ field }) => (
-                      <MultiCheckSelect
-                        id="quotation-technicians"
-                        options={technicianOptions}
-                        values={(field.value ?? []).map(String)}
-                        onChange={(next) =>
-                          field.onChange(
-                            next
-                              .map((v) => Number.parseInt(v, 10))
-                              .filter((n) => Number.isFinite(n) && n > 0),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                        disabled={saving}
-                        listLabel={t("fields.technicians")}
-                        placeholder={t("placeholders.userOptional")}
-                        onAdd={openUsersSettings}
-                        addAriaLabel="Add user"
-                        addLabel="Add new"
-                      />
-                    )}
-                  />
-                )}
+                <Controller
+                  control={control}
+                  name="technician_ids"
+                  render={({ field }) => (
+                    <MultiCheckSelect
+                      id="quotation-technicians"
+                      options={technicianOptions}
+                      values={(field.value ?? []).map(String)}
+                      onChange={(next) =>
+                        field.onChange(
+                          next
+                            .map((v) => Number.parseInt(v, 10))
+                            .filter((n) => Number.isFinite(n) && n > 0),
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      disabled={saving}
+                      listLabel={t("fields.technicians")}
+                      placeholder={t("placeholders.userOptional")}
+                      onAdd={openUsersSettings}
+                      addAriaLabel="Add user"
+                      addLabel="Add new"
+                    />
+                  )}
+                />
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">

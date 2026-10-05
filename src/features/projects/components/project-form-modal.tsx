@@ -103,6 +103,7 @@ export function ProjectFormModal({
     register,
     reset,
     setValue,
+    getValues,
     setError,
     handleSubmit,
     formState: { errors },
@@ -150,22 +151,33 @@ export function ProjectFormModal({
   const clientIdForQuick =
     selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
 
+  const siteFetchSeq = React.useRef(0);
   const reloadSites = React.useCallback(async (searchQuery?: string) => {
+    const seq = ++siteFetchSeq.current;
     if (!clientIdForQuick || clientIdForQuick <= 0) {
       setSiteOptions([]);
       return;
     }
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, search: searchQuery, dropdown: true });
+      if (seq !== siteFetchSeq.current) return;
       const newOptions = items.map((s) => ({ value: String(s.id), label: s.site_name }));
       newOptions.forEach((opt) => {
         accumulatedSiteLabels.current[opt.value] = opt.label;
       });
       setSiteOptions(newOptions);
     } catch {
-      setSiteOptions([]);
+      if (seq === siteFetchSeq.current) setSiteOptions([]);
     }
   }, [clientIdForQuick]);
+
+  const siteClientRef = React.useRef(selectedClient);
+  React.useEffect(() => {
+    if (siteClientRef.current === selectedClient) return;
+    siteClientRef.current = selectedClient;
+    siteFetchSeq.current += 1;
+    if ((getValues("sites") ?? []).length === 0) setSiteOptions([]);
+  }, [selectedClient, getValues]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {

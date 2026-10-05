@@ -246,15 +246,27 @@ export function CheckmarkSelect({
   const listRef = React.useRef<HTMLDivElement>(null);
   // Defensively coerce value — callers may pass a number or object from the API
   const safeValue = typeof value === "string" ? value : String(value ?? "");
+  const valueInOptions = React.useMemo(() => {
+    const id = safeValue.trim();
+    if (!id) return false;
+    return options.some((opt) => opt.value.trim() === id);
+  }, [options, safeValue]);
+
   const resolvedOptions = React.useMemo(() => {
     const id = safeValue.trim();
-    if (!id || options.some((opt) => opt.value === id)) return options;
-    const label = fallbackLabel?.trim() || id;
+    if (!id || valueInOptions) return options;
+    const label = fallbackLabel?.trim();
+    if (!label) return options;
     return [{ value: id, label }, ...options];
-  }, [options, safeValue, fallbackLabel]);
-  const selected = resolvedOptions.find((o) => o.value === safeValue);
+  }, [options, safeValue, fallbackLabel, valueInOptions]);
+
+  const selected = valueInOptions
+    ? options.find((o) => o.value.trim() === safeValue.trim())
+    : resolvedOptions.find((o) => o.value.trim() === safeValue.trim());
   const canClear = Boolean(clearable && !disabled && !locked && safeValue.trim() !== "");
-  const showAdd = Boolean(onAdd && !disabled && !locked);
+  const showAdd = Boolean(onAdd && !locked);
+  const canOpen = !locked && (!disabled || showAdd);
+  const optionsLocked = Boolean(disabled && !locked);
   // Show add action only in dropdown footer, not on trigger.
   const useSplitTrigger = canClear;
   const resolvedMenuMinWidth = menuMinWidth ?? (size === "sm" ? 200 : 240);
@@ -290,7 +302,7 @@ export function CheckmarkSelect({
     }
   }, [search, open, onSearchChange]);
 
-  const displayLabel = selected ? selected.label : emptyLabel;
+  const displayLabel = selected?.label ?? emptyLabel;
 
   const listClasses = cn(
     "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
@@ -360,9 +372,9 @@ export function CheckmarkSelect({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  disabled={disabled}
+                  disabled={optionsLocked}
                   onClick={() => {
-                    if (disabled) return;
+                    if (optionsLocked) return;
                     onChange(opt.value);
                     setOpen(false);
                   }}
@@ -376,7 +388,7 @@ export function CheckmarkSelect({
                         ? "border-l-2 border-l-[color:var(--dash-accent,#111111)] bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
                         : "bg-slate-50 font-semibold text-[color:var(--dash-accent,#111111)] dark:bg-slate-800/80"
                       : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
-                    disabled && "pointer-events-none opacity-50",
+                    optionsLocked && "pointer-events-none opacity-50",
                   )}
                 >
                   {showCheckmarks ? (
@@ -430,7 +442,7 @@ export function CheckmarkSelect({
     size === "sm"
       ? "h-8 min-h-8 rounded-md px-2 text-[length:var(--dash-text-xs,0.75rem)] shadow-sm"
       : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] gap-2 rounded-xl px-3.5 text-[length:var(--dash-body-size,0.875rem)] shadow-sm",
-    disabled
+    !canOpen
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
           "cursor-pointer border-slate-200 bg-white text-slate-900",
@@ -447,7 +459,7 @@ export function CheckmarkSelect({
     size === "sm"
       ? "h-8 min-h-8 rounded-md text-[length:var(--dash-text-xs,0.75rem)]"
       : "h-[var(--form-control-height,2.5rem)] min-h-[var(--form-control-height,2.5rem)] rounded-xl text-[length:var(--dash-body-size,0.875rem)]",
-    disabled
+    !canOpen
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-600"
       : cn(
           "border-slate-200 bg-white text-slate-900",
@@ -463,7 +475,7 @@ export function CheckmarkSelect({
     size === "sm"
       ? "px-2 text-[length:var(--dash-text-xs,0.75rem)]"
       : "gap-2 px-3.5 text-[length:var(--dash-body-size,0.875rem)]",
-    disabled
+    !canOpen
       ? "cursor-not-allowed"
       : cn(
           "cursor-pointer hover:bg-slate-50",
@@ -495,13 +507,13 @@ export function CheckmarkSelect({
             aria-label={buttonAriaLabel}
             aria-haspopup="listbox"
             aria-expanded={open}
-            disabled={disabled}
+            disabled={!canOpen}
             onFocus={(e) => onTriggerFocus?.(e)}
             onBlur={(e) => {
               onTriggerBlur?.(e);
               onBlur?.();
             }}
-            onClick={() => !disabled && setOpen((o) => !o)}
+            onClick={() => canOpen && setOpen((o) => !o)}
             className={openSplitButtonClass}
           >
             <span className={cn("min-w-0 flex-1 truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>
@@ -511,7 +523,7 @@ export function CheckmarkSelect({
               className={cn(
                 "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
                 size === "sm" ? "size-3.5" : "size-4",
-                open && !disabled && "rotate-180",
+                open && canOpen && "rotate-180",
               )}
               aria-hidden
             />
@@ -543,14 +555,14 @@ export function CheckmarkSelect({
             aria-label={buttonAriaLabel}
             aria-haspopup="listbox"
             aria-expanded={open}
-            disabled={disabled}
+            disabled={!canOpen}
             data-invalid={invalid ? true : undefined}
             onFocus={(e) => onTriggerFocus?.(e)}
             onBlur={(e) => {
               onTriggerBlur?.(e);
               onBlur?.();
             }}
-            onClick={() => !disabled && setOpen((o) => !o)}
+            onClick={() => canOpen && setOpen((o) => !o)}
             className={triggerClass}
           >
             <span className={cn("truncate", !safeValue && "text-slate-400 dark:text-slate-500")}>{displayLabel}</span>
@@ -558,14 +570,14 @@ export function CheckmarkSelect({
               className={cn(
                 "shrink-0 text-[color:var(--dash-accent,#111111)] opacity-80 transition dark:opacity-90",
                 size === "sm" ? "size-3.5" : "size-4",
-                open && !disabled && "rotate-180",
+                open && canOpen && "rotate-180",
               )}
               aria-hidden
             />
           </button>
         </div>
       )}
-      {open && !disabled && !portaled
+      {open && canOpen && !portaled
         ? renderOptionList(
             {},
             cn(
@@ -574,7 +586,7 @@ export function CheckmarkSelect({
             ),
           )
         : null}
-      {open && !disabled && portaled && typeof document !== "undefined"
+      {open && canOpen && portaled && typeof document !== "undefined"
         ? createPortal(
             renderOptionList(
               {

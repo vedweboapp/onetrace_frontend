@@ -21,6 +21,7 @@ import {
   jobProjectLabel,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import {
   DetailEntityLink,
   EntityDataTable,
@@ -63,6 +64,13 @@ import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } fr
 import { JobsMapView } from "@/features/jobs/components/jobs-map-view";
 
 export function JobsPanel() {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "projects",
+    "sites",
+    "jobStatuses",
+  ]);
   const t = useTranslations("Dashboard.jobs");
   const tList = useTranslations("Dashboard.list");
   const router = useRouter();
@@ -283,7 +291,7 @@ export function JobsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [fetchFilterOptions]);
+  }, [fetchFilterOptions, catalogEpoch]);
 
   React.useEffect(() => {
     if (!fetchMassOptions) return;
@@ -311,7 +319,7 @@ export function JobsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [fetchMassOptions]);
+  }, [fetchMassOptions, catalogEpoch]);
 
   React.useEffect(() => {
     if (jobStatusParam || assignedWorkerParam) setFetchFilterOptions(true);
@@ -529,7 +537,7 @@ export function JobsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect

@@ -846,16 +846,6 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
         title="Vendor Quotations"
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
-            <AppButton
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => setSendModalOpen(true)}
-              className="h-8 text-xs font-medium"
-            >
-              <Building2 className="mr-1.5 size-3.5" />
-              Send to Vendors
-            </AppButton>
             <div className="relative w-52">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
               <input

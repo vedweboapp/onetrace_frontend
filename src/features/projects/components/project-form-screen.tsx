@@ -18,6 +18,7 @@ import {
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
 import { fetchUsersPage } from "@/features/users/api/user.api";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -61,6 +62,14 @@ type Props = {
 };
 
 export function ProjectFormScreen({ mode, projectId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "sites",
+    "projectTypes",
+    "projectStatuses",
+    "forms",
+  ]);
   const t = useTranslations("Dashboard.projects");
   const router = useRouter();
   const pathname = usePathname();
@@ -153,7 +162,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       void reloadClients(clientSearchQuery);
     }, 400);
     return () => clearTimeout(t);
-  }, [clientSearchQuery, reloadClients]);
+  }, [clientSearchQuery, reloadClients, catalogEpoch]);
 
   React.useEffect(() => {
     if (!initialManagersLoaded.current) {
@@ -165,7 +174,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       void reloadManagers(managerSearchQuery);
     }, 400);
     return () => clearTimeout(t);
-  }, [managerSearchQuery, reloadManagers]);
+  }, [managerSearchQuery, reloadManagers, catalogEpoch]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -192,16 +201,19 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const clientIdForQuick =
     selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
 
+  const siteFetchSeq = React.useRef(0);
   const reloadSites = React.useCallback(async () => {
+    const seq = ++siteFetchSeq.current;
     if (!clientIdForQuick || clientIdForQuick <= 0) {
       setSiteOptions([]);
       return;
     }
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, dropdown: true });
+      if (seq !== siteFetchSeq.current) return;
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
-      setSiteOptions([]);
+      if (seq === siteFetchSeq.current) setSiteOptions([]);
     }
   }, [clientIdForQuick]);
 
@@ -252,7 +264,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   // Reload forms when the selected project type changes
   React.useEffect(() => {
@@ -288,7 +300,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectType, setValue, getValues]);
+  }, [selectedProjectType, setValue, getValues, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -297,7 +309,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         const { items } = await fetchProjectStatusesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
-          if (!isEdit) {
+          if (!isEdit && !getValues("project_status")?.trim()) {
             const defaultStatusId = resolveDefaultProjectStatusId(items);
             if (defaultStatusId != null) {
               setValue("project_status", String(defaultStatusId), { shouldDirty: false });
@@ -311,7 +323,15 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, setValue]);
+  }, [isEdit, setValue, getValues, catalogEpoch]);
+
+  const siteClientRef = React.useRef(selectedClient);
+  React.useEffect(() => {
+    if (siteClientRef.current === selectedClient) return;
+    siteClientRef.current = selectedClient;
+    siteFetchSeq.current += 1;
+    if ((getValues("sites") ?? []).length === 0) setSiteOptions([]);
+  }, [selectedClient, getValues]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -320,7 +340,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       return;
     }
     void reloadSites();
-  }, [selectedClient, setValue, reloadSites]);
+  }, [selectedClient, setValue, reloadSites, catalogEpoch]);
 
   React.useEffect(() => {
     if (!isEdit || !projectId) return;
