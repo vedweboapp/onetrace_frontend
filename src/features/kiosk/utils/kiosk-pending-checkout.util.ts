@@ -7,7 +7,6 @@ export type PendingKioskCheckout = {
   answers: Record<string, KioskAnswerValue>;
   snapshotImage: string;
   organizationId: number;
-  kioskMachineId: number;
   items?: CheckoutItem[];
   scene?: LiveBuildScene;
   cartTotals?: {

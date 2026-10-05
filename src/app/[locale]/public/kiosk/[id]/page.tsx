@@ -9,9 +9,9 @@ import { KioskRenderer } from "@/features/kiosk/components/kiosk-renderer";
 import { KioskCartReview } from "@/features/kiosk/components/kiosk-cart-review";
 import { KioskInvoiceDetails, type KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import { computeLiveBuildScene, type LiveBuildScene, type KioskAnswerValue } from "@/features/kiosk/utils/kiosk-live-build";
-import { buildKioskCheckoutFormData, buildKioskCheckoutPayload, captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
+import { captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
 import { toastError } from "@/shared/feedback/app-toast";
-import { CheckCircle, AlertCircle, ShoppingCart, Download, ExternalLink } from "lucide-react";
+import { CheckCircle, AlertCircle, ShoppingCart } from "lucide-react";
 
 export default function PublicKioskPage() {
   const params = useParams<{ id?: string | string[] }>();
@@ -54,8 +54,8 @@ export default function PublicKioskPage() {
 
   // Persist answers to storage on change
   const handleAnswersChange = useCallback(
-    (newAnswers: Record<string, any>) => {
-      setAnswers(newAnswers);
+    (newAnswers: Record<string, unknown>) => {
+      setAnswers(newAnswers as Record<string, KioskAnswerValue>);
       if (typeof window !== "undefined" && kioskId) {
         try {
           sessionStorage.setItem(`kiosk_answers_${kioskId}`, JSON.stringify(newAnswers));
@@ -102,7 +102,7 @@ export default function PublicKioskPage() {
     };
   }, [kioskId, token]);
 
-  // Transition from configure form -> cart review with computed scene & payload
+  // Transition from configure form -> cart review
   const handleConfigureSubmit = (
     payload: { items?: CheckoutItem[] } | unknown,
     meta?: { answers: Record<string, unknown>; scene: LiveBuildScene; renderedConfig?: KioskConfig },
@@ -122,19 +122,31 @@ export default function PublicKioskPage() {
     setView("cart");
   };
 
-  // From cart -> transition to invoice details tab (carry totals so prices stay in sync)
+  // From cart -> invoice details tab
   const handleContinueToInvoice = (totals: { grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number }) => {
     setCartTotals(totals);
     setView("invoice");
   };
 
-  // Submit invoice and billing from invoice details tab
+  /**
+   * ── SECURE STRIPE PAYMENT FLOW ──────────────────────────────────────────────
+   *
+   * 1. Validate billing form
+   * 2. Capture snapshot
+   * 3. Stash EVERYTHING needed to submit the order in sessionStorage
+   * 4. Call /api/stripe/create-checkout-session (server-only, secret key never exposed)
+   * 5. Redirect user to Stripe's hosted Checkout page
+   * 6. On return to /payment-success, the page verifies payment then submits the order
+   *
+   * The backend order is NEVER created before Stripe confirms payment === "paid".
+   */
   const handleSubmitInvoiceAndPayment = async (billingDetails: KioskBillingDetails) => {
     if (!kioskId || !config || !configuredData) return;
+
     try {
       setIsSubmittingInvoice(true);
 
-      // 1. Capture visual preview snapshot image
+      // ── Step 1: Capture snapshot ───────────────────────────────────────────
       let snapshotImage = "";
       try {
         snapshotImage = await captureLiveBuildSnapshot(configuredData.scene);
@@ -148,44 +160,88 @@ export default function PublicKioskPage() {
         return;
       }
 
-      // 2. Build multipart/form-data checkout payload with binary snapshot file Blob
-      const activeConfig = configuredData.renderedConfig || config;
-      const checkoutFormData = buildKioskCheckoutFormData({
-        config: activeConfig,
-        answers: configuredData.answers || answers,
-        billingDetails,
-        snapshotImage,
-        organizationId: Number(config.organization_id || config.organization?.id || 1),
-        kioskMachineId: Number(config.id || kioskId),
-        items: configuredData.items || (configuredData.payload as { items?: CheckoutItem[] })?.items,
-        scene: configuredData.scene,
+      // ── Step 2: Stash pending checkout data in sessionStorage ──────────────
+      // This is restored by the /payment-success page after Stripe redirects back.
+      const organizationId = Number(config.organization_id ?? config.organization?.id ?? 1);
+
+      const storageKey = `kiosk_pending_checkout_${kioskId}`;
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            billingDetails,
+            snapshotImage,
+            organizationId,
+            configAnswers: configuredData.answers || answers,
+            items: configuredData.items ?? (configuredData.payload as { items?: CheckoutItem[] })?.items,
+            configId: config.id,
+            configName: config.name,
+            cartTotals,
+          }),
+        );
+      } catch (storageErr) {
+        console.error("Failed to save checkout to sessionStorage", storageErr);
+        toastError("Could not save checkout data. Please try again.");
+        setIsSubmittingInvoice(false);
+        return;
+      }
+
+      // ── Step 3: Compute grand total (pence for Stripe) ─────────────────────
+      const grandTotal = cartTotals?.grandTotal ?? 0;
+      const amountPence = Math.round(grandTotal * 100);
+
+      if (amountPence < 50) {
+        toastError("Order total is too low to process payment (minimum £0.50).");
+        setIsSubmittingInvoice(false);
+        return;
+      }
+
+      // ── Step 4: Create Stripe checkout session (server-side API route) ─────
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const successUrl = `${origin}/public/kiosk/${kioskId}/payment-success?session_id={CHECKOUT_SESSION_ID}&token=${token ?? ""}`;
+      const cancelUrl = `${origin}/public/kiosk/${kioskId}?token=${token ?? ""}`;
+
+      // Unique idempotency key prevents duplicate charges on double-click or network retry
+      const idempotencyKey = `kiosk-${kioskId}-${Date.now()}`;
+
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountPence,
+          currency: "gbp",
+          customerEmail: billingDetails.email.trim(),
+          productName: config.name ?? "SimHo Product",
+          successUrl,
+          cancelUrl,
+          idempotencyKey,
+          // Metadata carried through to the webhook and verify-session endpoint
+          metadata: {
+            kioskId: String(kioskId),
+            token: token ?? "",
+            organizationId: String(organizationId),
+            customerEmail: billingDetails.email.trim(),
+          },
+        }),
       });
 
-      // 3. Post to /api/v1/checkout/ as multipart/form-data
-      await submitKioskCheckout(checkoutFormData);
+      const sessionData = await res.json() as { url?: string; sessionId?: string; error?: string };
 
-      // 4. Auto-download snapshot image directly to user's computer on submission
-      if (typeof window !== "undefined" && snapshotImage) {
-        try {
-          const downloadAnchor = document.createElement("a");
-          downloadAnchor.href = snapshotImage;
-          downloadAnchor.download = `kiosk-snapshot-${kioskId || "product"}.png`;
-          document.body.appendChild(downloadAnchor);
-          downloadAnchor.click();
-          document.body.removeChild(downloadAnchor);
-        } catch (downloadErr) {
-          console.error("Failed to auto-download snapshot", downloadErr);
-        }
+      if (!res.ok || !sessionData.url) {
+        const msg = sessionData.error ?? "Could not create Stripe checkout session.";
+        toastError(msg);
+        setIsSubmittingInvoice(false);
+        return;
       }
 
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
-      }
-      setSubmittedSnapshot(snapshotImage);
-      setView("submitted");
+      // ── Step 5: Redirect to Stripe Checkout ────────────────────────────────
+      // At this point the browser navigates away to Stripe's secure hosted page.
+      // The /payment-success page handles everything on return.
+      window.location.href = sessionData.url;
+
     } catch (err) {
-      console.error("Failed to submit checkout", err);
-    } finally {
+      console.error("Failed to initiate Stripe payment", err);
+      toastError("Could not start payment. Please try again.");
       setIsSubmittingInvoice(false);
     }
   };
@@ -214,7 +270,7 @@ export default function PublicKioskPage() {
     );
   }
 
-  // Submitted / Invoice success state
+  // Legacy submitted state (fallback, normally payment-success page handles this)
   if (view === "submitted") {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 py-8 text-center dark:bg-slate-950">
@@ -222,46 +278,12 @@ export default function PublicKioskPage() {
           <CheckCircle className="size-8" />
         </div>
         <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Invoice Generated Successfully
+          Order Submitted Successfully
         </h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          Thank you! Your product configuration has been recorded and an invoice
-          has been initiated.
+          Thank you! Your product configuration has been recorded.
         </p>
 
-        {submittedSnapshot && (
-          <div className="mt-6 max-w-sm w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-              Configured Snapshot Preview
-            </p>
-            <div className="relative aspect-4/3 w-full overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <img
-                src={submittedSnapshot}
-                alt="Product snapshot"
-                className="max-h-full max-w-full object-contain"
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <a
-                href={submittedSnapshot}
-                download={`kiosk-snapshot-${kioskId || "product"}.png`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
-              >
-                <Download className="size-3.5" />
-                Download Snapshot (PNG)
-              </a>
-              <a
-                href={submittedSnapshot}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                <ExternalLink className="size-3.5" />
-                Open Full Size
-              </a>
-            </div>
-          </div>
-        )}
 
         <div className="mt-6 flex items-center gap-3">
           <button
@@ -352,7 +374,7 @@ export default function PublicKioskPage() {
         </div>
       )}
 
-      {/* Invoice Details / Billing Tab */}
+      {/* Invoice Details / Billing Tab → leads to Stripe Checkout */}
       {view === "invoice" && configuredData && (
         <div className="min-h-screen w-full">
           <KioskInvoiceDetails
