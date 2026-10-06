@@ -292,7 +292,6 @@ export interface BuildCheckoutPayloadParams {
   billingDetails: KioskBillingDetails;
   snapshotImage: string;
   organizationId?: number;
-  kioskMachineId?: number;
   items?: CheckoutItem[];
   scene?: LiveBuildScene;
 }
@@ -328,7 +327,6 @@ export function buildKioskCheckoutPayload({
   billingDetails,
   snapshotImage,
   organizationId,
-  kioskMachineId,
   items: prebuiltItems,
   scene,
 }: BuildCheckoutPayloadParams): KioskCheckoutPayload {
@@ -383,14 +381,11 @@ export function buildKioskCheckoutPayload({
   }
 
   const rawOrg = organizationId ?? config.organization_id ?? config.organization?.id;
-  const rawKiosk = kioskMachineId ?? config.id;
 
   const orgId = typeof rawOrg === "number" ? rawOrg : parseInt(String(rawOrg || 1), 10) || 1;
-  const kioskId = typeof rawKiosk === "number" ? rawKiosk : parseInt(String(rawKiosk || 1), 10) || 1;
 
   return {
     organization_id: orgId,
-    kiosk_machine_id: kioskId,
     customer: {
       full_name: billingDetails.fullName.trim(),
       email: billingDetails.email.trim(),
@@ -421,7 +416,6 @@ export function buildKioskCheckoutFormData(params: BuildCheckoutPayloadParams): 
   const fd = new FormData();
 
   fd.append("organization_id", String(jsonPayload.organization_id));
-  fd.append("kiosk_machine_id", String(jsonPayload.kiosk_machine_id));
 
   // Customer — individual bracket-notation fields only (no redundant full JSON blob)
   if (jsonPayload.customer.full_name) fd.append("customer[full_name]", jsonPayload.customer.full_name);
@@ -444,7 +438,7 @@ export function buildKioskCheckoutFormData(params: BuildCheckoutPayloadParams): 
   // Single Binary Snapshot attachment as Blob file
   const snapshotBlob = dataUrlToBlob(params.snapshotImage);
   if (snapshotBlob) {
-    fd.append("snapshot_image", snapshotBlob, `snapshot-${jsonPayload.kiosk_machine_id || "product"}.png`);
+    fd.append("snapshot_image", snapshotBlob, `snapshot-${jsonPayload.organization_id || "product"}.png`);
   } else if (params.snapshotImage) {
     fd.append("snapshot_image", params.snapshotImage);
   }

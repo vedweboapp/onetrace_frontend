@@ -72,6 +72,7 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
       section_order: si,
       level_id: section.level_id,
       name: sanitizeTitleInput(section.name ?? ""),
+      kind: section.kind === "optional" ? "optional" : "primary",
       drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
       drawing_file_type: typeof section.drawing_file_type === "string" ? section.drawing_file_type : null,
       drawing_file_size: typeof section.drawing_file_size === "number" ? section.drawing_file_size : null,

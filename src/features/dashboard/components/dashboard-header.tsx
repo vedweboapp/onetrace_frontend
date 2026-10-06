@@ -123,6 +123,7 @@ export function DashboardHeader() {
   const returnToStockHref = routes.dashboard.returnToStock;
   const itemsHref = routes.dashboard.items;
   const compositeHref = routes.dashboard.compositeItems;
+  const laboursHref = routes.dashboard.labours;
   const personalProfileHref = routes.dashboard.settingsPersonalProfile;
   const companySettingsHref = routes.dashboard.settingsCompanySettings;
   const modulesHref = routes.dashboard.settingsModules;
@@ -200,7 +201,8 @@ export function DashboardHeader() {
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive =
     pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
-  const itemsSectionActive = itemsActive || compositeActive;
+  const laboursActive = pathname === laboursHref || pathname.startsWith(`${laboursHref}/`);
+  const itemsSectionActive = itemsActive || compositeActive || laboursActive;
   const personalProfileActive =
     pathname === personalProfileHref || pathname.startsWith(`${personalProfileHref}/`);
   const companySettingsActive =
@@ -294,7 +296,9 @@ export function DashboardHeader() {
                                   ? tNav("dispatches")
                                   : returnToStockActive
                                     ? tNav("returnToStock")
-                                    : compositeActive
+                                    : laboursActive
+                                      ? tNav("labours")
+                                      : compositeActive
                                       ? tNav("compositeItems")
                                       : itemsActive
                                         ? tNav("itemsPlain")
@@ -509,6 +513,7 @@ export function DashboardHeader() {
               items={[
                 { href: itemsHref, label: tNav("itemsPlain"), active: itemsActive },
                 { href: compositeHref, label: tNav("compositeItems"), active: compositeActive },
+                { href: laboursHref, label: tNav("labours"), active: laboursActive },
               ]}
             />
           </>

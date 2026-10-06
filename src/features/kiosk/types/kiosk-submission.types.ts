@@ -38,7 +38,6 @@ export interface CheckoutItem {
 
 export interface KioskCheckoutPayload {
   organization_id: number;
-  kiosk_machine_id: number;
   customer: CheckoutCustomer;
   billing_address: CheckoutBillingAddress;
   items: CheckoutItem[];
@@ -48,7 +47,17 @@ export interface KioskCheckoutPayload {
 export interface KioskCheckoutResponse {
   success?: boolean;
   message?: string;
-  data?: unknown;
+  order_number?: string;
+  client_secret?: string;
+  payment_intent_id?: string;
+  total_amount?: string | number;
+  data?: {
+    order_number?: string;
+    client_secret?: string;
+    payment_intent_id?: string;
+    total_amount?: string | number;
+    [key: string]: unknown;
+  } | unknown;
   id?: number | string;
   order_id?: number | string;
   invoice_id?: number | string;

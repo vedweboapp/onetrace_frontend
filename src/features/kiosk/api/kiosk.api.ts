@@ -18,6 +18,26 @@ export interface GetKiosksResponse {
   results: KioskListItem[];
 }
 
+export interface CustomerOrder {
+  id: number;
+  order_number?: string | null;
+  customer?: { full_name?: string | null } | null;
+  order_status?: string | null;
+  created_at?: string | null;
+}
+
+interface CustomerOrdersResponse {
+  data?: CustomerOrder[] | { data?: CustomerOrder[] };
+}
+
+export async function getCustomerOrders(): Promise<CustomerOrder[]> {
+  const res = await api.get<CustomerOrdersResponse>("/customer-orders/");
+  const payload = res.data?.data;
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+
 export async function getKiosksList(params: GetKiosksParams): Promise<GetKiosksResponse> {
   const res = await api.get("/service-forms/", { params });
   const data = res.data;
