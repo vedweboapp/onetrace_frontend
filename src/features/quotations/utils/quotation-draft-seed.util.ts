@@ -82,6 +82,7 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
       group_id:
         typeof p.group_id === "number" && Number.isFinite(p.group_id) && p.group_id > 0 ? p.group_id : null,
       group_name: typeof p.group_name === "string" && p.group_name.trim() ? p.group_name.trim() : null,
+      is_composite: p.is_composite === true,
       pin_count: 1,
       source_pins: Array.isArray(p.source_pins) ? p.source_pins : [],
     }));
