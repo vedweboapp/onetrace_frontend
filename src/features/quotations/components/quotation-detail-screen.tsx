@@ -501,11 +501,8 @@ export function QuotationDetailScreen({ quotationId }: Props) {
             >
               {isProjectQuote ? (
                 <QuotationJobsTableTab
-                  jobs={relatedJobs}
-                  loading={jobsLoading}
-                  loadError={jobsLoadError}
+                  quotationId={detail.id}
                   jobCategory={jobCategory}
-                  onRetry={() => setJobsRefreshNonce((n) => n + 1)}
                 />
               ) : (
                 <QuotationJobsTab

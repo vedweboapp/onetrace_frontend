@@ -7,8 +7,8 @@ import { useRouter } from "@/i18n/navigation";
 import type { QuotationDraft, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftSectionLabours } from "@/features/quotations/components/quotation-draft-section-labours";
 import { QuotationDraftSectionMaterials } from "@/features/quotations/components/quotation-draft-section-materials";
+import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
-import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import {
   readQuotationSectionScopeSession,
@@ -196,7 +196,7 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
               ariaLabel={t("sectionInnerTabsAria")}
               panelIdPrefix="quotation-section-scope"
             />
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               {innerTab === "labour" ? (
                 <QuotationDraftSectionLabours
                   labours={section.labours ?? []}
@@ -210,15 +210,15 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   onChange={(section_pins) => patchSection({ section_pins })}
                 />
               )}
+              <QuotationDraftPriceTotalBar
+                label={t("sectionTotal")}
+                amount={sectionTotal}
+                locale={loc}
+                showMenuSpacer={innerTab === "materials" && !readOnly}
+                className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+              />
             </div>
           </DetailPanelCard>
-
-          <div className="flex items-center justify-end gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("sectionTotal")}</span>
-            <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
-              {formatMoneyDisplay(sectionTotal, loc)}
-            </span>
-          </div>
         </div>
       </DetailPagePadding>
     </div>
