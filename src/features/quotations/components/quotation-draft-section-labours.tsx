@@ -7,6 +7,7 @@ import { fetchLabourTypesPage } from "@/features/labour-types/api/labour-type.ap
 import type { LabourType } from "@/features/labour-types/types/labour-type.types";
 import { parseLabourNumber, suggestedLabourSellPrice } from "@/features/labour-types/utils/labour-type-numbers.util";
 import type { QuotationDraftLabour } from "@/features/quotations/types/quotation-draft.types";
+import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftLabourTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
@@ -222,12 +223,12 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
       )}
 
       {labours.length > 0 ? (
-        <div className="flex items-center justify-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("labourTotal")}</span>
-          <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
-            {formatMoneyDisplay(labourTotal, loc)}
-          </span>
-        </div>
+        <QuotationDraftPriceTotalBar
+          label={t("labourTotal")}
+          amount={labourTotal}
+          locale={loc}
+          showMenuSpacer={false}
+        />
       ) : null}
     </div>
   );
