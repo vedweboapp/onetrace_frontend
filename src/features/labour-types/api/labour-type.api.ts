@@ -15,11 +15,16 @@ import type {
   LabourTypeUpdatePayload,
 } from "../types/labour-type.types";
 
-function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
-  if (!envelope.success) {
-    const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
-    throw new ApiBusinessError(msg);
+function unwrapLabourType(data: unknown): LabourType {
+  const rec = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
+  if (rec && rec.success === true && rec.data && typeof rec.data === "object" && !Array.isArray(rec.data)) {
+    return rec.data as LabourType;
   }
+  if (rec && typeof rec.id === "number") {
+    return rec as unknown as LabourType;
+  }
+  assertApiSuccess(data as ApiEnvelope<LabourType>);
+  return (data as ApiEnvelope<LabourType>).data;
 }
 
 function toLabourTypeWritePayload(
@@ -59,33 +64,36 @@ export async function fetchLabourTypesPage(
 }
 
 export async function fetchLabourType(id: number): Promise<LabourType> {
-  const { data } = await api.get<ApiEnvelope<LabourType>>(LABOUR_TYPE_PATHS.detail(id));
-  assertApiSuccess(data);
-  return data.data;
+  const { data } = await api.get<ApiEnvelope<LabourType> | LabourType>(LABOUR_TYPE_PATHS.detail(id));
+  return unwrapLabourType(data);
 }
 
 export async function createLabourType(body: LabourTypeCreatePayload): Promise<LabourType> {
-  const { data } = await api.post<ApiEnvelope<LabourType>>(
+  const { data } = await api.post<ApiEnvelope<LabourType> | LabourType>(
     LABOUR_TYPE_PATHS.list,
     toLabourTypeWritePayload(body),
   );
-  assertApiSuccess(data);
-  return data.data;
+  return unwrapLabourType(data);
 }
 
 export async function updateLabourType(
   id: number,
   body: LabourTypeUpdatePayload,
 ): Promise<LabourType> {
-  const { data } = await api.patch<ApiEnvelope<LabourType>>(
+  const { data } = await api.patch<ApiEnvelope<LabourType> | LabourType>(
     LABOUR_TYPE_PATHS.detail(id),
     toLabourTypeWritePayload(body),
   );
-  assertApiSuccess(data);
-  return data.data;
+  return unwrapLabourType(data);
 }
 
 export async function deleteLabourType(id: number): Promise<void> {
   const { data } = await api.delete<ApiEnvelope<unknown>>(LABOUR_TYPE_PATHS.detail(id));
-  assertEnvelopeSuccess(data);
+  if (data && typeof data === "object" && "success" in data && (data as ApiEnvelope<unknown>).success === false) {
+    const msg =
+      typeof (data as ApiEnvelope<unknown>).message === "string"
+        ? (data as ApiEnvelope<unknown>).message
+        : "Request failed";
+    throw new ApiBusinessError(msg);
+  }
 }

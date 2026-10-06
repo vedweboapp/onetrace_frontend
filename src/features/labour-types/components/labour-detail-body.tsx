@@ -7,7 +7,6 @@ import { parseLabourNumber } from "@/features/labour-types/utils/labour-type-num
 import { updateLabourType } from "@/features/labour-types/api/labour-type.api";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
-  DetailMetricCard,
   DetailMetricsGrid,
   DetailPagePadding,
   DetailPanelCard,
@@ -29,6 +28,7 @@ export function LabourDetailBody({
 }) {
   const t = useTranslations("Dashboard.labours");
   const tMeta = useTranslations("Dashboard.common.detail");
+  const tActions = useTranslations("Dashboard.common.actions");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
   const patchField = useDetailPatch(
     (body: Parameters<typeof updateLabourType>[1]) => updateLabourType(detail.id, body),
@@ -36,61 +36,78 @@ export function LabourDetailBody({
     onSaved,
   );
 
+  const costRate = parseLabourNumber(detail.default_cost_rate);
+  const markup = parseLabourNumber(detail.default_markup);
+  const sellPrice = parseLabourNumber(detail.default_sell_price);
+
   return (
     <DetailPagePadding>
       <div className={detailPageStackClassName}>
-        <DetailMetricsGrid>
-          <DetailMetricCard label={t("table.costRate")}>
-            {moneyDisplay(parseLabourNumber(detail.default_cost_rate))}
-          </DetailMetricCard>
-          <DetailMetricCard label={t("table.markup")}>
-            {`${parseLabourNumber(detail.default_markup)}%`}
-          </DetailMetricCard>
-          <DetailMetricCard label={t("table.sellPrice")}>
-            {moneyDisplay(parseLabourNumber(detail.default_sell_price))}
-          </DetailMetricCard>
-        </DetailMetricsGrid>
         <DetailPanelCard title={t("detail.sectionDetails")}>
-          <div className="space-y-4">
+          <DetailMetricsGrid>
             <DetailEditableField
               label={t("fields.name")}
               value={detail.name}
+              kind="text"
+              required
+              requiredMessage={t("validation.name")}
+              editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next.trim() })}
             />
             <DetailEditableField
               label={t("fields.description")}
               value={detail.description ?? ""}
-              onSave={(next) => patchField({ description: next })}
+              kind="text"
               multiline
+              editAriaLabel={tActions("edit")}
+              onSave={(next) => patchField({ description: next })}
             />
             <DetailEditableField
               label={t("fields.costRate")}
-              value={String(parseLabourNumber(detail.default_cost_rate))}
+              value={String(costRate)}
+              kind="money"
+              required
+              requiredMessage={t("validation.costRate")}
+              editAriaLabel={tActions("edit")}
               onSave={(next) => {
                 const n = parseOrgMoneyInput(next, getOrgCurrencySettings());
                 if (!Number.isFinite(n) || n < 0) throw new Error("Invalid number");
                 return patchField({ default_cost_rate: n });
               }}
-            />
+            >
+              <span className="tabular-nums">{moneyDisplay(costRate)}</span>
+            </DetailEditableField>
             <DetailEditableField
               label={t("fields.markup")}
-              value={String(parseLabourNumber(detail.default_markup))}
+              value={String(markup)}
+              kind="text"
+              required
+              requiredMessage={t("validation.markup")}
+              editAriaLabel={tActions("edit")}
               onSave={(next) => {
-                const n = Number(String(next).trim());
+                const n = parseLabourNumber(next);
                 if (!Number.isFinite(n) || n < 0) throw new Error("Invalid number");
                 return patchField({ default_markup: n });
               }}
-            />
+            >
+              <span className="tabular-nums">{`${markup}%`}</span>
+            </DetailEditableField>
             <DetailEditableField
               label={t("fields.sellPrice")}
-              value={String(parseLabourNumber(detail.default_sell_price))}
+              value={String(sellPrice)}
+              kind="money"
+              required
+              requiredMessage={t("validation.sellPrice")}
+              editAriaLabel={tActions("edit")}
               onSave={(next) => {
                 const n = parseOrgMoneyInput(next, getOrgCurrencySettings());
                 if (!Number.isFinite(n) || n < 0) throw new Error("Invalid number");
                 return patchField({ default_sell_price: n });
               }}
-            />
-          </div>
+            >
+              <span className="tabular-nums">{moneyDisplay(sellPrice)}</span>
+            </DetailEditableField>
+          </DetailMetricsGrid>
         </DetailPanelCard>
         <DetailSystemMetadataSection
           createdAt={detail.created_at}
