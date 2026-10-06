@@ -1156,6 +1156,7 @@ export function QuotationDraftComposer({
           <ul className="space-y-2">
             {visibleSections.map((section) => {
               const si = draft.sections.findIndex((s) => s.id === section.id);
+              const editingTitle = !readOnly && sectionTitleEditId === section.id;
               return (
                 <li key={section.id}>
                   <div
@@ -1165,14 +1166,62 @@ export function QuotationDraftComposer({
                       "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
                     )}
                   >
-                    <button
-                      type="button"
-                      disabled={saving}
-                      className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900 dark:text-slate-100"
-                      onClick={() => openSectionScope(section.id)}
-                    >
-                      {section.name?.trim() || t("newSectionPlaceholder")}
-                    </button>
+                    {editingTitle && si >= 0 ? (
+                      <DraftAutosizeTitleTextarea
+                        value={section.name}
+                        onValueChange={(v) => updateSectionName(si, v)}
+                        onBlur={() => {
+                          setSectionTitleEditId(null);
+                          const raw = section.name;
+                          const next = sanitizeTitleInput(raw);
+                          if (next !== raw) updateSectionName(si, next);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            (e.target as HTMLTextAreaElement).blur();
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            setSectionTitleEditId(null);
+                          }
+                        }}
+                        disabled={saving}
+                        aria-label={t("newSectionPlaceholder")}
+                        className="min-h-[2.25rem] min-w-0 flex-1 font-semibold"
+                        autoFocus
+                      />
+                    ) : (
+                      <div className="group/draftSecTitle flex min-w-0 flex-1 items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={saving}
+                          className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900 dark:text-slate-100"
+                          onClick={() => openSectionScope(section.id)}
+                        >
+                          {section.name?.trim() || t("newSectionPlaceholder")}
+                        </button>
+                        {!readOnly && si >= 0 ? (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            className={cn(
+                              "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
+                              "opacity-0 group-hover/draftSecTitle:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
+                              "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
+                            )}
+                            aria-label={t("editRowName")}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSectionTitleEditId(section.id);
+                            }}
+                          >
+                            <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
                     <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                       {formatMoneyDisplay(draftSectionTotal(section), loc)}
                     </span>
@@ -1181,12 +1230,6 @@ export function QuotationDraftComposer({
                         <DataTableRowActionsMenu
                           menuAriaLabel={t("rowActions")}
                           items={[
-                            {
-                              id: "open-sec",
-                              label: t("editSection"),
-                              icon: Pencil,
-                              onSelect: () => openSectionScope(section.id),
-                            },
                             {
                               id: "dup-sec",
                               label: t("duplicateSection"),

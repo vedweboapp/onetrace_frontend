@@ -148,7 +148,7 @@ export function JobDetailScreen({ jobId }: Props) {
       wrapSurface={activeTab !== "scheduling"}
       className={
         activeTab === "scheduling"
-          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          ? "dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
       labels={{
@@ -239,7 +239,7 @@ function JobDetailTabPanel({
               activeTab === "dispatch" ||
               activeTab === "returns" ||
               activeTab === "forms"
-              ? "flex min-h-0 flex-1 flex-col"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : entityDetailTabPanelClassName,
           )}
         >

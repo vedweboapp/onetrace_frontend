@@ -410,7 +410,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       }
       className={
         (activeTab === "schedule" && relatedJobs.length > 0) || activeTab === "location"
-          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          ? "dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
       labels={{
@@ -500,6 +500,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
                 loadError={jobsLoadError}
                 jobCategory={jobCategory}
                 onRetry={() => setJobsRefreshNonce((n) => n + 1)}
+                onOpenSchedule={() => handleTabChange("schedule")}
+                onJobUpdated={() => {
+                  setJobsRefreshNonce((n) => n + 1);
+                  void retry();
+                }}
               />
             </div>
           );
@@ -514,7 +519,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               className={
                 relatedJobs.length === 0
                   ? entityDetailTabPanelClassName
-                  : "flex min-h-0 flex-1 flex-col"
+                  : "flex min-h-0 flex-1 flex-col overflow-hidden"
               }
             >
               <QuotationScheduleTab jobs={relatedJobs} />
