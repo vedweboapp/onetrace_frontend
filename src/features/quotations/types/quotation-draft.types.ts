@@ -18,6 +18,11 @@ export type QuotationDraftLine = {
   /** Selected product group when the line was added (service quote manual lines). */
   group_id?: number | null;
   group_name?: string | null;
+  /**
+   * True when the line is a composite kit; false for a plain catalog item
+   * (still stored under `composite_item_id` for API compatibility).
+   */
+  is_composite?: boolean;
   /** How many drawing pins this line represents (not catalog/item stock quantity). */
   pin_count?: number;
   source_pins?: QuotationQuoteSectionSourcePin[];

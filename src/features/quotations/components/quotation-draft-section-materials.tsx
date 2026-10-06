@@ -173,6 +173,7 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
         name: label,
         quantity: qty,
         selling_price: unit,
+        is_composite: false,
         ...group,
         pin_count: 1,
       },
@@ -273,11 +274,11 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
 
       {pins.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
-      ) : null}
-
-      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-        {t("materialsTotal")}: <span className="tabular-nums">{formatMoneyDisplay(materialsTotal, loc)}</span>
-      </p>
+      ) : (
+        <p className="border-t border-slate-100 pt-3 text-sm font-medium text-slate-800 dark:border-slate-800 dark:text-slate-100">
+          {t("materialsTotal")}: <span className="tabular-nums">{formatMoneyDisplay(materialsTotal, loc)}</span>
+        </p>
+      )}
     </div>
   );
 }

@@ -33,7 +33,6 @@ import {
   QuotationDraftCompositeLines,
   type CompositeLineLabels,
 } from "@/features/quotations/components/quotation-draft-composite-lines";
-import { QuotationDraftSectionLabours } from "@/features/quotations/components/quotation-draft-section-labours";
 import {
   buildQuotationSectionScopeHref,
   writeQuotationSectionScopeSession,
@@ -956,6 +955,7 @@ export function QuotationDraftComposer({
       name: label,
       quantity,
       selling_price: unit,
+      is_composite: false,
       ...group,
       pin_count: 1,
     };
@@ -1459,47 +1459,6 @@ export function QuotationDraftComposer({
                 </summary>
 
                 <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-950/25">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                        {t("sectionDescription")}
-                      </label>
-                      <textarea
-                        value={section.description ?? ""}
-                        disabled={saving || readOnly}
-                        rows={3}
-                        className={cn(surfaceInputClassName, "min-h-[5rem] w-full resize-y")}
-                        placeholder={t("sectionDescriptionPlaceholder")}
-                        onChange={(e) => patchSectionFields(si, { description: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                        {t("sectionNotes")}
-                      </label>
-                      <textarea
-                        value={section.notes ?? ""}
-                        disabled={saving || readOnly}
-                        rows={3}
-                        className={cn(surfaceInputClassName, "min-h-[5rem] w-full resize-y")}
-                        placeholder={t("sectionNotesPlaceholder")}
-                        onChange={(e) => patchSectionFields(si, { notes: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("sectionLabourTab")}</p>
-                    <QuotationDraftSectionLabours
-                      labours={section.labours ?? []}
-                      readOnly={readOnly}
-                      saving={saving}
-                      onChange={(labours) => patchSectionFields(si, { labours })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("sectionMaterialsTab")}</p>
                   {!readOnly && allowManualLines ? (
                     <DraftCompositeAddRow
                       idPrefix={`${compositeFormId}-s-${section.id}`}
@@ -1559,7 +1518,6 @@ export function QuotationDraftComposer({
                     }}
                     readOnly={readOnly}
                   />
-                  </div>
 
                   {section.plots.length > 0 ? (
                     <ul className="space-y-2">
