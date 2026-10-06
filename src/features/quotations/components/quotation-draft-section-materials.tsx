@@ -110,6 +110,7 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       removeLine: t("removeLine"),
       rowActions: t("rowActions"),
       unitPrice: t("unitPrice"),
+      lineTotal: t("lineTotal"),
     }),
     [t],
   );
@@ -275,7 +276,7 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       {pins.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
       ) : (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-center justify-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("materialsTotal")}</span>
           <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
             {formatMoneyDisplay(materialsTotal, loc)}

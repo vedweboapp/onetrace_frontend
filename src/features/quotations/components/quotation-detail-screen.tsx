@@ -20,6 +20,7 @@ import {
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import { QuotationJobsTab } from "@/features/quotations/components/quotation-jobs-tab";
+import { QuotationJobsTableTab } from "@/features/quotations/components/quotation-jobs-table-tab";
 import { QuotationLocationsTab } from "@/features/quotations/components/quotation-locations-tab";
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
@@ -130,14 +131,18 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
       { id: "vendors", label: t("formTabs.vendorQuotations") },
-      { id: "jobs", label: t("relatedTabs.jobs") },
-      { id: "jobsheets", label: t("relatedTabs.jobsheets") },
-      { id: "schedule", label: t("relatedTabs.schedule") },
     ];
     if (isProjectQuote) {
       tabs.push({ id: "location", label: t("relatedTabs.location") });
+      tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
+      tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheetsPlural") });
+      tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
       tabs.push({ id: "docs", label: t("relatedTabs.docs") });
       tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
+    } else {
+      tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
+      tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheets") });
+      tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
     }
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
@@ -494,18 +499,28 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               aria-labelledby="quotation-detail-tab-trigger-jobs"
               className={entityDetailTabPanelClassName}
             >
-              <QuotationJobsTab
-                jobs={relatedJobs}
-                loading={jobsLoading}
-                loadError={jobsLoadError}
-                jobCategory={jobCategory}
-                onRetry={() => setJobsRefreshNonce((n) => n + 1)}
-                onOpenSchedule={() => handleTabChange("schedule")}
-                onJobUpdated={() => {
-                  setJobsRefreshNonce((n) => n + 1);
-                  void retry();
-                }}
-              />
+              {isProjectQuote ? (
+                <QuotationJobsTableTab
+                  jobs={relatedJobs}
+                  loading={jobsLoading}
+                  loadError={jobsLoadError}
+                  jobCategory={jobCategory}
+                  onRetry={() => setJobsRefreshNonce((n) => n + 1)}
+                />
+              ) : (
+                <QuotationJobsTab
+                  jobs={relatedJobs}
+                  loading={jobsLoading}
+                  loadError={jobsLoadError}
+                  jobCategory={jobCategory}
+                  onRetry={() => setJobsRefreshNonce((n) => n + 1)}
+                  onOpenSchedule={() => handleTabChange("schedule")}
+                  onJobUpdated={() => {
+                    setJobsRefreshNonce((n) => n + 1);
+                    void retry();
+                  }}
+                />
+              )}
             </div>
           );
         }
@@ -543,11 +558,17 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         if (activeTab === "jobsheets" || activeTab === "docs" || activeTab === "approvals") {
           const wip =
             activeTab === "jobsheets"
-              ? {
-                  iconName: "forms" as const,
-                  title: t("relatedTabs.wipJobsheetsTitle"),
-                  description: t("relatedTabs.wipJobsheetsDescription"),
-                }
+              ? isProjectQuote
+                ? {
+                    iconName: "forms" as const,
+                    title: t("relatedTabs.wipJobsheetsPluralTitle"),
+                    description: t("relatedTabs.wipJobsheetsPluralDescription"),
+                  }
+                : {
+                    iconName: "forms" as const,
+                    title: t("relatedTabs.wipJobsheetsTitle"),
+                    description: t("relatedTabs.wipJobsheetsDescription"),
+                  }
               : activeTab === "docs"
                 ? {
                     iconName: "quotations" as const,

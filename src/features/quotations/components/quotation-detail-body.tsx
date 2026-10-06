@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { Pencil } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -14,7 +13,6 @@ import {
 } from "@/features/quotations/constants/quotation-category";
 import type {
   QuotationContactNested,
-  QuotationCreatePayload,
   QuotationDetail,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
@@ -38,9 +36,7 @@ import {
   quotationSiteSnapshotToAddressMapPoint,
   siteToAddressMapPoint,
 } from "@/features/quotations/utils/quotation-site-map.util";
-import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
-import { consumeQuotationSectionScopeDraft } from "@/features/quotations/utils/quotation-section-scope.util";
 import {
   QUOTATION_STATUS_OPTIONS,
   normalizeQuotationStatusValue,
@@ -64,7 +60,7 @@ import {
 } from "@/shared/components/layout/detail-metric-card";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
 import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { AppButton, CustomizableAppTabs } from "@/shared/ui";
+import { CustomizableAppTabs } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
 import {
@@ -336,25 +332,8 @@ export function QuotationDetailBody({
   );
 
   const [scopeDraft, setScopeDraft] = React.useState<QuotationDraft | null>(null);
-  const [scopeDirty, setScopeDirty] = React.useState(false);
-  const [scopeSaving, setScopeSaving] = React.useState(false);
-  const [scopeEditing, setScopeEditing] = React.useState(false);
 
   React.useEffect(() => {
-    setScopeEditing(false);
-    setScopeDirty(false);
-  }, [detail.id]);
-
-  React.useEffect(() => {
-    const next = consumeQuotationSectionScopeDraft();
-    if (!next) return;
-    setScopeDraft(next);
-    setScopeDirty(true);
-    if (isServiceQuotation) setScopeEditing(true);
-  }, [isServiceQuotation]);
-
-  React.useEffect(() => {
-    if (scopeDirty) return;
     if (quoteSectionsSorted.length > 0) {
       setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
     } else if (isServiceQuotation) {
@@ -362,51 +341,12 @@ export function QuotationDetailBody({
     } else {
       setScopeDraft(null);
     }
-  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation, scopeDirty]);
+  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation]);
 
-  const handleScopeDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
-    (action) => {
-      setScopeDraft(action);
-      setScopeDirty(true);
-    },
+  const noopDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
+    () => undefined,
     [],
   );
-
-  function resetScopeDraft() {
-    if (quoteSectionsSorted.length > 0) {
-      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
-    } else if (isServiceQuotation) {
-      setScopeDraft({ sections: [] });
-    } else {
-      setScopeDraft(null);
-    }
-    setScopeDirty(false);
-  }
-
-  function cancelScopeEdit() {
-    resetScopeDraft();
-    setScopeEditing(false);
-  }
-
-  async function saveScopeDraft() {
-    if (!scopeDraft) return;
-    setScopeSaving(true);
-    try {
-      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft, {
-        defaultSectionType: isServiceQuotation ? "primary" : "project",
-      });
-      await patchField({
-        quote_sections: merged.quote_sections,
-        grand_total: merged.grand_total,
-        levels: merged.levels,
-        select_all_levels: false,
-      });
-      setScopeDirty(false);
-      setScopeEditing(false);
-    } finally {
-      setScopeSaving(false);
-    }
-  }
 
   const additionalContactEntries = React.useMemo(
     () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
@@ -702,55 +642,14 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-pricing"
         className={cn(detailTab !== "pricing" && "hidden")}
       >
-        <DetailPanelCard
-          title={t("levels.sectionsTitle")}
-          headerRight={
-            isServiceQuotation ? (
-              scopeEditing ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={scopeSaving}
-                    onClick={cancelScopeEdit}
-                  >
-                    {tActions("cancel")}
-                  </AppButton>
-                  <AppButton
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    loading={scopeSaving}
-                    disabled={!scopeDirty || scopeSaving}
-                    onClick={() => void saveScopeDraft()}
-                  >
-                    {t("page.saveEdit")}
-                  </AppButton>
-                </div>
-              ) : (
-                <AppButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={tActions("edit")}
-                  title={tActions("edit")}
-                  className="h-8 w-8 px-0"
-                  onClick={() => setScopeEditing(true)}
-                >
-                  <Pencil className="size-4" strokeWidth={1.75} />
-                </AppButton>
-              )
-            ) : undefined
-          }
-        >
+        <DetailPanelCard title={t("levels.sectionsTitle")}>
           {scopeDraft ? (
             <QuotationDraftComposer
               draft={scopeDraft}
-              onDraftChange={handleScopeDraftChange}
-              saving={scopeSaving}
+              onDraftChange={noopDraftChange}
+              saving={false}
               canShow
-              readOnly={!isServiceQuotation || !scopeEditing}
+              readOnly
               allowManualLines
               sectionKindTabs={isServiceQuotation}
             />

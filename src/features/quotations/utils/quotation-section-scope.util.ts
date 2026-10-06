@@ -42,11 +42,27 @@ export function clearQuotationSectionScopePendingApply(): void {
   writeQuotationSectionScopeSession({ ...session, pendingApply: false });
 }
 
+/**
+ * Survives React Strict Mode remounts in the same navigation tick so a pending
+ * section-scope draft is not lost after the first consume.
+ */
+let takenSectionScopeDraft: QuotationDraft | null = null;
+let hasTakenSectionScopeDraft = false;
+
 export function consumeQuotationSectionScopeDraft(): QuotationDraft | null {
+  if (hasTakenSectionScopeDraft) return takenSectionScopeDraft;
   const session = readQuotationSectionScopeSession();
   if (!session?.pendingApply) return null;
   writeQuotationSectionScopeSession({ ...session, pendingApply: false });
+  hasTakenSectionScopeDraft = true;
+  takenSectionScopeDraft = session.draft;
   return session.draft;
+}
+
+/** Call after the parent has applied the returned draft into React state. */
+export function clearTakenQuotationSectionScopeDraft(): void {
+  hasTakenSectionScopeDraft = false;
+  takenSectionScopeDraft = null;
 }
 
 type SectionScopeHrefParams = {

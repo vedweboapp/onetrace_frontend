@@ -18,6 +18,7 @@ export type CompositeLineLabels = {
   removeLine: string;
   rowActions: string;
   unitPrice: string;
+  lineTotal: string;
 };
 
 type Props = {
@@ -121,16 +122,23 @@ export function QuotationDraftCompositeLines({
               </div>
               <div className="ml-auto flex items-center justify-end gap-3">
                 {row.unitPrice > 0 ? (
-                  <span
-                    className="min-w-[5rem] shrink-0 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400"
-                    title={labels.unitPrice}
-                  >
-                    {formatMoneyDisplay(row.unitPrice, locale)}
-                  </span>
+                  <div className="min-w-[5.5rem] shrink-0 text-right">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      {labels.unitPrice}
+                    </div>
+                    <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                      {formatMoneyDisplay(row.unitPrice, locale)}
+                    </span>
+                  </div>
                 ) : null}
-                <span className="min-w-[5.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-[color:var(--dash-accent)] sm:min-w-[6rem]">
-                  {formatMoneyDisplay(row.lineTotal, locale)}
-                </span>
+                <div className="min-w-[5.5rem] shrink-0 text-right sm:min-w-[6rem]">
+                  <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    {labels.lineTotal}
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-[color:var(--dash-accent)]">
+                    {formatMoneyDisplay(row.lineTotal, locale)}
+                  </span>
+                </div>
                 {menuItems.length > 0 ? (
                   <div data-draft-row-actions>
                     <DataTableRowActionsMenu

@@ -222,7 +222,7 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
       )}
 
       {labours.length > 0 ? (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-center justify-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("labourTotal")}</span>
           <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
             {formatMoneyDisplay(labourTotal, loc)}

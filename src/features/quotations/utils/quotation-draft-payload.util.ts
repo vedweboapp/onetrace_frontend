@@ -104,6 +104,8 @@ export function mergeQuotationDraftIntoPayload(
     }
     const section_type = resolveQuotationSectionType(section, fallbackType);
     const isProjectSection = section_type === "project";
+    const description = section.description?.trim() || null;
+    const notes = section.notes?.trim() || null;
 
     const baseSection: QuotationQuoteSection = {
       section_order: si,
@@ -112,8 +114,8 @@ export function mergeQuotationDraftIntoPayload(
       ...(isProjectSection
         ? {}
         : {
-            description: section.description?.trim() || null,
-            notes: section.notes?.trim() || null,
+            description,
+            notes,
           }),
       section_type,
       kind: section_type,
