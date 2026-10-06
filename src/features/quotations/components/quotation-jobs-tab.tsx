@@ -2,19 +2,16 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { fetchJob } from "@/features/jobs/api/job.api";
+import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import type { Job } from "@/features/jobs/types/job.types";
 import {
-  getJobAssignedWorkerRows,
-  getJobStatusId,
-  getJobStatusRow,
-} from "@/features/jobs/utils/job-nested-fields.util";
-import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
-import { entityCol, EntityDataTable, EntityDetailErrorState, EntityDetailTabLoadingState, EntityLabelOverflowGroup } from "@/shared/components/entity";
-import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
-import { routes } from "@/shared/config/routes";
+  EntityDetailErrorState,
+  EntityDetailTabLoadingState,
+} from "@/shared/components/entity";
+import { DetailTabListShell } from "@/shared/components/layout/detail-tab-list-shell";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { ListPageEmptyStates } from "@/shared/ui";
-import { buildDetailHrefWithListReturn, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 
 type Props = {
   jobs: Job[];
@@ -22,70 +19,55 @@ type Props = {
   loadError: string | null;
   jobCategory: string;
   onRetry: () => void;
+  onOpenSchedule?: () => void;
+  onJobUpdated?: () => void;
 };
 
-export function QuotationJobsTab({ jobs, loading, loadError, jobCategory, onRetry }: Props) {
+/** Single linked job for a quotation — shows job detail (not a jobs table). */
+export function QuotationJobsTab({
+  jobs,
+  loading,
+  loadError,
+  onRetry,
+  onOpenSchedule,
+  onJobUpdated,
+}: Props) {
   const t = useTranslations("Dashboard.quotations.relatedTabs");
-  const tJobs = useTranslations("Dashboard.jobs");
-  const router = useRouter();
-  const pathname = usePathname();
+  const dateFmt = useDashboardDateFormat();
+  const linked = jobs[0] ?? null;
+  const [detail, setDetail] = React.useState<Job | null>(null);
+  const [detailLoading, setDetailLoading] = React.useState(false);
+  const [detailError, setDetailError] = React.useState<string | null>(null);
 
-  const columns = React.useMemo(() => {
-    const c = entityCol<Job>();
-    return [
-      c.custom("title", tJobs("table.title"), (row) => {
-        const serial = row.job_serial_number?.trim() || null;
-        return (
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate font-semibold">{row.title?.trim() || "—"}</span>
-            {serial ? (
-              <span className="truncate text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
-                {serial}
-              </span>
-            ) : null}
-          </span>
-        );
-      }),
-      c.custom("worker", tJobs("table.assignedWorker"), (row) => {
-        const workers = getJobAssignedWorkerRows(row);
-        if (workers.length === 0) return "—";
-        return (
-          <EntityLabelOverflowGroup
-            items={workers.map((worker) => ({
-              id: worker.id,
-              label: worker.label,
-              href: `${routes.dashboard.settingsUsers}/${worker.id}`,
-            }))}
-          />
-        );
-      }),
-      c.custom("status", tJobs("table.jobStatus"), (row) => {
-        const expanded = getJobStatusRow(row);
-        if (expanded) return <WorkflowColourStatusChip row={expanded} />;
-        const id = getJobStatusId(row);
-        if (row.job_pin_status?.trim()) {
-          return <span className="text-sm capitalize text-slate-600 dark:text-slate-400">{row.job_pin_status}</span>;
-        }
-        return id != null ? `#${id}` : "—";
-      }),
-    ];
-  }, [tJobs]);
+  const reloadDetail = React.useCallback(async () => {
+    if (!linked) {
+      setDetail(null);
+      setDetailError(null);
+      setDetailLoading(false);
+      return;
+    }
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const row = await fetchJob(linked.id, { silent: true });
+      setDetail(row);
+    } catch {
+      setDetail(linked);
+      setDetailError(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [linked]);
 
-  const listBack = React.useMemo(
-    () => mergeUrlQueryParam(pathname, "tab", "jobs"),
-    [pathname],
-  );
-
-  function openJob(id: number) {
-    const detailPath = mergeUrlQueryParam(`${routes.dashboard.jobs}/${id}`, "job_category", jobCategory);
-    router.push(buildDetailHrefWithListReturn(detailPath, listBack, id));
-  }
+  React.useEffect(() => {
+    void reloadDetail();
+  }, [reloadDetail]);
 
   return (
     <DetailTabListShell
-      loading={loading}
-      loadError={loadError}
-      isEmpty={jobs.length === 0}
+      loading={loading || (Boolean(linked) && detailLoading && !detail)}
+      loadError={loadError ?? detailError}
+      isEmpty={!loading && !loadError && !linked}
       loadingFallback={<EntityDetailTabLoadingState />}
       emptyFallback={
         <ListPageEmptyStates
@@ -102,20 +84,27 @@ export function QuotationJobsTab({ jobs, loading, loadError, jobCategory, onRetr
       errorFallback={
         <EntityDetailErrorState
           fill
-          message={loadError ?? t("jobsLoadError")}
+          message={loadError ?? detailError ?? t("jobsLoadError")}
           retryLabel={t("retry")}
-          onRetry={onRetry}
+          onRetry={() => {
+            onRetry();
+            void reloadDetail();
+          }}
         />
       }
     >
-      <DetailTabTableBody>
-        <EntityDataTable
-          columns={columns}
-          rows={jobs}
-          onRowClick={(row) => openJob(row.id)}
-          fillHeight={false}
+      {detail ? (
+        <JobDetailBody
+          detail={detail}
+          dateFmt={dateFmt}
+          onOpenScheduling={onOpenSchedule}
+          onSaved={() => {
+            onJobUpdated?.();
+            void reloadDetail();
+          }}
+          onChecklistsUpdated={() => void reloadDetail()}
         />
-      </DetailTabTableBody>
+      ) : null}
     </DetailTabListShell>
   );
 }

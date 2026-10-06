@@ -275,9 +275,12 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       {pins.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
       ) : (
-        <p className="border-t border-slate-100 pt-3 text-sm font-medium text-slate-800 dark:border-slate-800 dark:text-slate-100">
-          {t("materialsTotal")}: <span className="tabular-nums">{formatMoneyDisplay(materialsTotal, loc)}</span>
-        </p>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("materialsTotal")}</span>
+          <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+            {formatMoneyDisplay(materialsTotal, loc)}
+          </span>
+        </div>
       )}
     </div>
   );

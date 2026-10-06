@@ -157,8 +157,8 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                 <textarea
                   value={section.description ?? ""}
                   disabled={readOnly}
-                  rows={5}
-                  className={cn(surfaceTextareaClassName, "min-h-[8rem] w-full")}
+                  rows={8}
+                  className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
                   placeholder={t("sectionDescriptionPlaceholder")}
                   onChange={(e) => patchSection({ description: e.target.value })}
                 />
@@ -170,8 +170,8 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                 <textarea
                   value={section.notes ?? ""}
                   disabled={readOnly}
-                  rows={5}
-                  className={cn(surfaceTextareaClassName, "min-h-[8rem] w-full")}
+                  rows={8}
+                  className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
                   placeholder={t("sectionNotesPlaceholder")}
                   onChange={(e) => patchSection({ notes: e.target.value })}
                 />

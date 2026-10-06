@@ -1394,11 +1394,12 @@ export function SchedulingPanel({
   );
 
   React.useEffect(() => {
-    // Keep chrome slot clear — interactive Day/Week/Month lives in-panel so clicks
-    // are not lost when setSecondaryRow remounts the toolbar every render.
+    // Standalone scheduling page only — never clear detail chrome (quote/job tabs)
+    // when this panel is embedded with syncUrl={false}.
+    if (!syncUrl) return;
     setSecondaryRow(null);
     return () => setSecondaryRow(null);
-  }, [setSecondaryRow]);
+  }, [setSecondaryRow, syncUrl]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">

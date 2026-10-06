@@ -114,109 +114,120 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("labourEmpty")}</p>
       ) : (
         <ul className="space-y-2">
-          {labours.map((row, index) => (
-            <li
-              key={row.id}
-              className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950"
-            >
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {row.labour_name?.trim() || (row.labour_type != null ? `#${row.labour_type}` : "—")}
-                </p>
-                {!readOnly ? (
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
-                    aria-label={t("labourRemove")}
-                    disabled={saving}
-                    onClick={() => removeLabour(index)}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
-                ) : null}
-              </div>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourCostRate")}
-                  </label>
-                  <MoneyInput
-                    value={String(row.cost_rate)}
-                    disabled={saving || readOnly}
-                    className="w-full"
-                    onChange={(e) => {
-                      const cost = Number.parseFloat(e.target.value) || 0;
-                      patchLabour(index, {
-                        cost_rate: cost,
-                        selling_price: labourLineSellPrice(cost, row.markup_percentage),
-                      });
-                    }}
-                  />
+          {labours.map((row, index) => {
+            const label =
+              row.labour_name?.trim() ||
+              options.find((o) => o.id === row.labour_type)?.name?.trim() ||
+              (row.labour_type != null ? `#${row.labour_type}` : "—");
+            return (
+              <li
+                key={row.id}
+                className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {label}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                      {formatMoneyDisplay(draftLabourTotal(row), loc)}
+                    </span>
+                    {!readOnly ? (
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
+                        aria-label={t("labourRemove")}
+                        disabled={saving}
+                        onClick={() => removeLabour(index)}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourSellPrice")}
-                  </label>
-                  <MoneyInput
-                    value={String(row.selling_price)}
-                    disabled={saving || readOnly}
-                    className="w-full"
-                    onChange={(e) => {
-                      const sell = Number.parseFloat(e.target.value) || 0;
-                      patchLabour(index, { selling_price: sell });
-                    }}
-                  />
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {t("labourCostRate")}
+                    </label>
+                    <MoneyInput
+                      value={String(row.cost_rate)}
+                      disabled={saving || readOnly}
+                      className="w-full"
+                      onChange={(e) => {
+                        const cost = Number.parseFloat(e.target.value) || 0;
+                        patchLabour(index, {
+                          cost_rate: cost,
+                          selling_price: labourLineSellPrice(cost, row.markup_percentage),
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {t("labourSellPrice")}
+                    </label>
+                    <MoneyInput
+                      value={String(row.selling_price)}
+                      disabled={saving || readOnly}
+                      className="w-full"
+                      onChange={(e) => {
+                        const sell = Number.parseFloat(e.target.value) || 0;
+                        patchLabour(index, { selling_price: sell });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {t("labourMarkup")}
+                    </label>
+                    <NumericInput
+                      value={String(row.markup_percentage)}
+                      disabled={saving || readOnly}
+                      maxDecimals={2}
+                      trimTrailingZeros
+                      variant="plain"
+                      className={cn(surfaceInputClassName, "w-full")}
+                      onChange={(v) => {
+                        const markup = Number.parseFloat(v) || 0;
+                        patchLabour(index, {
+                          markup_percentage: markup,
+                          selling_price: labourLineSellPrice(row.cost_rate, markup),
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {t("labourTimeHours")}
+                    </label>
+                    <NumericInput
+                      value={String(row.time_hours)}
+                      disabled={saving || readOnly}
+                      maxDecimals={2}
+                      trimTrailingZeros
+                      variant="plain"
+                      className={cn(surfaceInputClassName, "w-full")}
+                      onChange={(v) => {
+                        const n = Number.parseFloat(v);
+                        patchLabour(index, { time_hours: Number.isFinite(n) && n >= 0 ? n : 0 });
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourMarkup")}
-                  </label>
-                  <NumericInput
-                    value={String(row.markup_percentage)}
-                    disabled={saving || readOnly}
-                    maxDecimals={2}
-                    trimTrailingZeros
-                    variant="plain"
-                    className={cn(surfaceInputClassName, "w-full")}
-                    onChange={(v) => {
-                      const markup = Number.parseFloat(v) || 0;
-                      patchLabour(index, {
-                        markup_percentage: markup,
-                        selling_price: labourLineSellPrice(row.cost_rate, markup),
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourTimeHours")}
-                  </label>
-                  <NumericInput
-                    value={String(row.time_hours)}
-                    disabled={saving || readOnly}
-                    maxDecimals={2}
-                    trimTrailingZeros
-                    variant="plain"
-                    className={cn(surfaceInputClassName, "w-full")}
-                    onChange={(v) => {
-                      const n = Number.parseFloat(v);
-                      patchLabour(index, { time_hours: Number.isFinite(n) && n >= 0 ? n : 0 });
-                    }}
-                  />
-                </div>
-              </div>
-              <p className="mt-2 text-right text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300">
-                {t("labourLineTotal")}: {formatMoneyDisplay(draftLabourTotal(row), loc)}
-              </p>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
       {labours.length > 0 ? (
-        <p className="border-t border-slate-100 pt-3 text-sm font-medium text-slate-800 dark:border-slate-800 dark:text-slate-100">
-          {t("labourTotal")}: <span className="tabular-nums">{formatMoneyDisplay(labourTotal, loc)}</span>
-        </p>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("labourTotal")}</span>
+          <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+            {formatMoneyDisplay(labourTotal, loc)}
+          </span>
+        </div>
       ) : null}
     </div>
   );
