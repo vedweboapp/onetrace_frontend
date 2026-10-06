@@ -150,7 +150,7 @@ function DraftAutosizeTitleTextarea({
       rows={1}
       className={cn(
         inlineEditClassName,
-        "min-w-0 flex-1 cursor-text resize-none overflow-hidden py-1 leading-snug",
+        "min-w-0 w-fit max-w-full cursor-text resize-none overflow-hidden py-1 leading-snug",
         className,
       )}
       onChange={(e) => onValueChange(e.target.value)}
@@ -1185,14 +1185,37 @@ export function QuotationDraftComposer({
               return (
                 <li key={section.id}>
                   <div
+                    role={editingTitle ? undefined : "button"}
+                    tabIndex={editingTitle || saving ? undefined : 0}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
+                      "group flex w-full items-center gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
                       "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
                       "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
+                      !editingTitle && "cursor-pointer",
                     )}
+                    onClick={
+                      editingTitle || saving
+                        ? undefined
+                        : (e) => {
+                            const el = e.target as HTMLElement;
+                            if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
+                            openSectionScope(section.id);
+                          }
+                    }
+                    onKeyDown={
+                      editingTitle || saving
+                        ? undefined
+                        : (e) => {
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            const el = e.target as HTMLElement;
+                            if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
+                            e.preventDefault();
+                            openSectionScope(section.id);
+                          }
+                    }
                   >
                     {editingTitle && si >= 0 ? (
-                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         <DraftAutosizeTitleTextarea
                           value={section.name}
                           onValueChange={(v) => updateSectionName(si, v)}
@@ -1208,7 +1231,7 @@ export function QuotationDraftComposer({
                           }}
                           disabled={saving}
                           aria-label={t("newSectionPlaceholder")}
-                          className="min-h-[2.25rem] min-w-0 flex-1 font-semibold"
+                          className="min-h-[2.25rem] min-w-[6rem] font-semibold"
                           autoFocus
                         />
                         <div className="flex shrink-0 items-center gap-0.5">
@@ -1243,22 +1266,18 @@ export function QuotationDraftComposer({
                         </div>
                       </div>
                     ) : (
-                      <div className="group/draftSecTitle flex min-w-0 flex-1 items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          className="max-w-full truncate text-left text-sm font-semibold text-slate-900 dark:text-slate-100"
-                          onClick={() => openSectionScope(section.id)}
-                        >
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <span className="max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {section.name?.trim() || t("newSectionPlaceholder")}
-                        </button>
+                        </span>
                         {!readOnly && si >= 0 ? (
                           <button
                             type="button"
                             disabled={saving}
+                            data-draft-row-actions
                             className={cn(
                               "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
-                              "opacity-0 group-hover/draftSecTitle:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
+                              "opacity-0 group-hover:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
                               "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
                             )}
                             aria-label={t("editRowName")}
@@ -1273,11 +1292,11 @@ export function QuotationDraftComposer({
                         ) : null}
                       </div>
                     )}
-                    <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                    <span className="ml-auto shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                       {formatMoneyDisplay(draftSectionTotal(section), loc)}
                     </span>
                     {!readOnly && si >= 0 ? (
-                      <div data-draft-row-actions className="shrink-0">
+                      <div data-draft-row-actions className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <DataTableRowActionsMenu
                           menuAriaLabel={t("rowActions")}
                           items={[
@@ -1453,7 +1472,7 @@ export function QuotationDraftComposer({
                         </div>
                       </>
                     ) : openSectionIds.has(section.id) && sectionTitleEditId === section.id ? (
-                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         <DraftAutosizeTitleTextarea
                           value={section.name}
                           onValueChange={(v) => updateSectionName(si, v)}
@@ -1469,7 +1488,7 @@ export function QuotationDraftComposer({
                           }}
                           disabled={saving}
                           aria-label={t("newSectionPlaceholder")}
-                          className="min-h-[2.25rem] font-semibold"
+                          className="min-h-[2.25rem] min-w-[6rem] font-semibold"
                           autoFocus
                         />
                         <div className="flex shrink-0 items-center gap-0.5">
@@ -1935,7 +1954,7 @@ function PlotBlock({
                   </div>
                 </>
               ) : isOpen && plotTitleEdit ? (
-                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <DraftAutosizeTitleTextarea
                     value={plot.name}
                     onValueChange={onPlotName}
@@ -1951,7 +1970,7 @@ function PlotBlock({
                     }}
                     disabled={saving}
                     aria-label={t("newPlotPlaceholder")}
-                    className="min-h-[2rem] font-medium"
+                    className="min-h-[2rem] min-w-[6rem] font-medium"
                     autoFocus
                   />
                   <div className="flex shrink-0 items-center gap-0.5">
