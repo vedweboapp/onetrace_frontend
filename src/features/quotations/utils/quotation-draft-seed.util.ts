@@ -88,17 +88,45 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
     }));
 }
 
+function readSectionText(sec: QuotationQuoteSection, keys: string[]): string {
+  const row = sec as QuotationQuoteSection & Record<string, unknown>;
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string") return value;
+  }
+  return "";
+}
+
 function mapQuoteApiLaboursToDraft(labours: QuotationQuoteSectionLabour[] | undefined): QuotationDraftLabour[] {
   if (!Array.isArray(labours) || labours.length === 0) return [];
-  return labours.map((row) => ({
-    id: newQuotationDraftId("lab"),
-    labour_type: typeof row.labour_type === "number" && row.labour_type > 0 ? row.labour_type : null,
-    labour_name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
-    time_hours: Number.isFinite(row.time_hours) ? row.time_hours : 1,
-    cost_rate: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
-    markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
-    selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
-  }));
+  return labours.map((row) => {
+    const nestedType = (row as QuotationQuoteSectionLabour & { labour_type?: unknown }).labour_type;
+    const typeId =
+      typeof nestedType === "number" && nestedType > 0
+        ? nestedType
+        : nestedType && typeof nestedType === "object" && "id" in nestedType
+          ? Number((nestedType as { id: unknown }).id)
+          : typeof row.labour_type === "number" && row.labour_type > 0
+            ? row.labour_type
+            : null;
+    const nestedName =
+      nestedType && typeof nestedType === "object" && "name" in nestedType
+        ? String((nestedType as { name?: unknown }).name ?? "").trim()
+        : "";
+    const name =
+      (typeof row.name === "string" && row.name.trim()) ||
+      nestedName ||
+      null;
+    return {
+      id: newQuotationDraftId("lab"),
+      labour_type: Number.isFinite(typeId) && (typeId as number) > 0 ? (typeId as number) : null,
+      labour_name: name,
+      time_hours: Number.isFinite(row.time_hours) ? row.time_hours : 1,
+      cost_rate: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
+      markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
+      selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
+    };
+  });
 }
 
 function isDirectMaterialPlot(p: QuotationQuoteSectionPlot): boolean {
@@ -142,8 +170,8 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       id: newQuotationDraftId("sec"),
       level_id: typeof sec.level_id === "number" && sec.level_id > 0 ? sec.level_id : null,
       name: typeof sec.name === "string" && sec.name.trim() ? sec.name.trim() : "Section",
-      description: typeof sec.description === "string" ? sec.description : "",
-      notes: typeof sec.notes === "string" ? sec.notes : "",
+      description: readSectionText(sec, ["description", "section_description", "desc"]),
+      notes: readSectionText(sec, ["notes", "section_notes", "note", "internal_notes"]),
       drawing_file: typeof sec.drawing_file === "string" ? sec.drawing_file : null,
       drawing_file_type: typeof sec.drawing_file_type === "string" ? sec.drawing_file_type : null,
       drawing_file_size: typeof sec.drawing_file_size === "number" ? sec.drawing_file_size : null,
