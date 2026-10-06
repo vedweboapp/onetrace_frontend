@@ -4,8 +4,6 @@ import { getStripe } from "@/shared/utils/stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const runtime = "nodejs";
-
 /**
  * POST /api/stripe/webhook
  *
@@ -39,7 +37,8 @@ export async function POST(request: Request) {
   try {
     // Raw body MUST be read before any JSON parsing — required for HMAC verification
     const rawBody = await request.text();
-    event = StripeHandler.webhooks.constructEvent(rawBody, signature, secret);
+    const stripe = getStripe();
+    event = stripe.webhooks.constructEvent(rawBody, signature, secret);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Webhook signature verification failed.";

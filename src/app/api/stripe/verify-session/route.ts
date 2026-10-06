@@ -4,8 +4,6 @@ import { getStripe } from "@/shared/utils/stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const runtime = "nodejs";
-
 /**
  * GET /api/stripe/verify-session?session_id=<stripeSessionId>
  *
@@ -26,7 +24,8 @@ export async function GET(request: Request) {
     }
 
     // Retrieve the full session from Stripe (server-side only)
-    const session = await StripeHandler.checkout.sessions.retrieve(sessionId);
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     // Only report paid when Stripe confirms payment_status === "paid"
     const paid = session.payment_status === "paid";
