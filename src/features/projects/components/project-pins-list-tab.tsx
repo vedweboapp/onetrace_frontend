@@ -68,6 +68,14 @@ const PIN_TABLE_ROW_CLASS = cn(
 const SELECTION_CHECKBOX_CLASS_NAME =
   "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)";
 
+const PinsProjectIdContext = React.createContext<string | undefined>(undefined);
+
+function usePinsProjectId(): string | undefined {
+  const fromContext = React.useContext(PinsProjectIdContext);
+  const { id: routeId } = useParams<{ id: string }>();
+  return fromContext || routeId;
+}
+
 const getSelectionState = (
   ids: number[],
   selectedIds: Set<number>,
@@ -396,7 +404,7 @@ function ProjectPinRow({
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
-  const { id: projectId } = useParams<{ id: string }>();
+  const projectId = usePinsProjectId();
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation
@@ -742,8 +750,11 @@ function PlotPinsBlock({
 }
 const ProjectPinsListTab = ({
   sites,
+  projectId: projectIdProp,
 }: {
   sites?: Array<number | ProjectSiteRef> | null;
+  /** When opened from a quotation (or other non-project route), pass the project id. */
+  projectId?: number;
 }) => {
   const siteOptions = useMemo(() => {
     if (!sites || sites.length === 0)
@@ -760,7 +771,8 @@ const ProjectPinsListTab = ({
       .filter((option) => option.value);
   }, [sites]);
 
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = projectIdProp != null && Number.isFinite(projectIdProp) ? String(projectIdProp) : routeId;
 
   const [collapsedLevelIds, setCollapsedLevelIds] = useState<Set<number>>(
     () => new Set(),
@@ -1311,6 +1323,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
+    <PinsProjectIdContext.Provider value={id}>
     <div className="flex h-[calc(100dvh-12rem)] min-h-[22rem] w-full min-w-0 flex-col overflow-hidden">
       {dialogVisible && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm sm:py-10">
@@ -1908,6 +1921,7 @@ const ProjectPinsListTab = ({
         />
       )}
     </div>
+    </PinsProjectIdContext.Provider>
   );
 };
 

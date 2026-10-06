@@ -7,9 +7,11 @@ import {
   buildKioskCheckoutFormData,
   dataUrlToBlob,
 } from "@/features/kiosk/utils/kiosk-submission.builder";
+import { parseCheckoutOrderSummary, type KioskOrderCompleteInfo } from "@/features/kiosk/utils/kiosk-order-summary.util";
+import { KioskOrderCompleteCard } from "@/features/kiosk/components/kiosk-order-complete-card";
 import type { KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import type { CheckoutItem } from "@/features/kiosk/types/kiosk-submission.types";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 type PageState = "verifying" | "submitting" | "success" | "error";
 
@@ -18,7 +20,8 @@ interface PendingCheckoutData {
   billingDetails: KioskBillingDetails;
   snapshotImage: string;
   organizationId: number;
-  configAnswers: Record<string, unknown>;
+  configAnswers?: Record<string, unknown>;
+  answers?: Record<string, unknown>;
   items?: CheckoutItem[];
   configId?: string | number;
   configName?: string;
@@ -28,22 +31,6 @@ interface PendingCheckoutData {
     vat: number;
     grandTotal: number;
   };
-}
-
-export interface CheckoutOrderSummary {
-  orderNumber?: string;
-  paymentIntentId?: string;
-  totalAmount?: string | number;
-}
-
-function formatCurrency(amount?: string | number | null): string | null {
-  if (amount == null || amount === "") return null;
-  const num = typeof amount === "number" ? amount : parseFloat(String(amount));
-  if (isNaN(num)) return String(amount);
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(num);
 }
 
 /**
@@ -68,7 +55,7 @@ export default function PaymentSuccessPage() {
   const [state, setState] = useState<PageState>("verifying");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string | null>(null);
-  const [orderDetails, setOrderDetails] = useState<CheckoutOrderSummary | null>(null);
+  const [orderDetails, setOrderDetails] = useState<KioskOrderCompleteInfo | null>(null);
 
   // Guard against React Strict Mode double-invocation
   const hasRun = useRef(false);
@@ -132,7 +119,7 @@ export default function PaymentSuccessPage() {
       try {
         const completedRaw = sessionStorage.getItem(completedKey);
         if (completedRaw) {
-          const cached = JSON.parse(completedRaw) as CheckoutOrderSummary;
+          const cached = JSON.parse(completedRaw) as KioskOrderCompleteInfo;
           setOrderDetails(cached);
           setState("success");
           return;
@@ -154,9 +141,9 @@ export default function PaymentSuccessPage() {
 
       if (!pendingData) {
         // Payment confirmed but checkout data was already submitted or storage cleared
-        const fallbackSummary: CheckoutOrderSummary = {
-          paymentIntentId: verifyData.payment_intent_id ?? undefined,
+        const fallbackSummary: KioskOrderCompleteInfo = {
           totalAmount: verifyData.amount_total != null ? (verifyData.amount_total / 100).toFixed(2) : undefined,
+          email: verifyData.customer_email,
         };
         setOrderDetails(fallbackSummary);
         setState("success");
@@ -178,7 +165,7 @@ export default function PaymentSuccessPage() {
               name: pendingData.configName ?? "Kiosk Order",
               questions: [],
             },
-            answers: pendingData.configAnswers ?? {},
+            answers: pendingData.answers ?? pendingData.configAnswers ?? {},
             billingDetails: pendingData.billingDetails,
             snapshotImage: pendingData.snapshotImage,
             organizationId: pendingData.organizationId,
@@ -225,42 +212,15 @@ export default function PaymentSuccessPage() {
         }
 
         const checkoutRes = await submitKioskCheckout(checkoutFormData);
-
-        // Extract order details returned from the checkout API
-        const resObj = checkoutRes as Record<string, unknown> | undefined;
-        const resData = (resObj?.data && typeof resObj.data === "object" ? resObj.data : {}) as Record<string, unknown>;
-
-        const orderNumber = (
-          resObj?.order_number ??
-          resData?.order_number ??
-          resObj?.order_id ??
-          resData?.order_id
-        ) as string | undefined;
-
-        const paymentIntentId = (
-          resObj?.payment_intent_id ??
-          resData?.payment_intent_id ??
-          resObj?.payment_id ??
-          resData?.payment_id ??
-          verifyData.payment_intent_id
-        ) as string | undefined;
-
-        const rawTotal = (
-          resObj?.total_amount ??
-          resData?.total_amount ??
-          resObj?.price ??
-          resData?.price ??
-          resObj?.total_price ??
-          resData?.total_price ??
-          (verifyData.amount_total != null ? (verifyData.amount_total / 100).toFixed(2) : undefined) ??
-          pendingData.cartTotals?.grandTotal
-        ) as string | number | undefined;
-
-        const orderSummary: CheckoutOrderSummary = {
-          orderNumber,
-          paymentIntentId,
-          totalAmount: rawTotal,
-        };
+        const orderSummary = parseCheckoutOrderSummary(checkoutRes);
+        if (orderSummary.totalAmount == null && pendingData.cartTotals?.grandTotal != null) {
+          orderSummary.totalAmount = pendingData.cartTotals.grandTotal;
+        }
+        if (verifyData.amount_total != null && orderSummary.totalAmount == null) {
+          orderSummary.totalAmount = (verifyData.amount_total / 100).toFixed(2);
+        }
+        orderSummary.productName = pendingData.configName;
+        orderSummary.email = pendingData.billingDetails.email || verifyData.customer_email;
 
         setOrderDetails(orderSummary);
 
@@ -338,110 +298,17 @@ export default function PaymentSuccessPage() {
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
-  const formattedTotal = formatCurrency(orderDetails?.totalAmount);
+  const kioskHomeHref =
+    typeof window !== "undefined"
+      ? `${window.location.pathname.replace(/\/payment-success\/?$/, "")}${token ? `?token=${encodeURIComponent(token)}` : ""}`
+      : `/public/kiosk/${kioskId ?? ""}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f5f7] px-4 py-10 text-center dark:bg-slate-950">
-      {/* Success icon */}
-      <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400">
-        <CheckCircle className="size-8" />
-      </div>
-
-      <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-100">
-        Payment Successful!
-      </h2>
-
-      <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-300">
-        Thank you! Your payment
-        {formattedTotal ? (
-          <>
-            {" "}of{" "}
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-              {formattedTotal}
-            </span>
-          </>
-        ) : null}
-        {" "}was confirmed and{" "}
-        {orderDetails?.orderNumber ? (
-          <>
-            order{" "}
-            <span className="font-semibold text-slate-900 dark:text-slate-100 font-mono">
-              #{orderDetails.orderNumber}
-            </span>{" "}
-            has been placed.
-          </>
-        ) : (
-          "your order has been placed."
-        )}
-        {customerEmail && (
-          <>
-            {" "}A confirmation receipt will be sent to{" "}
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              {customerEmail}
-            </span>
-            .
-          </>
-        )}
-      </p>
-
-      {/* Order & Payment Summary Card */}
-      <div className="mt-6 w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 text-left">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Payment &amp; Order Details
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Paid
-          </span>
-        </div>
-
-        <dl className="mt-4 space-y-3.5 text-sm">
-          {/* Order Number */}
-          {orderDetails?.orderNumber && (
-            <div className="flex items-center justify-between">
-              <dt className="text-slate-500 dark:text-slate-400">Order Number</dt>
-              <dd className="font-mono font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded text-sm">
-                #{orderDetails.orderNumber}
-              </dd>
-            </div>
-          )}
-
-          {/* Price / Total Amount */}
-          {formattedTotal && (
-            <div className="flex items-center justify-between">
-              <dt className="text-slate-500 dark:text-slate-400">Price (Total Amount)</dt>
-              <dd className="font-mono font-extrabold text-base text-emerald-600 dark:text-emerald-400">
-                {formattedTotal}
-              </dd>
-            </div>
-          )}
-
-          {/* Payment ID (payment_intent_id) */}
-          {(orderDetails?.paymentIntentId || sessionId) && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-1">
-                <dt className="text-xs text-slate-500 dark:text-slate-400">Payment ID (payment_intent_id)</dt>
-                {orderDetails?.paymentIntentId && (
-                  <span className="text-[10px] text-slate-400">Stripe Payment Intent</span>
-                )}
-              </div>
-              <dd className="font-mono text-xs text-slate-700 dark:text-slate-300 break-all select-all bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5 rounded border border-slate-200/70 dark:border-slate-800">
-                {orderDetails?.paymentIntentId || sessionId}
-              </dd>
-            </div>
-          )}
-        </dl>
-      </div>
-
-      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-        <a
-          href={`/public/kiosk/${kioskId ?? ""}${token ? `?token=${token}` : ""}`}
-          className="rounded-lg bg-[#701524] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5a101c] transition"
-        >
-          Configure Another Product
-        </a>
-      </div>
-    </div>
+    <KioskOrderCompleteCard
+      order={orderDetails}
+      email={orderDetails?.email || customerEmail}
+      productName={orderDetails?.productName}
+      configureHref={kioskHomeHref}
+    />
   );
 }
