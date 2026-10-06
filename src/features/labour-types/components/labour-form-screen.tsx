@@ -11,6 +11,7 @@ import {
   fetchLabourType,
   updateLabourType,
 } from "@/features/labour-types/api/labour-type.api";
+import { toCanonicalMoneyString } from "@/shared/money/format-money.util";
 import {
   parseLabourNumber,
   suggestedLabourSellPrice,
@@ -71,9 +72,9 @@ export function LabourFormScreen({ mode, labourId }: Props) {
         if (cancelled) return;
         setName(row.name ?? "");
         setDescription(row.description ?? "");
-        setMarkup(String(parseLabourNumber(row.default_markup)));
-        setCostRate(String(parseLabourNumber(row.default_cost_rate)));
-        setSellPrice(String(parseLabourNumber(row.default_sell_price)));
+        setMarkup(toCanonicalMoneyString(parseLabourNumber(row.default_markup)));
+        setCostRate(toCanonicalMoneyString(parseLabourNumber(row.default_cost_rate)));
+        setSellPrice(toCanonicalMoneyString(parseLabourNumber(row.default_sell_price)));
         setSellTouched(true);
       } catch (error) {
         toastApiError(error, t("loadError"));
@@ -99,13 +100,13 @@ export function LabourFormScreen({ mode, labourId }: Props) {
       name: zTrimmedNonEmpty(t("validation.name")),
       default_markup: z
         .string()
-        .refine((v) => Number.isFinite(Number(v)) && Number(v) >= 0, t("validation.markup")),
+        .refine((v) => Number.isFinite(parseLabourNumber(v)) && parseLabourNumber(v) >= 0, t("validation.markup")),
       default_cost_rate: z
         .string()
-        .refine((v) => Number.isFinite(Number(v)) && Number(v) >= 0, t("validation.costRate")),
+        .refine((v) => Number.isFinite(parseLabourNumber(v)) && parseLabourNumber(v) >= 0, t("validation.costRate")),
       default_sell_price: z
         .string()
-        .refine((v) => Number.isFinite(Number(v)) && Number(v) >= 0, t("validation.sellPrice")),
+        .refine((v) => Number.isFinite(parseLabourNumber(v)) && parseLabourNumber(v) >= 0, t("validation.sellPrice")),
     });
     const parsed = schema.safeParse({
       name,
@@ -135,9 +136,9 @@ export function LabourFormScreen({ mode, labourId }: Props) {
     const payload = {
       name: parsed.data.name,
       description: description.trim(),
-      default_markup: Number(parsed.data.default_markup),
-      default_cost_rate: Number(parsed.data.default_cost_rate),
-      default_sell_price: Number(parsed.data.default_sell_price),
+      default_markup: parseLabourNumber(parsed.data.default_markup),
+      default_cost_rate: parseLabourNumber(parsed.data.default_cost_rate),
+      default_sell_price: parseLabourNumber(parsed.data.default_sell_price),
     };
     try {
       const saved =
@@ -206,7 +207,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
           </div>
         ) : (
           <form id="labour-form-screen" className="space-y-6" noValidate onSubmit={(e) => void onSubmit(e)}>
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="1">
               <FieldGroup label={t("fields.name")} htmlFor="labour-name" required>
                 <input
                   id="labour-name"
@@ -221,19 +222,17 @@ export function LabourFormScreen({ mode, labourId }: Props) {
                 />
                 <FieldErrorText>{errors.name}</FieldErrorText>
               </FieldGroup>
-            </FormFieldRow>
-            <FieldGroup label={t("fields.description")} htmlFor="labour-description">
-              <textarea
-                id="labour-description"
-                rows={3}
-                className={surfaceTextareaClassName}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t("fields.descriptionPlaceholder")}
-                disabled={submitting}
-              />
-            </FieldGroup>
-            <FormFieldRow cols="3">
+              <FieldGroup label={t("fields.description")} htmlFor="labour-description">
+                <textarea
+                  id="labour-description"
+                  rows={3}
+                  className={surfaceTextareaClassName}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={t("fields.descriptionPlaceholder")}
+                  disabled={submitting}
+                />
+              </FieldGroup>
               <FieldGroup label={t("fields.costRate")} htmlFor="labour-cost" required>
                 <MoneyInput
                   id="labour-cost"
@@ -255,6 +254,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
                 <NumericInput
                   id="labour-markup"
                   value={markup}
+                  maxDecimals={2}
                   onChange={(next) => {
                     setMarkup(next);
                     syncSellFromCostMarkup(costRate, next);

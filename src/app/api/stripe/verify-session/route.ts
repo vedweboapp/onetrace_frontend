@@ -14,9 +14,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const sessionId = searchParams.get("session_id")?.trim();
+    let sessionId = searchParams.get("session_id")?.trim() || "";
+    try {
+      sessionId = decodeURIComponent(sessionId);
+    } catch {
+      // already decoded
+    }
 
-    if (!sessionId) {
+    if (!sessionId || sessionId.includes("CHECKOUT_SESSION_ID")) {
       return NextResponse.json(
         { error: "Missing session_id." },
         { status: 400 },
