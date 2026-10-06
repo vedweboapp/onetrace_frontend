@@ -7,6 +7,7 @@ import {
   buildApiAppearancePreferences,
   type ApiAppearancePreferences,
 } from "@/features/settings/personal-profile/utils/appearance-preferences.util";
+import { DEFAULT_TAB_LAYOUTS } from "@/shared/config/default-tab-layouts";
 import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 
 const DEBOUNCE_MS = 700;
@@ -36,9 +37,15 @@ export function mergeAppearancePreferencesWithTabLayouts(
     language: cache?.language?.trim() || "en",
     errorMessage: cache?.error_message,
   });
+  // Keep appearance catalog defaults for untouched scopes; user edits win.
+  const tab_layouts = {
+    ...DEFAULT_TAB_LAYOUTS,
+    ...(cache?.tab_layouts ?? {}),
+    ...useTabLayoutsStore.getState().layouts,
+  };
   return {
     ...(cache ?? fromStore),
-    tab_layouts: useTabLayoutsStore.getState().layouts,
+    tab_layouts,
   };
 }
 

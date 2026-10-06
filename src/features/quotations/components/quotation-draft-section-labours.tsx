@@ -91,7 +91,7 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
     <div className="space-y-3">
       {!readOnly ? (
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
-          <div className="min-w-[14rem] flex-1">
+          <div className="w-full max-w-xs sm:w-72">
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{t("labourType")}</label>
             <CheckmarkSelect
               listLabel={t("labourType")}
@@ -179,6 +179,9 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                   <NumericInput
                     value={String(row.markup_percentage)}
                     disabled={saving || readOnly}
+                    maxDecimals={2}
+                    trimTrailingZeros
+                    variant="plain"
                     className={cn(surfaceInputClassName, "w-full")}
                     onChange={(v) => {
                       const markup = Number.parseFloat(v) || 0;
@@ -196,6 +199,9 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                   <NumericInput
                     value={String(row.time_hours)}
                     disabled={saving || readOnly}
+                    maxDecimals={2}
+                    trimTrailingZeros
+                    variant="plain"
                     className={cn(surfaceInputClassName, "w-full")}
                     onChange={(v) => {
                       const n = Number.parseFloat(v);

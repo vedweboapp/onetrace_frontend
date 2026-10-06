@@ -2,9 +2,12 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
-import { CheckmarkSelect } from "@/shared/ui";
+import { EntityDetailTabLoadingState } from "@/shared/components/entity";
+import { detailTabStandaloneFillClassName } from "@/shared/components/layout/detail-tab-layout";
+import { CheckmarkSelect, DashboardEmptyState } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -14,6 +17,9 @@ type Props = {
 export function QuotationScheduleTab({ jobs }: Props) {
   const t = useTranslations("Dashboard.quotations.relatedTabs");
   const [jobId, setJobId] = React.useState(() => (jobs[0] ? String(jobs[0].id) : ""));
+  const [detail, setDetail] = React.useState<Job | null>(null);
+  const [loadingDetail, setLoadingDetail] = React.useState(false);
+  const [detailError, setDetailError] = React.useState(false);
 
   React.useEffect(() => {
     if (jobs.length === 0) {
@@ -25,9 +31,73 @@ export function QuotationScheduleTab({ jobs }: Props) {
     }
   }, [jobs, jobId]);
 
-  const selected = jobs.find((job) => String(job.id) === jobId) ?? jobs[0] ?? null;
+  const selectedId = React.useMemo(() => {
+    const n = Number.parseInt(jobId, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [jobId]);
 
-  if (!selected) return null;
+  React.useEffect(() => {
+    if (selectedId == null) {
+      setDetail(null);
+      setDetailError(false);
+      setLoadingDetail(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingDetail(true);
+      setDetailError(false);
+      try {
+        const row = await fetchJob(selectedId, { silent: true });
+        if (!cancelled) setDetail(row);
+      } catch {
+        if (!cancelled) {
+          const fallback = jobs.find((job) => job.id === selectedId) ?? null;
+          setDetail(fallback);
+          setDetailError(fallback == null);
+        }
+      } finally {
+        if (!cancelled) setLoadingDetail(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, jobs]);
+
+  if (jobs.length === 0) {
+    return (
+      <div className={detailTabStandaloneFillClassName}>
+        <DashboardEmptyState
+          fill
+          iconName="scheduling"
+          title={t("scheduleEmptyTitle")}
+          description={t("scheduleEmptyDescription")}
+        />
+      </div>
+    );
+  }
+
+  if (loadingDetail && !detail) {
+    return (
+      <div className={detailTabStandaloneFillClassName}>
+        <EntityDetailTabLoadingState />
+      </div>
+    );
+  }
+
+  if (!detail || detailError) {
+    return (
+      <div className={detailTabStandaloneFillClassName}>
+        <DashboardEmptyState
+          fill
+          iconName="error"
+          title={t("scheduleEmptyTitle")}
+          description={t("scheduleEmptyDescription")}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -47,7 +117,7 @@ export function QuotationScheduleTab({ jobs }: Props) {
           />
         </div>
       ) : null}
-      <JobSchedulingTab detail={selected} />
+      <JobSchedulingTab detail={detail} />
     </div>
   );
 }

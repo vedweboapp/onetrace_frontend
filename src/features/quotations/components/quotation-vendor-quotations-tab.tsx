@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import {
   ArrowRight,
   Building2,
@@ -23,9 +24,10 @@ import type {
 import { QuotationSendVendorsModal } from "@/features/quotations/components/quotation-send-vendors-modal";
 import { fetchQuotation, updateQuotationItemsStatus } from "@/features/quotations/api/quotation.api";
 import { DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
+import { detailTabStandaloneFillClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastError, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton } from "@/shared/ui";
+import { AppButton, DashboardEmptyState } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 export interface VendorRfqLineItem {
@@ -629,6 +631,7 @@ export function parseVendorsList(input: any): QuotationVendorSubmission[] {
 type Props = { quotationId: number; quoteName?: string; detail: QuotationDetail; onGoToPricingTab?: () => void; onSent?: () => void; };
 
 export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, onGoToPricingTab, onSent }: Props) {
+  const t = useTranslations("Dashboard.quotations.relatedTabs");
   const [sendModalOpen, setSendModalOpen] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
@@ -839,11 +842,39 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
     [updatingStatusKey, quotationId, handleRefresh, onSent],
   );
 
+  if (rfqItems.length === 0) {
+    return (
+      <div className={detailTabStandaloneFillClassName}>
+        <DashboardEmptyState
+          fill
+          iconName="vendors"
+          title={t("vendorsEmptyTitle")}
+          description={t("vendorsEmptyDescription")}
+          action={
+            onGoToPricingTab ? (
+              <AppButton type="button" variant="secondary" size="sm" onClick={onGoToPricingTab}>
+                {t("vendorsEmptyAction")}
+                <ArrowRight className="ml-1.5 size-3.5" />
+              </AppButton>
+            ) : undefined
+          }
+        />
+        <QuotationSendVendorsModal
+          open={sendModalOpen}
+          quotationId={quotationId}
+          quoteName={quoteName}
+          onClose={() => setSendModalOpen(false)}
+          onSuccess={() => { setSendModalOpen(false); onSent?.(); void handleRefresh(); }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Vendor Quotations Grid */}
       <DetailPanelCard
-        title="Vendor Quotations"
+        collapsible={false}
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-52">
@@ -880,25 +911,6 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
           </div>
         }
       >
-        {rfqItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-12 text-center dark:border-slate-800">
-            <div className="flex size-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-              <Package className="size-6 text-slate-400" />
-            </div>
-            <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              No line items in quotation scope
-            </h3>
-            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-              Add sections, plots, and items in the Scope &amp; Pricing tab to generate RFQ line items for vendors.
-            </p>
-            {onGoToPricingTab && (
-              <AppButton type="button" variant="secondary" size="sm" className="mt-4" onClick={onGoToPricingTab}>
-                Go to Scope &amp; Pricing
-                <ArrowRight className="ml-1.5 size-3.5" />
-              </AppButton>
-            )}
-          </div>
-        ) : (
           <div>
             {/* Flat grid: grouped by item, with vendors, prices, expected delivery, and actions */}
             <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
@@ -1152,7 +1164,6 @@ export function QuotationVendorQuotationsTab({ quotationId, quoteName, detail, o
               </table>
             </div>
           </div>
-        )}
       </DetailPanelCard>
 
       <QuotationSendVendorsModal

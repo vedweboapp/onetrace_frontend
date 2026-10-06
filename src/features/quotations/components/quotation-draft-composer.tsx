@@ -1477,7 +1477,6 @@ export function QuotationDraftComposer({
                       <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                         {t("sectionNotes")}
                       </label>
-                      <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">{t("sectionNotesHint")}</p>
                       <textarea
                         value={section.notes ?? ""}
                         disabled={saving || readOnly}

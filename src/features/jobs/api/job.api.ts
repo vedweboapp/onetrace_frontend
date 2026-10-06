@@ -34,8 +34,7 @@ export type JobListFilters = {
   client?: number;
   job_category?: string;
   job_type?: string;
-  /** Jobs created from a quotation (when supported by API). */
-  quotation?: number;
+  /** Jobs created from a quotation (`quotation_id` query param only). */
   quotation_id?: number;
   project?: number;
   dropdown?: boolean;
@@ -71,9 +70,6 @@ export async function fetchJobsPage(
 
   if (filters?.job_type) {
     params.job_type = filters.job_type;
-  }
-  if (typeof filters?.quotation === "number" && Number.isFinite(filters.quotation) && filters.quotation > 0) {
-    params.quotation = filters.quotation;
   }
   if (typeof filters?.quotation_id === "number" && Number.isFinite(filters.quotation_id) && filters.quotation_id > 0) {
     params.quotation_id = filters.quotation_id;

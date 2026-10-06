@@ -12,6 +12,7 @@ import {
   updateLabourType,
 } from "@/features/labour-types/api/labour-type.api";
 import { toCanonicalMoneyString } from "@/shared/money/format-money.util";
+import { toCanonicalNumberString } from "@/shared/number/digit-grouping.util";
 import {
   parseLabourNumber,
   suggestedLabourSellPrice,
@@ -76,8 +77,8 @@ export function LabourFormScreen({ mode, labourId }: Props) {
         setName(row.name ?? "");
         setDescription(row.description ?? "");
         const hours = parseLabourNumber(row.default_time_hours);
-        setTimeHours(String(hours > 0 ? hours : 1));
-        setMarkup(toCanonicalMoneyString(parseLabourNumber(row.default_markup)));
+        setTimeHours(toCanonicalNumberString(hours > 0 ? hours : 1));
+        setMarkup(toCanonicalNumberString(parseLabourNumber(row.default_markup)));
         setCostRate(toCanonicalMoneyString(parseLabourNumber(row.default_cost_rate)));
         setSellPrice(toCanonicalMoneyString(parseLabourNumber(row.default_sell_price)));
         setSellTouched(true);
@@ -246,6 +247,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
                   id="labour-time"
                   value={timeHours}
                   maxDecimals={2}
+                  trimTrailingZeros
                   onChange={(next) => {
                     setTimeHours(next);
                     if (errors.default_time_hours) {
@@ -302,6 +304,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
                   id="labour-markup"
                   value={markup}
                   maxDecimals={2}
+                  trimTrailingZeros
                   onChange={(next) => {
                     setMarkup(next);
                     syncSellFromCostMarkup(costRate, next);

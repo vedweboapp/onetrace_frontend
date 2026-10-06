@@ -16,8 +16,8 @@ function nestedId(value: unknown): number | null {
 export function getJobQuotationId(job: Job): number | null {
   const row = job as Job & Record<string, unknown>;
   return (
-    nestedId(row.quotation) ??
     nestedId(row.quotation_id) ??
+    nestedId(row.quotation) ??
     nestedId(row.quote) ??
     nestedId(row.quote_id)
   );
@@ -30,39 +30,34 @@ function mergeJobs(target: Map<number, Job>, jobs: Job[]) {
 }
 
 /**
- * Load jobs created from a quotation. Uses `quotation` / `quotation_id` list filters
- * when the API supports them, then falls back to the linked job id on the quote.
+ * Load jobs created from a quotation via `GET /jobs/?quotation_id=…`.
+ * Falls back to the linked job id on the quote when the list is empty.
  */
 export async function fetchJobsForQuotation(options: {
   quotationId: number;
   jobCategory?: string;
-  projectId?: number | null;
   linkedJobId?: number | null;
 }): Promise<Job[]> {
-  const { quotationId, jobCategory, projectId, linkedJobId } = options;
+  const { quotationId, jobCategory, linkedJobId } = options;
   const byId = new Map<number, Job>();
 
-  const tryList = async (filters: Parameters<typeof fetchJobsPage>[2]) => {
-    const { items } = await fetchJobsPage(1, 100, filters, { silent: true });
-    return items;
-  };
-
   try {
-    const items = await tryList({
-      quotation: quotationId,
-      quotation_id: quotationId,
-      job_category: jobCategory,
-      project: projectId ?? undefined,
+    const { items } = await fetchJobsPage(
+      1,
+      100,
+      {
+        quotation_id: quotationId,
+        job_category: jobCategory,
+      },
+      { silent: true },
+    );
+    // API already filters by quotation_id — keep all returned rows.
+    // If a row exposes a quotation id and it differs, drop that row only.
+    const matched = items.filter((job) => {
+      const qid = getJobQuotationId(job);
+      return qid == null || qid === quotationId;
     });
-    const tagged = items.filter((job) => getJobQuotationId(job) === quotationId);
-    if (tagged.length > 0) {
-      mergeJobs(byId, tagged);
-    } else {
-      const anyQuotationField = items.some((job) => getJobQuotationId(job) != null);
-      if (!anyQuotationField && items.length > 0 && items.length <= 20) {
-        mergeJobs(byId, items);
-      }
-    }
+    mergeJobs(byId, matched);
   } catch {
     /* list filter may not be supported */
   }

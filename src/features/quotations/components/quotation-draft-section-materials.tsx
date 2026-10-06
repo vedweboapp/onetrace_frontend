@@ -89,13 +89,19 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
     if (entries === undefined) return [{ value: "", label: t("selectItem") }];
     const itemNameById: Record<number, string> = {};
     for (const ci of itemRows) itemNameById[ci.id] = ci.name;
-    return [
-      { value: "", label: t("selectItem") },
-      ...entries.map((ref) => ({
+    const uniqueByItem = new Map<number, CheckmarkSelectOption>();
+    for (const ref of entries) {
+      if (uniqueByItem.has(ref.item)) continue;
+      const name =
+        (typeof ref.item_name === "string" && ref.item_name.trim()) ||
+        itemNameById[ref.item] ||
+        null;
+      uniqueByItem.set(ref.item, {
         value: String(ref.item),
-        label: itemNameById[ref.item] ?? `#${ref.item}`,
-      })),
-    ];
+        label: name ?? `#${ref.item}`,
+      });
+    }
+    return [{ value: "", label: t("selectItem") }, ...Array.from(uniqueByItem.values())];
   }, [groupId, groupItemsByGroupId, itemRows, t]);
 
   const labels = React.useMemo<CompositeLineLabels>(
@@ -112,6 +118,11 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
   const saveDisabled =
     !compositeId || compositeOptions.length <= 1 || (Boolean(groupId) && groupItemsByGroupId[groupId] === undefined);
 
+  function groupItemRefFor(itemId: string): GroupItemRef | undefined {
+    if (!groupId) return undefined;
+    return (groupItemsByGroupId[groupId] ?? []).find((ref) => String(ref.item) === itemId);
+  }
+
   function handleGroupChange(g: string) {
     setGroupId(g);
     setCompositeId("");
@@ -124,16 +135,30 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
 
   function handleCompositeChange(c: string) {
     setCompositeId(c);
-    setUnitPrice(catalogSellingPriceString(itemRows.find((r) => String(r.id) === c)));
+    const fromCatalog = catalogSellingPriceString(itemRows.find((r) => String(r.id) === c));
+    if (fromCatalog) {
+      setUnitPrice(fromCatalog);
+      return;
+    }
+    const groupRef = groupItemRefFor(c);
+    const raw = groupRef?.item_selling_price ?? groupRef?.selling_price;
+    const n = parseItemSellingPrice(raw);
+    setUnitPrice(n > 0 ? String(n) : "");
   }
 
   function addLine() {
     const id = Number.parseInt(compositeId, 10);
     if (!Number.isFinite(id) || id <= 0) return;
     const picked = itemRows.find((r) => r.id === id);
-    const label = picked?.name ?? compositeOptions.find((o) => o.value === compositeId)?.label ?? `Item ${id}`;
+    const groupRef = groupItemRefFor(compositeId);
+    const label =
+      picked?.name?.trim() ||
+      (typeof groupRef?.item_name === "string" && groupRef.item_name.trim()) ||
+      compositeOptions.find((o) => o.value === compositeId)?.label ||
+      `Item ${id}`;
     const fromRow = parseItemSellingPrice(unitPrice);
-    const unit = fromRow > 0 ? fromRow : catalogSellingPriceNumber(picked);
+    const fromGroup = parseItemSellingPrice(groupRef?.item_selling_price ?? groupRef?.selling_price);
+    const unit = fromRow > 0 ? fromRow : catalogSellingPriceNumber(picked) || fromGroup;
     const qty = parseQty(quantity);
     const group = resolveQuotationDraftLineGroup(groupId, {
       groups,
