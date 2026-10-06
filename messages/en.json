@@ -269,6 +269,7 @@
         "group": "Add New Group",
         "composite-item": "Add New Composite Item",
         "item": "Add New Item",
+        "labour": "Add New Labour",
         "vendorType": "Add Vendor Type",
         "unitType": "Add Unit Type",
         "installationType": "Add Installation Type",
@@ -3330,7 +3331,8 @@
         "customer": "Select a client.",
         "site": "Select a site.",
         "sites": "Select at least one site.",
-        "project": "Select a project."
+        "project": "Select a project.",
+        "requiredOnTab": "Some required fields are missing on the {tab} tab. Fill them to save."
       }
     },
     "invoices": {

@@ -10,6 +10,14 @@ export function resolveQuotationSectionType(
   return "primary";
 }
 
+/** Optional sections are sent on the quote but excluded from quotation grand total. */
+export function isOptionalQuoteSection(section: {
+  kind?: QuotationQuoteSectionKind | null;
+  section_type?: QuotationQuoteSectionKind | null;
+}): boolean {
+  return resolveQuotationSectionType(section, "primary") === "optional";
+}
+
 export function labourLineSellPrice(costRate: number, markupPct: number): number {
   if (!Number.isFinite(costRate) || !Number.isFinite(markupPct)) return 0;
   return Math.round(costRate * (1 + markupPct / 100) * 100) / 100;

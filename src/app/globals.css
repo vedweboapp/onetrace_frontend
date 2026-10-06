@@ -305,8 +305,9 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-/* Narrow form hosts (modals, drawers, phones): stack label above control. */
-@container form-fields (max-width: 32rem) {
+/* Truly narrow hosts only (phones / tight drawers): stack label above control.
+ * Keep side labels on map-side form columns (~28–40rem) when Appearance is left/right. */
+@container form-fields (max-width: 24rem) {
   .form-field-row .field-group:not(.detail-field) {
     display: flex !important;
     flex-direction: column;
@@ -648,7 +649,7 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-@container form-fields (max-width: 32rem) {
+@container form-fields (max-width: 24rem) {
   .form-field-row > div:has(> .field-group + p[role="alert"]) {
     grid-template-columns: minmax(0, 1fr);
   }

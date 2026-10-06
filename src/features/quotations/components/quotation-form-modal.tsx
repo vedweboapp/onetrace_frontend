@@ -3,7 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
@@ -357,6 +357,31 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     }
   }
 
+  function onInvalid(formErrors: FieldErrors<QuotationFormValues>) {
+    const detailKeys = ["quote_name", "customer", "sites", "project"] as const;
+    const hasDetailErrors = detailKeys.some((key) => formErrors[key] != null);
+    if (hasDetailErrors) {
+      setFormTab("project");
+      toastError(t("validation.requiredOnTab", { tab: t("formTabs.project") }));
+      window.setTimeout(() => {
+        const root = document.getElementById("quotation-form-modal-project");
+        const invalid =
+          root?.querySelector<HTMLElement>("[aria-invalid='true']") ??
+          root?.querySelector<HTMLElement>(".border-red-500");
+        invalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (invalid && typeof invalid.focus === "function") {
+          try {
+            invalid.focus({ preventScroll: true });
+          } catch {
+            invalid.focus();
+          }
+        }
+      }, 80);
+      return;
+    }
+    toastError(t("saveError"));
+  }
+
   const noClients = clientOptions.length === 0;
   const canShowLevels = !!projectId && projectId > 0;
 
@@ -399,7 +424,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       }
     >
       <>
-      <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit)}>
+      <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit, onInvalid)}>
         {/* {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             {t("noClientsHint")}

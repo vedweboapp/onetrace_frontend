@@ -166,7 +166,6 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                 disabled={readOnly}
                 rows={8}
                 className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
-                placeholder={t("sectionDescriptionPlaceholder")}
                 onChange={(e) => patchSection({ description: e.target.value })}
               />
             </div>
@@ -179,7 +178,6 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                 disabled={readOnly}
                 rows={8}
                 className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
-                placeholder={t("sectionNotesPlaceholder")}
                 onChange={(e) => patchSection({ notes: e.target.value })}
               />
             </div>
@@ -202,6 +200,14 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   labours={section.labours ?? []}
                   readOnly={readOnly}
                   onChange={(labours) => patchSection({ labours })}
+                  getFormDraft={
+                    readOnly
+                      ? undefined
+                      : () => ({
+                          draft: draftRef.current,
+                          sectionId: sectionIdRef.current,
+                        })
+                  }
                 />
               ) : (
                 <QuotationDraftSectionMaterials
