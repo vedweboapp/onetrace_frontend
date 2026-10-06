@@ -73,6 +73,7 @@ export type PersonalProfileResponse = {
                 width?: string;
                 style?: string;
             };
+            tab_layouts?: Record<string, { order?: string[]; hidden?: string[] }>;
         };
         available_options?: Record<string, unknown>;
     };

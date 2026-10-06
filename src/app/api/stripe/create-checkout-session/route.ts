@@ -13,6 +13,8 @@ type CreateCheckoutBody = {
   currency?: string;
   customerEmail?: string;
   productName?: string;
+  productDescription?: string;
+  customerName?: string;
   successUrl?: string;
   cancelUrl?: string;
   /** Arbitrary metadata forwarded to the Stripe session (e.g. kioskId, token) */
@@ -45,10 +47,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const productName = body.productName?.trim() || "SimHo order";
+    const productDescription = (body.productDescription?.trim() || "Configured product payment").slice(0, 500);
+
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"],
+      submit_type: "pay",
+      locale: "en-GB",
       customer_email: body.customerEmail?.trim() || undefined,
       line_items: [
         {
@@ -57,7 +63,8 @@ export async function POST(request: Request) {
             currency: (body.currency || "gbp").toLowerCase(),
             unit_amount: amountPence,
             product_data: {
-              name: body.productName?.trim() || "SimHo order",
+              name: productName,
+              description: productDescription,
             },
           },
         },
@@ -66,6 +73,17 @@ export async function POST(request: Request) {
       cancel_url: cancelUrl,
       metadata: body.metadata ?? {},
       client_reference_id: body.metadata?.kiosk_id?.slice(0, 200),
+      custom_text: {
+        submit: {
+          message: "Your order is recorded after this payment is completed.",
+        },
+      },
+      payment_intent_data: {
+        description: productName.slice(0, 1000),
+        ...(body.customerName?.trim()
+          ? { metadata: { customer_name: body.customerName.trim().slice(0, 200) } }
+          : {}),
+      },
     });
 
     if (!session.url) {

@@ -175,6 +175,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
   }, [searchParams, pathname, router, allowedDetailTabIds]);
 
   React.useEffect(() => {
+    if (allowedDetailTabIds.has(activeTab)) return;
+    setActiveTab("details");
+  }, [activeTab, allowedDetailTabIds]);
+
+  React.useEffect(() => {
     if (!detailForClient) {
       setClientName(null);
       return;

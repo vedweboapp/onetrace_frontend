@@ -53,7 +53,9 @@ export function LabourDetailBody({
               requiredMessage={t("validation.name")}
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ name: next.trim() })}
-            />
+            >
+              {detail.name?.trim() ? detail.name : null}
+            </DetailEditableField>
             <DetailEditableField
               label={t("fields.description")}
               value={detail.description ?? ""}
@@ -61,7 +63,9 @@ export function LabourDetailBody({
               multiline
               editAriaLabel={tActions("edit")}
               onSave={(next) => patchField({ description: next })}
-            />
+            >
+              {detail.description?.trim() ? detail.description : null}
+            </DetailEditableField>
             <DetailEditableField
               label={t("fields.costRate")}
               value={String(costRate)}

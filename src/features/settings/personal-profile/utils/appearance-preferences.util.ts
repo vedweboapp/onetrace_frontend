@@ -41,6 +41,8 @@ export type ApiAppearancePreferences = {
     width?: string;
     style?: string;
   };
+  /** Per-screen tab order + hidden tabs, keyed by layout scope (e.g. projectDetail). */
+  tab_layouts?: Record<string, { order?: string[]; hidden?: string[] }>;
 };
 
 /**
@@ -220,8 +222,9 @@ export function buildApiAppearancePreferences(input: {
   themeMode: "light" | "dark";
   language: string;
   errorMessage?: ApiAppearancePreferences["error_message"];
+  tabLayouts?: ApiAppearancePreferences["tab_layouts"];
 }): ApiAppearancePreferences {
-  const { store, themeMode, language, errorMessage } = input;
+  const { store, themeMode, language, errorMessage, tabLayouts } = input;
 
   return {
     font: {
@@ -246,6 +249,7 @@ export function buildApiAppearancePreferences(input: {
       width: store.detailRowLineWidth,
       style: store.detailRowLineStyle,
     },
+    tab_layouts: tabLayouts,
   };
 }
 

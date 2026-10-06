@@ -72,7 +72,8 @@ export function JobDetailScreen({ jobId }: Props) {
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
   const tabFromUrl = searchParams.get("tab");
   const showFormsTab = isServiceJobDetail(detailForNav, searchParams.get("job_category"));
-  const activeTab: JobDetailTabId =
+
+  const requestedTab: JobDetailTabId =
     isJobDetailTabId(tabFromUrl) && (tabFromUrl !== "forms" || showFormsTab)
       ? tabFromUrl
       : "overview";
@@ -92,6 +93,9 @@ export function JobDetailScreen({ jobId }: Props) {
     return tabs;
   }, [showFormsTab, t, tAudit]);
 
+  const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
+  const activeTab: JobDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "overview";
+
   function handleTabChange(tab: string) {
     if (!isJobDetailTabId(tab)) return;
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -100,6 +104,11 @@ export function JobDetailScreen({ jobId }: Props) {
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
+
+  React.useEffect(() => {
+    if (requestedTab === activeTab) return;
+    handleTabChange(activeTab);
+  }, [activeTab, requestedTab]);
 
   /** Keep header/sidebar job category in sync when opening detail without `?job_category=`. */
   React.useEffect(() => {

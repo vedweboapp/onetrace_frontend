@@ -16,6 +16,7 @@ export type PendingKioskCheckout = {
     quantity: number;
   };
   stripeSessionId?: string;
+  configName?: string;
   createdAt: number;
 };
 
