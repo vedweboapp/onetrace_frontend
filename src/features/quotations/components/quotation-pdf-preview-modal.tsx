@@ -12,6 +12,7 @@ import type {
   QuotationQuoteSectionPin,
   QuotationQuoteSectionSourcePin,
 } from "@/features/quotations/types/quotation.types";
+import { sumQuoteSectionsGrandTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
 import { AppButton, AppModal } from "@/shared/ui";
 import {
@@ -709,7 +710,7 @@ export function DocumentBody({ data, pinSnapshots, sections, onPinClick }: Docum
     (value: number | string | null | undefined) => formatMoneyValue(value ?? 0),
     [formatMoneyValue],
   );
-  const grandTotalExVat = sections.reduce((s, sec) => s + (sec.section_total ?? 0), 0);
+  const grandTotalExVat = sumQuoteSectionsGrandTotal(sections);
   const vatAmount = grandTotalExVat * 0.2;
   const grandTotalIncVat = grandTotalExVat + vatAmount;
   const quoteNumber = data.quotation_serial_number || (data as any).order_number || "\u2014";

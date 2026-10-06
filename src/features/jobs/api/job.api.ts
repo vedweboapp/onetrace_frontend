@@ -34,8 +34,8 @@ export type JobListFilters = {
   client?: number;
   job_category?: string;
   job_type?: string;
-  /** Jobs created from a quotation (`quotation_id` query param only). */
-  quotation_id?: number;
+  /** Jobs linked to a quotation — `GET jobs/?quotations=<id>`. */
+  quotations?: number;
   project?: number;
   dropdown?: boolean;
 };
@@ -71,8 +71,8 @@ export async function fetchJobsPage(
   if (filters?.job_type) {
     params.job_type = filters.job_type;
   }
-  if (typeof filters?.quotation_id === "number" && Number.isFinite(filters.quotation_id) && filters.quotation_id > 0) {
-    params.quotation_id = filters.quotation_id;
+  if (typeof filters?.quotations === "number" && Number.isFinite(filters.quotations) && filters.quotations > 0) {
+    params.quotations = filters.quotations;
   }
   if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
     params.project = filters.project;

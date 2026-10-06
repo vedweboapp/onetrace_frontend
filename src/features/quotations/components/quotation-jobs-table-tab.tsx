@@ -37,7 +37,7 @@ type Props = {
   jobCategory: string;
 };
 
-/** Project-quote jobs list — paginated table via `GET /jobs/?quotation_id=…` (same chrome as client contacts). */
+/** Project-quote jobs list — paginated table via `GET /jobs/?quotations=<id>` (same chrome as client contacts). */
 export function QuotationJobsTableTab({ quotationId, jobCategory }: Props) {
   const t = useTranslations("Dashboard.quotations.relatedTabs");
   const tJobs = useTranslations("Dashboard.jobs");
@@ -74,7 +74,7 @@ export function QuotationJobsTableTab({ quotationId, jobCategory }: Props) {
       setLoadError(null);
       try {
         const { items: nextItems, pagination: p } = await fetchJobsPage(page, pageSize, {
-          quotation_id: quotationId,
+          quotations: quotationId,
           job_category: jobCategory || JOB_CATEGORY.project,
         });
         if (!cancelled) {

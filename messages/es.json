@@ -263,6 +263,7 @@
         "group": "Añadir nuevo grupo",
         "composite-item": "Añadir nuevo artículo compuesto",
         "item": "Añadir nuevo artículo",
+        "labour": "Añadir nueva mano de obra",
         "vendorType": "Añadir tipo de proveedor",
         "unitType": "Añadir tipo de unidad",
         "installationType": "Añadir tipo de instalación",
@@ -3315,7 +3316,9 @@
         "quoteName": "Introduce un nombre para la cotización.",
         "customer": "Selecciona un cliente.",
         "site": "Selecciona un sitio.",
-        "project": "Selecciona un proyecto."
+        "sites": "Selecciona al menos un sitio.",
+        "project": "Selecciona un proyecto.",
+        "requiredOnTab": "Faltan campos obligatorios en la pestaña {tab}. Complétalos para guardar."
       }
     },
     "invoices": {
