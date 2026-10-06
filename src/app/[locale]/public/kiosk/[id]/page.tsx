@@ -189,7 +189,6 @@ export default function PublicKioskPage() {
         billingDetails: pending.billingDetails,
         snapshotImage: pending.snapshotImage,
         organizationId: pending.organizationId,
-        kioskMachineId: pending.kioskMachineId,
         items: pending.items,
       });
       await submitKioskCheckout(checkoutFormData);
@@ -198,7 +197,7 @@ export default function PublicKioskPage() {
         try {
           const downloadAnchor = document.createElement("a");
           downloadAnchor.href = pending.snapshotImage;
-          downloadAnchor.download = `kiosk-snapshot-${pending.kioskMachineId}.png`;
+          downloadAnchor.download = `kiosk-snapshot-${kioskId || "product"}.png`;
           document.body.appendChild(downloadAnchor);
           downloadAnchor.click();
           document.body.removeChild(downloadAnchor);
@@ -306,7 +305,6 @@ export default function PublicKioskPage() {
       }
 
       const organizationId = Number(config.organization_id || config.organization?.id || 1);
-      const kioskMachineId = Number(config.id || kioskId);
       const checkoutAnswers = configuredData.answers || answers;
       const checkoutPayload = buildKioskCheckoutPayload({
         config: configuredData.renderedConfig || config,
@@ -314,7 +312,6 @@ export default function PublicKioskPage() {
         billingDetails,
         snapshotImage,
         organizationId,
-        kioskMachineId,
         items: configuredData.items || (configuredData.payload as { items?: CheckoutItem[] })?.items,
         scene: configuredData.scene,
       });
@@ -324,7 +321,6 @@ export default function PublicKioskPage() {
         answers: checkoutAnswers,
         snapshotImage,
         organizationId,
-        kioskMachineId,
         items: checkoutPayload.items,
         cartTotals,
         createdAt: Date.now(),
