@@ -1,5 +1,5 @@
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
-import { labourLineTotalCost } from "@/features/quotations/utils/quotation-section-type.util";
+import { isOptionalQuoteSection, labourLineTotalCost } from "@/features/quotations/utils/quotation-section-type.util";
 
 export function draftPinTotal(pin: { quantity: number; selling_price: number }): number {
   const q = pin.quantity;
@@ -29,6 +29,24 @@ export function draftSectionTotal(section: {
   return labour + direct + section.plots.reduce((acc, p) => acc + draftPlotTotal(p), 0);
 }
 
+/** Quote total: included primary/project sections only — optional sections are excluded. */
 export function draftGrandTotal(draft: QuotationDraft): number {
-  return draft.sections.filter((s) => s.included).reduce((acc, s) => acc + draftSectionTotal(s), 0);
+  return draft.sections
+    .filter((s) => s.included && !isOptionalQuoteSection(s))
+    .reduce((acc, s) => acc + draftSectionTotal(s), 0);
+}
+
+/** Sum section totals for API/PDF display, excluding optional sections. */
+export function sumQuoteSectionsGrandTotal(
+  sections: Array<{
+    section_total?: number | null;
+    kind?: Parameters<typeof isOptionalQuoteSection>[0]["kind"];
+    section_type?: Parameters<typeof isOptionalQuoteSection>[0]["section_type"];
+  }>,
+): number {
+  return sections.reduce((acc, s) => {
+    if (isOptionalQuoteSection(s)) return acc;
+    const n = typeof s.section_total === "number" && Number.isFinite(s.section_total) ? s.section_total : 0;
+    return acc + n;
+  }, 0);
 }
