@@ -25,14 +25,37 @@ import {
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { CheckCircle, AlertCircle, ShoppingCart, Download, ExternalLink } from "lucide-react";
 
+const STRIPE_SESSION_PLACEHOLDER = "{CHECKOUT_SESSION_ID}";
+
+function isStripeSessionPlaceholder(sessionId: string | null | undefined): boolean {
+  const raw = (sessionId ?? "").trim();
+  if (!raw) return true;
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return decoded === STRIPE_SESSION_PLACEHOLDER || decoded.includes("CHECKOUT_SESSION_ID");
+}
+
 function kioskPaymentReturnUrls() {
-  const success = new URL(window.location.href);
-  success.searchParams.set("payment", "success");
-  success.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-  const cancel = new URL(window.location.href);
-  cancel.searchParams.delete("session_id");
+  const current = new URL(window.location.href);
+  current.searchParams.delete("session_id");
+  current.searchParams.delete("payment");
+
+  const cancel = new URL(current.href);
   cancel.searchParams.set("payment", "cancelled");
-  return { successUrl: success.toString(), cancelUrl: cancel.toString() };
+
+  const success = new URL(current.href);
+  success.searchParams.set("payment", "success");
+  // Stripe only replaces the literal unencoded `{CHECKOUT_SESSION_ID}` token.
+  // URLSearchParams encodes braces (%7B/%7D), which Stripe then leaves as-is.
+  const query = success.search ? `${success.search}&session_id=${STRIPE_SESSION_PLACEHOLDER}` : `?session_id=${STRIPE_SESSION_PLACEHOLDER}`;
+  return {
+    successUrl: `${success.origin}${success.pathname}${query}${success.hash}`,
+    cancelUrl: cancel.toString(),
+  };
 }
 
 function stripKioskPaymentQuery() {
@@ -236,33 +259,42 @@ export default function PublicKioskPage() {
       return;
     }
 
-    if (payment !== "success" || !sessionId) return;
+    if (payment !== "success") return;
+
+    const pendingForReturn = readPendingKioskCheckout(kioskId);
+    const resolvedSessionId =
+      sessionId && !isStripeSessionPlaceholder(sessionId)
+        ? sessionId
+        : pendingForReturn?.stripeSessionId?.trim() || "";
+
+    if (!resolvedSessionId) return;
+
     stripeReturnHandled.current = true;
     setIsConfirmingPayment(true);
 
     void (async () => {
       try {
         const alreadyDone = readKioskCheckoutCompleted(kioskId);
-        if (alreadyDone === sessionId) {
+        if (alreadyDone === resolvedSessionId) {
           stripKioskPaymentQuery();
           setView("submitted");
           return;
         }
 
-        const verified = await verifyKioskStripeCheckoutSession(sessionId);
+        const verified = await verifyKioskStripeCheckoutSession(resolvedSessionId);
         if (!verified.paid) {
           throw new Error("Payment is not complete. Please try again.");
         }
 
-        const pending = readPendingKioskCheckout(kioskId);
+        const pending = pendingForReturn ?? readPendingKioskCheckout(kioskId);
         if (!pending) {
           throw new Error("Checkout details were lost. Please enter billing details again.");
         }
-        if (pending.stripeSessionId && pending.stripeSessionId !== sessionId) {
+        if (pending.stripeSessionId && pending.stripeSessionId !== resolvedSessionId) {
           throw new Error("This payment does not match the current order.");
         }
 
-        pending.stripeSessionId = sessionId;
+        pending.stripeSessionId = resolvedSessionId;
         savePendingKioskCheckout(kioskId, pending);
         await finishCheckoutAfterPayment(pending, config);
         stripKioskPaymentQuery();

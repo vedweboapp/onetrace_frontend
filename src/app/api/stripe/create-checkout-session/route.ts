@@ -4,6 +4,10 @@ import { getStripe } from "@/shared/utils/stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function unescapeStripeSessionPlaceholder(url: string): string {
+  return url.replace(/%7BCHECKOUT_SESSION_ID%7D/gi, "{CHECKOUT_SESSION_ID}");
+}
+
 type CreateCheckoutBody = {
   amountPence?: number;
   currency?: string;
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // ── URL validation ────────────────────────────────────────────────────────
-    const successUrl = body.successUrl?.trim();
+    const successUrl = unescapeStripeSessionPlaceholder(body.successUrl?.trim() ?? "");
     const cancelUrl = body.cancelUrl?.trim();
     if (!successUrl || !cancelUrl) {
       return NextResponse.json(
