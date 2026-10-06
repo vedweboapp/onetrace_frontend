@@ -11,6 +11,7 @@ export type GroupItemRef = {
   item: number;
   abbreviation: string;
   item_name?: string;
+  item_selling_price?: string | number | null;
   selling_price?: string | number | null;
 };
 

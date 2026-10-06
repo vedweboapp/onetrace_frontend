@@ -48,13 +48,17 @@ import {
 } from "@/features/users/utils/load-users-by-role.util";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
-import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import {
+  detailTabStandaloneFillClassName,
+  entityDetailTabPanelClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { toastApiError, toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { AppButton, CustomizableAppTabs, DashboardUnderDevelopmentState, type AppTabItem } from "@/shared/ui";
+import { AppButton, CustomizableAppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { cn } from "@/core/utils/http.util";
 
 type QuotationDetailTabId =
   | "details"
@@ -86,7 +90,6 @@ type Props = {
 export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tAudit = useTranslations("Dashboard.auditTrails");
-  const tHome = useTranslations("Dashboard.home");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
   const catalogEpoch = useDropdownCatalogEpoch([
     "users",
@@ -126,6 +129,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(() => {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
+      { id: "vendors", label: t("formTabs.vendorQuotations") },
       { id: "jobs", label: t("relatedTabs.jobs") },
       { id: "jobsheets", label: t("relatedTabs.jobsheets") },
       { id: "schedule", label: t("relatedTabs.schedule") },
@@ -135,7 +139,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       tabs.push({ id: "docs", label: t("relatedTabs.docs") });
       tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
     }
-    tabs.push({ id: "vendors", label: t("formTabs.vendorQuotations") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
   }, [isProjectQuote, t, tAudit]);
@@ -184,7 +187,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         const items = await fetchJobsForQuotation({
           quotationId: detailForSite.id,
           jobCategory,
-          projectId,
           linkedJobId: getQuotationLinkedJobId(detailForSite),
         });
         if (!cancelled) setRelatedJobs(items);
@@ -200,7 +202,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [detailForSite, jobCategory, jobsRefreshNonce, projectId, t]);
+  }, [detailForSite, jobCategory, jobsRefreshNonce, t]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -402,9 +404,12 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       fetch={fetchDetailWithVendors}
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
-      wrapSurface={activeTab !== "schedule" && activeTab !== "location"}
+      wrapSurface={
+        (activeTab !== "schedule" && activeTab !== "location") ||
+        (activeTab === "schedule" && relatedJobs.length === 0)
+      }
       className={
-        activeTab === "schedule" || activeTab === "location"
+        (activeTab === "schedule" && relatedJobs.length > 0) || activeTab === "location"
           ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
@@ -506,7 +511,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               role="tabpanel"
               id="quotation-detail-tab-schedule"
               aria-labelledby="quotation-detail-tab-trigger-schedule"
-              className="flex min-h-0 flex-1 flex-col"
+              className={
+                relatedJobs.length === 0
+                  ? entityDetailTabPanelClassName
+                  : "flex min-h-0 flex-1 flex-col"
+              }
             >
               <QuotationScheduleTab jobs={relatedJobs} />
             </div>
@@ -527,17 +536,36 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         }
 
         if (activeTab === "jobsheets" || activeTab === "docs" || activeTab === "approvals") {
+          const wip =
+            activeTab === "jobsheets"
+              ? {
+                  iconName: "forms" as const,
+                  title: t("relatedTabs.wipJobsheetsTitle"),
+                  description: t("relatedTabs.wipJobsheetsDescription"),
+                }
+              : activeTab === "docs"
+                ? {
+                    iconName: "quotations" as const,
+                    title: t("relatedTabs.wipDocsTitle"),
+                    description: t("relatedTabs.wipDocsDescription"),
+                  }
+                : {
+                    iconName: "profiles" as const,
+                    title: t("relatedTabs.wipApprovalsTitle"),
+                    description: t("relatedTabs.wipApprovalsDescription"),
+                  };
           return (
             <div
               role="tabpanel"
               id={`quotation-detail-tab-${activeTab}`}
               aria-labelledby={`quotation-detail-tab-trigger-${activeTab}`}
-              className={entityDetailTabPanelClassName}
+              className={cn(entityDetailTabPanelClassName, detailTabStandaloneFillClassName)}
             >
-              <DashboardUnderDevelopmentState
-                className="rounded-none"
-                title={tHome("title")}
-                description={tHome("body")}
+              <DashboardEmptyState
+                fill
+                iconName={wip.iconName}
+                title={wip.title}
+                description={wip.description}
               />
             </div>
           );

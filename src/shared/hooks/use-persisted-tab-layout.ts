@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
+import { appearanceDefaultTabLayout, useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 import { scheduleTabLayoutsPersist } from "@/shared/utils/persist-tab-layouts";
 import {
   applyTabLayout,
@@ -15,6 +15,24 @@ import {
   moveTabOrderItem,
 } from "@/shared/utils/tab-layout.util";
 
+/**
+ * Resolve layout for a scope:
+ * 1) User preference in store (from profile hydrate / local edit)
+ * 2) localStorage for this user key
+ * 3) Appearance-setting defaults (catalog)
+ * 4) Screen `defaultIds` when nothing else exists
+ */
+function resolveSavedLayout(
+  scope: string,
+  storageKey: string,
+  fromStore: TabLayoutChoice | undefined,
+): TabLayoutChoice | null {
+  if (fromStore) return fromStore;
+  const local = readStoredTabLayout(storageKey);
+  if (local) return local;
+  return appearanceDefaultTabLayout(scope);
+}
+
 export function usePersistedTabLayout(
   storageKey: string,
   defaultIds: readonly string[],
@@ -24,11 +42,16 @@ export function usePersistedTabLayout(
   const scope = React.useMemo(() => tabLayoutScopeFromStorageKey(storageKey), [storageKey]);
   const fromStore = useTabLayoutsStore((s) => s.layouts[scope]);
 
+  const appearanceBaseline = React.useMemo(() => {
+    const defaults = defaultKey.split("\0").filter(Boolean);
+    return applyTabLayout(defaults, appearanceDefaultTabLayout(scope));
+  }, [defaultKey, scope]);
+
   const resolved = React.useMemo(() => {
     const defaults = defaultKey.split("\0").filter(Boolean);
-    const saved = fromStore ?? readStoredTabLayout(storageKey);
+    const saved = resolveSavedLayout(scope, storageKey, fromStore);
     return applyTabLayout(defaults, saved);
-  }, [defaultKey, fromStore, storageKey]);
+  }, [defaultKey, fromStore, scope, storageKey]);
 
   const persist = React.useCallback(
     (layout: TabLayoutChoice) => {
@@ -67,18 +90,13 @@ export function usePersistedTabLayout(
 
   const reset = React.useCallback(() => {
     clearStoredTabLayout(storageKey);
-    const defaults = defaultKey.split("\0").filter(Boolean);
-    const next: TabLayoutChoice = { order: defaults, hidden: [] };
+    const next = appearanceBaseline;
+    writeStoredTabLayout(storageKey, next);
     useTabLayoutsStore.getState().setScopeLayout(scope, next);
     scheduleTabLayoutsPersist();
-  }, [defaultKey, scope, storageKey]);
+  }, [appearanceBaseline, scope, storageKey]);
 
-  const defaultLayout = React.useMemo(
-    () => applyTabLayout(defaultKey.split("\0").filter(Boolean), { order: [], hidden: [] }),
-    [defaultKey],
-  );
-
-  const isCustom = !layoutsAreEqual(resolved, defaultLayout);
+  const isCustom = !layoutsAreEqual(resolved, appearanceBaseline);
   const visibleIds = React.useMemo(
     () => visibleTabIds(resolved, pinnedIds),
     [resolved, pinnedIds],

@@ -39,6 +39,7 @@ import {
   type ApiAppearancePreferences,
 } from "../utils/appearance-preferences.util";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { DEFAULT_TAB_LAYOUTS } from "@/shared/config/default-tab-layouts";
 import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 
 function useIsClient() {
@@ -391,7 +392,11 @@ export const AppearancePanel = React.forwardRef<AppearancePanelHandle, Appearanc
           themeMode,
           language: draftLanguage,
           errorMessage: initialErrorMessage,
-          tabLayouts: useTabLayoutsStore.getState().layouts,
+          tabLayouts: {
+            ...DEFAULT_TAB_LAYOUTS,
+            ...(useTabLayoutsStore.getState().apiPreferencesCache?.tab_layouts ?? {}),
+            ...useTabLayoutsStore.getState().layouts,
+          },
         });
 
         await updatePersonalProfile(String(userId), {
