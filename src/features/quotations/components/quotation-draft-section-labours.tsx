@@ -27,7 +27,6 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
   const loc = locale === "es" ? "es" : "en";
   const [options, setOptions] = React.useState<LabourType[]>([]);
   const [pickId, setPickId] = React.useState("");
-  const [timeHours, setTimeHours] = React.useState("1");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -63,7 +62,8 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
     const markup = parseLabourNumber(row.default_markup);
     const sell =
       parseLabourNumber(row.default_sell_price) || suggestedLabourSellPrice(cost, markup) || labourLineSellPrice(cost, markup);
-    const hours = Math.max(0, Number.parseFloat(timeHours) || 1);
+    const hoursRaw = parseLabourNumber(row.default_time_hours);
+    const hours = hoursRaw > 0 ? hoursRaw : 1;
     onChange([
       ...labours,
       {
@@ -77,7 +77,6 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
       },
     ]);
     setPickId("");
-    setTimeHours("1");
   }
 
   function patchLabour(index: number, patch: Partial<QuotationDraftLabour>) {
@@ -92,7 +91,7 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
     <div className="space-y-3">
       {!readOnly ? (
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
-          <div className="min-w-[12rem] flex-1">
+          <div className="min-w-[14rem] flex-1">
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{t("labourType")}</label>
             <CheckmarkSelect
               listLabel={t("labourType")}
@@ -105,22 +104,7 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
               onChange={setPickId}
             />
           </div>
-          <div className="w-28">
-            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{t("labourTimeHours")}</label>
-            <NumericInput
-              value={timeHours}
-              disabled={saving}
-              className={cn(surfaceInputClassName, "w-full")}
-              onChange={setTimeHours}
-            />
-          </div>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={saving || !pickId}
-            onClick={addLabour}
-          >
+          <AppButton type="button" variant="secondary" size="sm" disabled={saving || !pickId} onClick={addLabour}>
             {t("labourAdd")}
           </AppButton>
         </div>
@@ -135,42 +119,28 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
               key={row.id}
               className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {row.labour_name?.trim() || (row.labour_type != null ? `#${row.labour_type}` : "—")}
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {row.labour_name?.trim() || (row.labour_type != null ? `#${row.labour_type}` : "—")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300">
                     {t("labourLineTotal")}: {formatMoneyDisplay(draftLabourTotal(row), loc)}
-                  </p>
+                  </span>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
+                      aria-label={t("labourRemove")}
+                      disabled={saving}
+                      onClick={() => removeLabour(index)}
+                    >
+                      <Trash2 className="size-4" aria-hidden />
+                    </button>
+                  ) : null}
                 </div>
-                {!readOnly ? (
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
-                    aria-label={t("labourRemove")}
-                    disabled={saving}
-                    onClick={() => removeLabour(index)}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
-                ) : null}
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourTimeHours")}
-                  </label>
-                  <NumericInput
-                    value={String(row.time_hours)}
-                    disabled={saving || readOnly}
-                    className={cn(surfaceInputClassName, "w-full")}
-                    onChange={(v) => {
-                      const n = Number.parseFloat(v);
-                      patchLabour(index, { time_hours: Number.isFinite(n) && n >= 0 ? n : 0 });
-                    }}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                     {t("labourCostRate")}
@@ -185,6 +155,20 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                         cost_rate: cost,
                         selling_price: labourLineSellPrice(cost, row.markup_percentage),
                       });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    {t("labourSellPrice")}
+                  </label>
+                  <MoneyInput
+                    value={String(row.selling_price)}
+                    disabled={saving || readOnly}
+                    className="w-full"
+                    onChange={(e) => {
+                      const sell = Number.parseFloat(e.target.value) || 0;
+                      patchLabour(index, { selling_price: sell });
                     }}
                   />
                 </div>
@@ -207,15 +191,15 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    {t("labourSellPrice")}
+                    {t("labourTimeHours")}
                   </label>
-                  <MoneyInput
-                    value={String(row.selling_price)}
+                  <NumericInput
+                    value={String(row.time_hours)}
                     disabled={saving || readOnly}
-                    className="w-full"
-                    onChange={(e) => {
-                      const sell = Number.parseFloat(e.target.value) || 0;
-                      patchLabour(index, { selling_price: sell });
+                    className={cn(surfaceInputClassName, "w-full")}
+                    onChange={(v) => {
+                      const n = Number.parseFloat(v);
+                      patchLabour(index, { time_hours: Number.isFinite(n) && n >= 0 ? n : 0 });
                     }}
                   />
                 </div>

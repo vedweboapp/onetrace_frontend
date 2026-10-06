@@ -40,6 +40,7 @@ import {
 } from "@/features/quotations/utils/quotation-site-map.util";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
+import { consumeQuotationSectionScopeDraft } from "@/features/quotations/utils/quotation-section-scope.util";
 import {
   QUOTATION_STATUS_OPTIONS,
   normalizeQuotationStatusValue,
@@ -343,6 +344,14 @@ export function QuotationDetailBody({
     setScopeEditing(false);
     setScopeDirty(false);
   }, [detail.id]);
+
+  React.useEffect(() => {
+    const next = consumeQuotationSectionScopeDraft();
+    if (!next) return;
+    setScopeDraft(next);
+    setScopeDirty(true);
+    if (isServiceQuotation) setScopeEditing(true);
+  }, [isServiceQuotation]);
 
   React.useEffect(() => {
     if (scopeDirty) return;
