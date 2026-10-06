@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/shared/utils/stripe";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!secret) {

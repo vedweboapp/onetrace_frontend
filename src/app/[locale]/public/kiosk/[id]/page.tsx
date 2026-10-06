@@ -3,6 +3,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { getPublicKioskById, submitKioskCheckout } from "@/features/kiosk/api/kiosk.api";
+import {
+  createKioskStripeCheckoutSession,
+  verifyKioskStripeCheckoutSession,
+} from "@/features/kiosk/api/kiosk-stripe.api";
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
 import type { CheckoutItem } from "@/features/kiosk/types/kiosk-submission.types";
 import { KioskRenderer } from "@/features/kiosk/components/kiosk-renderer";
@@ -10,8 +14,33 @@ import { KioskCartReview } from "@/features/kiosk/components/kiosk-cart-review";
 import { KioskInvoiceDetails, type KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import { computeLiveBuildScene, type LiveBuildScene, type KioskAnswerValue } from "@/features/kiosk/utils/kiosk-live-build";
 import { buildKioskCheckoutFormData, buildKioskCheckoutPayload, captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
-import { toastError } from "@/shared/feedback/app-toast";
+import {
+  clearPendingKioskCheckout,
+  markKioskCheckoutCompleted,
+  readKioskCheckoutCompleted,
+  readPendingKioskCheckout,
+  savePendingKioskCheckout,
+  type PendingKioskCheckout,
+} from "@/features/kiosk/utils/kiosk-pending-checkout.util";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { CheckCircle, AlertCircle, ShoppingCart, Download, ExternalLink } from "lucide-react";
+
+function kioskPaymentReturnUrls() {
+  const success = new URL(window.location.href);
+  success.searchParams.set("payment", "success");
+  success.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
+  const cancel = new URL(window.location.href);
+  cancel.searchParams.delete("session_id");
+  cancel.searchParams.set("payment", "cancelled");
+  return { successUrl: success.toString(), cancelUrl: cancel.toString() };
+}
+
+function stripKioskPaymentQuery() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("payment");
+  url.searchParams.delete("session_id");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 export default function PublicKioskPage() {
   const params = useParams<{ id?: string | string[] }>();
@@ -34,6 +63,11 @@ export default function PublicKioskPage() {
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
   const [cartTotals, setCartTotals] = useState<{ grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number } | undefined>();
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null);
+  const [restoredBilling, setRestoredBilling] = useState<KioskBillingDetails | null>(null);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(
+    () => searchParams.get("payment") === "success",
+  );
+  const stripeReturnHandled = React.useRef(false);
 
   // Restore saved draft answers from sessionStorage
   useEffect(() => {
@@ -128,13 +162,137 @@ export default function PublicKioskPage() {
     setView("invoice");
   };
 
-  // Submit invoice and billing from invoice details tab
+  const applyPendingToInvoice = useCallback(
+    (pending: PendingKioskCheckout, kioskConfig: KioskConfig) => {
+      const pendingAnswers = pending.answers || {};
+      const scene = computeLiveBuildScene(kioskConfig, pendingAnswers);
+      setAnswers(pendingAnswers);
+      setCartTotals(pending.cartTotals);
+      setRestoredBilling(pending.billingDetails);
+      setConfiguredData({
+        payload: { items: pending.items },
+        answers: pendingAnswers,
+        scene,
+        renderedConfig: kioskConfig,
+        items: pending.items,
+      });
+      setView("invoice");
+    },
+    [],
+  );
+
+  const finishCheckoutAfterPayment = useCallback(
+    async (pending: PendingKioskCheckout, kioskConfig: KioskConfig | null) => {
+      const checkoutFormData = buildKioskCheckoutFormData({
+        config: kioskConfig ?? ({ questions: [] } as unknown as KioskConfig),
+        answers: pending.answers,
+        billingDetails: pending.billingDetails,
+        snapshotImage: pending.snapshotImage,
+        organizationId: pending.organizationId,
+        kioskMachineId: pending.kioskMachineId,
+        items: pending.items,
+      });
+      await submitKioskCheckout(checkoutFormData);
+
+      if (pending.snapshotImage) {
+        try {
+          const downloadAnchor = document.createElement("a");
+          downloadAnchor.href = pending.snapshotImage;
+          downloadAnchor.download = `kiosk-snapshot-${pending.kioskMachineId}.png`;
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          document.body.removeChild(downloadAnchor);
+        } catch (downloadErr) {
+          console.error("Failed to auto-download snapshot", downloadErr);
+        }
+      }
+
+      if (kioskId) {
+        sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
+        clearPendingKioskCheckout(kioskId);
+        if (pending.stripeSessionId) {
+          markKioskCheckoutCompleted(kioskId, pending.stripeSessionId);
+        }
+      }
+      toastSuccess("Payment received and order submitted.");
+      setSubmittedSnapshot(pending.snapshotImage);
+      setView("submitted");
+    },
+    [kioskId],
+  );
+
+  useEffect(() => {
+    if (!kioskId || stripeReturnHandled.current) return;
+    const payment = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+
+    if (payment === "cancelled") {
+      if (!config) return;
+      stripeReturnHandled.current = true;
+      const pending = readPendingKioskCheckout(kioskId);
+      if (pending) {
+        applyPendingToInvoice(pending, config);
+      }
+      stripKioskPaymentQuery();
+      return;
+    }
+
+    if (payment !== "success" || !sessionId) return;
+    stripeReturnHandled.current = true;
+    setIsConfirmingPayment(true);
+
+    void (async () => {
+      try {
+        const alreadyDone = readKioskCheckoutCompleted(kioskId);
+        if (alreadyDone === sessionId) {
+          stripKioskPaymentQuery();
+          setView("submitted");
+          return;
+        }
+
+        const verified = await verifyKioskStripeCheckoutSession(sessionId);
+        if (!verified.paid) {
+          throw new Error("Payment is not complete. Please try again.");
+        }
+
+        const pending = readPendingKioskCheckout(kioskId);
+        if (!pending) {
+          throw new Error("Checkout details were lost. Please enter billing details again.");
+        }
+        if (pending.stripeSessionId && pending.stripeSessionId !== sessionId) {
+          throw new Error("This payment does not match the current order.");
+        }
+
+        pending.stripeSessionId = sessionId;
+        savePendingKioskCheckout(kioskId, pending);
+        await finishCheckoutAfterPayment(pending, config);
+        stripKioskPaymentQuery();
+      } catch (err) {
+        console.error("Failed to complete Stripe checkout", err);
+        toastError(err instanceof Error ? err.message : "Could not complete payment. Try again.");
+        const pending = kioskId ? readPendingKioskCheckout(kioskId) : null;
+        if (pending && config) {
+          applyPendingToInvoice(pending, config);
+        }
+        stripKioskPaymentQuery();
+      } finally {
+        setIsConfirmingPayment(false);
+      }
+    })();
+  }, [applyPendingToInvoice, config, finishCheckoutAfterPayment, kioskId, searchParams]);
+
+  // Continue to payment: Stripe Checkout, then POST /checkout/ after paid return
   const handleSubmitInvoiceAndPayment = async (billingDetails: KioskBillingDetails) => {
     if (!kioskId || !config || !configuredData) return;
+    const amountPence = Math.round((cartTotals?.grandTotal ?? 0) * 100);
+    if (!Number.isFinite(amountPence) || amountPence < 1) {
+      toastError("Invalid payment amount.");
+      return;
+    }
+
     try {
       setIsSubmittingInvoice(true);
 
-      // 1. Capture visual preview snapshot image
       let snapshotImage = "";
       try {
         snapshotImage = await captureLiveBuildSnapshot(configuredData.scene);
@@ -144,72 +302,64 @@ export default function PublicKioskPage() {
       } catch (snapErr) {
         console.error("Failed to capture snapshot image", snapErr);
         toastError("Failed to capture visual preview snapshot. Please try again.");
-        setIsSubmittingInvoice(false);
         return;
       }
 
-      // 2. Build multipart/form-data checkout payload with binary snapshot file Blob
-      const activeConfig = configuredData.renderedConfig || config;
-      const checkoutFormData = buildKioskCheckoutFormData({
-        config: activeConfig,
-        answers: configuredData.answers || answers,
+      const organizationId = Number(config.organization_id || config.organization?.id || 1);
+      const kioskMachineId = Number(config.id || kioskId);
+      const checkoutAnswers = configuredData.answers || answers;
+      const checkoutPayload = buildKioskCheckoutPayload({
+        config: configuredData.renderedConfig || config,
+        answers: checkoutAnswers,
         billingDetails,
         snapshotImage,
-        organizationId: Number(config.organization_id || config.organization?.id || 1),
-        kioskMachineId: Number(config.id || kioskId),
+        organizationId,
+        kioskMachineId,
         items: configuredData.items || (configuredData.payload as { items?: CheckoutItem[] })?.items,
         scene: configuredData.scene,
       });
 
-      // 3. Post to /api/v1/checkout/ as multipart/form-data
-      await submitKioskCheckout(checkoutFormData);
+      const pending: PendingKioskCheckout = {
+        billingDetails,
+        answers: checkoutAnswers,
+        snapshotImage,
+        organizationId,
+        kioskMachineId,
+        items: checkoutPayload.items,
+        cartTotals,
+        createdAt: Date.now(),
+      };
+      savePendingKioskCheckout(kioskId, pending);
 
-      // 4. Auto-download snapshot image directly to user's computer on submission
-      if (typeof window !== "undefined" && snapshotImage) {
-        try {
-          const downloadAnchor = document.createElement("a");
-          downloadAnchor.href = snapshotImage;
-          downloadAnchor.download = `kiosk-snapshot-${kioskId || "product"}.png`;
-          document.body.appendChild(downloadAnchor);
-          downloadAnchor.click();
-          document.body.removeChild(downloadAnchor);
-        } catch (downloadErr) {
-          console.error("Failed to auto-download snapshot", downloadErr);
-        }
-      }
-
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
-      }
-      setSubmittedSnapshot(snapshotImage);
-      setView("submitted");
+      const { successUrl, cancelUrl } = kioskPaymentReturnUrls();
+      const session = await createKioskStripeCheckoutSession({
+        amountPence,
+        currency: "gbp",
+        customerEmail: billingDetails.email.trim(),
+        productName: config.name?.trim() || "SimHo order",
+        successUrl,
+        cancelUrl,
+        metadata: {
+          kiosk_id: String(kioskId),
+        },
+      });
+      pending.stripeSessionId = session.sessionId;
+      savePendingKioskCheckout(kioskId, pending);
+      window.location.assign(session.url);
     } catch (err) {
-      console.error("Failed to submit checkout", err);
-    } finally {
+      console.error("Failed to start Stripe checkout", err);
+      toastError(err instanceof Error ? err.message : "Could not start payment. Try again.");
       setIsSubmittingInvoice(false);
     }
   };
 
-  if (loading) {
+  if (isConfirmingPayment) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-3">
           <div className="size-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#701524]" />
-          <p className="text-sm font-medium text-slate-500">Loading product kiosk...</p>
+          <p className="text-sm font-medium text-slate-500">Confirming payment...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (error || !config) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-slate-950">
-        <div className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-          <AlertCircle className="size-6" />
-        </div>
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          {error || "Failed to load kiosk"}
-        </p>
       </div>
     );
   }
@@ -276,6 +426,30 @@ export default function PublicKioskPage() {
             Configure Another Product
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#701524]" />
+          <p className="text-sm font-medium text-slate-500">Loading product kiosk...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !config) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center dark:bg-slate-950">
+        <div className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+          <AlertCircle className="size-6" />
+        </div>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          {error || "Failed to load kiosk"}
+        </p>
       </div>
     );
   }
@@ -364,6 +538,7 @@ export default function PublicKioskPage() {
             onBack={() => setView("cart")}
             onSubmitInvoice={handleSubmitInvoiceAndPayment}
             isSubmitting={isSubmittingInvoice}
+            initialBilling={restoredBilling}
           />
         </div>
       )}

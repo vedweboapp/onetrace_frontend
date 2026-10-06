@@ -160,11 +160,15 @@ export type QuotationQuoteSectionPlot = {
   plot_total: number;
 };
 
+export type QuotationQuoteSectionKind = "primary" | "optional";
+
 export type QuotationQuoteSection = {
   section_order: number;
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  /** Service quotes: which Scope & pricing bucket this section belongs to. */
+  kind?: QuotationQuoteSectionKind;
   drawing_file?: string | null;
   drawing_file_type?: string | null;
   drawing_file_size?: number | null;

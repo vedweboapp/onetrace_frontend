@@ -432,6 +432,7 @@ function DashboardMainSidebar({
   const returnToStockHref = routes.dashboard.returnToStock;
   const itemsHref = routes.dashboard.items;
   const compositeHref = routes.dashboard.compositeItems;
+  const laboursHref = routes.dashboard.labours;
   const homeActive = pathname === homeHref;
   const clientsActive =
     pathname === clientsHref || pathname.startsWith(`${clientsHref}/`);
@@ -483,7 +484,8 @@ function DashboardMainSidebar({
     pathname === returnToStockHref || pathname.startsWith(`${returnToStockHref}/`);
   const itemsActive = pathname === itemsHref || pathname.startsWith(`${itemsHref}/`);
   const compositeActive = pathname === compositeHref || pathname.startsWith(`${compositeHref}/`);
-  const itemsSectionActive = itemsActive || compositeActive;
+  const laboursActive = pathname === laboursHref || pathname.startsWith(`${laboursHref}/`);
+  const itemsSectionActive = itemsActive || compositeActive || laboursActive;
   const serviceJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.service}`;
   const projectJobHref = `${routes.dashboard.jobs}?job_category=${JOB_CATEGORY.project}`;
   const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
@@ -704,6 +706,11 @@ function DashboardMainSidebar({
               href: compositeHref,
               label: t("compositeItems"),
               active: compositeActive,
+            },
+            {
+              href: laboursHref,
+              label: t("labours"),
+              active: laboursActive,
             },
           ]}
         />

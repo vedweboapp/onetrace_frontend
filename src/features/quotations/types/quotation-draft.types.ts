@@ -1,4 +1,9 @@
-import type { QuotationQuoteSectionSourcePin } from "@/features/quotations/types/quotation.types";
+import type {
+  QuotationQuoteSectionKind,
+  QuotationQuoteSectionSourcePin,
+} from "@/features/quotations/types/quotation.types";
+
+export type { QuotationQuoteSectionKind };
 
 /** Client-side draft for quotation composition (create flow). Synced from project levels API only as initial seed; edits stay local until create quotation API. */
 
@@ -39,6 +44,8 @@ export type QuotationDraftSection = {
   level?: string | null;
   order?: number | null;
   included: boolean;
+  /** Service quote: primary vs optional bucket. Project quotes stay primary. */
+  kind?: QuotationQuoteSectionKind;
   /** Composite pins on the section itself (not tied to a drawing plot). */
   section_pins: QuotationDraftLine[];
   plots: QuotationDraftPlot[];

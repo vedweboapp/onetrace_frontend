@@ -48,6 +48,7 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       level: typeof lv.level === "string" ? lv.level : null,
       order: typeof lv.order === "number" ? lv.order : null,
       included: true,
+      kind: "primary",
       section_pins: [],
       plots,
     });
@@ -123,6 +124,7 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       level: typeof sec.level === "string" ? sec.level : null,
       order: typeof sec.order === "number" ? sec.order : null,
       included: true,
+      kind: sec.kind === "optional" ? "optional" : "primary",
       section_pins: sectionPins,
       plots,
     };

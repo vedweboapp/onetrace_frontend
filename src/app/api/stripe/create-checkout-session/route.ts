@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/shared/utils/stripe";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type CreateCheckoutBody = {
   amountPence?: number;
   currency?: string;
@@ -44,6 +47,7 @@ export async function POST(request: Request) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: body.metadata ?? {},
+      client_reference_id: body.metadata?.kiosk_id?.slice(0, 200),
     });
 
     if (!session.url) {
