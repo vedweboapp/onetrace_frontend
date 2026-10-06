@@ -126,7 +126,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(() => {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
-      { id: "vendors", label: t("formTabs.vendorQuotations") },
       { id: "jobs", label: t("relatedTabs.jobs") },
       { id: "jobsheets", label: t("relatedTabs.jobsheets") },
       { id: "schedule", label: t("relatedTabs.schedule") },
@@ -136,6 +135,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       tabs.push({ id: "docs", label: t("relatedTabs.docs") });
       tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
     }
+    tabs.push({ id: "vendors", label: t("formTabs.vendorQuotations") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
   }, [isProjectQuote, t, tAudit]);

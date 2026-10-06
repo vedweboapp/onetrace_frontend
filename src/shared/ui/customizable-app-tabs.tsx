@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Eye, EyeOff, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppTabs, type AppTabItem, type AppTabsProps } from "@/shared/ui/app-tabs";
 import { usePersistedTabLayout } from "@/shared/hooks/use-persisted-tab-layout";
@@ -15,8 +15,6 @@ export type CustomizableAppTabsLabels = {
   arrangeTitle: string;
   arrangeHint: string;
   reset: string;
-  moveUpAria: string;
-  moveDownAria: string;
   dragHandleAria: string;
   showAria: string;
   hideAria: string;
@@ -51,8 +49,6 @@ export function CustomizableAppTabs({
     arrangeTitle: labelsProp?.arrangeTitle ?? t("title"),
     arrangeHint: labelsProp?.arrangeHint ?? t("hint"),
     reset: labelsProp?.reset ?? t("reset"),
-    moveUpAria: labelsProp?.moveUpAria ?? t("moveUp"),
-    moveDownAria: labelsProp?.moveDownAria ?? t("moveDown"),
     dragHandleAria: labelsProp?.dragHandleAria ?? t("drag"),
     showAria: labelsProp?.showAria ?? t("show"),
     hideAria: labelsProp?.hideAria ?? t("hide"),
@@ -218,24 +214,6 @@ export function CustomizableAppTabs({
                         ) : (
                           <Eye className="size-3.5" aria-hidden />
                         )}
-                      </button>
-                      <button
-                        type="button"
-                        className="flex size-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                        aria-label={labels.moveUpAria}
-                        disabled={index === 0}
-                        onClick={() => move(index, index - 1)}
-                      >
-                        <ChevronUp className="size-3.5" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className="flex size-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                        aria-label={labels.moveDownAria}
-                        disabled={index === orderedTabs.length - 1}
-                        onClick={() => move(index, index + 1)}
-                      >
-                        <ChevronDown className="size-3.5" aria-hidden />
                       </button>
                     </div>
                   </li>

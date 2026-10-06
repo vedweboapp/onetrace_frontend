@@ -29,6 +29,7 @@ import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotatio
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
+import { consumeQuotationSectionScopeDraft } from "@/features/quotations/utils/quotation-section-scope.util";
 import { buildQuotationScopeReturnHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import {
   createQuotationFormSchema,
@@ -783,6 +784,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   setQuoteDraftRef.current = setQuoteDraft;
   quoteDraftSnapshotRef.current = quoteDraft;
   formTabSnapshotRef.current = formTab;
+
+  React.useEffect(() => {
+    const next = consumeQuotationSectionScopeDraft();
+    if (!next) return;
+    preventQuoteDraftSeedRef.current = true;
+    setQuoteDraft(next);
+    setFormTab("pricing");
+  }, [setQuoteDraft]);
 
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
