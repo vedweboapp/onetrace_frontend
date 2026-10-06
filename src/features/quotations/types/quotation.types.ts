@@ -160,11 +160,15 @@ export type QuotationQuoteSectionPlot = {
   plot_total: number;
 };
 
+export type QuotationQuoteSectionKind = "primary" | "optional";
+
 export type QuotationQuoteSection = {
   section_order: number;
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  /** Service quotes: which Scope & pricing bucket this section belongs to. */
+  kind?: QuotationQuoteSectionKind;
   drawing_file?: string | null;
   drawing_file_type?: string | null;
   drawing_file_size?: number | null;
@@ -271,10 +275,36 @@ export type QuotationListItem = {
   organization: number | null;
 };
 
+export type QuotationVendorItemNestedItem = {
+  id: number;
+  name: string;
+  sku?: string | null;
+  cost_price?: string | number | null;
+  selling_price?: string | number | null;
+  is_composite?: boolean;
+  unit_type?:
+    | {
+        id?: number;
+        name?: string;
+        short_form?: string;
+        organization?: number;
+      }
+    | string
+    | null;
+  installation_type?: any;
+  group_name?: string | null;
+};
+
 export type QuotationVendorItem = {
+  id?: number;
+  item?: QuotationVendorItemNestedItem | number | null;
+  item_id?: number | null;
   quantity?: number;
-  item_total?: number;
-  unit_price?: number;
+  item_total?: number | string | null;
+  unit_price?: number | string | null;
+  lead_time_days?: string | number | null;
+  status?: string;
+  comments?: string | null;
   /** Note: backend uses the typo spelling `composite_itmes` */
   composite_itmes?: number | string | null;
   composite_items?: number | string | null;
@@ -282,6 +312,11 @@ export type QuotationVendorItem = {
   composite_item_id?: number | null;
   item_name?: string | null;
   name?: string | null;
+  sku?: string | null;
+  unit?: string | null;
+  unit_type?: string | null;
+  cost_price?: string | number | null;
+  selling_price?: string | number | null;
   date_of_delivery?: string | null;
   delivery_date?: string | null;
   purchased?: boolean;
@@ -298,6 +333,7 @@ export type QuotationVendorRef = {
 
 export type QuotationVendorSubmission = {
   id?: number;
+  quotation_vendor_id?: number;
   quotation?: number;
   status?: string;
   sent_at?: string | null;
@@ -305,6 +341,7 @@ export type QuotationVendorSubmission = {
   public_token?: string | null;
   signature?: string | null;
   vendor: QuotationVendorRef;
+  vendor_items?: QuotationVendorItem[];
   items?: QuotationVendorItem[];
 };
 
@@ -328,6 +365,7 @@ export type QuotationDetail = QuotationListItem & {
   accepted_at?: string | null;
   /** Vendor quotation submissions returned when fetched with ?include=vendors */
   vendors?: QuotationVendorSubmission[];
+  vendors_quote_details?: QuotationVendorSubmission[];
 };
 
 export type QuotationPagination = {

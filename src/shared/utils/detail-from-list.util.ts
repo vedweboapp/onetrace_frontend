@@ -96,6 +96,7 @@ export type DashboardListSection =
   | "groups"
   | "items"
   | "composite-items"
+  | "labours"
   | "material-requests"
   | "dispatches"
   | "return-to-stock"

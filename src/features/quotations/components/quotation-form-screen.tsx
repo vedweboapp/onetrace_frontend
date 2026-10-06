@@ -1293,6 +1293,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   saving={saving}
                   canShow={canShowLevels}
                   allowManualLines={isServiceQuotation}
+                  sectionKindTabs={isServiceQuotation}
                   onBeforeLeavePage={persistCreateDraft}
                 />
               </div>

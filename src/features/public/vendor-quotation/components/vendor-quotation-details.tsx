@@ -20,14 +20,15 @@ import {
 } from "@/features/public/quotation/api/public-pin.api";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-
 import SignaturePad from "@/shared/form/components/signature-pad";
 
 export const STANDARD_DELIVERY_DURATIONS = [
   "Immediate (In Stock)",
   "1 - 2 Business Days",
   "3 - 5 Business Days",
+  "5 Days",
   "1 Week",
+  "2 Weeks",
   "1 - 2 Weeks",
   "2 - 3 Weeks",
   "More",
@@ -180,10 +181,92 @@ function getStatusMeta(status: string | null | undefined): { label: string; bg: 
   }
 }
 
-/* ── Group items across composite_items or quote_sections ── */
+/* ── Group items across vendor_items, composite_items or quote_sections ── */
 
 function extractGroupedItems(detail: QuotationDetail): VendorLineItem[] {
-  // 1. Primary: Extract and group items from composite_items array
+  // 1. Primary: Extract from vendor_items / items (new response structure)
+  const vendorItems =
+    (detail as any).vendor_items ??
+    (detail as any).vendorItems ??
+    (detail as any).items;
+  if (Array.isArray(vendorItems) && vendorItems.length > 0) {
+    const list: VendorLineItem[] = [];
+    vendorItems.forEach((vi: any, idx: number) => {
+      const itemObj = vi.item && typeof vi.item === "object" ? vi.item : null;
+      const itemId =
+        itemObj?.id != null
+          ? Number(itemObj.id)
+          : vi.item_id != null
+          ? Number(vi.item_id)
+          : typeof vi.item === "number"
+          ? vi.item
+          : null;
+
+      const name = (
+        itemObj?.name ??
+        vi.name ??
+        vi.item_name ??
+        (itemId ? `Item #${itemId}` : `Item #${idx + 1}`)
+      ).trim();
+
+      const sku = (itemObj?.sku ?? vi.sku ?? vi.item_sku ?? "").trim();
+      const qty = Number(vi.quantity ?? vi.qty ?? 1);
+
+      let unit = "PCS";
+      if (itemObj?.unit_type) {
+        if (typeof itemObj.unit_type === "object") {
+          unit = itemObj.unit_type.short_form || itemObj.unit_type.name || "PCS";
+        } else if (typeof itemObj.unit_type === "string") {
+          unit = itemObj.unit_type;
+        }
+      } else if (vi.unit || vi.unit_type) {
+        unit = vi.unit ?? vi.unit_type;
+      }
+
+      const groupName = itemObj?.group_name ?? vi.group_name ?? null;
+      const costPrice =
+        itemObj?.cost_price != null
+          ? String(itemObj.cost_price)
+          : vi.cost_price != null
+          ? String(vi.cost_price)
+          : null;
+      const sellingPrice =
+        itemObj?.selling_price != null
+          ? String(itemObj.selling_price)
+          : vi.selling_price != null
+          ? String(vi.selling_price)
+          : null;
+
+      const quotedPrice =
+        vi.unit_price != null && vi.unit_price !== "" ? String(vi.unit_price) : "";
+      const deliveryDate =
+        vi.lead_time_days != null && vi.lead_time_days !== ""
+          ? String(vi.lead_time_days)
+          : vi.date_of_delivery ?? vi.delivery_date ?? "";
+      const key =
+        itemId != null ? `item_${itemId}` : vi.id != null ? `vi_${vi.id}` : `row_${idx}`;
+
+      list.push({
+        key,
+        itemId,
+        compositeId: vi.composite_item ?? vi.composite_item_id ?? null,
+        compositeIds: vi.composite_item ? [Number(vi.composite_item)] : [],
+        name,
+        sku,
+        groupName,
+        quantity: qty,
+        unit,
+        costPrice,
+        sellingPrice,
+        quotedPrice,
+        deliveryDate,
+      });
+    });
+
+    if (list.length > 0) return list;
+  }
+
+  // 2. Secondary: Extract and group items from composite_items array
   let compositeItems = (detail as any).composite_items ?? (detail as any).compositeItems;
   if (typeof compositeItems === "string") {
     try {
@@ -441,7 +524,7 @@ function SubmittedScreen({ detail }: { detail?: QuotationDetail | null }) {
             )}
           </p>
         </div>
-
+{/* 
         {detail ? (
           <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-left divide-y divide-slate-200/60 text-xs">
             {detail.quote_name && (
@@ -466,14 +549,9 @@ function SubmittedScreen({ detail }: { detail?: QuotationDetail | null }) {
                 <span className="font-medium text-slate-800 text-right">{customerName}</span>
               </div>
             )}
-            {projectName && projectName !== "—" && (
-              <div className="flex justify-between py-1.5">
-                <span className="text-slate-500">Project</span>
-                <span className="font-medium text-slate-800 text-right">{projectName}</span>
-              </div>
-            )}
+           
           </div>
-        ) : null}
+        ) : null} */}
 
         <p className="text-[11px] text-slate-400">
           No further actions are required. If you need to revise your quotation, please contact the project manager directly.
@@ -483,7 +561,7 @@ function SubmittedScreen({ detail }: { detail?: QuotationDetail | null }) {
   );
 }
 
-/* ── Acceptance / Signature Dialog ── */
+/* ── Acceptance / Submit Dialog ── */
 
 function AcceptanceDialog({
   open,
@@ -493,7 +571,7 @@ function AcceptanceDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirmAcceptance: (sig: string | null) => void;
+  onConfirmAcceptance: (signature: string | null) => void;
   isSubmitting?: boolean;
 }) {
   const [signature, setSignature] = useState<string | null>(null);
@@ -526,7 +604,7 @@ function AcceptanceDialog({
           </button>
         </div>
         <div className="px-6 py-5">
-          <div className="mb-5 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 flex items-start gap-3">
+          <div className="mb-4 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 flex items-start gap-3">
             <CheckCircle2 className="size-5 text-emerald-500 mt-0.5 shrink-0" />
             <p className="text-sm text-emerald-800 leading-relaxed">
               By submitting, you confirm the provided prices and delivery dates are accurate and final.
@@ -538,7 +616,8 @@ function AcceptanceDialog({
               label="Authorised Signature (optional)"
               value={signature ?? ""}
               onChange={(v) => setSignature(v || null)}
-              height={130}
+              height={120}
+              appearance="light"
               placeholder="Draw signature here…"
             />
           </div>
@@ -869,7 +948,7 @@ export function VendorQuotationDetails() {
                   <tr className="bg-[#334155] text-white">
                     <th className="py-2.5 px-3 text-left font-semibold w-12 text-center">#</th>
                     <th className="py-2.5 px-3 text-left font-semibold">Item / Description</th>
-                    <th className="py-2.5 px-3 text-left font-semibold min-w-[160px]">
+                    <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">
                       Your Unit Price {!isActioned && <span className="text-red-300">*</span>}
                     </th>
                     <th className="py-2.5 px-3 text-left font-semibold min-w-[150px]">
@@ -957,6 +1036,7 @@ export function VendorQuotationDetails() {
                               ))}
                             </select>
                           </td>
+
                         </tr>
                       );
                     })
@@ -1097,27 +1177,17 @@ export function VendorQuotationDetails() {
             setIsSubmittingApproval(true);
             const items = lineItems.map((item) => {
               const price = parseFloat(item.quotedPrice) || 0;
-              const itemTotal = price * item.quantity;
               return {
-                item_id: item.itemId ?? null,
-                composite_itmes: item.compositeId != null ? item.compositeId : item.itemId != null ? item.itemId : item.name,
-                composite_items: item.compositeId != null ? item.compositeId : item.itemId != null ? item.itemId : item.name,
-                name: item.name,
-                item_name: item.name,
-                sku: item.sku,
-                quantity: item.quantity,
-                unit_price: price,
-                item_total: itemTotal,
-                date_of_delivery: item.deliveryDate || "",
-                purchased: false,
+                item_id: Number(item.itemId ?? item.compositeId ?? 0),
+                unit_price: Number(price.toFixed(2)),
+                lead_time_days: item.deliveryDate.trim(),
               };
             });
 
             await submitPublicQuotationResponse(token, {
-              status: "submit",
+              status: "submitted",
               items: JSON.stringify(items),
-              signature: signatureData,
-              purchased: false,
+              signature: signatureData || undefined,
             });
             setIsAcceptDialogOpen(false);
             toastSuccess("Quotation submitted successfully");

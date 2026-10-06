@@ -388,7 +388,8 @@
       "products": "Products",
       "items": "Items",
       "itemsPlain": "Items",
-      "compositeItems": "Composite items"
+      "compositeItems": "Composite items",
+      "labours": "Labours"
     },
     "settingsNav": {
       "title": "Settings",
@@ -3124,6 +3125,12 @@
         "rowActions": "Actions",
         "emptyPlots": "No plots in this section yet.",
         "emptySections": "No sections yet. Add a section, then select groups and items with quantity.",
+        "kindTabsAria": "Primary or optional sections",
+        "kindPrimary": "Primary",
+        "kindOptional": "Optional",
+        "emptyPrimarySections": "No primary sections yet. Add a section.",
+        "emptyOptionalSections": "No optional sections yet. Add a section.",
+        "kindBucketTotal": "Bucket total",
         "includeSection": "Include",
         "quoteOnlySection": "Quote-only (not linked to a project level)",
         "sectionTotal": "Section total",
@@ -5292,6 +5299,62 @@
         "createSubtitle": "Fill in item details and save.",
         "editTitle": "Edit",
         "editSubtitle": "Update item details and save changes."
+      }
+    },
+    "labours": {
+      "metaTitle": "Labours",
+      "detailMetaTitle": "Labour Details",
+      "emptyTitle": "No Labours Yet",
+      "emptyDescription": "Create your first labour type to start building your catalog.",
+      "loadError": "Could not load labours. Try again.",
+      "deleteError": "Could not delete labour. Try again.",
+      "saveError": "Could not save labour. Check the fields and try again.",
+      "deletedToast": "Labour deleted",
+      "createdToast": "Labour created",
+      "updatedToast": "Labour updated",
+      "pageLabel": "Showing {start}-{end} of {total} labours",
+      "prev": "Previous",
+      "next": "Next",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saveChanges": "Save",
+      "deleteConfirmTitle": "Delete This Labour?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "table": {
+        "name": "Name",
+        "costRate": "Cost rate",
+        "markup": "Markup",
+        "sellPrice": "Sell price",
+        "created": "Created"
+      },
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "e.g. Fire Consultant",
+        "description": "Description",
+        "descriptionPlaceholder": "e.g. Fire safety consultation and compliance services",
+        "costRate": "Cost rate",
+        "markup": "Markup (%)",
+        "sellPrice": "Sell price"
+      },
+      "validation": {
+        "name": "Enter a name.",
+        "markup": "Enter a valid markup.",
+        "costRate": "Enter a valid cost rate.",
+        "sellPrice": "Enter a valid sell price."
+      },
+      "detail": {
+        "retry": "Retry",
+        "backAria": "Back to labours list",
+        "sectionDetails": "Details"
+      },
+      "page": {
+        "createTitle": "Create Labour",
+        "createSubtitle": "Fill in labour details and save.",
+        "editTitle": "Edit",
+        "editSubtitle": "Update labour details and save changes."
       }
     },
     "settings": {

@@ -348,3 +348,107 @@ export async function createPurchaseOrderFromQuotation(
   const { data } = await api.post<ApiEnvelope<any>>(QUOTATION_PATHS.createPurchaseOrder(quotationId), payload);
   return data;
 }
+
+export type UpdateQuotationItemsStatusPayload = {
+  quotation_vendor_id: number;
+  item_ids: number[];
+  status: "approved" | "rejected";
+};
+
+export async function updateQuotationItemsStatus(
+  quotationId: number,
+  payload: UpdateQuotationItemsStatusPayload,
+): Promise<ApiEnvelope<unknown>> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(
+    QUOTATION_PATHS.updateItemStatus(quotationId),
+    payload,
+  );
+  assertApiSuccess(data);
+  return data;
+}
+
+export function parseVendorsList(input: any): any[] {
+  if (!input) return [];
+  let val = input;
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(val)) {
+    const valid = val.filter(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        (item.vendor != null || item.vendor_items != null || item.items != null || item.id != null),
+    );
+    if (valid.length > 0) return valid;
+    return val;
+  }
+  if (typeof val === "object") {
+    const directArray =
+      (Array.isArray(val.vendors) && val.vendors) ||
+      (Array.isArray(val.vendors_quote_details) && val.vendors_quote_details) ||
+      (Array.isArray(val.vendor_quotations) && val.vendor_quotations) ||
+      (Array.isArray(val.vendor_submissions) && val.vendor_submissions) ||
+      (Array.isArray(val.quotation_vendors) && val.quotation_vendors) ||
+      (Array.isArray(val.vendor_quotes) && val.vendor_quotes) ||
+      (Array.isArray(val.vendor_responses) && val.vendor_responses) ||
+      (Array.isArray(val.vendors_data) && val.vendors_data) ||
+      (Array.isArray(val.data) && val.data) ||
+      (Array.isArray(val.results) && val.results);
+
+    if (directArray) {
+      return parseVendorsList(directArray);
+    }
+
+    const candidate =
+      val.vendors ??
+      val.vendors_quote_details ??
+      val.vendor_quotations ??
+      val.vendor_submissions ??
+      val.quotation_vendors ??
+      val.vendor_quotes ??
+      val.vendor_responses ??
+      val.vendors_data ??
+      val.data;
+
+    if (candidate && candidate !== val) {
+      return parseVendorsList(candidate);
+    }
+  }
+  return [];
+}
+
+export async function fetchQuotationVendors(quotationId: number): Promise<any[]> {
+  const endpoints = [
+    { url: QUOTATION_PATHS.detail(quotationId), params: { include: "vendors" } },
+    { url: `quotations/${quotationId}/vendor-quotations/`, params: undefined },
+    { url: `quotations/${quotationId}/vendors/`, params: undefined },
+    { url: `vendor-quotations/`, params: { quotation: quotationId } },
+    { url: `quotation-vendors/`, params: { quotation: quotationId } },
+    { url: `vendor-quotations/`, params: { quotation_id: quotationId } },
+    { url: `quotation-vendors/`, params: { quotation_id: quotationId } },
+    { url: QUOTATION_PATHS.detail(quotationId), params: undefined },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await api.get(ep.url, {
+        params: ep.params,
+        skipErrorToast: true,
+      });
+      const list = parseVendorsList(res.data);
+      if (list.length > 0) {
+        return list;
+      }
+    } catch {
+      /* continue */
+    }
+  }
+
+  return [];
+}
+

@@ -753,6 +753,7 @@ export function QuotationDetailBody({
               canShow
               readOnly={!isServiceQuotation || !scopeEditing}
               allowManualLines
+              sectionKindTabs={isServiceQuotation}
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>

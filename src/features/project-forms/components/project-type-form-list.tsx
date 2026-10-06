@@ -3,16 +3,19 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Send } from "lucide-react";
 import {
     AppButton,
     AppModal,
+    AppTabs,
+    type AppTabItem,
     CheckmarkSelect,
     DashboardEmptyState,
     ListPageSearchField,
     SurfaceShell,
     DataTablePaginationBar,
     DataTableTextModeToggle,
+    DataTableRowActionsMenu,
     useDataTableTextModeStore,
     type CheckmarkSelectOption,
 } from "@/shared/ui";
@@ -36,6 +39,7 @@ interface FormListItem {
     description?: string | null;
     project_type?: unknown;
     is_active?: boolean;
+    is_published?: boolean;
     created_at?: string;
     modified_at?: string;
     created_by?: { id: number; username?: string; email?: string } | null;
@@ -80,7 +84,18 @@ function installationTypeLabel(value: unknown): string {
     );
 }
 function formApiName(row: FormListItem): string {
-    return row.api_name || textValue(row.apiName) || "â€”";
+    return row.api_name || textValue(row.apiName) || "—";
+}
+
+type FormTabId = "published" | "drafts";
+
+const FORM_TABS: readonly AppTabItem[] = [
+    { id: "published", label: "Published" },
+    { id: "drafts", label: "Drafts" },
+];
+
+function isFormPublished(form: FormListItem): boolean {
+    return Boolean(form.is_published);
 }
 
 const ProjectTypeFormList = () => {
@@ -126,6 +141,8 @@ const ProjectTypeFormList = () => {
     const [selectedInstallationTypeId, setSelectedInstallationTypeId] = React.useState<number | null>(null);
     const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
 
+    const [activeTab, setActiveTab] = React.useState<FormTabId>("published");
+
     React.useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -136,6 +153,7 @@ const ProjectTypeFormList = () => {
                     search: search || undefined,
                     page,
                     page_size: pageSize,
+                    is_published: activeTab === "published",
                 });
                 if (!cancelled) {
                     let resolvedItems: FormListItem[] = [];
@@ -179,7 +197,11 @@ const ProjectTypeFormList = () => {
                         };
                     }
                     
-                    setItems(resolvedItems);
+                    const finalItems = resolvedItems.filter((row) =>
+                        activeTab === "published" ? isFormPublished(row) : !isFormPublished(row),
+                    );
+
+                    setItems(finalItems);
                     setPagination(resolvedPagination);
                 }
             } catch (error) {
@@ -194,7 +216,7 @@ const ProjectTypeFormList = () => {
         return () => {
             cancelled = true;
         };
-    }, [page, pageSize, search, t]);
+    }, [page, pageSize, search, activeTab, t]);
 
     React.useEffect(() => {
         if (!projectTypeModalOpen) return;
@@ -281,6 +303,36 @@ const ProjectTypeFormList = () => {
         [t],
     );
 
+    const handlePublishForm = React.useCallback(
+        async (row: FormListItem) => {
+            setTogglingId(row.id);
+            try {
+                await updateProjectForm(row.id, {
+                    is_published: true,
+                });
+                setItems((prev) => {
+                    if (!Array.isArray(prev)) return prev;
+                    return prev.filter((item) => item.id !== row.id);
+                });
+                toastSuccess("Form published successfully");
+            } catch (error) {
+                toastApiError(error, "Failed to publish form");
+            } finally {
+                setTogglingId(null);
+            }
+        },
+        [],
+    );
+
+    const handleEditForm = React.useCallback(
+        (row: FormListItem) => {
+            router.push(
+                `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
+            );
+        },
+        [router],
+    );
+
     const projectTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
         () =>
             Array.isArray(projectTypes)
@@ -318,6 +370,22 @@ const ProjectTypeFormList = () => {
                 </AppButton>
             </div>
 
+            <div className="flex shrink-0 items-center justify-between gap-3">
+                <AppTabs
+                    tabs={FORM_TABS}
+                    value={activeTab}
+                    onValueChange={(id) => {
+                        setActiveTab(id as FormTabId);
+                        setPage(1);
+                    }}
+                    ariaLabel="Project forms tabs"
+                    panelIdPrefix="project-forms-status"
+                />
+                <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/70 px-2 py-1 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
+                    <DataTableTextModeToggle variant="header" className="shrink-0" />
+                </div>
+            </div>
+
             <SurfaceShell className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-slate-200 dark:border-slate-800">
                 {loadError ? (
                     <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
@@ -332,8 +400,8 @@ const ProjectTypeFormList = () => {
                 ) : !Array.isArray(items) || items.length === 0 ? (
                     <DashboardEmptyState
                         iconName="projectForms"
-                        title={t("emptyTitle")}
-                        description={t("emptyDescription")}
+                        title={activeTab === "drafts" ? "No draft forms found" : t("emptyTitle")}
+                        description={activeTab === "drafts" ? "Forms saved as drafts will appear here." : t("emptyDescription")}
                         action={
                             <AppButton onClick={openProjectTypePicker} className="gap-1.5 font-semibold">
                                 <Plus className="size-4" /> {t("createNewForm")}
@@ -343,11 +411,6 @@ const ProjectTypeFormList = () => {
                     />
                 ) : (
                     <div className="relative flex min-h-0 flex-1 flex-col">
-                        <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
-                            <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
-                                <DataTableTextModeToggle variant="header" className="shrink-0" />
-                            </div>
-                        </div>
                         <div className="min-h-0 flex-1 overflow-auto">
                             <table
                                 className={cn(
@@ -362,7 +425,8 @@ const ProjectTypeFormList = () => {
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.installationType")}</th>
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
-                                        <th className="px-4 py-3 pr-12 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
+                                        <th className="px-4 py-3 pr-6 text-right font-semibold text-slate-700 dark:text-slate-300 w-24">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -416,7 +480,7 @@ const ProjectTypeFormList = () => {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 pr-12">
+                                                <td className="px-4 py-3">
                                                     <div className="block whitespace-nowrap text-slate-500 dark:text-slate-400">
                                                         {row.modified_at
                                                             ? dateFmt.format(new Date(row.modified_at))
@@ -427,6 +491,37 @@ const ProjectTypeFormList = () => {
                                                             {modifiedBy}
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="px-4 py-3 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <DataTableRowActionsMenu
+                                                        menuAriaLabel="Form actions"
+                                                        items={
+                                                            activeTab === "drafts"
+                                                                ? [
+                                                                      {
+                                                                          id: "edit",
+                                                                          label: "Edit",
+                                                                          icon: Pencil,
+                                                                          onSelect: () => handleEditForm(row),
+                                                                      },
+                                                                      {
+                                                                          id: "publish",
+                                                                          label: "Publish",
+                                                                          icon: Send,
+                                                                          onSelect: () => void handlePublishForm(row),
+                                                                          disabled: togglingId === row.id,
+                                                                      },
+                                                                  ]
+                                                                : [
+                                                                      {
+                                                                          id: "edit",
+                                                                          label: "Edit",
+                                                                          icon: Pencil,
+                                                                          onSelect: () => handleEditForm(row),
+                                                                      },
+                                                                  ]
+                                                        }
+                                                    />
                                                 </td>
                                             </tr>
                                         );

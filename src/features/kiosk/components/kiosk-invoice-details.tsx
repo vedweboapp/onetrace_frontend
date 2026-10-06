@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  DoorClosed,
+  Lock,
   Loader2,
 } from "lucide-react";
 import type { KioskConfig } from "../types/kiosk.types";
@@ -36,6 +36,7 @@ export interface KioskInvoiceDetailsProps {
   onBack: () => void;
   onSubmitInvoice: (billingDetails: KioskBillingDetails) => Promise<void> | void;
   isSubmitting?: boolean;
+  initialBilling?: KioskBillingDetails | null;
 }
 
 export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
@@ -47,19 +48,20 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
   onBack,
   onSubmitInvoice,
   isSubmitting = false,
+  initialBilling = null,
 }) => {
-  const [formData, setFormData] = useState<KioskBillingDetails>({
-    fullName: "",
-    companyName: "",
-    email: "",
-    phone: "",
-    vatRegistered: false,
-    vatNumber: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    postcode: "",
-  });
+  const [formData, setFormData] = useState<KioskBillingDetails>(() => ({
+    fullName: initialBilling?.fullName ?? "",
+    companyName: initialBilling?.companyName ?? "",
+    email: initialBilling?.email ?? "",
+    phone: initialBilling?.phone ?? "",
+    vatRegistered: initialBilling?.vatRegistered ?? false,
+    vatNumber: initialBilling?.vatNumber ?? "",
+    addressLine1: initialBilling?.addressLine1 ?? "",
+    addressLine2: initialBilling?.addressLine2 ?? "",
+    city: initialBilling?.city ?? "",
+    postcode: initialBilling?.postcode ?? "",
+  }));
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -568,15 +570,23 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Processing payment...</span>
+                    <span>Redirecting to payment...</span>
                   </>
                 ) : (
                   <>
-                    <span>Continue to payment</span>
+                    <Lock className="size-3.5 opacity-80" />
+                    <span>Pay securely with Stripe</span>
                     <ArrowRight className="size-4" />
                   </>
                 )}
               </button>
+              {/* Stripe trust badge */}
+              <p className="mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+                <Lock className="size-3" />
+                Payments are processed securely by{" "}
+                <span className="font-semibold text-[#635bff]">Stripe</span>.
+                Your card details never touch our servers.
+              </p>
             </div>
           </section>
         </div>

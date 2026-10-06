@@ -38,7 +38,7 @@ import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, MoneyInput, NumericInput, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, AppTabs, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, MoneyInput, NumericInput, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
@@ -328,6 +328,11 @@ type Props = {
   allowManualLines?: boolean;
   /** Persist create-form values before leaving Scope & Pricing (pin / composite detail). */
   onBeforeLeavePage?: () => void;
+  /**
+   * Service quotations: Scope & pricing is split into Primary / Optional section lists.
+   * Adding a section only appears in the active bucket; details stay on the section page.
+   */
+  sectionKindTabs?: boolean;
 };
 
 export function QuotationDraftComposer({
@@ -338,6 +343,7 @@ export function QuotationDraftComposer({
   readOnly = false,
   allowManualLines = true,
   onBeforeLeavePage,
+  sectionKindTabs = false,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
@@ -349,6 +355,7 @@ export function QuotationDraftComposer({
   const searchParams = useSearchParams();
   const quoteCategory = parseQuoteCategoryParam(searchParams.get("quote_category"));
   const [newSectionName, setNewSectionName] = React.useState("");
+  const [scopeKindTab, setScopeKindTab] = React.useState<"primary" | "optional">("primary");
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
@@ -549,6 +556,7 @@ export function QuotationDraftComposer({
           level_id: null,
           name,
           included: true,
+          kind: sectionKindTabs && scopeKindTab === "optional" ? "optional" : "primary",
           section_pins: [],
           plots: [],
         },
@@ -1037,6 +1045,103 @@ export function QuotationDraftComposer({
 
   const grand = draftGrandTotal(draft);
   const allIncluded = draft.sections.length > 0 && draft.sections.every((s) => s.included);
+
+  if (sectionKindTabs) {
+    const visibleSections = draft.sections.filter((s) =>
+      scopeKindTab === "optional" ? s.kind === "optional" : s.kind !== "optional",
+    );
+    const bucketTotal = visibleSections
+      .filter((s) => s.included)
+      .reduce((acc, s) => acc + draftSectionTotal(s), 0);
+
+    return (
+      <div className="space-y-4">
+        <AppTabs
+          tabs={[
+            { id: "primary", label: t("kindPrimary") },
+            { id: "optional", label: t("kindOptional") },
+          ]}
+          value={scopeKindTab}
+          onValueChange={(id) => setScopeKindTab(id === "optional" ? "optional" : "primary")}
+          ariaLabel={t("kindTabsAria")}
+          panelIdPrefix="quotation-scope-kind"
+        />
+        {!readOnly && allowManualLines ? (
+          <div className="flex max-w-xl flex-row flex-wrap items-center gap-1.5">
+            <label className="sr-only" htmlFor="draft-new-section">
+              {t("newSectionLabel")}
+            </label>
+            <input
+              id="draft-new-section"
+              value={newSectionName}
+              onChange={(e) => setNewSectionName(e.target.value)}
+              onBlur={() =>
+                setNewSectionName((prev) => {
+                  const next = sanitizeTitleInput(prev);
+                  return next !== prev ? next : prev;
+                })
+              }
+              placeholder={t("newSectionPlaceholder")}
+              className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+              disabled={saving}
+            />
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving || newSectionName.trim().length === 0}
+              onClick={addSection}
+            >
+              {t("addSection")}
+            </AppButton>
+          </div>
+        ) : null}
+
+        {visibleSections.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {scopeKindTab === "optional" ? t("emptyOptionalSections") : t("emptyPrimarySections")}
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {visibleSections.map((section) => {
+              const si = draft.sections.findIndex((s) => s.id === section.id);
+              return (
+                <li key={section.id}>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
+                      "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                      "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
+                    )}
+                    onClick={() => {
+                      if (si < 0) return;
+                      onBeforeLeavePage?.();
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {section.name?.trim() || t("newSectionPlaceholder")}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                      {formatMoneyDisplay(draftSectionTotal(section), loc)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+          {t("kindBucketTotal")}: {formatMoneyDisplay(bucketTotal, loc)}
+        </p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+          {t("grandTotal")}: {formatMoneyDisplay(grand, loc)}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
