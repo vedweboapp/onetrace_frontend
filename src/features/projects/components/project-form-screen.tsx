@@ -287,9 +287,18 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchFormsPage(1, 20, { project_type: selectedProjectType, dropdown: true }, { silent: true });
+        const { items } = await fetchFormsPage(
+          1,
+          20,
+          { project_type: selectedProjectType, dropdown: true, is_published: true },
+          { silent: true },
+        );
         if (!cancelled) {
-          setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
+          setFormOptions(
+            items
+              .filter((f) => f.is_published !== false)
+              .map((f) => ({ value: String(f.id), label: f.name })),
+          );
         }
       } catch {
         if (!cancelled) {

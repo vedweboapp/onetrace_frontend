@@ -341,7 +341,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     setSaving(true);
     try {
       const base = mapQuotationFormToPayload(values, { quote_category: QUOTE_CATEGORY.project });
-      const withDraft = quoteDraft ? mergeQuotationDraftIntoPayload(base, quoteDraft) : base;
+      const withDraft = quoteDraft
+        ? mergeQuotationDraftIntoPayload(base, quoteDraft, { defaultSectionType: "project" })
+        : base;
       const payload = withDraft;
       const saved = await createQuotation(payload);
       toastSuccess(t("createdToast"));

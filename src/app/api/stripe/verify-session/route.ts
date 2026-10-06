@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { StripeHandler } from "@/shared/utils/stripe";
+import { getStripe } from "@/shared/utils/stripe";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/stripe/verify-session?session_id=<stripeSessionId>
@@ -13,9 +14,14 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const sessionId = searchParams.get("session_id")?.trim();
+    let sessionId = searchParams.get("session_id")?.trim() || "";
+    try {
+      sessionId = decodeURIComponent(sessionId);
+    } catch {
+      // already decoded
+    }
 
-    if (!sessionId) {
+    if (!sessionId || sessionId.includes("CHECKOUT_SESSION_ID")) {
       return NextResponse.json(
         { error: "Missing session_id." },
         { status: 400 },
@@ -23,7 +29,8 @@ export async function GET(request: Request) {
     }
 
     // Retrieve the full session from Stripe (server-side only)
-    const session = await StripeHandler.checkout.sessions.retrieve(sessionId);
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     // Only report paid when Stripe confirms payment_status === "paid"
     const paid = session.payment_status === "paid";

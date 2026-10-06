@@ -1,20 +1,32 @@
 import type {
   QuotationCreatePayload,
   QuotationQuoteSection,
+  QuotationQuoteSectionLabour,
   QuotationQuoteSectionPin,
   QuotationQuoteSectionPlot,
 } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
-import { draftGrandTotal, draftPinTotal, draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
+import type { QuotationDraft, QuotationDraftLabour, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
+import {
+  draftGrandTotal,
+  draftLabourTotal,
+  draftPinTotal,
+  draftSectionTotal,
+} from "@/features/quotations/utils/quotation-draft-compute.util";
 import { quotationDraftLineGroupPayload } from "@/features/quotations/utils/quotation-draft-line-group.util";
+import { resolveQuotationSectionType } from "@/features/quotations/utils/quotation-section-type.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 
 /** Synthetic plot `name` in `quote_sections` when the section has `section_pins` (no drawing plot). */
-export const SECTION_DIRECT_PLOT_NAME = "Section items";
+export const SECTION_DIRECT_PLOT_NAME = "Material Items";
+
+/** Legacy name used before Material Items; still recognised when seeding. */
+export const SECTION_DIRECT_PLOT_NAME_LEGACY = "Section items";
 
 function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSectionPin[] {
   return pins.map((pin, i) => {
     const pins_total = draftPinTotal(pin);
+    const hasItem =
+      pin.composite_item_id != null && Number.isFinite(pin.composite_item_id) && pin.composite_item_id > 0;
     return {
       pins_order: i,
       pin_id: pin.pin_id != null && Number.isFinite(pin.pin_id) && pin.pin_id > 0 ? pin.pin_id : null,
@@ -23,18 +35,40 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
       quantity: pin.quantity,
       selling_price: pin.selling_price,
       pins_total,
+      // Manual catalog items use composite_item_id but are not composite kits.
+      is_composite: pin.is_composite === true && hasItem,
       ...quotationDraftLineGroupPayload(pin),
       source_pins: Array.isArray(pin.source_pins) ? pin.source_pins : [],
     };
   });
 }
 
+function mapDraftLaboursToQuoteLabours(labours: QuotationDraftLabour[]): QuotationQuoteSectionLabour[] {
+  return labours
+    .filter((row) => row.labour_type != null && row.labour_type > 0)
+    .map((row) => ({
+      labour_type: row.labour_type as number,
+      time_hours: row.time_hours,
+      cost_rate: row.cost_rate,
+      markup_percentage: row.markup_percentage,
+      selling_price: row.selling_price,
+      total_cost: draftLabourTotal(row),
+      name: row.labour_name?.trim() || null,
+    }));
+}
+
 /**
  * Maps the client draft into `quote_sections`, `grand_total`, and ordered legacy `levels` ids.
+ * Service sections keep description / notes / labours; project sections stay plot/pin-only.
  */
-export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, draft: QuotationDraft): QuotationCreatePayload {
+export function mergeQuotationDraftIntoPayload(
+  base: QuotationCreatePayload,
+  draft: QuotationDraft,
+  options?: { defaultSectionType?: "primary" | "optional" | "project" },
+): QuotationCreatePayload {
   const includedSections = draft.sections.filter((s) => s.included);
   const levelsOrdered = includedSections.map((s) => s.level_id).filter((id): id is number => typeof id === "number" && id > 0);
+  const fallbackType = options?.defaultSectionType ?? "primary";
 
   const quote_sections: QuotationQuoteSection[] = includedSections.map((section, si) => {
     const plotsOut: QuotationQuoteSectionPlot[] = [];
@@ -68,10 +102,15 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
         plot_total,
       });
     }
-    return {
+    const section_type = resolveQuotationSectionType(section, fallbackType);
+    const isProjectSection = section_type === "project";
+
+    const baseSection: QuotationQuoteSection = {
       section_order: si,
       level_id: section.level_id,
       name: sanitizeTitleInput(section.name ?? ""),
+      section_type,
+      kind: section_type,
       drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
       drawing_file_type: typeof section.drawing_file_type === "string" ? section.drawing_file_type : null,
       drawing_file_size: typeof section.drawing_file_size === "number" ? section.drawing_file_size : null,
@@ -80,6 +119,17 @@ export function mergeQuotationDraftIntoPayload(base: QuotationCreatePayload, dra
       order: typeof section.order === "number" ? section.order : null,
       plots: plotsOut,
       section_total: draftSectionTotal(section),
+    };
+
+    if (isProjectSection) {
+      return baseSection;
+    }
+
+    return {
+      ...baseSection,
+      description: section.description?.trim() || null,
+      notes: section.notes?.trim() || null,
+      labours: mapDraftLaboursToQuoteLabours(section.labours ?? []),
     };
   });
 

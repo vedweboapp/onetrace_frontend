@@ -33,8 +33,10 @@ export type JobListFilters = {
   /** Filter jobs belonging to a client (when supported by API). */
   client?: number;
   job_category?: string;
-
   job_type?: string;
+  /** Jobs created from a quotation (`quotation_id` query param only). */
+  quotation_id?: number;
+  project?: number;
   dropdown?: boolean;
 };
 
@@ -68,6 +70,12 @@ export async function fetchJobsPage(
 
   if (filters?.job_type) {
     params.job_type = filters.job_type;
+  }
+  if (typeof filters?.quotation_id === "number" && Number.isFinite(filters.quotation_id) && filters.quotation_id > 0) {
+    params.quotation_id = filters.quotation_id;
+  }
+  if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
+    params.project = filters.project;
   }
   applyDropdownListParam(params, filters?.dropdown);
 

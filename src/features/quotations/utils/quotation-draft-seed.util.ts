@@ -1,9 +1,13 @@
-import type { ProjectLevelForQuotation, QuotationQuoteSection, QuotationQuoteSectionPin, QuotationQuoteSectionPlot } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
+import type { ProjectLevelForQuotation, QuotationQuoteSection, QuotationQuoteSectionLabour, QuotationQuoteSectionPin, QuotationQuoteSectionPlot } from "@/features/quotations/types/quotation.types";
+import type { QuotationDraft, QuotationDraftLabour, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { aggregateCompositeLinesForPlot } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
-import { SECTION_DIRECT_PLOT_NAME } from "@/features/quotations/utils/quotation-draft-payload.util";
+import {
+  SECTION_DIRECT_PLOT_NAME,
+  SECTION_DIRECT_PLOT_NAME_LEGACY,
+} from "@/features/quotations/utils/quotation-draft-payload.util";
 import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
+import { resolveQuotationSectionType } from "@/features/quotations/utils/quotation-section-type.util";
 
 function pinsFromProjectPlot(plot: NonNullable<ProjectLevelForQuotation["plots"]>[number]): QuotationDraftLine[] {
   const aggregated = aggregateCompositeLinesForPlot(plot);
@@ -41,6 +45,8 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       id: newQuotationDraftId("sec"),
       level_id: typeof lv.id === "number" && lv.id > 0 ? lv.id : null,
       name: typeof lv.name === "string" && lv.name.trim() ? lv.name.trim() : `Section ${lv.id}`,
+      description: "",
+      notes: "",
       drawing_file: typeof lv.drawing_file === "string" ? lv.drawing_file : null,
       drawing_file_type: typeof lv.drawing_file_type === "string" ? lv.drawing_file_type : null,
       drawing_file_size: typeof lv.drawing_file_size === "number" ? lv.drawing_file_size : null,
@@ -48,6 +54,8 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       level: typeof lv.level === "string" ? lv.level : null,
       order: typeof lv.order === "number" ? lv.order : null,
       included: true,
+      kind: "project",
+      labours: [],
       section_pins: [],
       plots,
     });
@@ -74,9 +82,29 @@ function mapQuoteApiPinsToDraft(pins: QuotationQuoteSectionPin[]): QuotationDraf
       group_id:
         typeof p.group_id === "number" && Number.isFinite(p.group_id) && p.group_id > 0 ? p.group_id : null,
       group_name: typeof p.group_name === "string" && p.group_name.trim() ? p.group_name.trim() : null,
+      is_composite: p.is_composite === true,
       pin_count: 1,
       source_pins: Array.isArray(p.source_pins) ? p.source_pins : [],
     }));
+}
+
+function mapQuoteApiLaboursToDraft(labours: QuotationQuoteSectionLabour[] | undefined): QuotationDraftLabour[] {
+  if (!Array.isArray(labours) || labours.length === 0) return [];
+  return labours.map((row) => ({
+    id: newQuotationDraftId("lab"),
+    labour_type: typeof row.labour_type === "number" && row.labour_type > 0 ? row.labour_type : null,
+    labour_name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
+    time_hours: Number.isFinite(row.time_hours) ? row.time_hours : 1,
+    cost_rate: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
+    markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
+    selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
+  }));
+}
+
+function isDirectMaterialPlot(p: QuotationQuoteSectionPlot): boolean {
+  if (p.plot_id != null) return false;
+  const name = typeof p.name === "string" ? p.name.trim() : "";
+  return name === SECTION_DIRECT_PLOT_NAME || name === SECTION_DIRECT_PLOT_NAME_LEGACY;
 }
 
 function splitSectionPlots(plots: QuotationQuoteSectionPlot[]): { sectionPins: QuotationDraftLine[]; plots: QuotationDraftPlot[] } {
@@ -84,10 +112,8 @@ function splitSectionPlots(plots: QuotationQuoteSectionPlot[]): { sectionPins: Q
   const outPlots: QuotationDraftPlot[] = [];
   const sorted = [...plots].sort((a, b) => a.plot_order - b.plot_order);
   for (const p of sorted) {
-    const isDirect =
-      p.plot_id == null && (p.name === SECTION_DIRECT_PLOT_NAME || p.name.trim() === SECTION_DIRECT_PLOT_NAME.trim());
     const apiPins = getQuotePlotPinsForDisplay(p);
-    if (isDirect) {
+    if (isDirectMaterialPlot(p)) {
       sectionPins.push(...mapQuoteApiPinsToDraft(apiPins));
     } else {
       outPlots.push({
@@ -116,6 +142,8 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       id: newQuotationDraftId("sec"),
       level_id: typeof sec.level_id === "number" && sec.level_id > 0 ? sec.level_id : null,
       name: typeof sec.name === "string" && sec.name.trim() ? sec.name.trim() : "Section",
+      description: typeof sec.description === "string" ? sec.description : "",
+      notes: typeof sec.notes === "string" ? sec.notes : "",
       drawing_file: typeof sec.drawing_file === "string" ? sec.drawing_file : null,
       drawing_file_type: typeof sec.drawing_file_type === "string" ? sec.drawing_file_type : null,
       drawing_file_size: typeof sec.drawing_file_size === "number" ? sec.drawing_file_size : null,
@@ -123,6 +151,8 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       level: typeof sec.level === "string" ? sec.level : null,
       order: typeof sec.order === "number" ? sec.order : null,
       included: true,
+      kind: resolveQuotationSectionType(sec, "primary"),
+      labours: mapQuoteApiLaboursToDraft(sec.labours),
       section_pins: sectionPins,
       plots,
     };

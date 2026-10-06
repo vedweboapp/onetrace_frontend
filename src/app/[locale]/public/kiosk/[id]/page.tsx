@@ -3,15 +3,70 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { getPublicKioskById, submitKioskCheckout } from "@/features/kiosk/api/kiosk.api";
+import {
+  createKioskStripeCheckoutSession,
+  verifyKioskStripeCheckoutSession,
+} from "@/features/kiosk/api/kiosk-stripe.api";
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
 import type { CheckoutItem } from "@/features/kiosk/types/kiosk-submission.types";
 import { KioskRenderer } from "@/features/kiosk/components/kiosk-renderer";
 import { KioskCartReview } from "@/features/kiosk/components/kiosk-cart-review";
 import { KioskInvoiceDetails, type KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import { computeLiveBuildScene, type LiveBuildScene, type KioskAnswerValue } from "@/features/kiosk/utils/kiosk-live-build";
-import { captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
-import { toastError } from "@/shared/feedback/app-toast";
-import { CheckCircle, AlertCircle, ShoppingCart } from "lucide-react";
+import { buildKioskCheckoutFormData, buildKioskCheckoutPayload, captureLiveBuildSnapshot } from "@/features/kiosk/utils/kiosk-submission.builder";
+import {
+  clearPendingKioskCheckout,
+  markKioskCheckoutCompleted,
+  readKioskCheckoutCompleted,
+  readPendingKioskCheckout,
+  savePendingKioskCheckout,
+  type PendingKioskCheckout,
+} from "@/features/kiosk/utils/kiosk-pending-checkout.util";
+import { parseCheckoutOrderSummary, type KioskOrderCompleteInfo } from "@/features/kiosk/utils/kiosk-order-summary.util";
+import { KioskOrderCompleteCard } from "@/features/kiosk/components/kiosk-order-complete-card";
+import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
+import { AlertCircle, ShoppingCart } from "lucide-react";
+
+const STRIPE_SESSION_PLACEHOLDER = "{CHECKOUT_SESSION_ID}";
+
+function isStripeSessionPlaceholder(sessionId: string | null | undefined): boolean {
+  const raw = (sessionId ?? "").trim();
+  if (!raw) return true;
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return decoded === STRIPE_SESSION_PLACEHOLDER || decoded.includes("CHECKOUT_SESSION_ID");
+}
+
+function kioskPaymentReturnUrls() {
+  const current = new URL(window.location.href);
+  current.searchParams.delete("session_id");
+  current.searchParams.delete("payment");
+
+  const cancel = new URL(current.href);
+  cancel.searchParams.set("payment", "cancelled");
+
+  const kioskPath = current.pathname.replace(/\/$/, "");
+  const successPath = `${kioskPath}/payment-success`;
+  const token = current.searchParams.get("token") || current.searchParams.get("organization_uuid");
+  const successQuery = new URLSearchParams();
+  if (token) successQuery.set("token", token);
+  successQuery.set("session_id", STRIPE_SESSION_PLACEHOLDER);
+  return {
+    successUrl: `${current.origin}${successPath}?${successQuery.toString().replace(encodeURIComponent(STRIPE_SESSION_PLACEHOLDER), STRIPE_SESSION_PLACEHOLDER)}`,
+    cancelUrl: cancel.toString(),
+  };
+}
+
+function stripKioskPaymentQuery() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("payment");
+  url.searchParams.delete("session_id");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 export default function PublicKioskPage() {
   const params = useParams<{ id?: string | string[] }>();
@@ -34,6 +89,12 @@ export default function PublicKioskPage() {
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
   const [cartTotals, setCartTotals] = useState<{ grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number } | undefined>();
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<KioskOrderCompleteInfo | null>(null);
+  const [restoredBilling, setRestoredBilling] = useState<KioskBillingDetails | null>(null);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(
+    () => searchParams.get("payment") === "success",
+  );
+  const stripeReturnHandled = React.useRef(false);
 
   // Restore saved draft answers from sessionStorage
   useEffect(() => {
@@ -128,25 +189,152 @@ export default function PublicKioskPage() {
     setView("invoice");
   };
 
-  /**
-   * ── SECURE STRIPE PAYMENT FLOW ──────────────────────────────────────────────
-   *
-   * 1. Validate billing form
-   * 2. Capture snapshot
-   * 3. Stash EVERYTHING needed to submit the order in sessionStorage
-   * 4. Call /api/stripe/create-checkout-session (server-only, secret key never exposed)
-   * 5. Redirect user to Stripe's hosted Checkout page
-   * 6. On return to /payment-success, the page verifies payment then submits the order
-   *
-   * The backend order is NEVER created before Stripe confirms payment === "paid".
-   */
+  const applyPendingToInvoice = useCallback(
+    (pending: PendingKioskCheckout, kioskConfig: KioskConfig) => {
+      const pendingAnswers = pending.answers || {};
+      const scene = computeLiveBuildScene(kioskConfig, pendingAnswers);
+      setAnswers(pendingAnswers);
+      setCartTotals(pending.cartTotals);
+      setRestoredBilling(pending.billingDetails);
+      setConfiguredData({
+        payload: { items: pending.items },
+        answers: pendingAnswers,
+        scene,
+        renderedConfig: kioskConfig,
+        items: pending.items,
+      });
+      setView("invoice");
+    },
+    [],
+  );
+
+  const finishCheckoutAfterPayment = useCallback(
+    async (pending: PendingKioskCheckout, kioskConfig: KioskConfig | null) => {
+      const checkoutFormData = buildKioskCheckoutFormData({
+        config: kioskConfig ?? ({ questions: [] } as unknown as KioskConfig),
+        answers: pending.answers,
+        billingDetails: pending.billingDetails,
+        snapshotImage: pending.snapshotImage,
+        organizationId: pending.organizationId,
+        items: pending.items,
+      });
+      const checkoutRes = await submitKioskCheckout(checkoutFormData);
+      const orderSummary = parseCheckoutOrderSummary(checkoutRes);
+      if (orderSummary.totalAmount == null && pending.cartTotals?.grandTotal != null) {
+        orderSummary.totalAmount = pending.cartTotals.grandTotal;
+      }
+      orderSummary.email = pending.billingDetails.email;
+      orderSummary.productName = pending.configName;
+      setCompletedOrder(orderSummary);
+
+      if (pending.snapshotImage) {
+        try {
+          const downloadAnchor = document.createElement("a");
+          downloadAnchor.href = pending.snapshotImage;
+          downloadAnchor.download = `kiosk-snapshot-${kioskId || "product"}.png`;
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          document.body.removeChild(downloadAnchor);
+        } catch (downloadErr) {
+          console.error("Failed to auto-download snapshot", downloadErr);
+        }
+      }
+
+      if (kioskId) {
+        sessionStorage.removeItem(`kiosk_answers_${kioskId}`);
+        clearPendingKioskCheckout(kioskId);
+        if (pending.stripeSessionId) {
+          markKioskCheckoutCompleted(kioskId, pending.stripeSessionId);
+        }
+      }
+      toastSuccess("Payment received and order submitted.");
+      setSubmittedSnapshot(pending.snapshotImage);
+      setView("submitted");
+    },
+    [kioskId],
+  );
+
+  useEffect(() => {
+    if (!kioskId || stripeReturnHandled.current) return;
+    const payment = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+
+    if (payment === "cancelled") {
+      if (!config) return;
+      stripeReturnHandled.current = true;
+      const pending = readPendingKioskCheckout(kioskId);
+      if (pending) {
+        applyPendingToInvoice(pending, config);
+      }
+      stripKioskPaymentQuery();
+      return;
+    }
+
+    if (payment !== "success") return;
+
+    const pendingForReturn = readPendingKioskCheckout(kioskId);
+    const resolvedSessionId =
+      sessionId && !isStripeSessionPlaceholder(sessionId)
+        ? sessionId
+        : pendingForReturn?.stripeSessionId?.trim() || "";
+
+    if (!resolvedSessionId) return;
+
+    stripeReturnHandled.current = true;
+    setIsConfirmingPayment(true);
+
+    void (async () => {
+      try {
+        const alreadyDone = readKioskCheckoutCompleted(kioskId);
+        if (alreadyDone === resolvedSessionId) {
+          stripKioskPaymentQuery();
+          setView("submitted");
+          return;
+        }
+
+        const verified = await verifyKioskStripeCheckoutSession(resolvedSessionId);
+        if (!verified.paid) {
+          throw new Error("Payment is not complete. Please try again.");
+        }
+
+        const pending = pendingForReturn ?? readPendingKioskCheckout(kioskId);
+        if (!pending) {
+          throw new Error("Checkout details were lost. Please enter billing details again.");
+        }
+        if (pending.stripeSessionId && pending.stripeSessionId !== resolvedSessionId) {
+          throw new Error("This payment does not match the current order.");
+        }
+
+        pending.stripeSessionId = resolvedSessionId;
+        savePendingKioskCheckout(kioskId, pending);
+        await finishCheckoutAfterPayment(pending, config);
+        stripKioskPaymentQuery();
+      } catch (err) {
+        console.error("Failed to complete Stripe checkout", err);
+        toastError(err instanceof Error ? err.message : "Could not complete payment. Try again.");
+        const pending = kioskId ? readPendingKioskCheckout(kioskId) : null;
+        if (pending && config) {
+          applyPendingToInvoice(pending, config);
+        }
+        stripKioskPaymentQuery();
+      } finally {
+        setIsConfirmingPayment(false);
+      }
+    })();
+  }, [applyPendingToInvoice, config, finishCheckoutAfterPayment, kioskId, searchParams]);
+
+  // Continue to payment: Stripe Checkout, then POST /checkout/ after paid return
   const handleSubmitInvoiceAndPayment = async (billingDetails: KioskBillingDetails) => {
     if (!kioskId || !config || !configuredData) return;
+    const amountPence = Math.round((cartTotals?.grandTotal ?? 0) * 100);
+    if (!Number.isFinite(amountPence) || amountPence < 1) {
+      toastError("Invalid payment amount.");
+      return;
+    }
 
     try {
       setIsSubmittingInvoice(true);
 
-      // ── Step 1: Capture snapshot ───────────────────────────────────────────
       let snapshotImage = "";
       try {
         snapshotImage = await captureLiveBuildSnapshot(configuredData.scene);
@@ -156,95 +344,79 @@ export default function PublicKioskPage() {
       } catch (snapErr) {
         console.error("Failed to capture snapshot image", snapErr);
         toastError("Failed to capture visual preview snapshot. Please try again.");
-        setIsSubmittingInvoice(false);
         return;
       }
 
-      // ── Step 2: Stash pending checkout data in sessionStorage ──────────────
-      // This is restored by the /payment-success page after Stripe redirects back.
-      const organizationId = Number(config.organization_id ?? config.organization?.id ?? 1);
-
-      const storageKey = `kiosk_pending_checkout_${kioskId}`;
-      try {
-        sessionStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            billingDetails,
-            snapshotImage,
-            organizationId,
-            configAnswers: configuredData.answers || answers,
-            items: configuredData.items ?? (configuredData.payload as { items?: CheckoutItem[] })?.items,
-            configId: config.id,
-            configName: config.name,
-            cartTotals,
-          }),
-        );
-      } catch (storageErr) {
-        console.error("Failed to save checkout to sessionStorage", storageErr);
-        toastError("Could not save checkout data. Please try again.");
-        setIsSubmittingInvoice(false);
-        return;
-      }
-
-      // ── Step 3: Compute grand total (pence for Stripe) ─────────────────────
-      const grandTotal = cartTotals?.grandTotal ?? 0;
-      const amountPence = Math.round(grandTotal * 100);
-
-      if (amountPence < 50) {
-        toastError("Order total is too low to process payment (minimum £0.50).");
-        setIsSubmittingInvoice(false);
-        return;
-      }
-
-      // ── Step 4: Create Stripe checkout session (server-side API route) ─────
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const successUrl = `${origin}/public/kiosk/${kioskId}/payment-success?session_id={CHECKOUT_SESSION_ID}&token=${token ?? ""}`;
-      const cancelUrl = `${origin}/public/kiosk/${kioskId}?token=${token ?? ""}`;
-
-      // Unique idempotency key prevents duplicate charges on double-click or network retry
-      const idempotencyKey = `kiosk-${kioskId}-${Date.now()}`;
-
-      const res = await fetch("/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountPence,
-          currency: "gbp",
-          customerEmail: billingDetails.email.trim(),
-          productName: config.name ?? "SimHo Product",
-          successUrl,
-          cancelUrl,
-          idempotencyKey,
-          // Metadata carried through to the webhook and verify-session endpoint
-          metadata: {
-            kioskId: String(kioskId),
-            token: token ?? "",
-            organizationId: String(organizationId),
-            customerEmail: billingDetails.email.trim(),
-          },
-        }),
+      const organizationId = Number(config.organization_id || config.organization?.id || 1);
+      const checkoutAnswers = configuredData.answers || answers;
+      const checkoutPayload = buildKioskCheckoutPayload({
+        config: configuredData.renderedConfig || config,
+        answers: checkoutAnswers,
+        billingDetails,
+        snapshotImage,
+        organizationId,
+        items: configuredData.items || (configuredData.payload as { items?: CheckoutItem[] })?.items,
+        scene: configuredData.scene,
       });
 
-      const sessionData = await res.json() as { url?: string; sessionId?: string; error?: string };
+      const pending: PendingKioskCheckout = {
+        billingDetails,
+        answers: checkoutAnswers,
+        snapshotImage,
+        organizationId,
+        items: checkoutPayload.items,
+        cartTotals,
+        configName: config.name?.trim() || "SimHo order",
+        createdAt: Date.now(),
+      };
+      savePendingKioskCheckout(kioskId, pending);
 
-      if (!res.ok || !sessionData.url) {
-        const msg = sessionData.error ?? "Could not create Stripe checkout session.";
-        toastError(msg);
-        setIsSubmittingInvoice(false);
-        return;
-      }
-
-      // ── Step 5: Redirect to Stripe Checkout ────────────────────────────────
-      // At this point the browser navigates away to Stripe's secure hosted page.
-      // The /payment-success page handles everything on return.
-      window.location.href = sessionData.url;
-
+      const { successUrl, cancelUrl } = kioskPaymentReturnUrls();
+      const session = await createKioskStripeCheckoutSession({
+        amountPence,
+        currency: "gbp",
+        customerEmail: billingDetails.email.trim(),
+        customerName: billingDetails.fullName.trim(),
+        productName: config.name?.trim() || "SimHo order",
+        productDescription: "Configured product — pay to complete your order.",
+        successUrl,
+        cancelUrl,
+        metadata: {
+          kiosk_id: String(kioskId),
+        },
+      });
+      pending.stripeSessionId = session.sessionId;
+      savePendingKioskCheckout(kioskId, pending);
+      window.location.assign(session.url);
     } catch (err) {
-      console.error("Failed to initiate Stripe payment", err);
-      toastError("Could not start payment. Please try again.");
+      console.error("Failed to start Stripe checkout", err);
+      toastError(err instanceof Error ? err.message : "Could not start payment. Try again.");
       setIsSubmittingInvoice(false);
     }
   };
+
+  if (isConfirmingPayment) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#701524]" />
+          <p className="text-sm font-medium text-slate-500">Confirming payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy submitted state (fallback, normally payment-success page handles this)
+  if (view === "submitted") {
+    return (
+      <KioskOrderCompleteCard
+        order={completedOrder}
+        email={completedOrder?.email || restoredBilling?.email}
+        productName={completedOrder?.productName || config?.name}
+        configureHref={typeof window !== "undefined" ? `${window.location.pathname}${token ? `?token=${encodeURIComponent(token)}` : ""}` : "#"}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -266,38 +438,6 @@ export default function PublicKioskPage() {
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
           {error || "Failed to load kiosk"}
         </p>
-      </div>
-    );
-  }
-
-  // Legacy submitted state (fallback, normally payment-success page handles this)
-  if (view === "submitted") {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 py-8 text-center dark:bg-slate-950">
-        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400">
-          <CheckCircle className="size-8" />
-        </div>
-        <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Order Submitted Successfully
-        </h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          Thank you! Your product configuration has been recorded.
-        </p>
-
-
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            onClick={() => {
-              setAnswers({});
-              setConfiguredData(null);
-              setSubmittedSnapshot(null);
-              setView("configure");
-            }}
-            className="rounded-md bg-[#701524] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5a101c] focus:outline-none focus:ring-2 focus:ring-[#701524] focus:ring-offset-2 transition cursor-pointer"
-          >
-            Configure Another Product
-          </button>
-        </div>
       </div>
     );
   }
@@ -386,6 +526,7 @@ export default function PublicKioskPage() {
             onBack={() => setView("cart")}
             onSubmitInvoice={handleSubmitInvoiceAndPayment}
             isSubmitting={isSubmittingInvoice}
+            initialBilling={restoredBilling}
           />
         </div>
       )}

@@ -51,6 +51,7 @@ export const routes = {
     groups: "/groups",
     items: "/items",
     compositeItems: "/composite-items",
+    labours: "/labours",
     materialRequests: "/material-requests",
     dispatches: "/dispatches",
     returnToStock: "/return-to-stock",

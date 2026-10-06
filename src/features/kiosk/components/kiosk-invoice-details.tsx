@@ -36,6 +36,7 @@ export interface KioskInvoiceDetailsProps {
   onBack: () => void;
   onSubmitInvoice: (billingDetails: KioskBillingDetails) => Promise<void> | void;
   isSubmitting?: boolean;
+  initialBilling?: KioskBillingDetails | null;
 }
 
 export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
@@ -47,19 +48,20 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
   onBack,
   onSubmitInvoice,
   isSubmitting = false,
+  initialBilling = null,
 }) => {
-  const [formData, setFormData] = useState<KioskBillingDetails>({
-    fullName: "",
-    companyName: "",
-    email: "",
-    phone: "",
-    vatRegistered: false,
-    vatNumber: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    postcode: "",
-  });
+  const [formData, setFormData] = useState<KioskBillingDetails>(() => ({
+    fullName: initialBilling?.fullName ?? "",
+    companyName: initialBilling?.companyName ?? "",
+    email: initialBilling?.email ?? "",
+    phone: initialBilling?.phone ?? "",
+    vatRegistered: initialBilling?.vatRegistered ?? false,
+    vatNumber: initialBilling?.vatNumber ?? "",
+    addressLine1: initialBilling?.addressLine1 ?? "",
+    addressLine2: initialBilling?.addressLine2 ?? "",
+    city: initialBilling?.city ?? "",
+    postcode: initialBilling?.postcode ?? "",
+  }));
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -568,7 +570,7 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Redirecting to Stripe…</span>
+                    <span>Redirecting to payment...</span>
                   </>
                 ) : (
                   <>

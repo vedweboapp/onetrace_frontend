@@ -20,7 +20,6 @@ import type {
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
-import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import {
   getQuotationAdditionalContactEntries,
   getQuotationAdditionalContactIds,
@@ -41,6 +40,7 @@ import {
 } from "@/features/quotations/utils/quotation-site-map.util";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
+import { consumeQuotationSectionScopeDraft } from "@/features/quotations/utils/quotation-section-scope.util";
 import {
   QUOTATION_STATUS_OPTIONS,
   normalizeQuotationStatusValue,
@@ -260,16 +260,10 @@ export function QuotationDetailBody({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tabsStorageKey = useTabOrderStorageKey("quotationDetailBody");
-  const [detailTab, setDetailTab] = React.useState<"project" | "pricing" | "vendor-quotations">(() => {
+  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() => {
+    const sectionParam = searchParams.get("section");
     const tabParam = searchParams.get("tab");
-    if (tabParam === "pricing") return "pricing";
-    if (
-      tabParam === "vendor-quotations" ||
-      tabParam === "vendor_quotations" ||
-      tabParam === "vendors"
-    ) {
-      return "vendor-quotations";
-    }
+    if (sectionParam === "pricing" || tabParam === "pricing") return "pricing";
     return "project";
   });
 
@@ -289,11 +283,12 @@ export function QuotationDetailBody({
   );
 
   const goToTab = React.useCallback(
-    (tab: "project" | "pricing" | "vendor-quotations") => {
+    (tab: "project" | "pricing") => {
       setDetailTab(tab);
       const params = new URLSearchParams(searchParams.toString());
-      if (tab === "project") params.delete("tab");
-      else params.set("tab", tab);
+      if (tab === "project") params.delete("section");
+      else params.set("section", tab);
+      if (params.get("tab") === "pricing") params.delete("tab");
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       if (typeof window !== "undefined") {
@@ -304,15 +299,10 @@ export function QuotationDetailBody({
   );
 
   React.useEffect(() => {
+    const sectionParam = searchParams.get("section");
     const tabParam = searchParams.get("tab");
-    if (tabParam === "pricing") {
+    if (sectionParam === "pricing" || tabParam === "pricing") {
       setDetailTab("pricing");
-    } else if (
-      tabParam === "vendor-quotations" ||
-      tabParam === "vendor_quotations" ||
-      tabParam === "vendors"
-    ) {
-      setDetailTab("vendor-quotations");
     } else {
       setDetailTab("project");
     }
@@ -356,6 +346,14 @@ export function QuotationDetailBody({
   }, [detail.id]);
 
   React.useEffect(() => {
+    const next = consumeQuotationSectionScopeDraft();
+    if (!next) return;
+    setScopeDraft(next);
+    setScopeDirty(true);
+    if (isServiceQuotation) setScopeEditing(true);
+  }, [isServiceQuotation]);
+
+  React.useEffect(() => {
     if (scopeDirty) return;
     if (quoteSectionsSorted.length > 0) {
       setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
@@ -394,7 +392,9 @@ export function QuotationDetailBody({
     if (!scopeDraft) return;
     setScopeSaving(true);
     try {
-      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft);
+      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft, {
+        defaultSectionType: isServiceQuotation ? "primary" : "project",
+      });
       await patchField({
         quote_sections: merged.quote_sections,
         grand_total: merged.grand_total,
@@ -638,10 +638,9 @@ export function QuotationDetailBody({
         tabs={[
           { id: "project", label: t("formTabs.project") },
           { id: "pricing", label: t("formTabs.pricing") },
-          { id: "vendor-quotations", label: t("formTabs.vendorQuotations") },
         ]}
         value={detailTab}
-        onValueChange={(id) => goToTab(id as "project" | "pricing" | "vendor-quotations")}
+        onValueChange={(id) => goToTab(id as "project" | "pricing")}
         storageKey={tabsStorageKey}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
@@ -753,25 +752,12 @@ export function QuotationDetailBody({
               canShow
               readOnly={!isServiceQuotation || !scopeEditing}
               allowManualLines
+              sectionKindTabs={isServiceQuotation}
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
-      </div>
-      <div
-        role="tabpanel"
-        id="quotation-detail-vendor-quotations"
-        aria-labelledby="quotation-detail-trigger-vendor-quotations"
-        className={cn(detailTab !== "vendor-quotations" && "hidden")}
-      >
-        <QuotationVendorQuotationsTab
-          quotationId={detail.id}
-          quoteName={detail.quote_name}
-          detail={detail}
-          onGoToPricingTab={() => goToTab("pricing")}
-          onSent={onSaved}
-        />
       </div>
     </DetailPagePadding>
   );

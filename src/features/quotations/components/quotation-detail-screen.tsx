@@ -9,6 +9,8 @@ import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-tra
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
+import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
+import type { Job } from "@/features/jobs/types/job.types";
 import { fetchQuotation, createJobFromServiceQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
@@ -17,8 +19,12 @@ import {
 } from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
+import { QuotationJobsTab } from "@/features/quotations/components/quotation-jobs-tab";
+import { QuotationLocationsTab } from "@/features/quotations/components/quotation-locations-tab";
+import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
 import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
+import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -30,7 +36,8 @@ import {
   quotationSiteOptionRowsToRecord,
 } from "@/features/quotations/utils/quotation-site-options.util";
 import { normalizeQuotationStatusValue } from "@/features/quotations/utils/quotation-status.util";
-import { quotationHasLinkedJob, markServiceQuoteJobCreated } from "@/features/quotations/utils/quotation-job.util";
+import { quotationHasLinkedJob, markServiceQuoteJobCreated, getQuotationLinkedJobId } from "@/features/quotations/utils/quotation-job.util";
+import { fetchJobsForQuotation } from "@/features/quotations/utils/quotation-related-jobs.util";
 import { fetchProjectsPage } from "@/features/projects/api/project.api";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import { resolveQuotationSiteDetails } from "@/features/quotations/utils/quotation-site-details.util";
@@ -41,13 +48,40 @@ import {
 } from "@/features/users/utils/load-users-by-role.util";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
-import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
+import {
+  detailTabStandaloneFillClassName,
+  entityDetailTabPanelClassName,
+} from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
+import { AppButton, CustomizableAppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
+import { cn } from "@/core/utils/http.util";
+
+type QuotationDetailTabId =
+  | "details"
+  | "vendors"
+  | "jobs"
+  | "jobsheets"
+  | "schedule"
+  | "location"
+  | "docs"
+  | "approvals"
+  | "timeline";
+
+function parseQuotationDetailTab(raw: string | null): QuotationDetailTabId {
+  if (raw === "vendors" || raw === "vendor-quotations" || raw === "vendor_quotations") return "vendors";
+  if (raw === "jobs") return "jobs";
+  if (raw === "jobsheets" || raw === "job-sheets") return "jobsheets";
+  if (raw === "schedule" || raw === "scheduling") return "schedule";
+  if (raw === "location" || raw === "locations") return "location";
+  if (raw === "docs") return "docs";
+  if (raw === "approvals") return "approvals";
+  if (raw === "timeline") return "timeline";
+  return "details";
+}
 
 type Props = {
   quotationId: number;
@@ -76,18 +110,56 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const [detailForSite, setDetailForSite] = React.useState<QuotationDetail | null>(null);
   const [contactOptions, setContactOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [salespersonOptions, setSalespersonOptions] = React.useState<CheckmarkSelectOption[]>([]);
-  const [activeTab, setActiveTab] = React.useState("details");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const requestedTab = parseQuotationDetailTab(searchParams.get("tab"));
 
-  const detailTabs = React.useMemo<AppTabItem[]>(
-    () => [
-      { id: "details", label: tAudit("tabDetails") },
-      { id: "timeline", label: tAudit("tabTimeline") },
-    ],
-    [tAudit],
-  );
+  const [relatedJobs, setRelatedJobs] = React.useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = React.useState(false);
+  const [jobsLoadError, setJobsLoadError] = React.useState<string | null>(null);
+  const [jobsRefreshNonce, setJobsRefreshNonce] = React.useState(0);
+
+  const isProjectQuote = detailForSite
+    ? resolveQuotationQuoteCategory(detailForSite) === QUOTE_CATEGORY.project
+    : parseQuoteCategoryParam(searchParams.get("quote_category")) === QUOTE_CATEGORY.project;
+  const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
+  const jobCategory = isProjectQuote ? JOB_CATEGORY.project : JOB_CATEGORY.service;
+
+  const detailTabs = React.useMemo<AppTabItem[]>(() => {
+    const tabs: AppTabItem[] = [
+      { id: "details", label: t("relatedTabs.details") },
+      { id: "vendors", label: t("formTabs.vendorQuotations") },
+      { id: "jobs", label: t("relatedTabs.jobs") },
+      { id: "jobsheets", label: t("relatedTabs.jobsheets") },
+      { id: "schedule", label: t("relatedTabs.schedule") },
+    ];
+    if (isProjectQuote) {
+      tabs.push({ id: "location", label: t("relatedTabs.location") });
+      tabs.push({ id: "docs", label: t("relatedTabs.docs") });
+      tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
+    }
+    tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
+    return tabs;
+  }, [isProjectQuote, t, tAudit]);
+
+  const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
+  const activeTab: QuotationDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "details";
+
+  function handleTabChange(tab: string) {
+    const next = parseQuotationDetailTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "details") params.delete("tab");
+    else params.set("tab", next);
+    if (next !== "details") params.delete("section");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  React.useEffect(() => {
+    if (requestedTab === activeTab) return;
+    handleTabChange(activeTab);
+  }, [activeTab, requestedTab]);
 
   /** Keep header/sidebar quote category in sync when opening detail without `?quote_category=`. */
   React.useEffect(() => {
@@ -99,6 +171,38 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     params.set("quote_category", resolved);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [detailForSite, pathname, router, searchParams]);
+
+  React.useEffect(() => {
+    if (!detailForSite) {
+      setRelatedJobs([]);
+      setJobsLoadError(null);
+      setJobsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setJobsLoading(true);
+      setJobsLoadError(null);
+      try {
+        const items = await fetchJobsForQuotation({
+          quotationId: detailForSite.id,
+          jobCategory,
+          linkedJobId: getQuotationLinkedJobId(detailForSite),
+        });
+        if (!cancelled) setRelatedJobs(items);
+      } catch (error) {
+        if (!cancelled) {
+          setRelatedJobs([]);
+          setJobsLoadError(getApiErrorDisplayMessage(error, t("relatedTabs.jobsLoadError")));
+        }
+      } finally {
+        if (!cancelled) setJobsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailForSite, jobCategory, jobsRefreshNonce, t]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -300,6 +404,15 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       fetch={fetchDetailWithVendors}
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
+      wrapSurface={
+        (activeTab !== "schedule" && activeTab !== "location") ||
+        (activeTab === "schedule" && relatedJobs.length === 0)
+      }
+      className={
+        (activeTab === "schedule" && relatedJobs.length > 0) || activeTab === "location"
+          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          : undefined
+      }
       labels={{
         metaTitle: t("detailMetaTitle"),
         backAria: t("detail.backAria"),
@@ -309,9 +422,9 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           storageKey={tabsStorageKey}
-          ariaLabel={tAudit("tabTimeline")}
+          ariaLabel={t("relatedTabs.aria")}
           panelIdPrefix="quotation-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
         />
@@ -322,7 +435,10 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           detail={detail}
           listBack={listBack}
           onStatusSaved={retry}
-          onJobCreated={() => void reloadQuiet()}
+          onJobCreated={() => {
+            setJobsRefreshNonce((n) => n + 1);
+            void reloadQuiet();
+          }}
           t={t}
         />
       )}
@@ -340,6 +456,116 @@ export function QuotationDetailScreen({ quotationId }: Props) {
                 module={AUDIT_TRAIL_MODULES.quotation}
                 objectId={detail.id}
                 dateFmt={dateFmt}
+              />
+            </div>
+          );
+        }
+
+        if (activeTab === "vendors") {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-vendors"
+              aria-labelledby="quotation-detail-tab-trigger-vendors"
+              className={entityDetailTabPanelClassName}
+            >
+              <QuotationVendorQuotationsTab
+                quotationId={detail.id}
+                quoteName={detail.quote_name}
+                detail={detail}
+                onGoToPricingTab={() => {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete("tab");
+                  params.set("section", "pricing");
+                  const qs = params.toString();
+                  router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+                }}
+                onSent={retry}
+              />
+            </div>
+          );
+        }
+
+        if (activeTab === "jobs") {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-jobs"
+              aria-labelledby="quotation-detail-tab-trigger-jobs"
+              className={entityDetailTabPanelClassName}
+            >
+              <QuotationJobsTab
+                jobs={relatedJobs}
+                loading={jobsLoading}
+                loadError={jobsLoadError}
+                jobCategory={jobCategory}
+                onRetry={() => setJobsRefreshNonce((n) => n + 1)}
+              />
+            </div>
+          );
+        }
+
+        if (activeTab === "schedule") {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-schedule"
+              aria-labelledby="quotation-detail-tab-trigger-schedule"
+              className={
+                relatedJobs.length === 0
+                  ? entityDetailTabPanelClassName
+                  : "flex min-h-0 flex-1 flex-col"
+              }
+            >
+              <QuotationScheduleTab jobs={relatedJobs} />
+            </div>
+          );
+        }
+
+        if (activeTab === "location" && projectId != null) {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-location"
+              aria-labelledby="quotation-detail-tab-trigger-location"
+              className="flex min-h-0 w-full flex-1 flex-col"
+            >
+              <QuotationLocationsTab projectId={projectId} />
+            </div>
+          );
+        }
+
+        if (activeTab === "jobsheets" || activeTab === "docs" || activeTab === "approvals") {
+          const wip =
+            activeTab === "jobsheets"
+              ? {
+                  iconName: "forms" as const,
+                  title: t("relatedTabs.wipJobsheetsTitle"),
+                  description: t("relatedTabs.wipJobsheetsDescription"),
+                }
+              : activeTab === "docs"
+                ? {
+                    iconName: "quotations" as const,
+                    title: t("relatedTabs.wipDocsTitle"),
+                    description: t("relatedTabs.wipDocsDescription"),
+                  }
+                : {
+                    iconName: "profiles" as const,
+                    title: t("relatedTabs.wipApprovalsTitle"),
+                    description: t("relatedTabs.wipApprovalsDescription"),
+                  };
+          return (
+            <div
+              role="tabpanel"
+              id={`quotation-detail-tab-${activeTab}`}
+              aria-labelledby={`quotation-detail-tab-trigger-${activeTab}`}
+              className={cn(entityDetailTabPanelClassName, detailTabStandaloneFillClassName)}
+            >
+              <DashboardEmptyState
+                fill
+                iconName={wip.iconName}
+                title={wip.title}
+                description={wip.description}
               />
             </div>
           );

@@ -11,6 +11,10 @@ import {
   useDashboardAppearanceStore,
 } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { fetchPersonalProfile } from "@/features/settings/personal-profile/api/personal-profile.api";
+import { hydrateAppearanceFromProfile } from "@/features/settings/personal-profile/utils/hydrate-appearance-from-profile";
+import type { PersonalProfileResponse } from "@/features/settings/personal-profile/types/types";
+import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 import {
   ACCENT_HEX,
   accentOnAccentHex,
@@ -59,6 +63,32 @@ export function DashboardAppearanceScope({ children, className }: Props) {
 
   React.useEffect(() => {
     setDashboardAppearanceUserKey(userId);
+  }, [userId]);
+
+  React.useEffect(() => {
+    if (!userId) {
+      useTabLayoutsStore.getState().clearLayouts();
+      return;
+    }
+    // Drop previous user's in-memory layouts before profile hydrate.
+    useTabLayoutsStore.getState().clearLayouts();
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fetchPersonalProfile(String(userId));
+        if (cancelled) return;
+        const resolved =
+          data && typeof data === "object" && "data" in data
+            ? (data as { data: PersonalProfileResponse }).data
+            : (data as PersonalProfileResponse);
+        hydrateAppearanceFromProfile(resolved?.appearance_settings?.preferences);
+      } catch {
+        /* local tab layouts / appearance remain as appearance defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const {

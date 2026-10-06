@@ -116,7 +116,7 @@ export async function updateKiosk(
     headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
   });
   return res.data;
-}
+} 
 
 export async function deleteKiosk(id: string | number): Promise<any> {
   const res = await api.delete(`/service-forms/${id}/`);
@@ -133,7 +133,7 @@ export async function submitKioskCheckout(
 ): Promise<KioskCheckoutResponse> {
   const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
   const res = await api.post<KioskCheckoutResponse>("/checkout/", payload, {
-    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+    headers: isFormData ? { "Content-Type": "multipart/form-data  " } : undefined,
   });
   return res.data;
 }

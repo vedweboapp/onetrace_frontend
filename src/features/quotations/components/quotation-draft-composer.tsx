@@ -33,12 +33,16 @@ import {
   QuotationDraftCompositeLines,
   type CompositeLineLabels,
 } from "@/features/quotations/components/quotation-draft-composite-lines";
+import {
+  buildQuotationSectionScopeHref,
+  writeQuotationSectionScopeSession,
+} from "@/features/quotations/utils/quotation-section-scope.util";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn, type QuickCreateSelectApplied } from "@/shared/hooks/use-quick-create-return";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppModal, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, MoneyInput, NumericInput, surfaceInputClassName } from "@/shared/ui";
+import { AppButton, AppModal, AppTabs, CheckmarkSelect, DataTableRowActionsMenu, FieldErrorText, FieldGroup, MoneyInput, NumericInput, surfaceInputClassName } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
 type DndPayload =
@@ -328,6 +332,11 @@ type Props = {
   allowManualLines?: boolean;
   /** Persist create-form values before leaving Scope & Pricing (pin / composite detail). */
   onBeforeLeavePage?: () => void;
+  /**
+   * Service quotations: Scope & pricing is split into Primary / Optional section lists.
+   * Clicking a section opens the section detail page.
+   */
+  sectionKindTabs?: boolean;
 };
 
 export function QuotationDraftComposer({
@@ -338,6 +347,7 @@ export function QuotationDraftComposer({
   readOnly = false,
   allowManualLines = true,
   onBeforeLeavePage,
+  sectionKindTabs = false,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
@@ -349,6 +359,7 @@ export function QuotationDraftComposer({
   const searchParams = useSearchParams();
   const quoteCategory = parseQuoteCategoryParam(searchParams.get("quote_category"));
   const [newSectionName, setNewSectionName] = React.useState("");
+  const [scopeKindTab, setScopeKindTab] = React.useState<"primary" | "optional">("primary");
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
@@ -541,20 +552,31 @@ export function QuotationDraftComposer({
     const trimmed = newSectionName.trim();
     if (!trimmed) return;
     const name = sanitizeTitleInput(trimmed);
+    const id = newQuotationDraftId("sec");
+    const kind = sectionKindTabs
+      ? scopeKindTab === "optional"
+        ? "optional"
+        : "primary"
+      : "project";
     patchDraft((d) => ({
       sections: [
         ...d.sections,
         {
-          id: newQuotationDraftId("sec"),
+          id,
           level_id: null,
           name,
+          description: "",
+          notes: "",
           included: true,
+          kind,
+          labours: [],
           section_pins: [],
           plots: [],
         },
       ],
     }));
     setNewSectionName("");
+    setOpenSectionIds((prev) => new Set(prev).add(id));
   }
 
   function duplicateSectionAt(si: number, count: number) {
@@ -568,6 +590,9 @@ export function QuotationDraftComposer({
           ...source,
           id: newQuotationDraftId("sec"),
           name: source.name,
+          description: source.description ?? "",
+          notes: source.notes ?? "",
+          labours: (source.labours ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("lab") })),
           section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
           plots: source.plots.map((p) => ({
             ...p,
@@ -798,6 +823,12 @@ export function QuotationDraftComposer({
     }));
   }
 
+  function patchSectionFields(si: number, patch: Partial<QuotationDraftSection>) {
+    patchDraft((d) => ({
+      sections: d.sections.map((s, i) => (i === si ? { ...s, ...patch } : s)),
+    }));
+  }
+
   function toggleIncluded(si: number, included: boolean) {
     patchDraft((d) => ({
       sections: d.sections.map((s, i) => (i === si ? { ...s, included } : s)),
@@ -924,6 +955,7 @@ export function QuotationDraftComposer({
       name: label,
       quantity,
       selling_price: unit,
+      is_composite: false,
       ...group,
       pin_count: 1,
     };
@@ -1027,6 +1059,36 @@ export function QuotationDraftComposer({
     [router, pathname, quoteCategory, onBeforeLeavePage],
   );
 
+  const openSectionScope = React.useCallback(
+    (sectionId: string) => {
+      if (!draft) return;
+      const backHref = buildQuotationScopeReturnHref(pathname);
+      const editMatch = pathname.match(/\/quotations\/(\d+)\/edit$/);
+      const detailMatch = pathname.match(/\/quotations\/(\d+)$/);
+      const context = editMatch
+        ? { mode: "edit" as const, quotationId: Number.parseInt(editMatch[1], 10) }
+        : detailMatch
+          ? { mode: "detail" as const, quotationId: Number.parseInt(detailMatch[1], 10) }
+          : ({ mode: "new" as const });
+      writeQuotationSectionScopeSession({
+        draft,
+        sectionId,
+        backHref,
+        readOnly,
+        pendingApply: false,
+      });
+      onBeforeLeavePage?.();
+      router.push(
+        buildQuotationSectionScopeHref(context, {
+          sectionId,
+          backHref,
+          quoteCategory: quoteCategory ?? undefined,
+        }),
+      );
+    },
+    [draft, pathname, readOnly, quoteCategory, onBeforeLeavePage, router],
+  );
+
   if (!canShow) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">{t("selectProjectHint")}</p>;
   }
@@ -1037,6 +1099,120 @@ export function QuotationDraftComposer({
 
   const grand = draftGrandTotal(draft);
   const allIncluded = draft.sections.length > 0 && draft.sections.every((s) => s.included);
+
+  if (sectionKindTabs) {
+    const visibleSections = draft.sections.filter((s) =>
+      scopeKindTab === "optional" ? s.kind === "optional" : s.kind !== "optional",
+    );
+
+    return (
+      <div className="space-y-4">
+        <AppTabs
+          tabs={[
+            { id: "primary", label: t("kindPrimary") },
+            { id: "optional", label: t("kindOptional") },
+          ]}
+          value={scopeKindTab}
+          onValueChange={(id) => setScopeKindTab(id === "optional" ? "optional" : "primary")}
+          ariaLabel={t("kindTabsAria")}
+          panelIdPrefix="quotation-scope-kind"
+        />
+        {!readOnly && allowManualLines ? (
+          <div className="flex max-w-xl flex-row flex-wrap items-center gap-1.5">
+            <label className="sr-only" htmlFor="draft-new-section">
+              {t("newSectionLabel")}
+            </label>
+            <input
+              id="draft-new-section"
+              value={newSectionName}
+              onChange={(e) => setNewSectionName(e.target.value)}
+              onBlur={() =>
+                setNewSectionName((prev) => {
+                  const next = sanitizeTitleInput(prev);
+                  return next !== prev ? next : prev;
+                })
+              }
+              placeholder={t("newSectionPlaceholder")}
+              className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+              disabled={saving}
+            />
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving || newSectionName.trim().length === 0}
+              onClick={addSection}
+            >
+              {t("addSection")}
+            </AppButton>
+          </div>
+        ) : null}
+
+        {visibleSections.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {scopeKindTab === "optional" ? t("emptyOptionalSections") : t("emptyPrimarySections")}
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {visibleSections.map((section) => {
+              const si = draft.sections.findIndex((s) => s.id === section.id);
+              return (
+                <li key={section.id}>
+                  <div
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
+                      "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                      "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      disabled={saving}
+                      className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900 dark:text-slate-100"
+                      onClick={() => openSectionScope(section.id)}
+                    >
+                      {section.name?.trim() || t("newSectionPlaceholder")}
+                    </button>
+                    <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                      {formatMoneyDisplay(draftSectionTotal(section), loc)}
+                    </span>
+                    {!readOnly && si >= 0 ? (
+                      <div data-draft-row-actions className="shrink-0">
+                        <DataTableRowActionsMenu
+                          menuAriaLabel={t("rowActions")}
+                          items={[
+                            {
+                              id: "open-sec",
+                              label: t("editSection"),
+                              icon: Pencil,
+                              onSelect: () => openSectionScope(section.id),
+                            },
+                            {
+                              id: "dup-sec",
+                              label: t("duplicateSection"),
+                              icon: Copy,
+                              onSelect: () => openDuplicatePrompt({ kind: "section", si }),
+                            },
+                            {
+                              id: "del-sec",
+                              label: t("deleteSection"),
+                              icon: Trash2,
+                              tone: "danger",
+                              onSelect: () => deleteSection(si),
+                            },
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

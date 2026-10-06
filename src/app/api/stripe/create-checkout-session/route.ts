@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
-import { StripeHandler } from "@/shared/utils/stripe";
+import { getStripe } from "@/shared/utils/stripe";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function unescapeStripeSessionPlaceholder(url: string): string {
+  return url.replace(/%7BCHECKOUT_SESSION_ID%7D/gi, "{CHECKOUT_SESSION_ID}");
+}
 
 type CreateCheckoutBody = {
   amountPence?: number;
   currency?: string;
   customerEmail?: string;
   productName?: string;
+  productDescription?: string;
+  customerName?: string;
   successUrl?: string;
   cancelUrl?: string;
   /** Arbitrary metadata forwarded to the Stripe session (e.g. kioskId, token) */
@@ -31,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     // ── URL validation ────────────────────────────────────────────────────────
-    const successUrl = body.successUrl?.trim();
+    const successUrl = unescapeStripeSessionPlaceholder(body.successUrl?.trim() ?? "");
     const cancelUrl = body.cancelUrl?.trim();
     if (!successUrl || !cancelUrl) {
       return NextResponse.json(
@@ -40,38 +47,44 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Create session (secret key stays server-side) ─────────────────────────
-    const session = await StripeHandler.checkout.sessions.create(
-      {
-        mode: "payment",
-        payment_method_types: ["card"],
-        customer_email: body.customerEmail?.trim() || undefined,
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: (body.currency || "gbp").toLowerCase(),
-              unit_amount: amountPence,
-              product_data: {
-                name: body.productName?.trim() || "SimHo order",
-              },
+    const productName = body.productName?.trim() || "SimHo order";
+    const productDescription = (body.productDescription?.trim() || "Configured product payment").slice(0, 500);
+
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      submit_type: "pay",
+      locale: "en-GB",
+      customer_email: body.customerEmail?.trim() || undefined,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: (body.currency || "gbp").toLowerCase(),
+            unit_amount: amountPence,
+            product_data: {
+              name: productName,
+              description: productDescription,
             },
           },
-        ],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        // All metadata is forwarded to the webhook and to the verify-session endpoint
-        metadata: body.metadata ?? {},
-        // Prevent duplicate Stripe sessions when the user double-clicks
-        payment_intent_data: {
-          metadata: body.metadata ?? {},
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: body.metadata ?? {},
+      client_reference_id: body.metadata?.kiosk_id?.slice(0, 200),
+      custom_text: {
+        submit: {
+          message: "Your order is recorded after this payment is completed.",
         },
       },
-      // Idempotency key prevents charging the customer twice for the same action
-      body.idempotencyKey
-        ? { idempotencyKey: body.idempotencyKey }
-        : undefined,
-    );
+      payment_intent_data: {
+        description: productName.slice(0, 1000),
+        ...(body.customerName?.trim()
+          ? { metadata: { customer_name: body.customerName.trim().slice(0, 200) } }
+          : {}),
+      },
+    });
 
     if (!session.url) {
       return NextResponse.json(

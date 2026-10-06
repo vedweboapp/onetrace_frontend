@@ -142,6 +142,7 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  is_composite?: boolean;
   /** Product group selected when adding the line (service quotes). */
   group_id?: number | null;
   group_name?: string | null;
@@ -160,17 +161,39 @@ export type QuotationQuoteSectionPlot = {
   plot_total: number;
 };
 
+/** Scope bucket: Primary / Optional (service) or Project (project quote). */
+export type QuotationQuoteSectionKind = "primary" | "optional" | "project";
+
+/** Labour line on a quote section (service / project scope & pricing). */
+export type QuotationQuoteSectionLabour = {
+  labour_type: number;
+  time_hours: number;
+  cost_rate: number;
+  markup_percentage: number;
+  selling_price: number;
+  total_cost: number;
+  /** Present when API embeds the labour type name. */
+  name?: string | null;
+};
+
 export type QuotationQuoteSection = {
   section_order: number;
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  /** @deprecated Prefer `section_type`. Kept for older payloads. */
+  kind?: QuotationQuoteSectionKind;
+  /** API field: primary | optional | project. */
+  section_type?: QuotationQuoteSectionKind;
+  description?: string | null;
+  notes?: string | null;
   drawing_file?: string | null;
   drawing_file_type?: string | null;
   drawing_file_size?: number | null;
   block?: string | null;
   level?: string | null;
   order?: number | null;
+  labours?: QuotationQuoteSectionLabour[];
   plots: QuotationQuoteSectionPlot[];
   section_total: number;
 };

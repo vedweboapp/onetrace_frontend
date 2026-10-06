@@ -367,11 +367,13 @@ export function JobFormScreen({ mode, jobId }: Props) {
     if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true }, { silent: true });
+      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true, is_published: true }, { silent: true });
       setFormOptions((prev) => {
         const byValue = new Map(prev.map((opt) => [opt.value, opt]));
         for (const f of items) {
-          byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          if (f.is_published !== false) {
+            byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          }
         }
         return Array.from(byValue.values());
       });

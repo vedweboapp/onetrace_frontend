@@ -1,4 +1,9 @@
-import type { QuotationQuoteSectionSourcePin } from "@/features/quotations/types/quotation.types";
+import type {
+  QuotationQuoteSectionKind,
+  QuotationQuoteSectionSourcePin,
+} from "@/features/quotations/types/quotation.types";
+
+export type { QuotationQuoteSectionKind };
 
 /** Client-side draft for quotation composition (create flow). Synced from project levels API only as initial seed; edits stay local until create quotation API. */
 
@@ -13,9 +18,24 @@ export type QuotationDraftLine = {
   /** Selected product group when the line was added (service quote manual lines). */
   group_id?: number | null;
   group_name?: string | null;
+  /**
+   * True when the line is a composite kit; false for a plain catalog item
+   * (still stored under `composite_item_id` for API compatibility).
+   */
+  is_composite?: boolean;
   /** How many drawing pins this line represents (not catalog/item stock quantity). */
   pin_count?: number;
   source_pins?: QuotationQuoteSectionSourcePin[];
+};
+
+export type QuotationDraftLabour = {
+  id: string;
+  labour_type: number | null;
+  labour_name?: string | null;
+  time_hours: number;
+  cost_rate: number;
+  markup_percentage: number;
+  selling_price: number;
 };
 
 export type QuotationDraftPlot = {
@@ -32,6 +52,8 @@ export type QuotationDraftSection = {
   id: string;
   level_id: number | null;
   name: string;
+  description?: string;
+  notes?: string;
   drawing_file?: string | null;
   drawing_file_type?: string | null;
   drawing_file_size?: number | null;
@@ -39,6 +61,14 @@ export type QuotationDraftSection = {
   level?: string | null;
   order?: number | null;
   included: boolean;
+  /**
+   * Scope bucket sent as API `section_type`:
+   * - service quote Primary / Optional tabs → primary | optional
+   * - project quote (manual or level-seeded) → project
+   */
+  kind?: QuotationQuoteSectionKind;
+  /** Labour lines on this section. */
+  labours: QuotationDraftLabour[];
   /** Composite pins on the section itself (not tied to a drawing plot). */
   section_pins: QuotationDraftLine[];
   plots: QuotationDraftPlot[];
