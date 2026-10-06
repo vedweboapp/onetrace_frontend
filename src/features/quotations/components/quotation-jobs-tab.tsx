@@ -12,11 +12,6 @@ import {
 import { WorkflowColourStatusChip } from "@/shared/components/workflow-colour-status-chip";
 import { entityCol, EntityDataTable, EntityDetailErrorState, EntityDetailTabLoadingState, EntityLabelOverflowGroup } from "@/shared/components/entity";
 import { DetailTabListShell, DetailTabTableBody } from "@/shared/components/layout/detail-tab-list-shell";
-import {
-  detailTabSectionClassName,
-  detailTabStandaloneFillClassName,
-  detailTabTitleClassName,
-} from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { ListPageEmptyStates } from "@/shared/ui";
 import { buildDetailHrefWithListReturn, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
@@ -87,46 +82,40 @@ export function QuotationJobsTab({ jobs, loading, loadError, jobCategory, onRetr
   }
 
   return (
-    <div className={detailTabStandaloneFillClassName}>
-      <div className={detailTabSectionClassName}>
-        <h2 className={detailTabTitleClassName}>{t("jobsTitle")}</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("jobsSubtitle")}</p>
-      </div>
-      <DetailTabListShell
-        loading={loading}
-        loadError={loadError}
-        isEmpty={jobs.length === 0}
-        loadingFallback={<EntityDetailTabLoadingState />}
-        emptyFallback={
-          <ListPageEmptyStates
-            fill
-            emptyStateKind="onboarding"
-            onboarding={{
-              iconName: "jobs",
-              title: t("jobsEmptyTitle"),
-              description: t("jobsEmptyDescription"),
-            }}
-            onClearFilters={() => {}}
-          />
-        }
-        errorFallback={
-          <EntityDetailErrorState
-            fill
-            message={loadError ?? t("jobsLoadError")}
-            retryLabel={t("retry")}
-            onRetry={onRetry}
-          />
-        }
-      >
-        <DetailTabTableBody>
-          <EntityDataTable
-            columns={columns}
-            rows={jobs}
-            onRowClick={(row) => openJob(row.id)}
-            fillHeight={false}
-          />
-        </DetailTabTableBody>
-      </DetailTabListShell>
-    </div>
+    <DetailTabListShell
+      loading={loading}
+      loadError={loadError}
+      isEmpty={jobs.length === 0}
+      loadingFallback={<EntityDetailTabLoadingState />}
+      emptyFallback={
+        <ListPageEmptyStates
+          fill
+          emptyStateKind="onboarding"
+          onboarding={{
+            iconName: "jobs",
+            title: t("jobsEmptyTitle"),
+            description: t("jobsEmptyDescription"),
+          }}
+          onClearFilters={() => {}}
+        />
+      }
+      errorFallback={
+        <EntityDetailErrorState
+          fill
+          message={loadError ?? t("jobsLoadError")}
+          retryLabel={t("retry")}
+          onRetry={onRetry}
+        />
+      }
+    >
+      <DetailTabTableBody>
+        <EntityDataTable
+          columns={columns}
+          rows={jobs}
+          onRowClick={(row) => openJob(row.id)}
+          fillHeight={false}
+        />
+      </DetailTabTableBody>
+    </DetailTabListShell>
   );
 }
