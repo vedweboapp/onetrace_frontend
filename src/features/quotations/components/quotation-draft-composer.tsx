@@ -34,6 +34,10 @@ import {
   type CompositeLineLabels,
 } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { QuotationDraftSectionLabours } from "@/features/quotations/components/quotation-draft-section-labours";
+import {
+  buildQuotationSectionScopeHref,
+  writeQuotationSectionScopeSession,
+} from "@/features/quotations/utils/quotation-section-scope.util";
 import { formatMoneyDisplay, parseMoneyValue } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { cn } from "@/core/utils/http.util";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -331,7 +335,7 @@ type Props = {
   onBeforeLeavePage?: () => void;
   /**
    * Service quotations: Scope & pricing is split into Primary / Optional section lists.
-   * Sections expand in-place with description, notes, labour, and materials.
+   * Clicking a section opens the section detail page.
    */
   sectionKindTabs?: boolean;
 };
@@ -357,7 +361,6 @@ export function QuotationDraftComposer({
   const quoteCategory = parseQuoteCategoryParam(searchParams.get("quote_category"));
   const [newSectionName, setNewSectionName] = React.useState("");
   const [scopeKindTab, setScopeKindTab] = React.useState<"primary" | "optional">("primary");
-  const [sectionInnerTab, setSectionInnerTab] = React.useState<Record<string, "labour" | "materials">>({});
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
@@ -575,7 +578,6 @@ export function QuotationDraftComposer({
     }));
     setNewSectionName("");
     setOpenSectionIds((prev) => new Set(prev).add(id));
-    setSectionInnerTab((prev) => ({ ...prev, [id]: "labour" }));
   }
 
   function duplicateSectionAt(si: number, count: number) {
@@ -1057,6 +1059,36 @@ export function QuotationDraftComposer({
     [router, pathname, quoteCategory, onBeforeLeavePage],
   );
 
+  const openSectionScope = React.useCallback(
+    (sectionId: string) => {
+      if (!draft) return;
+      const backHref = buildQuotationScopeReturnHref(pathname);
+      const editMatch = pathname.match(/\/quotations\/(\d+)\/edit$/);
+      const detailMatch = pathname.match(/\/quotations\/(\d+)$/);
+      const context = editMatch
+        ? { mode: "edit" as const, quotationId: Number.parseInt(editMatch[1], 10) }
+        : detailMatch
+          ? { mode: "detail" as const, quotationId: Number.parseInt(detailMatch[1], 10) }
+          : ({ mode: "new" as const });
+      writeQuotationSectionScopeSession({
+        draft,
+        sectionId,
+        backHref,
+        readOnly,
+        pendingApply: false,
+      });
+      onBeforeLeavePage?.();
+      router.push(
+        buildQuotationSectionScopeHref(context, {
+          sectionId,
+          backHref,
+          quoteCategory: quoteCategory ?? undefined,
+        }),
+      );
+    },
+    [draft, pathname, readOnly, quoteCategory, onBeforeLeavePage, router],
+  );
+
   if (!canShow) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">{t("selectProjectHint")}</p>;
   }
@@ -1121,277 +1153,58 @@ export function QuotationDraftComposer({
             {scopeKindTab === "optional" ? t("emptyOptionalSections") : t("emptyPrimarySections")}
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {visibleSections.map((section) => {
               const si = draft.sections.findIndex((s) => s.id === section.id);
-              if (si < 0) return null;
-              const isOpen = openSectionIds.has(section.id);
-              const innerTab = sectionInnerTab[section.id] === "materials" ? "materials" : "labour";
-              const secKey = draftCompositeRowKey(section.id, null);
-              const secPick = normalizeRowPick(rowPick[secKey]);
-              const secGroupId = secPick.groupId;
-              const secCompositeOpts = getCompositeOptions(secGroupId);
-              const secSaveDisabled =
-                !secPick.compositeId ||
-                secCompositeOpts.length <= 1 ||
-                (Boolean(secGroupId) && groupItemsByGroupId[secGroupId] === undefined);
-
               return (
-                <li
-                  key={section.id}
-                  className={cn(
-                    "rounded-xl border-2 p-3 shadow-sm transition-colors sm:p-4",
-                    section.included
-                      ? "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900"
-                      : "border-slate-200 bg-slate-50/90 opacity-90 dark:border-slate-700",
-                  )}
-                >
-                  <details open={isOpen}>
-                    <summary
-                      aria-expanded={isOpen}
-                      className="list-none cursor-pointer select-none"
-                      onClick={(e) => onSectionSummaryClick(e, section.id, isOpen)}
-                      onKeyDown={(e) =>
-                        draftSummaryKeyToggle(e, isOpen, (next) => toggleSectionOpen(section.id, next))
-                      }
+                <li key={section.id}>
+                  <div
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
+                      "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                      "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      disabled={saving}
+                      className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900 dark:text-slate-100"
+                      onClick={() => openSectionScope(section.id)}
                     >
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          className="-m-1 inline-flex shrink-0 rounded p-1 text-slate-400"
-                          aria-label={t("toggleRowExpand")}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggleSectionOpen(section.id, !isOpen);
-                          }}
-                        >
-                          <ChevronDown
-                            className={cn(
-                              "size-4 shrink-0 transition-transform duration-200",
-                              isOpen && "rotate-180",
-                            )}
-                            aria-hidden
-                          />
-                        </button>
-                        {readOnly ? (
-                          <div className="min-w-0 flex-1 text-base font-semibold leading-snug break-words text-slate-900 dark:text-slate-100">
-                            {section.name?.trim() || t("newSectionPlaceholder")}
-                          </div>
-                        ) : isOpen && sectionTitleEditId === section.id ? (
-                          <DraftAutosizeTitleTextarea
-                            value={section.name}
-                            onValueChange={(v) => updateSectionName(si, v)}
-                            onBlur={() => {
-                              setSectionTitleEditId(null);
-                              const raw = section.name;
-                              const next = sanitizeTitleInput(raw);
-                              if (next !== raw) updateSectionName(si, next);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) e.preventDefault();
-                            }}
-                            disabled={saving}
-                            aria-label={t("newSectionPlaceholder")}
-                            className="min-h-[2.25rem] font-semibold"
-                            autoFocus
-                          />
-                        ) : (
-                          <div className="group/draftSecTitle flex min-w-0 flex-1 items-start justify-start gap-1.5">
-                            <button
-                              type="button"
-                              disabled={saving}
-                              className={cn(
-                                inlineEditClassName,
-                                "min-h-[2.25rem] w-fit min-w-0 max-w-full cursor-pointer rounded-md px-0.5 py-1 text-left font-semibold leading-snug break-words",
-                                "text-slate-900 dark:text-slate-100",
-                              )}
-                              aria-label={t("toggleRowExpand")}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleSectionOpen(section.id, !isOpen);
-                              }}
-                            >
-                              {section.name?.trim() || t("newSectionPlaceholder")}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={saving}
-                              className={cn(
-                                "-m-0.5 mt-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
-                                "opacity-0 group-hover/draftSecTitle:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
-                                "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80",
-                              )}
-                              aria-label={t("editRowName")}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleSectionOpen(section.id, true);
-                                setSectionTitleEditId(section.id);
-                              }}
-                            >
-                              <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                            </button>
-                          </div>
-                        )}
-                        <div className="ml-auto flex shrink-0 items-center gap-2">
-                          <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-                            {formatMoneyDisplay(draftSectionTotal(section), loc)}
-                          </span>
-                          {!readOnly ? (
-                            <div data-draft-row-actions className="shrink-0">
-                              <DataTableRowActionsMenu
-                                menuAriaLabel={t("rowActions")}
-                                items={[
-                                  {
-                                    id: "dup-sec",
-                                    label: t("duplicateSection"),
-                                    icon: Copy,
-                                    onSelect: () => openDuplicatePrompt({ kind: "section", si }),
-                                  },
-                                  {
-                                    id: "del-sec",
-                                    label: t("deleteSection"),
-                                    icon: Trash2,
-                                    tone: "danger",
-                                    onSelect: () => deleteSection(si),
-                                  },
-                                ]}
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </summary>
-
-                    <div className="mt-3 space-y-4 rounded-lg border border-slate-200 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-950/25">
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {t("sectionDescription")}
-                          </label>
-                          <textarea
-                            value={section.description ?? ""}
-                            disabled={saving || readOnly}
-                            rows={4}
-                            className={cn(surfaceInputClassName, "min-h-[6rem] w-full resize-y")}
-                            placeholder={t("sectionDescriptionPlaceholder")}
-                            onChange={(e) => patchSectionFields(si, { description: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {t("sectionNotes")}
-                          </label>
-                          <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">{t("sectionNotesHint")}</p>
-                          <textarea
-                            value={section.notes ?? ""}
-                            disabled={saving || readOnly}
-                            rows={4}
-                            className={cn(surfaceInputClassName, "min-h-[6rem] w-full resize-y")}
-                            placeholder={t("sectionNotesPlaceholder")}
-                            onChange={(e) => patchSectionFields(si, { notes: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <AppTabs
-                        tabs={[
-                          { id: "labour", label: t("sectionLabourTab") },
-                          { id: "materials", label: t("sectionMaterialsTab") },
-                        ]}
-                        value={innerTab}
-                        onValueChange={(id) =>
-                          setSectionInnerTab((prev) => ({
-                            ...prev,
-                            [section.id]: id === "materials" ? "materials" : "labour",
-                          }))
-                        }
-                        ariaLabel={t("sectionInnerTabsAria")}
-                        panelIdPrefix={`quotation-scope-section-${section.id}`}
-                      />
-
-                      {innerTab === "labour" ? (
-                        <QuotationDraftSectionLabours
-                          labours={section.labours ?? []}
-                          readOnly={readOnly}
-                          saving={saving}
-                          onChange={(labours) => patchSectionFields(si, { labours })}
+                      {section.name?.trim() || t("newSectionPlaceholder")}
+                    </button>
+                    <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                      {formatMoneyDisplay(draftSectionTotal(section), loc)}
+                    </span>
+                    {!readOnly && si >= 0 ? (
+                      <div data-draft-row-actions className="shrink-0">
+                        <DataTableRowActionsMenu
+                          menuAriaLabel={t("rowActions")}
+                          items={[
+                            {
+                              id: "open-sec",
+                              label: t("editSection"),
+                              icon: Pencil,
+                              onSelect: () => openSectionScope(section.id),
+                            },
+                            {
+                              id: "dup-sec",
+                              label: t("duplicateSection"),
+                              icon: Copy,
+                              onSelect: () => openDuplicatePrompt({ kind: "section", si }),
+                            },
+                            {
+                              id: "del-sec",
+                              label: t("deleteSection"),
+                              icon: Trash2,
+                              tone: "danger",
+                              onSelect: () => deleteSection(si),
+                            },
+                          ]}
                         />
-                      ) : (
-                        <div className="space-y-3">
-                          {!readOnly && allowManualLines ? (
-                            <DraftCompositeAddRow
-                              idPrefix={`${compositeFormId}-kind-s-${section.id}`}
-                              saving={saving}
-                              groupOptions={groupOptions}
-                              compositeOptions={secCompositeOpts}
-                              groupId={secGroupId}
-                              compositeId={secPick.compositeId}
-                              quantity={secPick.quantity}
-                              unitPrice={secPick.unitPrice}
-                              onGroupChange={(g) => handleGroupPickChange(secKey, g)}
-                              onCompositeChange={(c) =>
-                                setRowPick((prev) => {
-                                  const cur = normalizeRowPick(prev[secKey]);
-                                  return { ...prev, [secKey]: withPickedItemUnitPrice(itemRows, cur, c) };
-                                })
-                              }
-                              onQuantityChange={(q) =>
-                                setRowPick((prev) => {
-                                  const cur = normalizeRowPick(prev[secKey]);
-                                  return { ...prev, [secKey]: { ...cur, quantity: q } };
-                                })
-                              }
-                              onUnitPriceChange={(v) =>
-                                setRowPick((prev) => {
-                                  const cur = normalizeRowPick(prev[secKey]);
-                                  return { ...prev, [secKey]: { ...cur, unitPrice: v } };
-                                })
-                              }
-                              onSave={() => addCompositeLineForKey(si, null, section.id, null)}
-                              saveDisabled={secSaveDisabled}
-                              showNoItemsMessage={itemRows.length === 0}
-                              saveLabel={t("saveComposite")}
-                            />
-                          ) : null}
-                          <QuotationDraftCompositeLines
-                            hideWhenEmpty
-                            pins={section.section_pins ?? []}
-                            saving={saving}
-                            locale={loc}
-                            labels={compositeLineLabels}
-                            onDuplicateLine={(li) => openDuplicatePrompt({ kind: "section-line", si, li })}
-                            onRemoveLines={(indices) => removeSectionCompositeLines(si, indices)}
-                            onCompositeClick={({ compositeItemId, displayName, lineIndices }) => {
-                              const fallbackCompositeId = lineIndices
-                                .map((lineIndex) => section.section_pins?.[lineIndex]?.composite_item_id ?? null)
-                                .find((id): id is number => typeof id === "number" && Number.isFinite(id) && id > 0);
-                              const targetCompositeId = compositeItemId ?? fallbackCompositeId;
-                              if (!targetCompositeId) return;
-                              openCompositeScope({
-                                compositeItemId: targetCompositeId,
-                                displayName,
-                                sectionLabel: section.name,
-                                pins: section.section_pins ?? [],
-                                lineIndices,
-                              });
-                            }}
-                            readOnly={readOnly}
-                          />
-                          {(section.section_pins ?? []).length === 0 ? (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
-                          ) : null}
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                            {t("sectionTotal")}:{" "}
-                            <span className="tabular-nums">{formatMoneyDisplay(draftSectionTotal(section), loc)}</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </details>
+                      </div>
+                    ) : null}
+                  </div>
                 </li>
               );
             })}

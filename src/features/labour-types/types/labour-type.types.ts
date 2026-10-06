@@ -14,6 +14,9 @@ export type LabourType = {
   is_deleted: boolean;
   name: string;
   description?: string | null;
+  /** Default hours when adding this labour to a quote section. */
+  default_time_hours?: string | number | null;
+  default_total_cost?: string | number | null;
   default_markup: string | number;
   default_cost_rate: string | number;
   default_sell_price: string | number;
@@ -40,6 +43,7 @@ export type LabourTypeListResponse = {
 export type LabourTypeCreatePayload = {
   name: string;
   description?: string;
+  default_time_hours?: number | null;
   default_markup: number;
   default_cost_rate: number;
   default_sell_price: number;

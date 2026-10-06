@@ -33,6 +33,8 @@ function toLabourTypeWritePayload(
   const out: Record<string, unknown> = {};
   if (typeof body.name === "string") out.name = body.name;
   if (typeof body.description === "string") out.description = body.description;
+  if (body.default_time_hours === null) out.default_time_hours = null;
+  else if (typeof body.default_time_hours === "number") out.default_time_hours = body.default_time_hours;
   if (typeof body.default_markup === "number") out.default_markup = body.default_markup;
   if (typeof body.default_cost_rate === "number") out.default_cost_rate = body.default_cost_rate;
   if (typeof body.default_sell_price === "number") out.default_sell_price = body.default_sell_price;
