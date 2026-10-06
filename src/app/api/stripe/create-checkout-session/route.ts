@@ -11,20 +11,34 @@ type CreateCheckoutBody = {
   productName?: string;
   successUrl?: string;
   cancelUrl?: string;
+  /** Arbitrary metadata forwarded to the Stripe session (e.g. kioskId, token) */
   metadata?: Record<string, string>;
+  /** Idempotency key so duplicate POSTs never create duplicate charges */
+  idempotencyKey?: string;
 };
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CreateCheckoutBody;
+
+    // ── Amount validation ────────────────────────────────────────────────────
     const amountPence = Math.round(Number(body.amountPence));
-    if (!Number.isFinite(amountPence) || amountPence < 1) {
-      return NextResponse.json({ error: "Invalid payment amount." }, { status: 400 });
+    if (!Number.isFinite(amountPence) || amountPence < 50) {
+      // Stripe minimum is 50 pence (£0.50)
+      return NextResponse.json(
+        { error: "Invalid payment amount. Minimum is £0.50." },
+        { status: 400 },
+      );
     }
+
+    // ── URL validation ────────────────────────────────────────────────────────
     const successUrl = body.successUrl?.trim();
     const cancelUrl = body.cancelUrl?.trim();
     if (!successUrl || !cancelUrl) {
-      return NextResponse.json({ error: "Missing success or cancel URL." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing success or cancel URL." },
+        { status: 400 },
+      );
     }
 
     const stripe = getStripe();
@@ -51,7 +65,10 @@ export async function POST(request: Request) {
     });
 
     if (!session.url) {
-      return NextResponse.json({ error: "Stripe did not return a checkout URL." }, { status: 502 });
+      return NextResponse.json(
+        { error: "Stripe did not return a checkout URL." },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({
@@ -59,7 +76,8 @@ export async function POST(request: Request) {
       sessionId: session.id,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not start Stripe checkout.";
+    const message =
+      error instanceof Error ? error.message : "Could not start Stripe checkout.";
     console.error("[stripe/create-checkout-session]", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

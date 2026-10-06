@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  DoorClosed,
+  Lock,
   Loader2,
 } from "lucide-react";
 import type { KioskConfig } from "../types/kiosk.types";
@@ -574,11 +574,19 @@ export const KioskInvoiceDetails: React.FC<KioskInvoiceDetailsProps> = ({
                   </>
                 ) : (
                   <>
-                    <span>Continue to payment</span>
+                    <Lock className="size-3.5 opacity-80" />
+                    <span>Pay securely with Stripe</span>
                     <ArrowRight className="size-4" />
                   </>
                 )}
               </button>
+              {/* Stripe trust badge */}
+              <p className="mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+                <Lock className="size-3" />
+                Payments are processed securely by{" "}
+                <span className="font-semibold text-[#635bff]">Stripe</span>.
+                Your card details never touch our servers.
+              </p>
             </div>
           </section>
         </div>

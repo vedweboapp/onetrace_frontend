@@ -88,8 +88,8 @@ export default function PublicKioskPage() {
 
   // Persist answers to storage on change
   const handleAnswersChange = useCallback(
-    (newAnswers: Record<string, any>) => {
-      setAnswers(newAnswers);
+    (newAnswers: Record<string, unknown>) => {
+      setAnswers(newAnswers as Record<string, KioskAnswerValue>);
       if (typeof window !== "undefined" && kioskId) {
         try {
           sessionStorage.setItem(`kiosk_answers_${kioskId}`, JSON.stringify(newAnswers));
@@ -136,7 +136,7 @@ export default function PublicKioskPage() {
     };
   }, [kioskId, token]);
 
-  // Transition from configure form -> cart review with computed scene & payload
+  // Transition from configure form -> cart review
   const handleConfigureSubmit = (
     payload: { items?: CheckoutItem[] } | unknown,
     meta?: { answers: Record<string, unknown>; scene: LiveBuildScene; renderedConfig?: KioskConfig },
@@ -156,7 +156,7 @@ export default function PublicKioskPage() {
     setView("cart");
   };
 
-  // From cart -> transition to invoice details tab (carry totals so prices stay in sync)
+  // From cart -> invoice details tab
   const handleContinueToInvoice = (totals: { grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number }) => {
     setCartTotals(totals);
     setView("invoice");
@@ -364,7 +364,7 @@ export default function PublicKioskPage() {
     );
   }
 
-  // Submitted / Invoice success state
+  // Legacy submitted state (fallback, normally payment-success page handles this)
   if (view === "submitted") {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 py-8 text-center dark:bg-slate-950">
@@ -372,46 +372,12 @@ export default function PublicKioskPage() {
           <CheckCircle className="size-8" />
         </div>
         <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Invoice Generated Successfully
+          Order Submitted Successfully
         </h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          Thank you! Your product configuration has been recorded and an invoice
-          has been initiated.
+          Thank you! Your product configuration has been recorded.
         </p>
 
-        {submittedSnapshot && (
-          <div className="mt-6 max-w-sm w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-              Configured Snapshot Preview
-            </p>
-            <div className="relative aspect-4/3 w-full overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <img
-                src={submittedSnapshot}
-                alt="Product snapshot"
-                className="max-h-full max-w-full object-contain"
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-2">
-              <a
-                href={submittedSnapshot}
-                download={`kiosk-snapshot-${kioskId || "product"}.png`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
-              >
-                <Download className="size-3.5" />
-                Download Snapshot (PNG)
-              </a>
-              <a
-                href={submittedSnapshot}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                <ExternalLink className="size-3.5" />
-                Open Full Size
-              </a>
-            </div>
-          </div>
-        )}
 
         <div className="mt-6 flex items-center gap-3">
           <button
@@ -526,7 +492,7 @@ export default function PublicKioskPage() {
         </div>
       )}
 
-      {/* Invoice Details / Billing Tab */}
+      {/* Invoice Details / Billing Tab → leads to Stripe Checkout */}
       {view === "invoice" && configuredData && (
         <div className="min-h-screen w-full">
           <KioskInvoiceDetails
