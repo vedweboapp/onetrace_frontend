@@ -887,7 +887,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const basePayload = mapQuotationFormToPayload(values, {
         quote_category: isServiceQuotation ? QUOTE_CATEGORY.service : QUOTE_CATEGORY.project,
       });
-      let merged = quoteDraft ? mergeQuotationDraftIntoPayload(basePayload, quoteDraft) : basePayload;
+      let merged = quoteDraft
+        ? mergeQuotationDraftIntoPayload(basePayload, quoteDraft, {
+            defaultSectionType: isServiceQuotation ? "primary" : "project",
+          })
+        : basePayload;
       if (isEdit && !quoteDraft && existingDetail?.quote_sections && existingDetail.quote_sections.length > 0) {
         const computedGrand =
           existingDetail.grand_total ??

@@ -3,10 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronUp, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppTabs, type AppTabItem, type AppTabsProps } from "@/shared/ui/app-tabs";
-import { usePersistedTabOrder } from "@/shared/hooks/use-persisted-tab-order";
+import { usePersistedTabLayout } from "@/shared/hooks/use-persisted-tab-layout";
 
 const DND_TYPE = "application/x-app-tab-order";
 
@@ -18,6 +18,9 @@ export type CustomizableAppTabsLabels = {
   moveUpAria: string;
   moveDownAria: string;
   dragHandleAria: string;
+  showAria: string;
+  hideAria: string;
+  pinnedHint: string;
 };
 
 export type CustomizableAppTabsProps = Omit<AppTabsProps, "tabs"> & {
@@ -25,6 +28,8 @@ export type CustomizableAppTabsProps = Omit<AppTabsProps, "tabs"> & {
   tabs: readonly AppTabItem[];
   /** localStorage key — include user id so preferences are personal (see `useTabOrderStorageKey`). */
   storageKey: string;
+  /** Tabs that cannot be hidden (defaults to the first tab). */
+  pinnedTabIds?: readonly string[];
   /** Override copy; defaults to `Dashboard.common.customizeTabs`. */
   labels?: Partial<CustomizableAppTabsLabels>;
 };
@@ -32,6 +37,7 @@ export type CustomizableAppTabsProps = Omit<AppTabsProps, "tabs"> & {
 export function CustomizableAppTabs({
   tabs,
   storageKey,
+  pinnedTabIds: pinnedTabIdsProp,
   labels: labelsProp,
   value,
   onValueChange,
@@ -48,16 +54,38 @@ export function CustomizableAppTabs({
     moveUpAria: labelsProp?.moveUpAria ?? t("moveUp"),
     moveDownAria: labelsProp?.moveDownAria ?? t("moveDown"),
     dragHandleAria: labelsProp?.dragHandleAria ?? t("drag"),
+    showAria: labelsProp?.showAria ?? t("show"),
+    hideAria: labelsProp?.hideAria ?? t("hide"),
+    pinnedHint: labelsProp?.pinnedHint ?? t("pinned"),
   };
 
   const defaultIds = React.useMemo(() => tabs.map((tab) => tab.id), [tabs]);
   const byId = React.useMemo(() => new Map(tabs.map((tab) => [tab.id, tab])), [tabs]);
-  const { order, move, reset, isCustom } = usePersistedTabOrder(storageKey, defaultIds);
+  const pinnedTabIds = React.useMemo(() => {
+    if (pinnedTabIdsProp?.length) return [...pinnedTabIdsProp];
+    return defaultIds[0] ? [defaultIds[0]] : [];
+  }, [defaultIds, pinnedTabIdsProp]);
+  const { order, hidden, visibleIds, move, setHidden, reset, isCustom } = usePersistedTabLayout(
+    storageKey,
+    defaultIds,
+    pinnedTabIds,
+  );
+  const hiddenSet = React.useMemo(() => new Set(hidden), [hidden]);
 
   const orderedTabs = React.useMemo(
     () => order.map((id) => byId.get(id)).filter((tab): tab is AppTabItem => tab != null),
     [order, byId],
   );
+  const visibleTabs = React.useMemo(
+    () => visibleIds.map((id) => byId.get(id)).filter((tab): tab is AppTabItem => tab != null),
+    [visibleIds, byId],
+  );
+
+  React.useEffect(() => {
+    if (visibleTabs.length === 0) return;
+    if (visibleTabs.some((tab) => tab.id === value)) return;
+    onValueChange(visibleTabs[0]!.id);
+  }, [onValueChange, value, visibleTabs]);
 
   const [open, setOpen] = React.useState(false);
   const [dragFrom, setDragFrom] = React.useState<number | null>(null);
@@ -74,7 +102,7 @@ export function CustomizableAppTabs({
     const el = buttonRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const width = 300;
+    const width = 320;
     const pad = 8;
     let left = r.right - width;
     left = Math.max(pad, Math.min(left, window.innerWidth - width - pad));
@@ -140,6 +168,8 @@ export function CustomizableAppTabs({
             <ul className="max-h-[14rem] overflow-y-auto py-1">
               {orderedTabs.map((tab, index) => {
                 const labelText = typeof tab.label === "string" ? tab.label : tab.id;
+                const pinned = pinnedTabIds.includes(tab.id);
+                const isHidden = !pinned && hiddenSet.has(tab.id);
                 return (
                   <li
                     key={tab.id}
@@ -161,6 +191,7 @@ export function CustomizableAppTabs({
                     className={cn(
                       "flex items-center gap-1 border-b border-slate-50 px-2 py-1 last:border-b-0 dark:border-slate-800/60",
                       dragFrom === index && "bg-slate-50 opacity-60 dark:bg-slate-800/50",
+                      isHidden && "opacity-55",
                     )}
                   >
                     <span
@@ -173,6 +204,21 @@ export function CustomizableAppTabs({
                       {labelText}
                     </span>
                     <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        className="flex size-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                        aria-label={pinned ? labels.pinnedHint : isHidden ? labels.showAria : labels.hideAria}
+                        aria-pressed={!isHidden}
+                        title={pinned ? labels.pinnedHint : isHidden ? labels.showAria : labels.hideAria}
+                        disabled={pinned}
+                        onClick={() => setHidden(tab.id, !isHidden)}
+                      >
+                        {isHidden ? (
+                          <EyeOff className="size-3.5" aria-hidden />
+                        ) : (
+                          <Eye className="size-3.5" aria-hidden />
+                        )}
+                      </button>
                       <button
                         type="button"
                         className="flex size-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-100"
@@ -222,7 +268,7 @@ export function CustomizableAppTabs({
   return (
     <div ref={rootRef} className={cn("flex min-w-0 items-end gap-1", className)}>
       <AppTabs
-        tabs={orderedTabs}
+        tabs={visibleTabs}
         value={value}
         onValueChange={onValueChange}
         ariaLabel={ariaLabel}

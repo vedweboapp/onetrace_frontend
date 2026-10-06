@@ -1,5 +1,6 @@
 import { useDashboardAppearanceStore } from "../store/dashboard-appearance.store";
 import { appearanceStoreFromApiPreferences, type ApiAppearancePreferences } from "./appearance-preferences.util";
+import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 
 export function hydrateAppearanceFromProfile(
   preferences: ApiAppearancePreferences | null | undefined,
@@ -10,6 +11,11 @@ export function hydrateAppearanceFromProfile(
       ...state,
       ...patch,
     }));
+  }
+
+  useTabLayoutsStore.getState().setApiPreferencesCache(preferences ?? null);
+  if (preferences?.tab_layouts) {
+    useTabLayoutsStore.getState().hydrateFromApi(preferences.tab_layouts);
   }
 
   return {

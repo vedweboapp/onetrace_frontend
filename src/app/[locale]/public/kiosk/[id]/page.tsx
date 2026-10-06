@@ -22,8 +22,10 @@ import {
   savePendingKioskCheckout,
   type PendingKioskCheckout,
 } from "@/features/kiosk/utils/kiosk-pending-checkout.util";
+import { parseCheckoutOrderSummary, type KioskOrderCompleteInfo } from "@/features/kiosk/utils/kiosk-order-summary.util";
+import { KioskOrderCompleteCard } from "@/features/kiosk/components/kiosk-order-complete-card";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { CheckCircle, AlertCircle, ShoppingCart, Download, ExternalLink } from "lucide-react";
+import { AlertCircle, ShoppingCart } from "lucide-react";
 
 const STRIPE_SESSION_PLACEHOLDER = "{CHECKOUT_SESSION_ID}";
 
@@ -47,13 +49,14 @@ function kioskPaymentReturnUrls() {
   const cancel = new URL(current.href);
   cancel.searchParams.set("payment", "cancelled");
 
-  const success = new URL(current.href);
-  success.searchParams.set("payment", "success");
-  // Stripe only replaces the literal unencoded `{CHECKOUT_SESSION_ID}` token.
-  // URLSearchParams encodes braces (%7B/%7D), which Stripe then leaves as-is.
-  const query = success.search ? `${success.search}&session_id=${STRIPE_SESSION_PLACEHOLDER}` : `?session_id=${STRIPE_SESSION_PLACEHOLDER}`;
+  const kioskPath = current.pathname.replace(/\/$/, "");
+  const successPath = `${kioskPath}/payment-success`;
+  const token = current.searchParams.get("token") || current.searchParams.get("organization_uuid");
+  const successQuery = new URLSearchParams();
+  if (token) successQuery.set("token", token);
+  successQuery.set("session_id", STRIPE_SESSION_PLACEHOLDER);
   return {
-    successUrl: `${success.origin}${success.pathname}${query}${success.hash}`,
+    successUrl: `${current.origin}${successPath}?${successQuery.toString().replace(encodeURIComponent(STRIPE_SESSION_PLACEHOLDER), STRIPE_SESSION_PLACEHOLDER)}`,
     cancelUrl: cancel.toString(),
   };
 }
@@ -86,6 +89,7 @@ export default function PublicKioskPage() {
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
   const [cartTotals, setCartTotals] = useState<{ grandTotal: number; subtotal: number; deliveryFee: number; vat: number; quantity: number } | undefined>();
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<KioskOrderCompleteInfo | null>(null);
   const [restoredBilling, setRestoredBilling] = useState<KioskBillingDetails | null>(null);
   const [isConfirmingPayment, setIsConfirmingPayment] = useState(
     () => searchParams.get("payment") === "success",
@@ -214,7 +218,14 @@ export default function PublicKioskPage() {
         organizationId: pending.organizationId,
         items: pending.items,
       });
-      await submitKioskCheckout(checkoutFormData);
+      const checkoutRes = await submitKioskCheckout(checkoutFormData);
+      const orderSummary = parseCheckoutOrderSummary(checkoutRes);
+      if (orderSummary.totalAmount == null && pending.cartTotals?.grandTotal != null) {
+        orderSummary.totalAmount = pending.cartTotals.grandTotal;
+      }
+      orderSummary.email = pending.billingDetails.email;
+      orderSummary.productName = pending.configName;
+      setCompletedOrder(orderSummary);
 
       if (pending.snapshotImage) {
         try {
@@ -355,6 +366,7 @@ export default function PublicKioskPage() {
         organizationId,
         items: checkoutPayload.items,
         cartTotals,
+        configName: config.name?.trim() || "SimHo order",
         createdAt: Date.now(),
       };
       savePendingKioskCheckout(kioskId, pending);
@@ -364,7 +376,9 @@ export default function PublicKioskPage() {
         amountPence,
         currency: "gbp",
         customerEmail: billingDetails.email.trim(),
+        customerName: billingDetails.fullName.trim(),
         productName: config.name?.trim() || "SimHo order",
+        productDescription: "Configured product — pay to complete your order.",
         successUrl,
         cancelUrl,
         metadata: {
@@ -395,32 +409,12 @@ export default function PublicKioskPage() {
   // Legacy submitted state (fallback, normally payment-success page handles this)
   if (view === "submitted") {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f4f5f7] px-4 py-8 text-center dark:bg-slate-950">
-        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400">
-          <CheckCircle className="size-8" />
-        </div>
-        <h2 className="mt-6 text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Order Submitted Successfully
-        </h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          Thank you! Your product configuration has been recorded.
-        </p>
-
-
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            onClick={() => {
-              setAnswers({});
-              setConfiguredData(null);
-              setSubmittedSnapshot(null);
-              setView("configure");
-            }}
-            className="rounded-md bg-[#701524] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5a101c] focus:outline-none focus:ring-2 focus:ring-[#701524] focus:ring-offset-2 transition cursor-pointer"
-          >
-            Configure Another Product
-          </button>
-        </div>
-      </div>
+      <KioskOrderCompleteCard
+        order={completedOrder}
+        email={completedOrder?.email || restoredBilling?.email}
+        productName={completedOrder?.productName || config?.name}
+        configureHref={typeof window !== "undefined" ? `${window.location.pathname}${token ? `?token=${encodeURIComponent(token)}` : ""}` : "#"}
+      />
     );
   }
 

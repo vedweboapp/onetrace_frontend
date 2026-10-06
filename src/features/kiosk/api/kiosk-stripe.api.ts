@@ -3,6 +3,8 @@ export type CreateKioskStripeCheckoutInput = {
   currency?: string;
   customerEmail?: string;
   productName?: string;
+  productDescription?: string;
+  customerName?: string;
   successUrl: string;
   cancelUrl: string;
   metadata?: Record<string, string>;
