@@ -1,4 +1,5 @@
 import { fetchJob, fetchJobsPage } from "@/features/jobs/api/job.api";
+import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
 
 function nestedId(value: unknown): number | null {
@@ -31,7 +32,7 @@ function mergeJobs(target: Map<number, Job>, jobs: Job[]) {
 
 /**
  * Load jobs created from a quotation via `GET /jobs/?quotation_id=…`.
- * Falls back to the linked job id on the quote when the list is empty.
+ * Service quotes expect a single linked job; project quotes may return several.
  */
 export async function fetchJobsForQuotation(options: {
   quotationId: number;
@@ -40,19 +41,18 @@ export async function fetchJobsForQuotation(options: {
 }): Promise<Job[]> {
   const { quotationId, jobCategory, linkedJobId } = options;
   const byId = new Map<number, Job>();
+  const isService = jobCategory === JOB_CATEGORY.service;
 
   try {
     const { items } = await fetchJobsPage(
       1,
-      100,
+      isService ? 20 : 100,
       {
         quotation_id: quotationId,
         job_category: jobCategory,
       },
       { silent: true },
     );
-    // API already filters by quotation_id — keep all returned rows.
-    // If a row exposes a quotation id and it differs, drop that row only.
     const matched = items.filter((job) => {
       const qid = getJobQuotationId(job);
       return qid == null || qid === quotationId;
@@ -70,5 +70,10 @@ export async function fetchJobsForQuotation(options: {
     }
   }
 
-  return [...byId.values()];
+  const jobs = [...byId.values()];
+  if (isService) {
+    if (linkedJobId && byId.has(linkedJobId)) return [byId.get(linkedJobId)!];
+    return jobs[0] ? [jobs[0]] : [];
+  }
+  return jobs;
 }

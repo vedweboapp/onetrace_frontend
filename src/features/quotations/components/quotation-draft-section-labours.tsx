@@ -123,22 +123,17 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {row.labour_name?.trim() || (row.labour_type != null ? `#${row.labour_type}` : "—")}
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300">
-                    {t("labourLineTotal")}: {formatMoneyDisplay(draftLabourTotal(row), loc)}
-                  </span>
-                  {!readOnly ? (
-                    <button
-                      type="button"
-                      className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
-                      aria-label={t("labourRemove")}
-                      disabled={saving}
-                      onClick={() => removeLabour(index)}
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </button>
-                  ) : null}
-                </div>
+                {!readOnly ? (
+                  <button
+                    type="button"
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
+                    aria-label={t("labourRemove")}
+                    disabled={saving}
+                    onClick={() => removeLabour(index)}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </button>
+                ) : null}
               </div>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <div>
@@ -210,14 +205,19 @@ export function QuotationDraftSectionLabours({ labours, readOnly = false, saving
                   />
                 </div>
               </div>
+              <p className="mt-2 text-right text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300">
+                {t("labourLineTotal")}: {formatMoneyDisplay(draftLabourTotal(row), loc)}
+              </p>
             </li>
           ))}
         </ul>
       )}
 
-      <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-        {t("labourTotal")}: <span className="tabular-nums">{formatMoneyDisplay(labourTotal, loc)}</span>
-      </p>
+      {labours.length > 0 ? (
+        <p className="border-t border-slate-100 pt-3 text-sm font-medium text-slate-800 dark:border-slate-800 dark:text-slate-100">
+          {t("labourTotal")}: <span className="tabular-nums">{formatMoneyDisplay(labourTotal, loc)}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
