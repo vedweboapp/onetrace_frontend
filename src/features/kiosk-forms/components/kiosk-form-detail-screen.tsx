@@ -279,7 +279,7 @@ export function KioskFormDetailScreen() {
               </div>
             ) : detail ? (
               <div className="space-y-6">
-                <dl className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
+                <dl className="grid gap-4 border-y border-slate-200 p-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
                   {/* Title — hyperlink to the kiosk editor */}
                   <div className="lg:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title</dt>
@@ -309,7 +309,7 @@ export function KioskFormDetailScreen() {
                     <dd className="mt-1 text-sm text-slate-900 dark:text-slate-100">{formatDate(detail.created_at)}</dd>
                   </div>
                 </dl>
-
+                <div className="px-">
                 <AppTabs
                   tabs={tabs}
                   value={activeTab}
@@ -317,6 +317,8 @@ export function KioskFormDetailScreen() {
                   ariaLabel="Kiosk form sections"
                   panelIdPrefix="kiosk-form-detail-tab"
                 />
+                </div>
+                
 
                 <section>
                   <div className="overflow-hidden border border-slate-200 dark:border-slate-800">
