@@ -106,7 +106,7 @@ export async function createKiosk(payload: FormData | Partial<KioskConfig>): Pro
   });
   return res.data;
 }
- 
+
 export async function updateKiosk(
   id: string | number,
   payload: FormData | Partial<KioskConfig>,
