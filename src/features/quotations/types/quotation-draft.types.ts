@@ -28,16 +28,6 @@ export type QuotationDraftLine = {
   source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
-export type QuotationDraftLabour = {
-  id: string;
-  labour_type: number | null;
-  labour_name?: string | null;
-  time_hours: number;
-  cost_rate: number;
-  markup_percentage: number;
-  selling_price: number;
-};
-
 export type QuotationDraftPlot = {
   id: string;
   plot_id: number | null;
@@ -67,9 +57,7 @@ export type QuotationDraftSection = {
    * - project quote (manual or level-seeded) → project
    */
   kind?: QuotationQuoteSectionKind;
-  /** Labour lines on this section. */
-  labours: QuotationDraftLabour[];
-  /** Composite pins on the section itself (not tied to a drawing plot). */
+  /** Composite / catalog pins on the section itself (not tied to a drawing plot). */
   section_pins: QuotationDraftLine[];
   plots: QuotationDraftPlot[];
 };

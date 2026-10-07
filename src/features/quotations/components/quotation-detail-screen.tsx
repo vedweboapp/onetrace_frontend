@@ -56,8 +56,7 @@ import {
 import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { AppButton, CustomizableAppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
+import { AppButton, AppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
 
@@ -100,8 +99,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     "projects",
     "tags",
   ]);
-  const tabsStorageKey = useTabOrderStorageKey("quotationDetail");
-
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});
@@ -127,6 +124,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
   const jobCategory = isProjectQuote ? JOB_CATEGORY.project : JOB_CATEGORY.service;
 
+  /** Jobs / Job sheets / Schedule (and project docs+approvals) only after a linked job exists. */
+  const hasJobs =
+    relatedJobs.length > 0 ||
+    (detailForSite != null && quotationHasLinkedJob(detailForSite, quotationId));
+
   const detailTabs = React.useMemo<AppTabItem[]>(() => {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
@@ -134,19 +136,23 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     ];
     if (isProjectQuote) {
       tabs.push({ id: "location", label: t("relatedTabs.location") });
-      tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
-      tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheetsPlural") });
-      tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
-      tabs.push({ id: "docs", label: t("relatedTabs.docs") });
-      tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
-    } else {
-      tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
-      tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheets") });
-      tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
+    }
+    if (hasJobs) {
+      if (isProjectQuote) {
+        tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
+        tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheetsPlural") });
+        tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
+        tabs.push({ id: "docs", label: t("relatedTabs.docs") });
+        tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
+      } else {
+        tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
+        tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheets") });
+        tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
+      }
     }
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [isProjectQuote, t, tAudit]);
+  }, [hasJobs, isProjectQuote, t, tAudit]);
 
   const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
   const activeTab: QuotationDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "details";
@@ -424,11 +430,10 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <CustomizableAppTabs
+        <AppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={handleTabChange}
-          storageKey={tabsStorageKey}
           ariaLabel={t("relatedTabs.aria")}
           panelIdPrefix="quotation-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

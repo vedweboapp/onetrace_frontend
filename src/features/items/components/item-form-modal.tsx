@@ -9,7 +9,9 @@ import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
 import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
-import type { DimensionUnit, Item, WeightUnit } from "@/features/items/types/item.types";
+import type { DimensionUnit, Item, ItemType, WeightUnit } from "@/features/items/types/item.types";
+import { generateServiceItemSku, resolveItemType } from "@/features/items/utils/item-type.util";
+import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
@@ -81,17 +83,27 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const router = useRouter();
 
   const nameId = React.useId();
+  const itemTypeId = React.useId();
   const skuId = React.useId();
   const unitId = React.useId();
   const qtyId = React.useId();
   const costId = React.useId();
+  const markupId = React.useId();
   const sellId = React.useId();
 
   const [name, setName] = React.useState(() => (mode === "edit" && item ? item.name : ""));
+  const [itemType, setItemType] = React.useState<ItemType>(() =>
+    mode === "edit" && item ? resolveItemType(item.item_type) : "goods",
+  );
   const [sku, setSku] = React.useState(() => (mode === "edit" && item ? String(item.sku ?? "") : ""));
   const [qty, setQty] = React.useState(() => (mode === "edit" && item ? String(item.quantity ?? 0) : ""));
   const [cost, setCost] = React.useState(() => (mode === "edit" && item ? String(item.cost_price ?? 0) : ""));
+  const [markup, setMarkup] = React.useState(() =>
+    mode === "edit" && item ? String(parseItemNumber(item.markup)) : "0",
+  );
   const [sell, setSell] = React.useState(() => (mode === "edit" && item ? String(item.selling_price ?? 0) : ""));
+  const [sellTouched, setSellTouched] = React.useState(() => mode === "edit" && !!item);
+  const isService = itemType === "service";
 
   const [unitType, setUnitType] = React.useState(() => (mode === "edit" && item ? String(getUnitTypeId(item.unit_type) ?? "") : ""));
   const [unitTypeOptions, setUnitTypeOptions] = React.useState<Array<{ value: string; label: string }>>([]);
@@ -130,10 +142,13 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     if (!open) return;
     if (mode === "edit" && item) {
       setName(item.name);
+      setItemType(resolveItemType(item.item_type));
       setSku(String(item.sku ?? ""));
       setQty(String(item.quantity ?? 0));
       setCost(String(item.cost_price ?? 0));
+      setMarkup(String(parseItemNumber(item.markup)));
       setSell(String(item.selling_price ?? 0));
+      setSellTouched(true);
       const unitId = getUnitTypeId(item.unit_type);
       setUnitType(unitId != null ? String(unitId) : "");
       setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
@@ -156,10 +171,13 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setVendorFallbackLabels(itemVendorFallbackLabels(item));
     } else {
       setName("");
+      setItemType("goods");
       setSku("");
       setQty("");
       setCost("");
+      setMarkup("0");
       setSell("");
+      setSellTouched(false);
       setUnitType("");
       setLength("");
       setWidth("");
@@ -215,8 +233,21 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     };
   }, [open, t]);
 
+  function syncSellFromCostMarkup(nextCost: string, nextMarkup: string) {
+    if (sellTouched) return;
+    setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
+  }
+
+  const itemTypeOptions = React.useMemo(
+    () => [
+      { value: "goods", label: t("itemTypeGoods") },
+      { value: "service", label: t("itemTypeService") },
+    ],
+    [t],
+  );
+
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
-  const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
+  const skuInvalid = !isService && Boolean(touched.sku) && sku.trim().length === 0;
   const nameError = nameInvalid ? t("nameError") : serverErrors.name;
   const skuError = skuInvalid ? t("skuError") : serverErrors.sku;
 
@@ -226,56 +257,62 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     setServerErrors({});
 
     const nameTrim = name.trim();
-    const skuTrim = sku.trim();
-    if (!nameTrim || !skuTrim) return;
+    if (!nameTrim) return;
 
-    const qtyN = numOrNull(qty) ?? 0;
+    const skuTrim = isService ? sku.trim() || generateServiceItemSku(nameTrim) : sku.trim();
+    if (!isService && !skuTrim) return;
+
+    const qtyN = isService ? 0 : (numOrNull(qty) ?? 0);
     const costN = numOrNull(cost) ?? 0;
     const sellN = numOrNull(sell) ?? 0;
-    if (qtyN < 0 || costN < 0 || sellN < 0) return;
+    const markupN = parseItemNumber(markup);
+    if (qtyN < 0 || costN < 0 || sellN < 0 || markupN < 0) return;
 
-    const unitTypePayload = unitTypeIdPayload(unitType);
-    const dimensionsFields = dimensionsPayload(length, width, height);
-    const hasDimensions = Object.keys(dimensionsFields).length > 0;
-    const dimensionsUnitPayload =
-      !length.trim() && !width.trim() && !height.trim()
-        ? { length: null, width: null, height: null, dimensions_unit: null }
-        : hasDimensions
-          ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
-          : {};
-    const weightFields = weightPayload(weight, weightUnit);
-    const vendorsPayload = vendorIdsPayload(vendorIds);
+    const basePayload = {
+      name: nameTrim,
+      sku: skuTrim || generateServiceItemSku(nameTrim),
+      item_type: itemType,
+      quantity: qtyN,
+      cost_price: costN,
+      markup: markupN,
+      selling_price: sellN,
+    };
+
+    const goodsExtras = isService
+      ? {}
+      : (() => {
+          const unitTypePayload = unitTypeIdPayload(unitType);
+          const dimensionsFields = dimensionsPayload(length, width, height);
+          const hasDimensions = Object.keys(dimensionsFields).length > 0;
+          const dimensionsUnitPayload =
+            !length.trim() && !width.trim() && !height.trim()
+              ? { length: null, width: null, height: null, dimensions_unit: null }
+              : hasDimensions
+                ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
+                : {};
+          const weightFields = weightPayload(weight, weightUnit);
+          const vendorsPayload = vendorIdsPayload(vendorIds);
+          return {
+            ...unitTypePayload,
+            ...dimensionsUnitPayload,
+            ...weightFields,
+            ...vendorsPayload,
+          };
+        })();
 
     setSubmitting(true);
     try {
       if (mode === "edit" && item) {
-        await updateItem(item.id, {
-          name: nameTrim,
-          sku: skuTrim,
-          quantity: qtyN,
-          cost_price: costN,
-          selling_price: sellN,
-          ...unitTypePayload,
-          ...dimensionsUnitPayload,
-          ...weightFields,
-          ...vendorsPayload,
-        });
+        await updateItem(item.id, { ...basePayload, ...goodsExtras });
         toastSuccess(t("updatedToast"));
         onSaved();
         onClose();
         router.push(buildEntityDetailHrefAfterSave(routes.dashboard.items, item.id, routes.dashboard.items));
       } else {
         const created = await createItem({
-          name: nameTrim,
-          sku: skuTrim,
+          ...basePayload,
           is_composite: false,
-          quantity: qtyN,
-          cost_price: costN,
-          selling_price: sellN,
-          ...unitTypePayload,
-          ...dimensionsUnitPayload,
-          ...weightFields,
-          ...vendorsPayload,
+          ...goodsExtras,
         });
         toastSuccess(t("createdToast"));
         onSaved();
@@ -317,6 +354,19 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     >
       <form id="item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <FormFieldRow cols="2" from="md" className="gap-4">
+          <FieldGroup label={t("itemType")} htmlFor={itemTypeId} required>
+            <CheckmarkSelect
+              id={itemTypeId}
+              listLabel={t("itemType")}
+              buttonAriaLabel={t("itemType")}
+              options={itemTypeOptions}
+              value={itemType}
+              disabled={submitting}
+              portaled
+              className="w-full"
+              onChange={(v) => setItemType(resolveItemType(v))}
+            />
+          </FieldGroup>
           <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}
@@ -334,54 +384,53 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
             />
             <FieldErrorText>{nameError}</FieldErrorText>
           </FieldGroup>
-
-          <FieldGroup label={t("sku")} htmlFor={skuId} required>
-            <input
-              id={skuId}
-              type="text"
-              autoComplete="off"
-              value={sku}
-              onChange={(e) => {
-                setServerErrors((prev) => ({ ...prev, sku: undefined }));
-                setSku(e.target.value);
-              }}
-              onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
-              disabled={submitting}
-              placeholder={t("skuPlaceholder")}
-              className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
-            />
-            <FieldErrorText>{skuError}</FieldErrorText>
-          </FieldGroup>
         </FormFieldRow>
 
-        <FormFieldRow cols="2" from="md" className="gap-4">
-          <FieldGroup label={t("unitType")} htmlFor={unitId}>
-            <CheckmarkSelect
-              id={unitId}
-              listLabel={t("unitType")}
-              buttonAriaLabel={t("unitType")}
-              options={unitTypeOptions}
-              value={unitType}
-              emptyLabel={t("unitTypePlaceholder")}
-              disabled={submitting || unitTypeOptions.length === 0}
-              portaled
-              searchable
-              clearable
-              className="w-full"
-              onChange={setUnitType}
-            />
-            {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
-          </FieldGroup>
-          <FieldGroup label={t("quantity")} htmlFor={qtyId}>
-            <NumericInput
-              id={qtyId}
-              integer
-              value={qty}
-              onChange={setQty}
-              disabled={submitting}
-            />
-          </FieldGroup>
-        </FormFieldRow>
+        {!isService ? (
+          <>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={t("sku")} htmlFor={skuId} required>
+                <input
+                  id={skuId}
+                  type="text"
+                  autoComplete="off"
+                  value={sku}
+                  onChange={(e) => {
+                    setServerErrors((prev) => ({ ...prev, sku: undefined }));
+                    setSku(e.target.value);
+                  }}
+                  onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
+                  disabled={submitting}
+                  placeholder={t("skuPlaceholder")}
+                  className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                />
+                <FieldErrorText>{skuError}</FieldErrorText>
+              </FieldGroup>
+              <FieldGroup label={t("quantity")} htmlFor={qtyId}>
+                <NumericInput id={qtyId} integer value={qty} onChange={setQty} disabled={submitting} />
+              </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={t("unitType")} htmlFor={unitId}>
+                <CheckmarkSelect
+                  id={unitId}
+                  listLabel={t("unitType")}
+                  buttonAriaLabel={t("unitType")}
+                  options={unitTypeOptions}
+                  value={unitType}
+                  emptyLabel={t("unitTypePlaceholder")}
+                  disabled={submitting || unitTypeOptions.length === 0}
+                  portaled
+                  searchable
+                  clearable
+                  className="w-full"
+                  onChange={setUnitType}
+                />
+                {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
+              </FieldGroup>
+            </FormFieldRow>
+          </>
+        ) : null}
 
         <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("costPrice")} htmlFor={costId} required>
@@ -392,10 +441,27 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               min={0}
               step="0.01"
               value={cost}
-              onChange={(e) => setCost(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCost(next);
+                syncSellFromCostMarkup(next, markup);
+              }}
               disabled={submitting}
             />
           </FieldGroup>
+          <FieldGroup label={t("markup")} htmlFor={markupId}>
+            <NumericInput
+              id={markupId}
+              value={markup}
+              onChange={(next) => {
+                setMarkup(next);
+                syncSellFromCostMarkup(cost, next);
+              }}
+              disabled={submitting}
+            />
+          </FieldGroup>
+        </FormFieldRow>
+        <FormFieldRow cols="2" from="md" className="gap-4">
           <FieldGroup label={t("sellingPrice")} htmlFor={sellId} required>
             <MoneyInput
               id={sellId}
@@ -404,76 +470,83 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               min={0}
               step="0.01"
               value={sell}
-              onChange={(e) => setSell(e.target.value)}
+              onChange={(e) => {
+                setSellTouched(true);
+                setSell(e.target.value);
+              }}
               disabled={submitting}
             />
           </FieldGroup>
         </FormFieldRow>
 
-        <FormFieldRow cols="2" from="md" className="gap-4">
-          <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
-            <MultiCheckSelect
-              id="modal-item-vendors"
-              options={vendorOptions}
-              values={vendorIds}
-              onChange={setVendorIds}
-              disabled={submitting}
-              placeholder={t("vendorsPlaceholder")}
-              listLabel={t("vendors")}
-              searchable
-              fallbackLabels={vendorFallbackLabels}
-            />
-            {vendorsError ? (
-              <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-            ) : null}
-          </FieldGroup>
-        </FormFieldRow>
+        {!isService ? (
+          <>
+            <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={t("vendors")} htmlFor="modal-item-vendors">
+                <MultiCheckSelect
+                  id="modal-item-vendors"
+                  options={vendorOptions}
+                  values={vendorIds}
+                  onChange={setVendorIds}
+                  disabled={submitting}
+                  placeholder={t("vendorsPlaceholder")}
+                  listLabel={t("vendors")}
+                  searchable
+                  fallbackLabels={vendorFallbackLabels}
+                />
+                {vendorsError ? (
+                  <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+                ) : null}
+              </FieldGroup>
+            </FormFieldRow>
 
-        <FormSubsection title={t("fulfilmentDetails")}>
-          <FormFieldRow cols="2" from="md" className="gap-4">
-            <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
-              <DimensionsLwhInput
-                id="modal-item-dimensions"
-                length={length}
-                width={width}
-                height={height}
-                onChange={(next) => {
-                  setLength(next.length);
-                  setWidth(next.width);
-                  setHeight(next.height);
-                }}
-                unit={dimensionsUnit}
-                onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                unitAriaLabel={t("dimensionsUnit")}
-                lengthAriaLabel={t("dimensionsLength")}
-                widthAriaLabel={t("dimensionsWidth")}
-                heightAriaLabel={t("dimensionsHeight")}
-                disabled={submitting}
-              />
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
-            </FieldGroup>
-            <FieldGroup label={t("weight")} htmlFor="modal-item-weight">
-              <InputWithEndSelect
-                inputId="modal-item-weight"
-                inputType="number"
-                inputMode="decimal"
-                min={0}
-                step="0.01"
-                inputValue={weight}
-                onInputChange={setWeight}
-                disabled={submitting}
-                selectValue={weightUnit}
-                onSelectChange={(v) => setWeightUnit((v as WeightUnit) || "kg")}
-                selectOptions={[
-                  { value: "kg", label: "kg" },
-                  { value: "g", label: "g" },
-                  { value: "lb", label: "lb" },
-                ]}
-                selectAriaLabel={t("weightUnit")}
-              />
-            </FieldGroup>
-          </FormFieldRow>
-        </FormSubsection>
+            <FormSubsection title={t("fulfilmentDetails")}>
+              <FormFieldRow cols="2" from="md" className="gap-4">
+                <FieldGroup label={t("dimensions")} htmlFor="modal-item-dimensions">
+                  <DimensionsLwhInput
+                    id="modal-item-dimensions"
+                    length={length}
+                    width={width}
+                    height={height}
+                    onChange={(next) => {
+                      setLength(next.length);
+                      setWidth(next.width);
+                      setHeight(next.height);
+                    }}
+                    unit={dimensionsUnit}
+                    onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                    unitAriaLabel={t("dimensionsUnit")}
+                    lengthAriaLabel={t("dimensionsLength")}
+                    widthAriaLabel={t("dimensionsWidth")}
+                    heightAriaLabel={t("dimensionsHeight")}
+                    disabled={submitting}
+                  />
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t("dimensionsHint")}</p>
+                </FieldGroup>
+                <FieldGroup label={t("weight")} htmlFor="modal-item-weight">
+                  <InputWithEndSelect
+                    inputId="modal-item-weight"
+                    inputType="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    inputValue={weight}
+                    onInputChange={setWeight}
+                    disabled={submitting}
+                    selectValue={weightUnit}
+                    onSelectChange={(v) => setWeightUnit((v as WeightUnit) || "kg")}
+                    selectOptions={[
+                      { value: "kg", label: "kg" },
+                      { value: "g", label: "g" },
+                      { value: "lb", label: "lb" },
+                    ]}
+                    selectAriaLabel={t("weightUnit")}
+                  />
+                </FieldGroup>
+              </FormFieldRow>
+            </FormSubsection>
+          </>
+        ) : null}
       </form>
     </AppModal>
   );

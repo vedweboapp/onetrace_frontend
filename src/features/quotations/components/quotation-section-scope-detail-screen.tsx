@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import type { QuotationDraft, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
-import { QuotationDraftSectionLabours } from "@/features/quotations/components/quotation-draft-section-labours";
 import { QuotationDraftSectionMaterials } from "@/features/quotations/components/quotation-draft-section-materials";
 import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
@@ -18,7 +17,7 @@ import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { DetailPagePadding, DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
+import { AppButton, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -46,7 +45,6 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const [draft, setDraft] = React.useState<QuotationDraft | null>(null);
   const [sectionId, setSectionId] = React.useState("");
   const [readOnly, setReadOnly] = React.useState(false);
-  const [innerTab, setInnerTab] = React.useState<"labour" | "materials">("labour");
 
   const draftRef = React.useRef(draft);
   draftRef.current = draft;
@@ -184,43 +182,17 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
           </div>
 
           <DetailPanelCard title={t("sectionLabourMaterials")}>
-            <AppTabs
-              tabs={[
-                { id: "labour", label: t("sectionLabourTab") },
-                { id: "materials", label: t("sectionMaterialsTab") },
-              ]}
-              value={innerTab}
-              onValueChange={(id) => setInnerTab(id === "materials" ? "materials" : "labour")}
-              ariaLabel={t("sectionInnerTabsAria")}
-              panelIdPrefix="quotation-section-scope"
-            />
-            <div className="mt-4 space-y-3">
-              {innerTab === "labour" ? (
-                <QuotationDraftSectionLabours
-                  labours={section.labours ?? []}
-                  readOnly={readOnly}
-                  onChange={(labours) => patchSection({ labours })}
-                  getFormDraft={
-                    readOnly
-                      ? undefined
-                      : () => ({
-                          draft: draftRef.current,
-                          sectionId: sectionIdRef.current,
-                        })
-                  }
-                />
-              ) : (
-                <QuotationDraftSectionMaterials
-                  pins={section.section_pins ?? []}
-                  readOnly={readOnly}
-                  onChange={(section_pins) => patchSection({ section_pins })}
-                />
-              )}
+            <div className="space-y-3">
+              <QuotationDraftSectionMaterials
+                pins={section.section_pins ?? []}
+                readOnly={readOnly}
+                onChange={(section_pins) => patchSection({ section_pins })}
+              />
               <QuotationDraftPriceTotalBar
                 label={t("sectionTotal")}
                 amount={sectionTotal}
                 locale={loc}
-                showMenuSpacer={innerTab === "materials" && !readOnly}
+                showMenuSpacer={!readOnly}
                 className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
               />
             </div>

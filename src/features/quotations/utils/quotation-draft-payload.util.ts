@@ -1,14 +1,12 @@
 import type {
   QuotationCreatePayload,
   QuotationQuoteSection,
-  QuotationQuoteSectionLabour,
   QuotationQuoteSectionPin,
   QuotationQuoteSectionPlot,
 } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLabour, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
+import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import {
   draftGrandTotal,
-  draftLabourTotal,
   draftPinTotal,
   draftSectionTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
@@ -43,23 +41,9 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
   });
 }
 
-function mapDraftLaboursToQuoteLabours(labours: QuotationDraftLabour[]): QuotationQuoteSectionLabour[] {
-  return labours
-    .filter((row) => row.labour_type != null && row.labour_type > 0)
-    .map((row) => ({
-      labour_type: row.labour_type as number,
-      time_hours: row.time_hours,
-      cost_rate: row.cost_rate,
-      markup_percentage: row.markup_percentage,
-      selling_price: row.selling_price,
-      total_cost: draftLabourTotal(row),
-      name: row.labour_name?.trim() || null,
-    }));
-}
-
 /**
  * Maps the client draft into `quote_sections`, `grand_total`, and ordered legacy `levels` ids.
- * Service sections keep description / notes / labours; project sections stay plot/pin-only.
+ * Service sections keep description / notes; project sections stay plot/pin-only.
  */
 export function mergeQuotationDraftIntoPayload(
   base: QuotationCreatePayload,
@@ -125,7 +109,6 @@ export function mergeQuotationDraftIntoPayload(
       block: typeof section.block === "string" ? section.block : null,
       level: typeof section.level === "string" ? section.level : null,
       order: typeof section.order === "number" ? section.order : null,
-      ...(isProjectSection ? {} : { labours: mapDraftLaboursToQuoteLabours(section.labours ?? []) }),
       plots: plotsOut,
       section_total: draftSectionTotal(section),
     };
