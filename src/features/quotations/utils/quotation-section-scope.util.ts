@@ -36,6 +36,16 @@ export function readQuotationSectionScopeSession(): QuotationSectionScopeSession
   }
 }
 
+export function clearQuotationSectionScopeSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(QUOTATION_SECTION_SCOPE_SESSION_KEY);
+  } catch {
+    // ignore
+  }
+  clearTakenQuotationSectionScopeDraft();
+}
+
 export function clearQuotationSectionScopePendingApply(): void {
   const session = readQuotationSectionScopeSession();
   if (!session?.pendingApply) return;

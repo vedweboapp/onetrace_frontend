@@ -15,6 +15,7 @@ import { toCanonicalMoneyString } from "@/shared/money/format-money.util";
 import { toCanonicalNumberString } from "@/shared/number/digit-grouping.util";
 import {
   parseLabourNumber,
+  parseLabourTimeHours,
   suggestedLabourSellPrice,
 } from "@/features/labour-types/utils/labour-type-numbers.util";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
@@ -76,7 +77,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
         if (cancelled) return;
         setName(row.name ?? "");
         setDescription(row.description ?? "");
-        const hours = parseLabourNumber(row.default_time_hours);
+        const hours = parseLabourTimeHours(row.default_time_hours);
         setTimeHours(toCanonicalNumberString(hours > 0 ? hours : 1));
         setMarkup(toCanonicalNumberString(parseLabourNumber(row.default_markup)));
         setCostRate(toCanonicalMoneyString(parseLabourNumber(row.default_cost_rate)));
@@ -106,7 +107,10 @@ export function LabourFormScreen({ mode, labourId }: Props) {
       name: zTrimmedNonEmpty(t("validation.name")),
       default_time_hours: z
         .string()
-        .refine((v) => Number.isFinite(parseLabourNumber(v)) && parseLabourNumber(v) >= 0, t("validation.timeHours")),
+        .refine(
+          (v) => Number.isFinite(parseLabourTimeHours(v)) && parseLabourTimeHours(v) >= 0,
+          t("validation.timeHours"),
+        ),
       default_markup: z
         .string()
         .refine((v) => Number.isFinite(parseLabourNumber(v)) && parseLabourNumber(v) >= 0, t("validation.markup")),
@@ -144,7 +148,7 @@ export function LabourFormScreen({ mode, labourId }: Props) {
 
     setErrors({});
     setSubmitting(true);
-    const hours = parseLabourNumber(parsed.data.default_time_hours);
+    const hours = parseLabourTimeHours(parsed.data.default_time_hours);
     const payload = {
       name: parsed.data.name,
       description: description.trim(),
