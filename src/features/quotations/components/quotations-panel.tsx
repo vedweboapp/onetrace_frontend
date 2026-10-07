@@ -20,6 +20,7 @@ import {
   clearQuotationWorkingDraft,
   markQuotationFreshCreate,
 } from "@/features/quotations/utils/quotation-working-draft.util";
+import { clearQuotationSectionScopeSession } from "@/features/quotations/utils/quotation-section-scope.util";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
@@ -168,6 +169,7 @@ export function QuotationsPanel() {
     const newHref = `${pathname}/new?quote_category=${encodeURIComponent(cat)}`;
     markQuotationFreshCreate();
     clearQuotationWorkingDraft("new");
+    clearQuotationSectionScopeSession();
     clearQuickCreateFormDraft(newHref);
     clearQuickCreateFormDraft(mergeUrlQueryParam(newHref, "tab", "pricing"));
     router.push(buildPathWithStoredBack(newHref, listHref));

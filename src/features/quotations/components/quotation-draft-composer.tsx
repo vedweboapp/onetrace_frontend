@@ -337,6 +337,8 @@ type Props = {
    * Clicking a section opens the section detail page.
    */
   sectionKindTabs?: boolean;
+  /** When returning from section detail, open the matching Primary/Optional tab. */
+  initialScopeKindTab?: "primary" | "optional";
 };
 
 export function QuotationDraftComposer({
@@ -348,6 +350,7 @@ export function QuotationDraftComposer({
   allowManualLines = true,
   onBeforeLeavePage,
   sectionKindTabs = false,
+  initialScopeKindTab = "primary",
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
@@ -359,7 +362,7 @@ export function QuotationDraftComposer({
   const searchParams = useSearchParams();
   const quoteCategory = parseQuoteCategoryParam(searchParams.get("quote_category"));
   const [newSectionName, setNewSectionName] = React.useState("");
-  const [scopeKindTab, setScopeKindTab] = React.useState<"primary" | "optional">("primary");
+  const [scopeKindTab, setScopeKindTab] = React.useState<"primary" | "optional">(initialScopeKindTab);
   const [rowPick, setRowPick] = React.useState<Record<string, DraftRowPick>>({});
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
