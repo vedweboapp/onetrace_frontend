@@ -7,6 +7,7 @@ import {
   parseListApiPage,
   resolveDropdownListPages,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import { labourHoursToApiDuration } from "@/features/labour-types/utils/labour-type-numbers.util";
 import { LABOUR_TYPE_PATHS } from "./labour-type.paths";
 import type {
   LabourType,
@@ -33,8 +34,11 @@ function toLabourTypeWritePayload(
   const out: Record<string, unknown> = {};
   if (typeof body.name === "string") out.name = body.name;
   if (typeof body.description === "string") out.description = body.description;
+  // UI stores decimal hours; API DurationField expects hh:mm:ss.
   if (body.default_time_hours === null) out.default_time_hours = null;
-  else if (typeof body.default_time_hours === "number") out.default_time_hours = body.default_time_hours;
+  else if (typeof body.default_time_hours === "number" && Number.isFinite(body.default_time_hours)) {
+    out.default_time_hours = labourHoursToApiDuration(body.default_time_hours);
+  }
   if (typeof body.default_markup === "number") out.default_markup = body.default_markup;
   if (typeof body.default_cost_rate === "number") out.default_cost_rate = body.default_cost_rate;
   if (typeof body.default_sell_price === "number") out.default_sell_price = body.default_sell_price;

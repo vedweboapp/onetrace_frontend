@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DashboardSchedulingPage() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <Suspense
         fallback={
           <div className="space-y-2 p-6">

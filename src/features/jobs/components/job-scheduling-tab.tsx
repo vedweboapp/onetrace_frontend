@@ -8,7 +8,6 @@ import {
   getJobProjectId,
 } from "@/features/jobs/utils/job-nested-fields.util";
 import { SchedulingPanel } from "@/features/scheduling/components/scheduling-panel";
-import { cn } from "@/core/utils/http.util";
 
 type Props = {
   detail: Job;
@@ -21,12 +20,7 @@ export function JobSchedulingTab({ detail, onJobSchedulesChanged }: Props) {
   const projectId = getJobProjectId(detail.project);
   const assignedWorkerId = getJobAssignedWorkerId(detail);
   return (
-    <div
-      className={cn(
-        "flex min-h-[24rem] flex-col overflow-hidden",
-        "h-[calc(100dvh-12rem)] sm:h-[calc(100dvh-11rem)]",
-      )}
-    >
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <SchedulingPanel
         syncUrl={false}
         defaultJobId={detail.id}

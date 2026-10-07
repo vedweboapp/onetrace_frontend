@@ -17,6 +17,7 @@ function nestedId(value: unknown): number | null {
 export function getJobQuotationId(job: Job): number | null {
   const row = job as Job & Record<string, unknown>;
   return (
+    nestedId(row.quotations) ??
     nestedId(row.quotation_id) ??
     nestedId(row.quotation) ??
     nestedId(row.quote) ??
@@ -31,7 +32,7 @@ function mergeJobs(target: Map<number, Job>, jobs: Job[]) {
 }
 
 /**
- * Load jobs created from a quotation via `GET /jobs/?quotation_id=…`.
+ * Load jobs for a quotation via `GET /jobs/?quotations=<id>`.
  * Service quotes expect a single linked job; project quotes may return several.
  */
 export async function fetchJobsForQuotation(options: {
@@ -48,7 +49,7 @@ export async function fetchJobsForQuotation(options: {
       1,
       isService ? 20 : 100,
       {
-        quotation_id: quotationId,
+        quotations: quotationId,
         job_category: jobCategory,
       },
       { silent: true },

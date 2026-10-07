@@ -104,11 +104,19 @@ export function mergeQuotationDraftIntoPayload(
     }
     const section_type = resolveQuotationSectionType(section, fallbackType);
     const isProjectSection = section_type === "project";
+    const description = section.description?.trim() || null;
+    const notes = section.notes?.trim() || null;
 
     const baseSection: QuotationQuoteSection = {
       section_order: si,
       level_id: section.level_id,
       name: sanitizeTitleInput(section.name ?? ""),
+      ...(isProjectSection
+        ? {}
+        : {
+            description,
+            notes,
+          }),
       section_type,
       kind: section_type,
       drawing_file: typeof section.drawing_file === "string" ? section.drawing_file : null,
@@ -117,20 +125,12 @@ export function mergeQuotationDraftIntoPayload(
       block: typeof section.block === "string" ? section.block : null,
       level: typeof section.level === "string" ? section.level : null,
       order: typeof section.order === "number" ? section.order : null,
+      ...(isProjectSection ? {} : { labours: mapDraftLaboursToQuoteLabours(section.labours ?? []) }),
       plots: plotsOut,
       section_total: draftSectionTotal(section),
     };
 
-    if (isProjectSection) {
-      return baseSection;
-    }
-
-    return {
-      ...baseSection,
-      description: section.description?.trim() || null,
-      notes: section.notes?.trim() || null,
-      labours: mapDraftLaboursToQuoteLabours(section.labours ?? []),
-    };
+    return baseSection;
   });
 
   const grand_total = draftGrandTotal(draft);

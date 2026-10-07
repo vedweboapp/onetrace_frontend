@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { DetailSystemMetadataSection } from "@/shared/components/entity";
 import type { LabourType } from "@/features/labour-types/types/labour-type.types";
-import { parseLabourNumber } from "@/features/labour-types/utils/labour-type-numbers.util";
+import { parseLabourNumber, parseLabourTimeHours } from "@/features/labour-types/utils/labour-type-numbers.util";
 import { updateLabourType } from "@/features/labour-types/api/labour-type.api";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
@@ -39,7 +39,7 @@ export function LabourDetailBody({
   const costRate = parseLabourNumber(detail.default_cost_rate);
   const markup = parseLabourNumber(detail.default_markup);
   const sellPrice = parseLabourNumber(detail.default_sell_price);
-  const timeHours = parseLabourNumber(detail.default_time_hours);
+  const timeHours = parseLabourTimeHours(detail.default_time_hours);
 
   return (
     <DetailPagePadding>
@@ -63,7 +63,7 @@ export function LabourDetailBody({
               kind="text"
               editAriaLabel={tActions("edit")}
               onSave={(next) => {
-                const n = parseLabourNumber(next);
+                const n = parseLabourTimeHours(next);
                 if (!Number.isFinite(n) || n < 0) throw new Error("Invalid number");
                 return patchField({ default_time_hours: n });
               }}

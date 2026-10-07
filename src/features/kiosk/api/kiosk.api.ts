@@ -3,6 +3,7 @@ import api from "@/core/api/axios";
 import type { KioskConfig, KioskListItem } from "../types/kiosk.types";
 import type { KioskCheckoutPayload, KioskCheckoutResponse } from "../types/kiosk-submission.types";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
+import { LinkService } from "react-pdf";
 
 export interface GetKiosksParams {
   search?: string;
@@ -106,7 +107,7 @@ export async function createKiosk(payload: FormData | Partial<KioskConfig>): Pro
   });
   return res.data;
 }
-
+ 
 export async function updateKiosk(
   id: string | number,
   payload: FormData | Partial<KioskConfig>,

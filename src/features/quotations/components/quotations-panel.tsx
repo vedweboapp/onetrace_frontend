@@ -16,6 +16,12 @@ import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
 } from "@/features/quotations/constants/quotation-category";
+import {
+  clearQuotationWorkingDraft,
+  markQuotationFreshCreate,
+} from "@/features/quotations/utils/quotation-working-draft.util";
+import { clearQuotationSectionScopeSession } from "@/features/quotations/utils/quotation-section-scope.util";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -68,7 +74,7 @@ import {
   buildQuotationMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -160,9 +166,13 @@ export function QuotationsPanel() {
   );
   const openCreate = React.useCallback(() => {
     const cat = categoryFilter ?? QUOTE_CATEGORY.service;
-    router.push(
-      buildPathWithStoredBack(`${pathname}/new?quote_category=${encodeURIComponent(cat)}`, listHref),
-    );
+    const newHref = `${pathname}/new?quote_category=${encodeURIComponent(cat)}`;
+    markQuotationFreshCreate();
+    clearQuotationWorkingDraft("new");
+    clearQuotationSectionScopeSession();
+    clearQuickCreateFormDraft(newHref);
+    clearQuickCreateFormDraft(mergeUrlQueryParam(newHref, "tab", "pricing"));
+    router.push(buildPathWithStoredBack(newHref, listHref));
   }, [categoryFilter, listHref, pathname, router]);
 
   const openEdit = React.useCallback(

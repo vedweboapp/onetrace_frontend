@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
@@ -29,7 +29,21 @@ import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotatio
 import type { ProjectLevelForQuotation, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
-import { consumeQuotationSectionScopeDraft } from "@/features/quotations/utils/quotation-section-scope.util";
+import { sumQuoteSectionsGrandTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
+import {
+  clearTakenQuotationSectionScopeDraft,
+  clearQuotationSectionScopeSession,
+  consumeQuotationSectionScopeDraft,
+  readQuotationSectionScopeSession,
+} from "@/features/quotations/utils/quotation-section-scope.util";
+import { isOptionalQuoteSection } from "@/features/quotations/utils/quotation-section-type.util";
+import {
+  clearQuotationWorkingDraft,
+  consumeQuotationFreshCreate,
+  readQuotationWorkingDraft,
+  writeQuotationWorkingDraft,
+  type QuotationWorkingDraftKey,
+} from "@/features/quotations/utils/quotation-working-draft.util";
 import { buildQuotationScopeReturnHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import {
   createQuotationFormSchema,
@@ -216,6 +230,36 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const setQuoteDraftRef = React.useRef<React.Dispatch<React.SetStateAction<QuotationDraft | null>> | null>(null);
   const preventQuoteDraftSeedRef = React.useRef(false);
   const skipPresetFromUrlRef = React.useRef(false);
+  /** When true, skip pagehide persistence (Cancel / successful Save already cleared storage). */
+  const discardDraftsRef = React.useRef(false);
+
+  const workingDraftKey = React.useMemo<QuotationWorkingDraftKey>(
+    () => (isEdit && quotationId ? quotationId : "new"),
+    [isEdit, quotationId],
+  );
+
+  /** Section return + in-progress edit draft — restore before auto-seed can wipe sections. */
+  const restoredDraftRef = React.useRef<QuotationDraft | null | undefined>(undefined);
+  if (restoredDraftRef.current === undefined) {
+    const freshCreate = !isEdit && consumeQuotationFreshCreate();
+    if (freshCreate) {
+      // Brand-new create from list — drop abandoned working / section / QC drafts.
+      clearQuotationWorkingDraft(workingDraftKey);
+      clearQuotationSectionScopeSession();
+      clearQuickCreateFormDraft(draftReturnTo);
+      clearQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname));
+      restoredDraftRef.current = null;
+    } else {
+      const fromSection = consumeQuotationSectionScopeDraft();
+      const fromWorking = readQuotationWorkingDraft(workingDraftKey);
+      restoredDraftRef.current = fromSection ?? fromWorking;
+      if (restoredDraftRef.current) {
+        preventQuoteDraftSeedRef.current = true;
+        // Persist before Strict Mode remount / clearTaken can drop the in-memory take.
+        writeQuotationWorkingDraft(workingDraftKey, restoredDraftRef.current);
+      }
+    }
+  }
 
   React.useEffect(() => {
     setFormTab(searchParams.get("tab") === "pricing" ? "pricing" : "project");
@@ -260,26 +304,30 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     [getValues],
   );
 
-  const persistCreateDraft = React.useCallback(() => {
+  const persistFormDraft = React.useCallback(() => {
+    if (discardDraftsRef.current) return;
+    const draft = quoteDraftSnapshotRef.current;
+    if (draft) writeQuotationWorkingDraft(workingDraftKey, draft);
     if (isEdit) return;
     const bundle = { ...getFormDraft(), formTab: "pricing" as const };
     saveQuickCreateFormDraft(draftReturnTo, bundle);
     saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
-  }, [isEdit, getFormDraft, draftReturnTo, pathname]);
+  }, [isEdit, getFormDraft, draftReturnTo, pathname, workingDraftKey]);
 
   React.useEffect(() => {
-    if (isEdit) return;
-    const persist = () => persistCreateDraft();
+    const persist = () => persistFormDraft();
     window.addEventListener("pagehide", persist);
     return () => window.removeEventListener("pagehide", persist);
-  }, [isEdit, persistCreateDraft]);
+  }, [persistFormDraft]);
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
       skipPresetFromUrlRef.current = true;
       if (isQuotationFormDraftBundle(draft)) {
         reset(draft.values, { keepDefaultValues: false });
         if (draft.formTab) setFormTab(draft.formTab);
-        if (draft.quoteDraft !== undefined) {
+        // Section Done restores the latest scope draft first — never overwrite it with a
+        // stale quick-create snapshot taken before labour/materials were edited.
+        if (draft.quoteDraft !== undefined && restoredDraftRef.current == null) {
           preventQuoteDraftSeedRef.current = true;
           setQuoteDraftRef.current?.(draft.quoteDraft);
         }
@@ -778,6 +826,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     {
       preventAutoSeedRef: preventQuoteDraftSeedRef,
       emptyWhenNoProject: isServiceQuotation,
+      initialDraft: restoredDraftRef.current ?? undefined,
     },
   );
 
@@ -786,12 +835,36 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   formTabSnapshotRef.current = formTab;
 
   React.useEffect(() => {
-    const next = consumeQuotationSectionScopeDraft();
-    if (!next) return;
+    if (!quoteDraft || discardDraftsRef.current) return;
+    writeQuotationWorkingDraft(workingDraftKey, quoteDraft);
+  }, [quoteDraft, workingDraftKey]);
+
+  const appliedRestoredDraftRef = React.useRef(false);
+  React.useLayoutEffect(() => {
+    if (appliedRestoredDraftRef.current) return;
+    const restored = restoredDraftRef.current;
+    if (!restored) return;
+    appliedRestoredDraftRef.current = true;
     preventQuoteDraftSeedRef.current = true;
-    setQuoteDraft(next);
+    writeQuotationWorkingDraft(workingDraftKey, restored);
+    // Keep QC snapshot in sync so a later remount cannot re-apply a pre-section draft.
+    if (!isEdit) {
+      const bundle = {
+        values: getValues(),
+        quoteDraft: restored,
+        formTab: "pricing" as const,
+      };
+      saveQuickCreateFormDraft(draftReturnTo, bundle);
+      saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
+    }
+    clearTakenQuotationSectionScopeDraft();
     setFormTab("pricing");
-  }, [setQuoteDraft]);
+  }, [workingDraftKey, isEdit, getValues, draftReturnTo, pathname]);
+
+  React.useEffect(() => {
+    // Drop stale taken cache after apply so a later section round-trip can consume again.
+    if (restoredDraftRef.current) clearTakenQuotationSectionScopeDraft();
+  }, []);
 
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
@@ -885,10 +958,46 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
 
   const quoteNameRegister = register("quote_name");
 
+  function focusFirstInvalidOnDetailsTab() {
+    window.setTimeout(() => {
+      const root = document.getElementById("quotation-form-screen-project");
+      const invalid =
+        root?.querySelector<HTMLElement>("[aria-invalid='true']") ??
+        root?.querySelector<HTMLElement>(".border-red-500");
+      invalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (invalid && typeof invalid.focus === "function") {
+        try {
+          invalid.focus({ preventScroll: true });
+        } catch {
+          invalid.focus();
+        }
+      }
+    }, 80);
+  }
+
+  function onInvalid(formErrors: FieldErrors<QuotationFormValues>) {
+    const detailKeys = ["quote_name", "customer", "sites", "project"] as const;
+    const hasDetailErrors = detailKeys.some((key) => formErrors[key] != null);
+    if (hasDetailErrors) {
+      setFormTab("project");
+      const tabLabel = t(isServiceQuotation ? "formTabs.details" : "formTabs.project");
+      toastError(t("validation.requiredOnTab", { tab: tabLabel }));
+      focusFirstInvalidOnDetailsTab();
+      return;
+    }
+    toastError(t("saveError"));
+  }
+
   async function onSubmit(values: QuotationFormValues) {
     if (!isServiceQuotation && parseOptionalId(values.project) == null) {
       setError("project", { type: "manual", message: t("validation.project") });
       setFormTab("project");
+      toastError(
+        t("validation.requiredOnTab", {
+          tab: t(isServiceQuotation ? "formTabs.details" : "formTabs.project"),
+        }),
+      );
+      focusFirstInvalidOnDetailsTab();
       return;
     }
     setSaving(true);
@@ -902,13 +1011,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           })
         : basePayload;
       if (isEdit && !quoteDraft && existingDetail?.quote_sections && existingDetail.quote_sections.length > 0) {
-        const computedGrand =
-          existingDetail.grand_total ??
-          existingDetail.quote_sections.reduce(
-            (acc, s) =>
-              acc + (typeof s.section_total === "number" && Number.isFinite(s.section_total) ? s.section_total : 0),
-            0,
-          );
+        const computedGrand = sumQuoteSectionsGrandTotal(existingDetail.quote_sections);
         merged = {
           ...merged,
           quote_sections: existingDetail.quote_sections,
@@ -918,7 +1021,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const payload = merged;
       const saved = isEdit && quotationId ? await updateQuotation(quotationId, payload) : await createQuotation(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
+      discardDraftsRef.current = true;
+      clearQuotationWorkingDraft(workingDraftKey);
+      if (!isEdit) {
+        clearQuickCreateFormDraft(draftReturnTo);
+        clearQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname));
+      }
       router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.quotations, saved.id, safeBack));
     } catch (error) {
       reportFormSubmitApiError(error, setError, t("saveError"));
@@ -943,7 +1051,21 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         }
         actions={
           <div className="flex items-center gap-2">
-            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={() => router.push(safeBack ?? routes.dashboard.quotations)}>
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => {
+                discardDraftsRef.current = true;
+                clearQuotationWorkingDraft(workingDraftKey);
+                if (!isEdit) {
+                  clearQuickCreateFormDraft(draftReturnTo);
+                  clearQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname));
+                }
+                router.push(safeBack ?? routes.dashboard.quotations);
+              }}
+            >
               {t("modal.cancel")}
             </AppButton>
             <AppButton type="submit" form="quotation-form-screen" variant="primary" size="sm" loading={saving} disabled={isServiceQuotation ? noClients : noProjects}>
@@ -964,7 +1086,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">{screenError}</p>
           </div>
         ) : (
-          <form id="quotation-form-screen" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(onSubmit)}>
+          <form id="quotation-form-screen" className="space-y-6 p-4 sm:p-6" noValidate onSubmit={handleSubmit(onSubmit, onInvalid)}>
             {/* {noProjects ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
                 {t("noClientsHint")}
@@ -1000,7 +1122,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               }
             >
             <div className="space-y-6">
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="2" from="xl">
               <FieldGroup label={t("fields.quoteName")} htmlFor="quotation-name" required>
                 <input
                   id="quotation-name"
@@ -1127,7 +1249,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 </FieldGroup>
               ) : null}
             </FormFieldRow>
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="2" from="xl">
               <FieldGroup label={t("fields.primaryContact")} htmlFor="quotation-primary-contact">
                 <Controller
                   control={control}
@@ -1169,13 +1291,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               }}
             />
             {isEdit ? (
-              <FormFieldRow cols="2">
+              <FormFieldRow cols="2" from="xl">
                 <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
                   <input id="quotation-order" className={surfaceInputClassName} {...register("order_number")} />
                 </FieldGroup>
               </FormFieldRow>
             ) : null}
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="2" from="xl">
               <FieldGroup label={t("fields.salesperson")} htmlFor="quotation-sales">
                 <Controller
                   control={control}
@@ -1225,7 +1347,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 />
               </FieldGroup>
             </FormFieldRow>
-            <FormFieldRow cols="2">
+            <FormFieldRow cols="2" from="xl">
               <FieldGroup label={t("fields.tags")} htmlFor="quotation-tags">
                 <Controller
                   control={control}
@@ -1307,7 +1429,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   canShow={canShowLevels}
                   allowManualLines={isServiceQuotation}
                   sectionKindTabs={isServiceQuotation}
-                  onBeforeLeavePage={persistCreateDraft}
+                  initialScopeKindTab={(() => {
+                    const restored = restoredDraftRef.current;
+                    const sid = readQuotationSectionScopeSession()?.sectionId;
+                    const sec = restored?.sections.find((s) => s.id === sid);
+                    return sec && isOptionalQuoteSection(sec) ? "optional" : "primary";
+                  })()}
+                  onBeforeLeavePage={persistFormDraft}
                 />
               </div>
               <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t(isServiceQuotation ? "formTabs.prevToDetails" : "formTabs.prevToProject")} />

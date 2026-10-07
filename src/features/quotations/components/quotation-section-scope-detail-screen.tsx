@@ -7,8 +7,8 @@ import { useRouter } from "@/i18n/navigation";
 import type { QuotationDraft, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftSectionLabours } from "@/features/quotations/components/quotation-draft-section-labours";
 import { QuotationDraftSectionMaterials } from "@/features/quotations/components/quotation-draft-section-materials";
+import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
-import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
 import {
   readQuotationSectionScopeSession,
@@ -18,8 +18,7 @@ import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { DetailPagePadding, DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { AppButton, AppTabs, SurfaceShell, surfaceInputClassName, surfaceTextareaClassName } from "@/shared/ui";
+import { AppButton, AppTabs, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -49,6 +48,26 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const [readOnly, setReadOnly] = React.useState(false);
   const [innerTab, setInnerTab] = React.useState<"labour" | "materials">("labour");
 
+  const draftRef = React.useRef(draft);
+  draftRef.current = draft;
+  const sectionIdRef = React.useRef(sectionId);
+  sectionIdRef.current = sectionId;
+  const readOnlyRef = React.useRef(readOnly);
+  readOnlyRef.current = readOnly;
+  const backHrefRef = React.useRef(backHref);
+  backHrefRef.current = backHref;
+
+  const persistSession = React.useCallback((nextDraft: QuotationDraft, pendingApply: boolean) => {
+    const session = readQuotationSectionScopeSession();
+    writeQuotationSectionScopeSession({
+      draft: nextDraft,
+      sectionId: sectionIdRef.current,
+      backHref: session?.backHref ?? backHrefRef.current,
+      readOnly: session?.readOnly ?? readOnlyRef.current,
+      pendingApply: pendingApply && !(session?.readOnly ?? readOnlyRef.current),
+    });
+  }, []);
+
   React.useEffect(() => {
     const session = readQuotationSectionScopeSession();
     if (session) {
@@ -59,6 +78,15 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
     setReady(true);
   }, [sectionIdFromUrl]);
 
+  // Keep parent draft in session while editing so back/Done both restore sections + fields.
+  React.useEffect(() => {
+    return () => {
+      const latest = draftRef.current;
+      if (!latest || readOnlyRef.current) return;
+      persistSession(latest, true);
+    };
+  }, [persistSession]);
+
   const section = React.useMemo(
     () => draft?.sections.find((s) => s.id === sectionId) ?? null,
     [draft, sectionId],
@@ -66,20 +94,15 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
 
   function patchSection(patch: Partial<QuotationDraftSection>) {
     if (!draft || readOnly) return;
-    setDraft({
+    const next: QuotationDraft = {
       sections: draft.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)),
-    });
+    };
+    setDraft(next);
+    persistSession(next, true);
   }
 
   function persistAndBack(nextDraft: QuotationDraft) {
-    const session = readQuotationSectionScopeSession();
-    writeQuotationSectionScopeSession({
-      draft: nextDraft,
-      sectionId,
-      backHref: session?.backHref ?? backHref,
-      readOnly: session?.readOnly ?? readOnly,
-      pendingApply: !readOnly,
-    });
+    persistSession(nextDraft, true);
     router.push(backHref);
   }
 
@@ -133,51 +156,32 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
 
       <DetailPagePadding className="flex-1">
         <div className="space-y-4">
-          {!readOnly ? (
-            <DetailPanelCard title={t("sectionNameLabel")}>
-              <input
-                value={section.name}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                {t("sectionDescription")}
+              </label>
+              <textarea
+                value={section.description ?? ""}
                 disabled={readOnly}
-                className={cn(surfaceInputClassName, "max-w-xl")}
-                onChange={(e) => patchSection({ name: e.target.value })}
-                onBlur={() => {
-                  const next = sanitizeTitleInput(section.name);
-                  if (next !== section.name) patchSection({ name: next });
-                }}
+                rows={8}
+                className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
+                onChange={(e) => patchSection({ description: e.target.value })}
               />
-            </DetailPanelCard>
-          ) : null}
-
-          <DetailPanelCard title={t("sectionDescriptionNotes")}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("sectionDescription")}
-                </label>
-                <textarea
-                  value={section.description ?? ""}
-                  disabled={readOnly}
-                  rows={5}
-                  className={cn(surfaceTextareaClassName, "min-h-[8rem] w-full")}
-                  placeholder={t("sectionDescriptionPlaceholder")}
-                  onChange={(e) => patchSection({ description: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {t("sectionNotes")}
-                </label>
-                <textarea
-                  value={section.notes ?? ""}
-                  disabled={readOnly}
-                  rows={5}
-                  className={cn(surfaceTextareaClassName, "min-h-[8rem] w-full")}
-                  placeholder={t("sectionNotesPlaceholder")}
-                  onChange={(e) => patchSection({ notes: e.target.value })}
-                />
-              </div>
             </div>
-          </DetailPanelCard>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                {t("sectionNotes")}
+              </label>
+              <textarea
+                value={section.notes ?? ""}
+                disabled={readOnly}
+                rows={8}
+                className={cn(surfaceTextareaClassName, "min-h-[12rem] w-full")}
+                onChange={(e) => patchSection({ notes: e.target.value })}
+              />
+            </div>
+          </div>
 
           <DetailPanelCard title={t("sectionLabourMaterials")}>
             <AppTabs
@@ -190,12 +194,20 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
               ariaLabel={t("sectionInnerTabsAria")}
               panelIdPrefix="quotation-section-scope"
             />
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               {innerTab === "labour" ? (
                 <QuotationDraftSectionLabours
                   labours={section.labours ?? []}
                   readOnly={readOnly}
                   onChange={(labours) => patchSection({ labours })}
+                  getFormDraft={
+                    readOnly
+                      ? undefined
+                      : () => ({
+                          draft: draftRef.current,
+                          sectionId: sectionIdRef.current,
+                        })
+                  }
                 />
               ) : (
                 <QuotationDraftSectionMaterials
@@ -204,15 +216,15 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   onChange={(section_pins) => patchSection({ section_pins })}
                 />
               )}
+              <QuotationDraftPriceTotalBar
+                label={t("sectionTotal")}
+                amount={sectionTotal}
+                locale={loc}
+                showMenuSpacer={innerTab === "materials" && !readOnly}
+                className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+              />
             </div>
           </DetailPanelCard>
-
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t("sectionTotal")}</span>
-            <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
-              {formatMoneyDisplay(sectionTotal, loc)}
-            </span>
-          </div>
         </div>
       </DetailPagePadding>
     </div>

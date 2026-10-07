@@ -14,12 +14,12 @@ import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import {
   QuotationDraftCompositeLines,
+  QuotationDraftPriceTotalBar,
   type CompositeLineLabels,
 } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftPinTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { resolveQuotationDraftLineGroup } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
-import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { AppButton, CheckmarkSelect, MoneyInput, NumericInput } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui";
 
@@ -110,6 +110,7 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       removeLine: t("removeLine"),
       rowActions: t("rowActions"),
       unitPrice: t("unitPrice"),
+      lineTotal: t("lineTotal"),
     }),
     [t],
   );
@@ -275,9 +276,12 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       {pins.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
       ) : (
-        <p className="border-t border-slate-100 pt-3 text-sm font-medium text-slate-800 dark:border-slate-800 dark:text-slate-100">
-          {t("materialsTotal")}: <span className="tabular-nums">{formatMoneyDisplay(materialsTotal, loc)}</span>
-        </p>
+        <QuotationDraftPriceTotalBar
+          label={t("materialsTotal")}
+          amount={materialsTotal}
+          locale={loc}
+          showMenuSpacer={!readOnly}
+        />
       )}
     </div>
   );
