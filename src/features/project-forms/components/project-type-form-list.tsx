@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Plus, Pencil, Send } from "lucide-react";
@@ -20,7 +21,7 @@ import {
     type CheckmarkSelectOption,
 } from "@/shared/ui";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
-import { getProjectFormList, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
+import { getProjectFormList, patchProjectForm, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
@@ -141,7 +142,9 @@ const ProjectTypeFormList = () => {
     const [selectedInstallationTypeId, setSelectedInstallationTypeId] = React.useState<number | null>(null);
     const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
 
-    const [activeTab, setActiveTab] = React.useState<FormTabId>("published");
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const activeTab: FormTabId = tabParam === "drafts" ? "drafts" : "published";
 
     React.useEffect(() => {
         let cancelled = false;
@@ -307,7 +310,7 @@ const ProjectTypeFormList = () => {
         async (row: FormListItem) => {
             setTogglingId(row.id);
             try {
-                await updateProjectForm(row.id, {
+                await patchProjectForm(row.id, {
                     is_published: true,
                 });
                 setItems((prev) => {
@@ -375,8 +378,10 @@ const ProjectTypeFormList = () => {
                     tabs={FORM_TABS}
                     value={activeTab}
                     onValueChange={(id) => {
-                        setActiveTab(id as FormTabId);
-                        setPage(1);
+                        setUrl({
+                            tab: id === "published" ? null : id,
+                            page: null,
+                        });
                     }}
                     ariaLabel="Project forms tabs"
                     panelIdPrefix="project-forms-status"

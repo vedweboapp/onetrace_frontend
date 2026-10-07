@@ -129,10 +129,11 @@ export function ProjectFormsTab() {
           pageSize,
           {
             is_active: activeFilter === "true",
+            is_published: true,
           }
         );
         if (!cancelled) {
-          setItems(rows);
+          setItems(rows.filter((row) => row.is_published !== false));
           setPagination(p);
         }
       } catch (err) {
@@ -167,7 +168,12 @@ export function ProjectFormsTab() {
           }
           return;
         }
-        const { items: forms } = await fetchFormsPage(1, 20, { project_type: projectTypeId, dropdown: true }, { silent: true });
+        const { items: forms } = await fetchFormsPage(
+          1,
+          20,
+          { project_type: projectTypeId, dropdown: true, is_published: true },
+          { silent: true },
+        );
         if (!cancelled) {
           const assignedIds = Array.isArray(project.form_ids)
             ? project.form_ids
@@ -177,7 +183,11 @@ export function ProjectFormsTab() {
                 .filter((id): id is number => Number.isFinite(id) && id > 0)
               : [];
           setSelectedFormIds(assignedIds.map(String));
-          setAssignFormOptions(forms.map((form) => ({ value: String(form.id), label: form.name })));
+          setAssignFormOptions(
+            forms
+              .filter((form) => form.is_published !== false)
+              .map((form) => ({ value: String(form.id), label: form.name })),
+          );
         }
       } catch (error) {
         if (!cancelled) setAssignError(t("assignLoadError"));
