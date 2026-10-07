@@ -5,7 +5,7 @@ import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchLabourType, fetchLabourTypesPage } from "@/features/labour-types/api/labour-type.api";
 import type { LabourType } from "@/features/labour-types/types/labour-type.types";
-import { parseLabourNumber, suggestedLabourSellPrice } from "@/features/labour-types/utils/labour-type-numbers.util";
+import { parseLabourNumber, parseLabourTimeHours, suggestedLabourSellPrice } from "@/features/labour-types/utils/labour-type-numbers.util";
 import type { QuotationDraftLabour } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftLabourTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
@@ -31,7 +31,7 @@ function labourFromType(row: LabourType): QuotationDraftLabour {
   const markup = parseLabourNumber(row.default_markup);
   const sell =
     parseLabourNumber(row.default_sell_price) || suggestedLabourSellPrice(cost, markup) || labourLineSellPrice(cost, markup);
-  const hoursRaw = parseLabourNumber(row.default_time_hours);
+  const hoursRaw = parseLabourTimeHours(row.default_time_hours);
   const hours = hoursRaw > 0 ? hoursRaw : 1;
   return {
     id: newQuotationDraftId("lab"),

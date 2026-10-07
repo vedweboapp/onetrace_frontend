@@ -32,8 +32,11 @@ import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quot
 import { sumQuoteSectionsGrandTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import {
   clearTakenQuotationSectionScopeDraft,
+  clearQuotationSectionScopeSession,
   consumeQuotationSectionScopeDraft,
+  readQuotationSectionScopeSession,
 } from "@/features/quotations/utils/quotation-section-scope.util";
+import { isOptionalQuoteSection } from "@/features/quotations/utils/quotation-section-type.util";
 import {
   clearQuotationWorkingDraft,
   consumeQuotationFreshCreate,
@@ -239,13 +242,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const restoredDraftRef = React.useRef<QuotationDraft | null | undefined>(undefined);
   if (restoredDraftRef.current === undefined) {
     const freshCreate = !isEdit && consumeQuotationFreshCreate();
-    const fromSection = consumeQuotationSectionScopeDraft();
-    if (freshCreate && !fromSection) {
+    if (freshCreate) {
+      // Brand-new create from list — drop abandoned working / section / QC drafts.
       clearQuotationWorkingDraft(workingDraftKey);
+      clearQuotationSectionScopeSession();
       clearQuickCreateFormDraft(draftReturnTo);
       clearQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname));
       restoredDraftRef.current = null;
     } else {
+      const fromSection = consumeQuotationSectionScopeDraft();
       const fromWorking = readQuotationWorkingDraft(workingDraftKey);
       restoredDraftRef.current = fromSection ?? fromWorking;
       if (restoredDraftRef.current) {
@@ -320,7 +325,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       if (isQuotationFormDraftBundle(draft)) {
         reset(draft.values, { keepDefaultValues: false });
         if (draft.formTab) setFormTab(draft.formTab);
-        if (draft.quoteDraft !== undefined) {
+        // Section Done restores the latest scope draft first — never overwrite it with a
+        // stale quick-create snapshot taken before labour/materials were edited.
+        if (draft.quoteDraft !== undefined && restoredDraftRef.current == null) {
           preventQuoteDraftSeedRef.current = true;
           setQuoteDraftRef.current?.(draft.quoteDraft);
         }
@@ -832,14 +839,27 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     writeQuotationWorkingDraft(workingDraftKey, quoteDraft);
   }, [quoteDraft, workingDraftKey]);
 
+  const appliedRestoredDraftRef = React.useRef(false);
   React.useLayoutEffect(() => {
+    if (appliedRestoredDraftRef.current) return;
     const restored = restoredDraftRef.current;
     if (!restored) return;
+    appliedRestoredDraftRef.current = true;
     preventQuoteDraftSeedRef.current = true;
     writeQuotationWorkingDraft(workingDraftKey, restored);
+    // Keep QC snapshot in sync so a later remount cannot re-apply a pre-section draft.
+    if (!isEdit) {
+      const bundle = {
+        values: getValues(),
+        quoteDraft: restored,
+        formTab: "pricing" as const,
+      };
+      saveQuickCreateFormDraft(draftReturnTo, bundle);
+      saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
+    }
     clearTakenQuotationSectionScopeDraft();
     setFormTab("pricing");
-  }, [workingDraftKey]);
+  }, [workingDraftKey, isEdit, getValues, draftReturnTo, pathname]);
 
   React.useEffect(() => {
     // Drop stale taken cache after apply so a later section round-trip can consume again.
@@ -1409,6 +1429,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   canShow={canShowLevels}
                   allowManualLines={isServiceQuotation}
                   sectionKindTabs={isServiceQuotation}
+                  initialScopeKindTab={(() => {
+                    const restored = restoredDraftRef.current;
+                    const sid = readQuotationSectionScopeSession()?.sectionId;
+                    const sec = restored?.sections.find((s) => s.id === sid);
+                    return sec && isOptionalQuoteSection(sec) ? "optional" : "primary";
+                  })()}
                   onBeforeLeavePage={persistFormDraft}
                 />
               </div>
