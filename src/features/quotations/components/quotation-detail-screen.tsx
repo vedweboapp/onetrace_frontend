@@ -443,6 +443,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           onJobCreated={() => {
             setJobsRefreshNonce((n) => n + 1);
             void reloadQuiet();
+            handleTabChange("jobs");
           }}
           t={t}
         />
