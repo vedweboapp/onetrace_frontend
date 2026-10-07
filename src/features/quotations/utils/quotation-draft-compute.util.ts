@@ -1,5 +1,5 @@
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
-import { isOptionalQuoteSection, labourLineTotalCost } from "@/features/quotations/utils/quotation-section-type.util";
+import { isOptionalQuoteSection } from "@/features/quotations/utils/quotation-section-type.util";
 
 export function draftPinTotal(pin: { quantity: number; selling_price: number }): number {
   const q = pin.quantity;
@@ -12,21 +12,12 @@ export function draftPlotTotal(plot: { pins: Array<{ quantity: number; selling_p
   return plot.pins.reduce((acc, ln) => acc + draftPinTotal(ln), 0);
 }
 
-export function draftLabourTotal(labour: {
-  selling_price: number;
-  time_hours: number;
-}): number {
-  return labourLineTotalCost(labour.selling_price, labour.time_hours);
-}
-
 export function draftSectionTotal(section: {
-  labours?: Array<{ selling_price: number; time_hours: number }>;
   section_pins?: Array<{ quantity: number; selling_price: number }>;
   plots: Array<{ pins: Array<{ quantity: number; selling_price: number }> }>;
 }): number {
-  const labour = (section.labours ?? []).reduce((acc, ln) => acc + draftLabourTotal(ln), 0);
   const direct = (section.section_pins ?? []).reduce((acc, ln) => acc + draftPinTotal(ln), 0);
-  return labour + direct + section.plots.reduce((acc, p) => acc + draftPlotTotal(p), 0);
+  return direct + section.plots.reduce((acc, p) => acc + draftPlotTotal(p), 0);
 }
 
 /** Quote total: included primary/project sections only — optional sections are excluded. */
