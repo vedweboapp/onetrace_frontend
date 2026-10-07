@@ -22,6 +22,17 @@ export async function updateProjectForm(
   return data?.data ?? data;
 }
 
+/** PATCH /api/v1/forms/{formId}/ */
+export async function patchProjectForm(
+  formId: string | number,
+  payload: any,
+): Promise<any> {
+  const { data } = await api.patch(`forms/${formId}/`, payload, {
+    skipErrorToast: true,
+  });
+  return data?.data ?? data;
+}
+
 /** POST/PUT /api/v1/forms/{formId}/rules/ */
 export async function createProjectFormRules(
   formId: string | number,

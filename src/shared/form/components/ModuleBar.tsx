@@ -69,14 +69,43 @@ const ModuleBar: React.FC = () => {
     }
   }, [sidebarW, modulebarTop, isLargeScreen]);
 
-  // Mobile / Tablet View: Horizontal scroll list of fields
+  // Ref for the mobile bar — we measure its height so FormBuilder can add a
+  // matching spacer and content isn't hidden underneath this fixed element.
+  const mobileBarRef = React.useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (isLargeScreen) return;
+    const el = mobileBarRef.current;
+    if (!el) return;
+    const sync = () => {
+      const h = el.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--mobile-modulebar-h", `${h}px`);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isLargeScreen]);
+
+  // Mobile / Tablet View: fixed horizontal chip bar — uses the same CSS vars as the
+  // sub-header so it's viewport-relative and unaffected by page padding.
   if (!isLargeScreen) {
     return (
-      <div className="w-full bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-3 py-2 flex flex-col gap-1.5 shrink-0 overflow-hidden">
+      <div
+        ref={mobileBarRef}
+        className="fixed z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-3 py-2 flex flex-col gap-1.5 overflow-hidden"
+        style={{
+          // Sit directly below the fixed sub-header
+          top: "calc(var(--subheader-top, 56px) + var(--mobile-subheader-h, 148px))",
+          left: "var(--subheader-left-w, 0px)",
+          right: "var(--subheader-right-w, 0px)",
+          transition: "left 300ms cubic-bezier(0.4,0,0.2,1), right 300ms cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-          Available Fields (Scroll & Drag/Tap to Add)
+          Available Fields (Scroll &amp; Drag/Tap to Add)
         </span>
-        <div className="flex gap-2 overflow-x-auto pb-1.5 custom-scrollbar w-full scroll-smooth">
+        <div className="flex gap-2 overflow-x-auto pb-1.5 custom-scrollbar scroll-smooth">
           {/* Add New Section button first */}
           <div className="flex-shrink-0 w-32">
             <DraggableAddButton type="ADD_SECTION" label="+ Section" variant="primary" />

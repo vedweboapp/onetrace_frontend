@@ -5,7 +5,7 @@ import {
   Percent, MapPin, CheckSquare, Link, Search,
   Calculator, User, FileUp, Image, Images, BarChart3,
   Home, ListChecks, Globe, LucideIcon, PenTool,
-  Video
+  Video, QrCode
 } from "lucide-react";
 
 interface FieldButtonProps {
@@ -195,12 +195,19 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     type: "signature",
     label: "Signature",
     icon: PenTool,
-  }, {
+  },
+  {
     key: "video_recorder",
     type: "video_recorder",
     label: "Video Recorder",
     icon: Video,
-  }
+  },
+  {
+    key: "qr_scanner",
+    type: "qr_scanner",
+    label: "QR Scanner",
+    icon: QrCode,
+  },
 ];
 
 // Export individual button components (generated from config)
