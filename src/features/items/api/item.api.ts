@@ -27,6 +27,8 @@ export type ItemListFilters = {
   groupId?: number;
   /** Filter items linked to a vendor (`item/?vendor_id=`). */
   vendorId?: number;
+  /** Filter by catalog kind (`item/?item_type=`). */
+  itemType?: "goods" | "service";
   dropdown?: boolean;
 };
 
@@ -47,6 +49,9 @@ export async function fetchItemsPage(
   if (filters?.groupId != null) params.group = filters.groupId;
   if (typeof filters?.vendorId === "number" && Number.isFinite(filters.vendorId) && filters.vendorId > 0) {
     params.vendor_id = filters.vendorId;
+  }
+  if (filters?.itemType === "goods" || filters?.itemType === "service") {
+    params.item_type = filters.itemType;
   }
   applyDropdownListParam(params, filters?.dropdown);
 

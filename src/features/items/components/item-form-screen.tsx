@@ -27,7 +27,9 @@ import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/ite
 import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
 import { getItemVendorIds, itemVendorFallbackLabels, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import type { DimensionUnit, WeightUnit } from "@/features/items/types/item.types";
+import type { DimensionUnit, ItemType, WeightUnit } from "@/features/items/types/item.types";
+import { generateServiceItemSku, resolveItemType } from "@/features/items/utils/item-type.util";
+import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
 
 type Props = {
   mode: "create" | "edit";
@@ -81,22 +83,28 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   });
 
   const nameId = React.useId();
+  const itemTypeId = React.useId();
   const skuId = React.useId();
   const unitId = React.useId();
   const qtyId = React.useId();
   const costId = React.useId();
+  const markupId = React.useId();
   const sellId = React.useId();
 
   const [name, setName] = React.useState("");
+  const [itemType, setItemType] = React.useState<ItemType>("goods");
   const [sku, setSku] = React.useState("");
   const [qty, setQty] = React.useState("");
   const [cost, setCost] = React.useState("");
+  const [markup, setMarkup] = React.useState("0");
   const [sell, setSell] = React.useState("");
+  const [sellTouched, setSellTouched] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean; cost?: boolean; sell?: boolean }>({});
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
+  const isService = itemType === "service";
 
   const [unitType, setUnitType] = React.useState("");
   const [unitTypeOptions, setUnitTypeOptions] = React.useState<InputWithEndSelectOption[]>([]);
@@ -123,10 +131,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         const item = await fetchItem(itemId);
         if (!cancelled) {
           setName(item.name);
+          setItemType(resolveItemType(item.item_type));
           setSku(String(item.sku ?? ""));
           setQty(String(item.quantity ?? 0));
           setCost(String(item.cost_price ?? 0));
+          setMarkup(String(parseItemNumber(item.markup)));
           setSell(String(item.selling_price ?? 0));
+          setSellTouched(true);
           const unitId = getUnitTypeId(item.unit_type);
           setUnitType(unitId != null ? String(unitId) : "");
           setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
@@ -209,10 +220,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const getFormDraft = React.useCallback(
     () => ({
       name,
+      itemType,
       sku,
       qty,
       cost,
+      markup,
       sell,
+      sellTouched,
       unitType,
       length,
       width,
@@ -222,16 +236,36 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       weightUnit,
       vendorIds,
     }),
-    [name, sku, qty, cost, sell, unitType, length, width, height, dimensionsUnit, weight, weightUnit, vendorIds],
+    [
+      name,
+      itemType,
+      sku,
+      qty,
+      cost,
+      markup,
+      sell,
+      sellTouched,
+      unitType,
+      length,
+      width,
+      height,
+      dimensionsUnit,
+      weight,
+      weightUnit,
+      vendorIds,
+    ],
   );
 
   const restoreFormDraft = React.useCallback((draft: unknown) => {
     const saved = draft as Partial<{
       name: string;
+      itemType: ItemType;
       sku: string;
       qty: string;
       cost: string;
+      markup: string;
       sell: string;
+      sellTouched: boolean;
       unitType: string;
       length: string;
       width: string;
@@ -242,10 +276,13 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       vendorIds: string[];
     }>;
     if (typeof saved.name === "string") setName(saved.name);
+    if (saved.itemType === "goods" || saved.itemType === "service") setItemType(saved.itemType);
     if (typeof saved.sku === "string") setSku(saved.sku);
     if (typeof saved.qty === "string") setQty(saved.qty);
     if (typeof saved.cost === "string") setCost(saved.cost);
+    if (typeof saved.markup === "string") setMarkup(saved.markup);
     if (typeof saved.sell === "string") setSell(saved.sell);
+    if (typeof saved.sellTouched === "boolean") setSellTouched(saved.sellTouched);
     if (typeof saved.unitType === "string") setUnitType(saved.unitType);
     if (typeof saved.length === "string") setLength(saved.length);
     if (typeof saved.width === "string") setWidth(saved.width);
@@ -284,8 +321,21 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     },
   });
 
+  function syncSellFromCostMarkup(nextCost: string, nextMarkup: string) {
+    if (sellTouched) return;
+    setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
+  }
+
+  const itemTypeOptions = React.useMemo(
+    () => [
+      { value: "goods", label: tModal("itemTypeGoods") },
+      { value: "service", label: tModal("itemTypeService") },
+    ],
+    [tModal],
+  );
+
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
-  const skuInvalid = Boolean(touched.sku) && sku.trim().length === 0;
+  const skuInvalid = !isService && Boolean(touched.sku) && sku.trim().length === 0;
   const costNPreview = numOrNull(cost);
   const sellNPreview = numOrNull(sell);
   const costInvalid = Boolean(touched.cost) && (costNPreview == null || costNPreview < 0);
@@ -301,53 +351,60 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     setServerErrors({});
 
     const nameTrim = name.trim();
-    const skuTrim = sku.trim();
-    if (!nameTrim || !skuTrim) return;
+    if (!nameTrim) return;
 
-    const qtyN = numOrNull(qty) ?? 0;
+    const skuTrim = isService ? sku.trim() || generateServiceItemSku(nameTrim) : sku.trim();
+    if (!isService && !skuTrim) return;
+
+    const qtyN = isService ? 0 : (numOrNull(qty) ?? 0);
     const costN = numOrNull(cost);
     const sellN = numOrNull(sell);
+    const markupN = parseItemNumber(markup);
     if (costN == null || costN < 0 || sellN == null || sellN < 0) return;
     if (qtyN < 0) return;
+    if (!Number.isFinite(markupN) || markupN < 0) return;
 
     setSubmitting(true);
     try {
-      const unitTypePayload = unitTypeIdPayload(unitType);
-      const dimensionsFields = dimensionsPayload(length, width, height);
-      const hasDimensions = Object.keys(dimensionsFields).length > 0;
-      const dimensionsUnitPayload =
-        !length.trim() && !width.trim() && !height.trim()
-          ? { length: null, width: null, height: null, dimensions_unit: null }
-          : hasDimensions
-            ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
-            : {};
-      const weightFields = weightPayload(weight, weightUnit);
-      const vendorsPayload = vendorIdsPayload(vendorIds);
+      const basePayload = {
+        name: nameTrim,
+        sku: skuTrim || generateServiceItemSku(nameTrim),
+        item_type: itemType,
+        quantity: qtyN,
+        cost_price: costN,
+        markup: markupN,
+        selling_price: sellN,
+      };
+
+      const goodsExtras = isService
+        ? {}
+        : (() => {
+            const unitTypePayload = unitTypeIdPayload(unitType);
+            const dimensionsFields = dimensionsPayload(length, width, height);
+            const hasDimensions = Object.keys(dimensionsFields).length > 0;
+            const dimensionsUnitPayload =
+              !length.trim() && !width.trim() && !height.trim()
+                ? { length: null, width: null, height: null, dimensions_unit: null }
+                : hasDimensions
+                  ? { ...dimensionsFields, dimensions_unit: dimensionsUnit }
+                  : {};
+            const weightFields = weightPayload(weight, weightUnit);
+            const vendorsPayload = vendorIdsPayload(vendorIds);
+            return {
+              ...unitTypePayload,
+              ...dimensionsUnitPayload,
+              ...weightFields,
+              ...vendorsPayload,
+            };
+          })();
 
       const saved =
         isEdit && itemId
-          ? await updateItem(itemId, {
-              name: nameTrim,
-              sku: skuTrim,
-              quantity: qtyN,
-              cost_price: costN,
-              selling_price: sellN,
-              ...unitTypePayload,
-              ...dimensionsUnitPayload,
-              ...weightFields,
-              ...vendorsPayload,
-            })
+          ? await updateItem(itemId, { ...basePayload, ...goodsExtras })
           : await createItem({
-              name: nameTrim,
-              sku: skuTrim,
+              ...basePayload,
               is_composite: false,
-              quantity: qtyN,
-              cost_price: costN,
-              selling_price: sellN,
-              ...unitTypePayload,
-              ...dimensionsUnitPayload,
-              ...weightFields,
-              ...vendorsPayload,
+              ...goodsExtras,
             });
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       router.replace(
@@ -403,6 +460,19 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         ) : (
           <form id="item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
             <FormFieldRow cols="2" from="md" className="gap-4">
+              <FieldGroup label={tModal("itemType")} htmlFor={itemTypeId} required>
+                <CheckmarkSelect
+                  id={itemTypeId}
+                  listLabel={tModal("itemType")}
+                  buttonAriaLabel={tModal("itemType")}
+                  options={itemTypeOptions}
+                  value={itemType}
+                  disabled={submitting}
+                  portaled
+                  className="w-full"
+                  onChange={(v) => setItemType(resolveItemType(v))}
+                />
+              </FieldGroup>
               <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input
                   id={nameId}
@@ -420,55 +490,59 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                 />
                 <FieldErrorText>{nameError}</FieldErrorText>
               </FieldGroup>
-              <FieldGroup label={tModal("sku")} htmlFor={skuId} required>
-                <input
-                  id={skuId}
-                  type="text"
-                  autoComplete="off"
-                  value={sku}
-                  onChange={(e) => {
-                    setServerErrors((prev) => ({ ...prev, sku: undefined }));
-                    setSku(e.target.value);
-                  }}
-                  onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
-                  disabled={submitting}
-                  placeholder={tModal("skuPlaceholder")}
-                  className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
-                />
-                <FieldErrorText>{skuError}</FieldErrorText>
-              </FieldGroup>
             </FormFieldRow>
-            <FormFieldRow cols="2" from="md" className="gap-4">
-              <FieldGroup label={tModal("unitType")} htmlFor={unitId}>
-                <CheckmarkSelect
-                  id={unitId}
-                  listLabel={tModal("unitType")}
-                  buttonAriaLabel={tModal("unitType")}
-                  options={unitTypeOptions}
-                  value={unitType}
-                  emptyLabel={tModal("unitTypePlaceholder")}
-                  disabled={submitting || unitTypeOptions.length === 0}
-                  portaled
-                  searchable
-                  clearable
-                  className="w-full"
-                  onChange={setUnitType}
-                  onAdd={unitTypeQuickAdd.onAdd}
-                  addAriaLabel={unitTypeQuickAdd.addAriaLabel}
-                  addLabel={unitTypeQuickAdd.addLabel}
-                />
-                {unitTypesError ? <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p> : null}
-              </FieldGroup>
-              <FieldGroup label={tModal("quantity")} htmlFor={qtyId}>
-                <NumericInput
-                  id={qtyId}
-                  integer
-                  value={qty}
-                  onChange={setQty}
-                  disabled={submitting}
-                />
-              </FieldGroup>
-            </FormFieldRow>
+
+            {!isService ? (
+              <>
+                <FormFieldRow cols="2" from="md" className="gap-4">
+                  <FieldGroup label={tModal("sku")} htmlFor={skuId} required>
+                    <input
+                      id={skuId}
+                      type="text"
+                      autoComplete="off"
+                      value={sku}
+                      onChange={(e) => {
+                        setServerErrors((prev) => ({ ...prev, sku: undefined }));
+                        setSku(e.target.value);
+                      }}
+                      onBlur={() => setTouched((p) => ({ ...p, sku: true }))}
+                      disabled={submitting}
+                      placeholder={tModal("skuPlaceholder")}
+                      className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                    />
+                    <FieldErrorText>{skuError}</FieldErrorText>
+                  </FieldGroup>
+                  <FieldGroup label={tModal("quantity")} htmlFor={qtyId}>
+                    <NumericInput id={qtyId} integer value={qty} onChange={setQty} disabled={submitting} />
+                  </FieldGroup>
+                </FormFieldRow>
+                <FormFieldRow cols="2" from="md" className="gap-4">
+                  <FieldGroup label={tModal("unitType")} htmlFor={unitId}>
+                    <CheckmarkSelect
+                      id={unitId}
+                      listLabel={tModal("unitType")}
+                      buttonAriaLabel={tModal("unitType")}
+                      options={unitTypeOptions}
+                      value={unitType}
+                      emptyLabel={tModal("unitTypePlaceholder")}
+                      disabled={submitting || unitTypeOptions.length === 0}
+                      portaled
+                      searchable
+                      clearable
+                      className="w-full"
+                      onChange={setUnitType}
+                      onAdd={unitTypeQuickAdd.onAdd}
+                      addAriaLabel={unitTypeQuickAdd.addAriaLabel}
+                      addLabel={unitTypeQuickAdd.addLabel}
+                    />
+                    {unitTypesError ? (
+                      <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
+                    ) : null}
+                  </FieldGroup>
+                </FormFieldRow>
+              </>
+            ) : null}
+
             <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("costPrice")} htmlFor={costId} required>
                 <MoneyInput
@@ -478,13 +552,30 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   min={0}
                   step="0.01"
                   value={cost}
-                  onChange={(e) => setCost(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCost(next);
+                    syncSellFromCostMarkup(next, markup);
+                  }}
                   onBlur={() => setTouched((p) => ({ ...p, cost: true }))}
                   disabled={submitting}
                   invalid={!!costError}
                 />
                 <FieldErrorText>{costError}</FieldErrorText>
               </FieldGroup>
+              <FieldGroup label={tModal("markup")} htmlFor={markupId}>
+                <NumericInput
+                  id={markupId}
+                  value={markup}
+                  onChange={(next) => {
+                    setMarkup(next);
+                    syncSellFromCostMarkup(cost, next);
+                  }}
+                  disabled={submitting}
+                />
+              </FieldGroup>
+            </FormFieldRow>
+            <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("sellingPrice")} htmlFor={sellId} required>
                 <MoneyInput
                   id={sellId}
@@ -493,7 +584,10 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   min={0}
                   step="0.01"
                   value={sell}
-                  onChange={(e) => setSell(e.target.value)}
+                  onChange={(e) => {
+                    setSellTouched(true);
+                    setSell(e.target.value);
+                  }}
                   onBlur={() => setTouched((p) => ({ ...p, sell: true }))}
                   disabled={submitting}
                   invalid={!!sellError}
@@ -502,73 +596,77 @@ export function ItemFormScreen({ mode, itemId }: Props) {
               </FieldGroup>
             </FormFieldRow>
 
-            <FormFieldRow cols="2" from="md" className="gap-4">
-              <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
-                <MultiCheckSelect
-                  id="item-vendors"
-                  options={vendorOptions}
-                  values={vendorIds}
-                  onChange={setVendorIds}
-                  disabled={submitting}
-                  placeholder={tModal("vendorsPlaceholder")}
-                  listLabel={tModal("vendors")}
-                  searchable
-                  fallbackLabels={vendorFallbackLabels}
-                  onAdd={vendorQuickCreate.onAdd}
-                  addAriaLabel={vendorQuickCreate.addAriaLabel}
-                  addLabel={vendorQuickCreate.addLabel}
-                />
-                {vendorsError ? (
-                  <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
-                ) : null}
-              </FieldGroup>
-            </FormFieldRow>
+            {!isService ? (
+              <>
+                <FormFieldRow cols="2" from="md" className="gap-4">
+                  <FieldGroup label={tModal("vendors")} htmlFor="item-vendors">
+                    <MultiCheckSelect
+                      id="item-vendors"
+                      options={vendorOptions}
+                      values={vendorIds}
+                      onChange={setVendorIds}
+                      disabled={submitting}
+                      placeholder={tModal("vendorsPlaceholder")}
+                      listLabel={tModal("vendors")}
+                      searchable
+                      fallbackLabels={vendorFallbackLabels}
+                      onAdd={vendorQuickCreate.onAdd}
+                      addAriaLabel={vendorQuickCreate.addAriaLabel}
+                      addLabel={vendorQuickCreate.addLabel}
+                    />
+                    {vendorsError ? (
+                      <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{vendorsError}</p>
+                    ) : null}
+                  </FieldGroup>
+                </FormFieldRow>
 
-            <FormSubsection title={tModal("fulfilmentDetails")}>
-              <FormFieldRow cols="2" from="md" className="gap-4">
-                <FieldGroup label={tModal("dimensions")} htmlFor="item-dimensions">
-                  <DimensionsLwhInput
-                    id="item-dimensions"
-                    length={length}
-                    width={width}
-                    height={height}
-                    onChange={(next) => {
-                      setLength(next.length);
-                      setWidth(next.width);
-                      setHeight(next.height);
-                    }}
-                    unit={dimensionsUnit}
-                    onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
-                    unitAriaLabel={tModal("dimensionsUnit")}
-                    lengthAriaLabel={tModal("dimensionsLength")}
-                    widthAriaLabel={tModal("dimensionsWidth")}
-                    heightAriaLabel={tModal("dimensionsHeight")}
-                    disabled={submitting}
-                  />
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
-                </FieldGroup>
-                <FieldGroup label={tModal("weight")} htmlFor="item-weight">
-                  <InputWithEndSelect
-                    inputId="item-weight"
-                    inputType="number"
-                    inputMode="decimal"
-                    min={0}
-                    step="0.01"
-                    inputValue={weight}
-                    onInputChange={setWeight}
-                    disabled={submitting}
-                    selectValue={weightUnit}
-                    onSelectChange={(v) => setWeightUnit((v as WeightUnit) || "kg")}
-                    selectOptions={[
-                      { value: "kg", label: "kg" },
-                      { value: "g", label: "g" },
-                      { value: "lb", label: "lb" },
-                    ]}
-                    selectAriaLabel={tModal("weightUnit")}
-                  />
-                </FieldGroup>
-              </FormFieldRow>
-            </FormSubsection>
+                <FormSubsection title={tModal("fulfilmentDetails")}>
+                  <FormFieldRow cols="2" from="md" className="gap-4">
+                    <FieldGroup label={tModal("dimensions")} htmlFor="item-dimensions">
+                      <DimensionsLwhInput
+                        id="item-dimensions"
+                        length={length}
+                        width={width}
+                        height={height}
+                        onChange={(next) => {
+                          setLength(next.length);
+                          setWidth(next.width);
+                          setHeight(next.height);
+                        }}
+                        unit={dimensionsUnit}
+                        onUnitChange={(v) => setDimensionsUnit((v as DimensionUnit) || "cm")}
+                        unitAriaLabel={tModal("dimensionsUnit")}
+                        lengthAriaLabel={tModal("dimensionsLength")}
+                        widthAriaLabel={tModal("dimensionsWidth")}
+                        heightAriaLabel={tModal("dimensionsHeight")}
+                        disabled={submitting}
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{tModal("dimensionsHint")}</p>
+                    </FieldGroup>
+                    <FieldGroup label={tModal("weight")} htmlFor="item-weight">
+                      <InputWithEndSelect
+                        inputId="item-weight"
+                        inputType="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        inputValue={weight}
+                        onInputChange={setWeight}
+                        disabled={submitting}
+                        selectValue={weightUnit}
+                        onSelectChange={(v) => setWeightUnit((v as WeightUnit) || "kg")}
+                        selectOptions={[
+                          { value: "kg", label: "kg" },
+                          { value: "g", label: "g" },
+                          { value: "lb", label: "lb" },
+                        ]}
+                        selectAriaLabel={tModal("weightUnit")}
+                      />
+                    </FieldGroup>
+                  </FormFieldRow>
+                </FormSubsection>
+              </>
+            ) : null}
           </form>
         )}
       </SurfaceShell>
