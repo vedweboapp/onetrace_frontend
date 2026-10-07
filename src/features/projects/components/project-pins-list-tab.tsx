@@ -957,12 +957,13 @@ const ProjectPinsListTab = ({
     if (!id) return;
     let cancelled = false;
     setLoadingForms(true);
-    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true })
+    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true, is_published: true })
       .then((res) => {
         if (!cancelled) {
-          setProjectForms(res.items);
+          const publishedForms = res.items.filter((form) => form.is_published !== false);
+          setProjectForms(publishedForms);
           setFormOptions(
-            res.items.map((form) => ({
+            publishedForms.map((form) => ({
               value: String(form.id),
               label: form.name,
             })),

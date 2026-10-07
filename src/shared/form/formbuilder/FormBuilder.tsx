@@ -422,13 +422,22 @@ export default function FormBuilderLayout({
   } = useFormStore();
 
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  // Matches dashboard-sidebar.tsx "md:flex" — sidebar is visible only at ≥ 768px.
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    setIsLargeScreen(media.matches);
-    const listener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+    const lgMedia = window.matchMedia("(min-width: 1024px)");
+    const mdMedia = window.matchMedia("(min-width: 768px)");
+    setIsLargeScreen(lgMedia.matches);
+    setIsSidebarVisible(mdMedia.matches);
+    const lgListener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
+    const mdListener = (e: MediaQueryListEvent) => setIsSidebarVisible(e.matches);
+    lgMedia.addEventListener("change", lgListener);
+    mdMedia.addEventListener("change", mdListener);
+    return () => {
+      lgMedia.removeEventListener("change", lgListener);
+      mdMedia.removeEventListener("change", mdListener);
+    };
   }, []);
 
   const searchParams = useSearchParams();
@@ -789,17 +798,17 @@ export default function FormBuilderLayout({
             ...r,
             field_api_name: r.field_api_name
               ? normalizeRuleTarget(
-                  r.field_api_name,
-                  "field",
-                  r.api_name,
-                  r.section_name,
-                  r.f_id,
-                  r.field_id,
-                  r.s_id,
-                  undefined,
-                  undefined,
-                  initializedSections,
-                )
+                r.field_api_name,
+                "field",
+                r.api_name,
+                r.section_name,
+                r.f_id,
+                r.field_id,
+                r.s_id,
+                undefined,
+                undefined,
+                initializedSections,
+              )
               : r.field_api_name,
             output_fields: (r.output_fields || []).map(normalizeOutput),
             blocks: (r.blocks || []).map(normalizeBlock),
@@ -1671,17 +1680,42 @@ export default function FormBuilderLayout({
   const subheaderTop = isHydrogen ? 100 : 56;
   const modulebarTop = isHydrogen ? 156 : 112;
 
+  // Ref used to measure the mobile sub-header height so we can push content below it.
+  const subheaderRef = React.useRef<HTMLDivElement>(null);
+
   // Keep CSS variables in sync with sidebar width & top offset so fixed sub-header and
   // ModuleBar position animate purely via CSS (no React render delay).
   React.useLayoutEffect(() => {
+    // On mobile (< 768px) the sidebar is display:none — use 0 so the sub-header
+    // doesn't inherit the JS-state sidebar width and create a blank left gap.
+    const effectiveLeftW = isSidebarVisible ? leftSidebarW : 0;
+    const effectiveRightW = isSidebarVisible ? rightSidebarW : 0;
+
+    // Always sync all positioning vars — both desktop and mobile fixed sub-header use them.
+    document.documentElement.style.setProperty("--subheader-top", `${subheaderTop}px`);
+    document.documentElement.style.setProperty("--subheader-left-w", `${effectiveLeftW}px`);
+    document.documentElement.style.setProperty("--subheader-right-w", `${effectiveRightW}px`);
+    document.documentElement.style.setProperty("--subheader-sidebar-w", `${effectiveLeftW}px`);
     if (isLargeScreen) {
-      document.documentElement.style.setProperty("--subheader-left-w", `${leftSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-right-w", `${rightSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-sidebar-w", `${leftSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-top", `${subheaderTop}px`);
       document.documentElement.style.setProperty("--modulebar-top", `${modulebarTop}px`);
     }
-  }, [leftSidebarW, rightSidebarW, subheaderTop, modulebarTop, isLargeScreen]);
+  }, [leftSidebarW, rightSidebarW, subheaderTop, modulebarTop, isLargeScreen, isSidebarVisible]);
+
+  // On mobile/tablet, measure the fixed sub-header height and expose it as a CSS var so
+  // the spacer div and any other elements can avoid being hidden underneath it.
+  React.useLayoutEffect(() => {
+    if (isLargeScreen) return;
+    const el = subheaderRef.current;
+    if (!el) return;
+    const sync = () => {
+      const h = el.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--mobile-subheader-h", `${h}px`);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isLargeScreen]);
 
   const {
     formRef,
@@ -1785,26 +1819,38 @@ export default function FormBuilderLayout({
       }
       {/* Responsive Sub-header */}
       <div
-        className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${isLargeScreen
+        ref={subheaderRef}
+        className={`z-20 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${
+          isLargeScreen
             ? "fixed flex items-center justify-between h-14 px-6"
-            : "relative w-full flex flex-col gap-4 p-4"
-          }`}
+            : "fixed w-full flex flex-col gap-2.5 px-3 py-2.5"
+        }`}
         style={
           isLargeScreen
             ? {
-              top: "var(--subheader-top, 56px)",
-              left: "var(--subheader-left-w, 0px)",
-              width: "calc(100% - var(--subheader-left-w, 0px) - var(--subheader-right-w, 0px))",
-              transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
-            }
-            : undefined
+                top: "var(--subheader-top, 56px)",
+                left: "var(--subheader-left-w, 0px)",
+                width: "calc(100% - var(--subheader-left-w, 0px) - var(--subheader-right-w, 0px))",
+                transition:
+                  "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
+              }
+            : {
+                // On mobile/tablet: pin the fixed sub-header below the top nav and
+                // start it AFTER the sidebar so it doesn't hide behind it.
+                top: "var(--subheader-top, 56px)",
+                left: "var(--subheader-left-w, 0px)",
+                right: "var(--subheader-right-w, 0px)",
+                transition:
+                  "left 300ms cubic-bezier(0.4,0,0.2,1), right 300ms cubic-bezier(0.4,0,0.2,1)",
+              }
         }
       >
-        <div className="flex items-center gap-3 w-full lg:w-auto">
-          <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
-            <div className="w-4 h-4 bg-white rounded-full opacity-80" />
+        {/* Row 1 (mobile): name input — full-width so it doesn't feel cramped */}
+        <div className="flex items-center gap-2 w-full lg:w-auto min-w-0">
+          <div className="w-7 h-7 shrink-0 bg-black rounded flex items-center justify-center">
+            <div className="w-3.5 h-3.5 bg-white rounded-full opacity-80" />
           </div>
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
             <label htmlFor="form-builder-name" className="sr-only">
               {t("nameLabel")}
             </label>
@@ -1822,7 +1868,9 @@ export default function FormBuilderLayout({
               aria-invalid={moduleNameInvalid || undefined}
               aria-required="true"
               className={cn(
-                "min-w-[12rem] max-w-[16rem] rounded-md border bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900 outline-none transition",
+                /* Mobile: stretch full width. Desktop (sm+): cap to a comfortable range */
+                "flex-1 min-w-0 sm:w-auto sm:min-w-[12rem] sm:max-w-[16rem] lg:flex-none",
+                "h-9 rounded-md border bg-white px-2.5 text-sm font-semibold text-slate-900 outline-none transition",
                 "placeholder:font-normal placeholder:text-slate-400",
                 "focus:ring-2 focus:ring-[color:var(--dash-accent,#111111)]/20",
                 "dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
@@ -1838,7 +1886,8 @@ export default function FormBuilderLayout({
           </div>
         </div>
 
-        <div className="flex justify-center w-full lg:w-auto lg:flex-1">
+        {/* Row 2 (mobile): tabs centred, Row 2 (desktop): centred flex-1 */}
+        <div className="flex justify-center w-full lg:w-auto lg:flex-1 min-w-0">
           <CustomizableAppTabs
             tabs={tabs}
             value={activeTab}
@@ -1847,34 +1896,55 @@ export default function FormBuilderLayout({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
-          <Button variant="secondary" onClick={() => router.push(BackUrl)} className="flex-1 lg:flex-initial justify-center">
+        {/* Row 3 (mobile): 3 equal-width buttons — no overflow */}
+        <div className="grid grid-cols-3 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => router.push(BackUrl)}
+            className="justify-center text-xs sm:text-sm px-2 h-9"
+          >
             Close
           </Button>
           <Button
             variant="secondary"
             onClick={() => handleSave(true)}
             disabled={!dirty || saving}
-            className="flex-1 lg:flex-initial justify-center"
+            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
           >
             Save and Close
           </Button>
           <Button
             onClick={() => handleSave(false)}
             disabled={!dirty || saving}
-            className="flex-1 lg:flex-initial justify-center"
+            className="justify-center text-xs sm:text-sm px-2 h-9"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
 
-      <ModuleBar />
+      {/* Spacer that accounts for ALL fixed bars above the content:
+           - Always: fixed sub-header height (--mobile-subheader-h)
+           - Form tab only: fixed ModuleBar chip row (--mobile-modulebar-h)
+           Desktop doesn't need this — canvas uses marginLeft/marginTop inline style. */}
+      {!isLargeScreen && (
+        <div
+          className="shrink-0 w-full"
+          style={{
+            height: activeTab === "form"
+              ? "calc(var(--mobile-subheader-h, 148px) + var(--mobile-modulebar-h, 68px))"
+              : "var(--mobile-subheader-h, 148px)",
+          }}
+          aria-hidden
+        />
+      )}
+
+      {activeTab === "form" && <ModuleBar />}
 
       {/* Main builder canvas offset past sidebar + ModuleBar */}
       <div
-        className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10"
-        style={isLargeScreen ? { marginLeft: canvasMarginLeft, marginTop: isHydrogen ? 44 : 0 } : { marginLeft: 0 }}
+        className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10 max-w-full overflow-x-hidden"
+        style={isLargeScreen && activeTab === "form" ? { marginLeft: canvasMarginLeft, marginTop: isHydrogen ? 44 : 0 } : { marginLeft: 0, marginTop: isLargeScreen && isHydrogen ? 44 : 0 }}
       >
 
         <div className="mx-auto">
@@ -1908,44 +1978,39 @@ export default function FormBuilderLayout({
           )}
 
           {activeTab === "preview" && (
-            <div className="w-full">
+            <div className="w-full max-w-full overflow-x-hidden">
               <div className="mb-3 flex items-center justify-end">
-                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
+                    className={`flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded px-2.5 sm:px-3 text-xs sm:text-sm font-medium transition ${previewLayout === "desktop"
                       ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("desktop")}
                   >
-                    <Monitor className="size-4" />
+                    <Monitor className="size-3.5 sm:size-4" />
                     Desktop
                   </button>
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
+                    className={`flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded px-2.5 sm:px-3 text-xs sm:text-sm font-medium transition ${previewLayout === "phone"
                       ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("phone")}
                   >
-                    <Smartphone className="size-4" />
+                    <Smartphone className="size-3.5 sm:size-4" />
                     Phone
                   </button>
                 </div>
               </div>
-              <div className="flex w-full justify-center">
+              <div className="flex w-full justify-center px-1 sm:px-2">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone"
-                      ? "rounded-sm p-2 sm:p-4"
-                      : "w-full rounded-sm p-3 sm:p-8"
+                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-x-hidden ${previewLayout === "phone"
+                    ? "w-[390px] max-w-full rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-slate-300 dark:border-slate-700"
+                    : "w-full max-w-4xl rounded-lg p-3 sm:p-6 lg:p-8"
                     }`}
-                  style={
-                    previewLayout === "phone"
-                      ? { width: 390, maxWidth: "100%" }
-                      : undefined
-                  }
                 >
                   <FormRenderer
                     key={previewLayout}

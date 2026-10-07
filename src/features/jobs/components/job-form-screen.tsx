@@ -367,11 +367,19 @@ export function JobFormScreen({ mode, jobId }: Props) {
     if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true }, { silent: true });
+      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true, is_published: true }, { silent: true });
       setFormOptions((prev) => {
-        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+        const currentSelected = new Set(getValues("forms") ?? []);
+        const byValue = new Map<string, Option>();
+        for (const opt of prev) {
+          if (currentSelected.has(opt.value)) {
+            byValue.set(opt.value, opt);
+          }
+        }
         for (const f of items) {
-          byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          if (f.is_published !== false) {
+            byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          }
         }
         return Array.from(byValue.values());
       });
@@ -380,7 +388,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setFormsLoading(false);
     }
-  }, [isProjectJob]);
+  }, [isProjectJob, getValues]);
 
   React.useEffect(() => {
     if (isProjectJob) return;

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getCustomerOrders, getKioskById } from "@/features/kiosk/api/kiosk.api";
 import type { KioskConfig } from "@/features/kiosk/types/kiosk.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -15,15 +15,40 @@ import {
   DataTableScroll,
   DataTableTd,
   DataTableTh,
+  CheckmarkSelect,
   AppTabs,
   SurfaceShell,
   AppButton,
   type AppTabItem,
 } from "@/shared/ui";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter, usePathname } from "@/i18n/navigation";
 import { DetailEntityLink } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { ExternalLink, Copy, Check, Share2, X } from "lucide-react";
+import { cn } from "@/core/utils/http.util";
+import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
+import type { CustomerOrder, CustomerOrdersPagination } from "@/features/kiosk/api/kiosk.api";
+
+function buildPageList(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: Math.max(1, total) }, (_, i) => i + 1);
+  }
+  const set = new Set<number>();
+  set.add(1);
+  set.add(total);
+  for (let p = current - 1; p <= current + 1; p++) {
+    if (p >= 1 && p <= total) set.add(p);
+  }
+  const sorted = [...set].sort((a, b) => a - b);
+  const out: (number | "ellipsis")[] = [];
+  let prev = 0;
+  for (const p of sorted) {
+    if (prev && p - prev > 1) out.push("ellipsis");
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
 
 function countQuestions(config: KioskConfig): number {
   return (config.questions ?? []).filter((question) => question.is_deleted !== true).length;
@@ -40,6 +65,16 @@ function formatOrderStatus(value?: string | null): string {
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatCurrency(value?: string | number | null): string {
+  if (value == null || value === "") return "£0.00";
+  const num = typeof value === "number" ? value : Number.parseFloat(String(value));
+  if (Number.isNaN(num)) return `£${value}`;
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "GBP",
+  }).format(num);
 }
 
 function getOrgUuid(): string | null {
@@ -67,18 +102,94 @@ function getOrgUuid(): string | null {
 }
 
 export function KioskFormDetailScreen() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const params = useParams<{ id?: string | string[] }>();
   const kioskId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  const page = React.useMemo(() => {
+    const raw = searchParams.get("page");
+    const n = raw ? Number.parseInt(raw, 10) : 1;
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }, [searchParams]);
+
+  const pageSize = React.useMemo(() => {
+    const raw = searchParams.get("page_size");
+    const n = raw ? Number.parseInt(raw, 10) : 10;
+    return Number.isFinite(n) && n > 0 ? n : 10;
+  }, [searchParams]);
+
+  const activeTab = searchParams.get("tab") || "orders";
+
   const [detail, setDetail] = React.useState<KioskConfig | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState("orders");
-  const [orders, setOrders] = React.useState<Awaited<ReturnType<typeof getCustomerOrders>>>([]);
+  const [orders, setOrders] = React.useState<CustomerOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = React.useState(true);
   const [ordersError, setOrdersError] = React.useState<string | null>(null);
+  const [pagination, setPagination] = React.useState<CustomerOrdersPagination>({
+    total_records: 0,
+    total_pages: 1,
+    current_page: 1,
+    page_size: 10,
+  });
+  const pageSizeOptions = React.useMemo(
+    () => [
+      { value: "10", label: "10" },
+      { value: "20", label: "20" },
+      { value: "50", label: "50" },
+      { value: "100", label: "100" },
+    ],
+    [],
+  );
+  const pageRange = getListPageRange(pagination);
   const [shareOpen, setShareOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const shareRef = React.useRef<HTMLDivElement>(null);
+
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (nextPage <= 1) {
+        p.delete("page");
+      } else {
+        p.set("page", String(nextPage));
+      }
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const handlePageSizeChange = React.useCallback(
+    (nextSize: number) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (nextSize === 10) {
+        p.delete("page_size");
+      } else {
+        p.set("page_size", String(nextSize));
+      }
+      p.delete("page");
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const handleTabChange = React.useCallback(
+    (nextTab: string) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (nextTab === "orders") {
+        p.delete("tab");
+      } else {
+        p.set("tab", nextTab);
+      }
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   // Close share popover on outside click
   React.useEffect(() => {
@@ -158,9 +269,18 @@ export function KioskFormDetailScreen() {
 
   React.useEffect(() => {
     let cancelled = false;
-    void getCustomerOrders()
+    setOrdersLoading(true);
+    setOrdersError(null);
+    void getCustomerOrders({
+      kiosk_id: kioskId,
+      page,
+      page_size: pageSize,
+    })
       .then((result) => {
-        if (!cancelled) setOrders(result);
+        if (!cancelled) {
+          setOrders(result.items);
+          setPagination(result.pagination);
+        }
       })
       .catch(() => {
         if (!cancelled) setOrdersError("Submitted orders could not be loaded.");
@@ -172,7 +292,7 @@ export function KioskFormDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [kioskId, page, pageSize]);
 
   const tabs = React.useMemo<AppTabItem[]>(
     () => [{ id: "orders", label: "Submitted Orders" }],
@@ -180,7 +300,7 @@ export function KioskFormDetailScreen() {
   );
 
   return (
-    <div className="min-h-full bg-slate-50/50 pb-8 dark:bg-slate-950">
+    <div className="bg-slate-50/50 dark:bg-slate-950">
       <DetailPageHeader
         title={detail?.name || "Kiosk Form"}
         backHref="/kiosk-forms"
@@ -256,7 +376,7 @@ export function KioskFormDetailScreen() {
         }
       />
 
-      <div className="mx-auto w-full max-w-350 px-4 pt-4 sm:px-6">
+      <div className="mx-auto w-full px-4 sm:px-6">
         <SurfaceShell className="rounded-none! border-0! shadow-none! ring-0!">
           <div
             role="tabpanel"
@@ -279,7 +399,7 @@ export function KioskFormDetailScreen() {
               </div>
             ) : detail ? (
               <div className="space-y-6">
-                <dl className="grid gap-4 border-y border-slate-200 py-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
+                <dl className="grid gap-4 border-y border-slate-200 p-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
                   {/* Title — hyperlink to the kiosk editor */}
                   <div className="lg:col-span-1">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title</dt>
@@ -309,16 +429,16 @@ export function KioskFormDetailScreen() {
                     <dd className="mt-1 text-sm text-slate-900 dark:text-slate-100">{formatDate(detail.created_at)}</dd>
                   </div>
                 </dl>
-
+                <div className="">
                 <AppTabs
                   tabs={tabs}
                   value={activeTab}
-                  onValueChange={setActiveTab}
+                  onValueChange={handleTabChange}
                   ariaLabel="Kiosk form sections"
                   panelIdPrefix="kiosk-form-detail-tab"
                 />
-
-                <section>
+                </div>
+                <section className="p-5">
                   <div className="overflow-hidden border border-slate-200 dark:border-slate-800">
                     <DataTableScroll>
                       <DataTable>
@@ -326,36 +446,153 @@ export function KioskFormDetailScreen() {
                           <tr>
                             <DataTableTh>Order</DataTableTh>
                             <DataTableTh>Customer</DataTableTh>
+                            <DataTableTh>Total</DataTableTh>
                             <DataTableTh>Status</DataTableTh>
                             <DataTableTh>Submitted</DataTableTh>
                           </tr>
                         </DataTableHead>
                         <DataTableBody>
                           {ordersLoading ? (
-                            <DataTableEmptyRow colSpan={4} message="Loading submitted orders..." />
+                            <DataTableEmptyRow colSpan={5} message="Loading submitted orders..." />
                           ) : ordersError ? (
-                            <DataTableEmptyRow colSpan={4} message={ordersError} />
+                            <DataTableEmptyRow colSpan={5} message={ordersError} />
                           ) : orders.length === 0 ? (
-                            <DataTableEmptyRow colSpan={4} message="Submitted orders will appear here." />
+                            <DataTableEmptyRow colSpan={5} message="Submitted orders will appear here." />
                           ) : (
-                            orders.map((order) => (
-                              <DataTableRow key={order.id}>
-                                <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
-                                  {order.order_number || `#${order.id}`}
-                                </DataTableTd>
-                                <DataTableTd>
-                                  {order.customer?.full_name || "-"}
-                                </DataTableTd>
-                                <DataTableTd>
-                                  {formatOrderStatus(order.order_status)}
-                                </DataTableTd>
-                                <DataTableTd>{formatDate(order.created_at ?? undefined)}</DataTableTd>
-                              </DataTableRow>
-                            ))
+                            orders.map((order) => {
+                              const currentKioskId = kioskId || detail?.id;
+                              const orderHref = `/kiosk-forms/${currentKioskId}/orders/${order.id}`;
+                              return (
+                                <DataTableRow
+                                  key={order.id}
+                                  clickable
+                                  onClick={() => router.push(orderHref)}
+                                  className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                                >
+                                  <DataTableTd className="font-semibold text-primary">
+                                    <Link
+                                      href={orderHref}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="hover:underline inline-flex items-center gap-1.5"
+                                    >
+                                      {order.order_number || `#${order.id}`}
+                                    </Link>
+                                  </DataTableTd>
+                                  <DataTableTd className="text-slate-900 dark:text-slate-100">
+                                    {order.customer?.full_name || "-"}
+                                  </DataTableTd>
+                                  <DataTableTd className="font-medium text-slate-900 dark:text-slate-100">
+                                    {formatCurrency(order.total_amount ?? order.subtotal)}
+                                  </DataTableTd>
+                                  <DataTableTd>
+                                    <span className={cn(
+                                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border",
+                                      (order.order_status ?? "").toLowerCase().includes("paid") || (order.order_status ?? "").toLowerCase().includes("completed")
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                        : (order.order_status ?? "").toLowerCase().includes("cancel")
+                                        ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                                    )}>
+                                      {formatOrderStatus(order.order_status)}
+                                    </span>
+                                  </DataTableTd>
+                                  <DataTableTd className="text-slate-500 dark:text-slate-400">
+                                    {formatDate(order.created_at ?? undefined)}
+                                  </DataTableTd>
+                                </DataTableRow>
+                              );
+                            })
                           )}
                         </DataTableBody>
                       </DataTable>
                     </DataTableScroll>
+                    {!ordersLoading && !ordersError && orders.length > 0 && (
+                      <div className="flex z-20 shrink-0 items-center border-t border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex w-full min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                          <p className="min-w-0 text-xs leading-normal text-slate-600 dark:text-slate-400">
+                            Showing {pageRange.start} to {pageRange.end} of {pagination.total_records} orders
+                          </p>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-slate-500 dark:text-slate-400">Rows per page:</span>
+                              <CheckmarkSelect
+                                listLabel="Rows per page"
+                                buttonAriaLabel="Rows per page"
+                                options={pageSizeOptions}
+                                value={String(pageSize)}
+                                disabled={ordersLoading}
+                                portaled
+                                size="sm"
+                                showCheckmarks={false}
+                                className="w-auto shrink-0"
+                                onChange={(v) => {
+                                  const parsed = Number.parseInt(v, 10);
+                                  if (!Number.isNaN(parsed)) {
+                                    handlePageSizeChange(parsed);
+                                  }
+                                }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className={cn(
+                                "inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition outline-none",
+                                "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                                "disabled:pointer-events-none disabled:opacity-45",
+                                "dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+                                "focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-slate-600 dark:focus-visible:ring-offset-slate-950",
+                              )}
+                              disabled={pagination.current_page <= 1}
+                              onClick={() => handlePageChange(Math.max(1, pagination.current_page - 1))}
+                            >
+                              Previous
+                            </button>
+                            <div className="flex items-center gap-0.5">
+                              {buildPageList(pagination.current_page, pagination.total_pages).map((p, i) =>
+                                p === "ellipsis" ? (
+                                  <span
+                                    key={`e-${i}`}
+                                    className="inline-flex h-8 min-w-6 items-center justify-center px-0.5 text-xs text-slate-400"
+                                    aria-hidden
+                                  >
+                                    …
+                                  </span>
+                                ) : (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    className={cn(
+                                      "inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-md border px-0 text-xs font-medium transition outline-none tabular-nums",
+                                      p === pagination.current_page
+                                        ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-900 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
+                                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+                                    )}
+                                    aria-current={p === pagination.current_page ? "page" : undefined}
+                                    onClick={() => handlePageChange(p)}
+                                  >
+                                    {p}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className={cn(
+                                "inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition outline-none",
+                                "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                                "disabled:pointer-events-none disabled:opacity-45",
+                                "dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+                                "focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-slate-600 dark:focus-visible:ring-offset-slate-950",
+                              )}
+                              disabled={pagination.current_page >= pagination.total_pages}
+                              onClick={() => handlePageChange(pagination.current_page + 1)}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </section>
               </div>

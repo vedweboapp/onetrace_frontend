@@ -713,7 +713,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
       //5.forms  lists
       if (results[4].status === "fulfilled") {
-        setProjectForms(results[4].value.items);
+        setProjectForms(results[4].value.items.filter((f) => f.is_published !== false));
       }
     } catch (error) {
       toastApiError(error, t("loadError"));

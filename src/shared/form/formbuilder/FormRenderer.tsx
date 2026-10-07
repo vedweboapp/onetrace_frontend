@@ -20,6 +20,7 @@ import RadioGroup from "../components/radio-group";
 import FormCheckbox from "../components/form-checkbox";
 import SignaturePad from "../components/signature-pad";
 import VideoRecorder from "../components/VideoRecorder";
+import QRScanner from "../components/QRScanner";
 import UsersSelect from "../components/users-select";
 import ImageUploadField from "../components/image-upload-field";
 import MultiImageUploadField from "../components/multi-image-upload-field";
@@ -173,6 +174,7 @@ const FIELD_COMPONENTS: Record<string, any> = {
   ),
   signature: SignaturePad,
   video_recorder: VideoRecorder,
+  qr_scanner: QRScanner,
   user: UsersSelect,
   country: CountrySelect,
   state: Input,
@@ -532,7 +534,7 @@ const FormField: React.FC<{
         ? "md:col-span-3"
         : "md:col-span-1";
 
-  const fieldShellClass = colSpanClass;
+  const fieldShellClass = cn(colSpanClass, "w-full min-w-0 max-w-full");
 
   if (normType === "phone" || normType === "mobile") {
     return (
@@ -622,7 +624,7 @@ const FormField: React.FC<{
   }
 
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "qr_scanner", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
@@ -1272,7 +1274,14 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
       );
 
     return (
-      <div ref={formContainerRef} className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
+      <div
+        ref={formContainerRef}
+        data-render-mode={renderMode}
+        className={cn(
+          "form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700 w-full min-w-0 max-w-full overflow-x-hidden",
+          renderMode === "phone" && "render-mode-phone",
+        )}
+      >
         {[...schema]
           .map((section, index) => ({ section, index }))
           .sort((a, b) => {
