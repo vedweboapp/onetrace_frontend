@@ -3,11 +3,12 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import { useRouter, Link } from "@/i18n/navigation";
-import { ArrowLeft, User, MapPin, Receipt, Image as ImageIcon, Calendar, CreditCard, ExternalLink, Copy, Check, Eye } from "lucide-react";
+import { User, MapPin, Receipt, Image as ImageIcon, Calendar, CreditCard, Copy, Check, Eye } from "lucide-react";
 import { getCustomerOrderById } from "@/features/kiosk/api/kiosk.api";
 import type { CustomerOrderDetail } from "@/features/kiosk/types/kiosk.types";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
+import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
@@ -128,75 +129,62 @@ export function KioskOrderDetailScreen() {
 
   return (
     <div className="bg-slate-50/60 dark:bg-slate-950">
-      {/* Top Navigation Header */}
-      <div className="sticky top-0 z-10 shrink-0 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <DetailPageHeader
+        title={
+          loading ? (
+            `Order #${orderId ?? ""}`
+          ) : (
+            <span className="flex items-center gap-2">
+              Order {order?.order_number || `#${orderId}`}
+              {order && (
+                <button
+                  type="button"
+                  onClick={handleCopyOrderNumber}
+                  title="Copy order number"
+                  className="inline-flex size-5 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                >
+                  {copied ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                </button>
+              )}
+              {order && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                    statusStyles.badge
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", statusStyles.dot)} />
+                  {formatOrderStatus(order.order_status)}
+                </span>
+              )}
+            </span>
+          )
+        }
+        titleLoading={loading}
+        backHref={backUrl}
+        backAriaLabel="Back to kiosk form orders"
+        subtitle={
+          order ? (
+            <span>Submitted on {formatDate(order.created_at)}</span>
+          ) : undefined
+        }
+        actions={
+          snapshotUrl ? (
             <AppButton
               variant="secondaryLight"
               size="sm"
-              onClick={() => router.push(backUrl)}
+              onClick={() => setImageModalOpen(true)}
               className="gap-1.5 font-medium"
             >
-              <ArrowLeft className="size-4" />
-              Back
+              <Eye className="size-4" />
+              View Snapshot
             </AppButton>
-            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-slate-900 sm:text-lg dark:text-slate-100">
-                  {loading ? (
-                    <span className="inline-block h-6 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-                  ) : (
-                    <>Order {order?.order_number || `#${orderId}`}</>
-                  )}
-                </h1>
-                {order && (
-                  <button
-                    type="button"
-                    onClick={handleCopyOrderNumber}
-                    title="Copy order number"
-                    className="inline-flex size-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                  </button>
-                )}
-                {order && (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                      statusStyles.badge
-                    )}
-                  >
-                    <span className={cn("size-1.5 rounded-full", statusStyles.dot)} />
-                    {formatOrderStatus(order.order_status)}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Submitted on {formatDate(order?.created_at)}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {snapshotUrl && (
-              <AppButton
-                variant="secondaryLight"
-                size="sm"
-                onClick={() => setImageModalOpen(true)}
-                className="gap-1.5 font-medium"
-              >
-                <Eye className="size-4" />
-                View Snapshot
-              </AppButton>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Main Content Area */}
-      <div className="p-4 sm:p-6">
+      <div className="lg:p-4 p-2 bg-white border-slate-200 border shadow-sm dark:bg-slate-900 dark:border-slate-800">
         {loading ? (
           <div className="w-full space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -231,7 +219,7 @@ export function KioskOrderDetailScreen() {
           <div className="w-full space-y-6">
             {/* Top Metric Cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <SurfaceShell className="flex items-center gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <SurfaceShell className="flex items-center gap-4 rounded-sm border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
                   <Receipt className="size-5" />
                 </div>
@@ -243,7 +231,7 @@ export function KioskOrderDetailScreen() {
                 </div>
               </SurfaceShell>
 
-              <SurfaceShell className="flex items-center gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <SurfaceShell className="flex items-center gap-4 rounded-sm border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
                   <User className="size-5" />
                 </div>
@@ -255,7 +243,7 @@ export function KioskOrderDetailScreen() {
                 </div>
               </SurfaceShell>
 
-              <SurfaceShell className="flex items-center gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <SurfaceShell className="flex items-center gap-4 rounded-sm border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                   <CreditCard className="size-5" />
                 </div>
@@ -267,7 +255,7 @@ export function KioskOrderDetailScreen() {
                 </div>
               </SurfaceShell>
 
-              <SurfaceShell className="flex items-center gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <SurfaceShell className="flex items-center gap-4 rounded-sm border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
                   <Calendar className="size-5" />
                 </div>
@@ -284,7 +272,7 @@ export function KioskOrderDetailScreen() {
               {/* Left 2 Cols: Customer, Billing, and Configured Items */}
               <div className="space-y-6 lg:col-span-2">
                 {/* Customer & Billing Card */}
-                <SurfaceShell className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <SurfaceShell className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div className="border-b border-slate-200/80 px-5 py-3.5 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                       <User className="size-4 text-slate-500" />
@@ -380,7 +368,7 @@ export function KioskOrderDetailScreen() {
                 </SurfaceShell>
 
                 {/* Configured Form Items Breakdown */}
-                <SurfaceShell className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <SurfaceShell className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div className="border-b border-slate-200/80 px-5 py-3.5 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50 flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                       <Receipt className="size-4 text-slate-500" />
@@ -410,12 +398,12 @@ export function KioskOrderDetailScreen() {
                         const configurations = Array.isArray(item.configurations)
                           ? item.configurations
                           : Array.isArray(item.values)
-                          ? item.values
-                          : Array.isArray(item.options)
-                          ? item.options
-                          : item.value != null
-                          ? [{ question_label: item.question_title || `Question`, option_value: item.value, option_price: item.price }]
-                          : [];
+                            ? item.values
+                            : Array.isArray(item.options)
+                              ? item.options
+                              : item.value != null
+                                ? [{ question_label: item.question_title || `Question`, option_value: item.value, option_price: item.price }]
+                                : [];
 
                         return (
                           <div key={item.id ?? idx} className="p-5 space-y-4 hover:bg-slate-50/30 dark:hover:bg-slate-800/10">
@@ -509,7 +497,7 @@ export function KioskOrderDetailScreen() {
               <div className="space-y-6">
                 {/* Snapshot preview */}
                 {snapshotUrl && (
-                  <SurfaceShell className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                  <SurfaceShell className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                     <div className="border-b border-slate-200/80 px-5 py-3.5 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50 flex items-center justify-between">
                       <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <ImageIcon className="size-4 text-slate-500" />
@@ -537,7 +525,7 @@ export function KioskOrderDetailScreen() {
                 )}
 
                 {/* Financial Breakdown */}
-                <SurfaceShell className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <SurfaceShell className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div className="border-b border-slate-200/80 px-5 py-3.5 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                       <CreditCard className="size-4 text-slate-500" />
