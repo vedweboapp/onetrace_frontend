@@ -153,14 +153,16 @@ export function MultiCheckSelect({
     [values, resolvedOptions, options, fallbackLabels],
   );
   const filteredOptions = React.useMemo(() => {
+    const labelMatches = (label: string | null | undefined, q: string) =>
+      String(label ?? "").toLowerCase().includes(q);
     if (onSearchChange && query.trim()) {
       const q = query.trim().toLowerCase();
-      return options.filter((o) => o.label.toLowerCase().includes(q));
+      return options.filter((o) => labelMatches(o.label, q));
     }
     if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
     if (!q) return resolvedOptions;
-    return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
+    return resolvedOptions.filter((o) => labelMatches(o.label, q));
   }, [resolvedOptions, options, query, onSearchChange]);
 
   const updatePlacement = React.useCallback(() => {

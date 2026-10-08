@@ -207,10 +207,20 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
         if (projectId && projectId > 0) {
           const raw = await fetchProjectApprovedVendorQuotations(projectId);
           const vendors = parseApprovedVendorQuotations(raw);
-          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
+          setVendorOptions(
+            vendors.map((v) => ({
+              value: String(v.id),
+              label: v.name?.trim() || `Vendor #${v.id}`,
+            })),
+          );
         } else {
           const vendors = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
-          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
+          setVendorOptions(
+            vendors.items.map((v) => ({
+              value: String(v.id),
+              label: v.name?.trim() || `Vendor #${v.id}`,
+            })),
+          );
         }
 
         if (vendorId && vendorId > 0) {
@@ -317,7 +327,12 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
           const raw = await fetchProjectApprovedVendorQuotations(projectId);
           if (cancelled) return;
           const vendors = parseApprovedVendorQuotations(raw);
-          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
+          setVendorOptions(
+            vendors.map((v) => ({
+              value: String(v.id),
+              label: v.name?.trim() || `Vendor #${v.id}`,
+            })),
+          );
           const currentVendor = getValues("vendor");
           if (currentVendor && !vendors.some((v) => String(v.id) === currentVendor)) {
             setValue("vendor", "", { shouldDirty: true });
@@ -326,7 +341,12 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
         } else {
           const vendors = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
           if (cancelled) return;
-          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
+          setVendorOptions(
+            vendors.items.map((v) => ({
+              value: String(v.id),
+              label: v.name?.trim() || `Vendor #${v.id}`,
+            })),
+          );
         }
       } catch {
         if (!cancelled) setVendorOptions([]);
@@ -526,34 +546,33 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
           <p className="p-6 text-sm text-red-600 dark:text-red-400">{screenError}</p>
         ) : (
           <form id="po-upsert-form" className="space-y-10 p-4 sm:p-6" noValidate onSubmit={handleSubmit(submit)}>
-            <section className="space-y-6 pb-1">
+            <section className="space-y-4 pb-1">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.basic")}
               </h2>
-              <Controller
-                control={control}
-                name="project"
-                render={({ field }) => (
-                  <CheckmarkSelect
-                    id="po-project"
-                    label={t("fields.projectName")}
-                    options={projectOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    emptyLabel={t("placeholders.project")}
-                    disabled={saving}
-                    listLabel={t("fields.projectName")}
-                    portaled
-                    searchable
-                    clearable
-                    className="h-9"
-                    onAdd={projectQuickCreate.onAdd}
-                    addAriaLabel={projectQuickCreate.addAriaLabel}
-                    addLabel={projectQuickCreate.addLabel}
-                  />
-                )}
-              />
               <FormFieldRow cols="2">
+                <Controller
+                  control={control}
+                  name="project"
+                  render={({ field }) => (
+                    <CheckmarkSelect
+                      id="po-project"
+                      label={t("fields.projectName")}
+                      options={projectOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel={t("placeholders.project")}
+                      disabled={saving}
+                      listLabel={t("fields.projectName")}
+                      portaled
+                      searchable
+                      clearable
+                      onAdd={projectQuickCreate.onAdd}
+                      addAriaLabel={projectQuickCreate.addAriaLabel}
+                      addLabel={projectQuickCreate.addLabel}
+                    />
+                  )}
+                />
                 <Controller
                   control={control}
                   name="vendor"
@@ -581,28 +600,28 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                     </FieldGroup>
                   )}
                 />
+              </FormFieldRow>
+              <FormFieldRow cols="2">
                 <Controller
                   control={control}
                   name="contact"
                   render={({ field }) => (
-                    <div>
-                      <CheckmarkSelect
-                        id="po-contact"
-                        label={t("fields.contactPerson")}
-                        options={contactOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel={t("placeholders.contact")}
-                        disabled={saving || !vendorId}
-                        listLabel={t("fields.contactPerson")}
-                        portaled
-                        searchable
-                        clearable
-                        onAdd={contactQuickCreate.onAdd}
-                        addAriaLabel={contactQuickCreate.addAriaLabel}
-                        addLabel={contactQuickCreate.addLabel}
-                      />
-                    </div>
+                    <CheckmarkSelect
+                      id="po-contact"
+                      label={t("fields.contactPerson")}
+                      options={contactOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel={t("placeholders.contact")}
+                      disabled={saving || !vendorId}
+                      listLabel={t("fields.contactPerson")}
+                      portaled
+                      searchable
+                      clearable
+                      onAdd={contactQuickCreate.onAdd}
+                      addAriaLabel={contactQuickCreate.addAriaLabel}
+                      addLabel={contactQuickCreate.addLabel}
+                    />
                   )}
                 />
               </FormFieldRow>

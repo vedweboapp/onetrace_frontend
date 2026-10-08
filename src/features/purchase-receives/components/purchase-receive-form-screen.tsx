@@ -323,15 +323,17 @@ export function PurchaseReceiveFormScreen({ mode, purchaseReceiveId }: Props) {
                 </FieldGroup>
               </FormFieldRow>
 
-              <FieldGroup label={t("fields.trackingLink")} htmlFor="pr-tracking-link">
-                <input
-                  id="pr-tracking-link"
-                  className={surfaceInputClassName}
-                  disabled={saving}
-                  maxLength={FIELD_MAX_LENGTH.GENERIC_TEXT}
-                  {...register("tracking_link", rhfRegisterOptions("text"))}
-                />
-              </FieldGroup>
+              <FormFieldRow cols="2">
+                <FieldGroup label={t("fields.trackingLink")} htmlFor="pr-tracking-link">
+                  <input
+                    id="pr-tracking-link"
+                    className={surfaceInputClassName}
+                    disabled={saving}
+                    maxLength={FIELD_MAX_LENGTH.GENERIC_TEXT}
+                    {...register("tracking_link", rhfRegisterOptions("text"))}
+                  />
+                </FieldGroup>
+              </FormFieldRow>
             </section>
 
             <section className="space-y-4">
