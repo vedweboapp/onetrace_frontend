@@ -8,7 +8,7 @@ import { EntityDetailTabLoadingState } from "@/shared/components/entity";
 
 export type QuotationLocationsTabProps = {
   projectId: number;
-  /** Scope levels/pins to this quote via `quote` query param. */
+  /** Scope levels/pins to this quote via `quotations` query param. */
   quotationId: number;
 };
 

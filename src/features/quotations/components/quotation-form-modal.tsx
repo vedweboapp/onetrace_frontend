@@ -40,12 +40,13 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -76,6 +77,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
   ]);
   const t = useTranslations("Dashboard.quotations");
   const router = useRouter();
+  const tabsStorageKey = useTabOrderStorageKey("quotationFormModal");
   const [saving, setSaving] = React.useState(false);
   const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
 
@@ -429,13 +431,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           </p>
         ) : null} */}
 
-        <AppTabs
+        <CustomizableAppTabs
           tabs={[
             { id: "project", label: t("formTabs.project") },
             { id: "pricing", label: t("formTabs.pricing") },
           ]}
           value={formTab}
           onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+          storageKey={tabsStorageKey}
           ariaLabel={t("formTabs.aria")}
           panelIdPrefix="quotation-form-modal"
         />

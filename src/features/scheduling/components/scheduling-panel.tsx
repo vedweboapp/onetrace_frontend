@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { ChevronLeft, ChevronRight, Funnel } from "lucide-react";
+import { EntityDetailTabLoadingState } from "@/shared/components/entity";
 import {
   deleteSchedule,
   deleteWorkerTimeOff,
@@ -1188,8 +1189,9 @@ export function SchedulingPanel({
     setViewMode("day");
   }
 
-  const loading = catalogLoading || loadingSchedules;
-  const showScheduleSkeleton = !schedulesReady && loading;
+  // Catalog can finish after schedules; keep loader until users are loaded so we
+  // never flash "No users found" on first paint.
+  const showScheduleSkeleton = catalogLoading || (!schedulesReady && loadingSchedules);
   const colTemplate = `minmax(232px, 252px) repeat(${days.length}, minmax(148px, 1fr))`;
 
   function clearPeopleFilters() {
@@ -1510,10 +1512,7 @@ export function SchedulingPanel({
 
       {viewMode === "day" && days[0] ? (
         showScheduleSkeleton ? (
-          <div className="space-y-2 p-4">
-            <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          </div>
+          <EntityDetailTabLoadingState />
         ) : (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {focusedWorker ? (
@@ -1574,10 +1573,7 @@ export function SchedulingPanel({
         )
       ) : viewMode === "month" ? (
         showScheduleSkeleton ? (
-          <div className="space-y-2 p-4">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          </div>
+          <EntityDetailTabLoadingState />
         ) : filteredTechs.length === 0 ? (
           <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
         ) : (
@@ -1593,11 +1589,7 @@ export function SchedulingPanel({
           />
         )
       ) : showScheduleSkeleton ? (
-        <div className="space-y-2 p-4">
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-        </div>
+        <EntityDetailTabLoadingState />
       ) : filteredTechs.length === 0 ? (
         <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
       ) : focusedWorker ? (
