@@ -25,6 +25,8 @@ type Props = {
   onChange: (next: QuotationDraftServiceLine[]) => void;
   /** Persist parent section draft before navigating to quick-create. */
   getFormDraft?: () => unknown;
+  /** Restore parent section draft after returning from quick-create. */
+  restoreFormDraft?: (draft: unknown) => void;
 };
 
 function serviceFromItem(row: Item): QuotationDraftServiceLine {
@@ -39,7 +41,14 @@ function serviceFromItem(row: Item): QuotationDraftServiceLine {
     cost_price: cost,
     markup_percentage: markup,
     selling_price: sell,
+    time_hours: 1,
   };
+}
+
+function lineHours(row: QuotationDraftServiceLine): number {
+  return typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours >= 0
+    ? row.time_hours
+    : 1;
 }
 
 export function QuotationDraftSectionServices({
@@ -48,6 +57,7 @@ export function QuotationDraftSectionServices({
   saving = false,
   onChange,
   getFormDraft,
+  restoreFormDraft,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const locale = useLocale();
@@ -129,6 +139,7 @@ export function QuotationDraftSectionServices({
 
   const itemQuickCreate = useQuickCreate({
     kind: "item",
+    itemType: "service",
     addDisabled: readOnly || saving,
     getFormDraft: readOnly ? undefined : getFormDraft,
   });
@@ -145,7 +156,7 @@ export function QuotationDraftSectionServices({
       } catch {
         try {
           const { items } = await fetchItemsPage(1, 100, { dropdown: true, itemType: "service" });
-          setOptions(items);
+          setOptions(items.filter((x) => resolveItemType(x.item_type) === "service"));
           addServiceFromId(id, items);
         } catch {
           // leave picker empty
@@ -155,7 +166,7 @@ export function QuotationDraftSectionServices({
   }, []);
 
   useQuickCreateReturn({
-    restoreFormDraft: undefined,
+    restoreFormDraft: readOnly ? undefined : restoreFormDraft,
     onReloadOptions: readOnly ? undefined : reloadOptions,
     onApplySelect: readOnly ? () => {} : applyQuickCreateSelect,
   });
@@ -197,6 +208,7 @@ export function QuotationDraftSectionServices({
               row.item_name?.trim() ||
               options.find((o) => o.id === row.item_id)?.name?.trim() ||
               (row.item_id != null ? `#${row.item_id}` : "—");
+            const hours = lineHours(row);
             return (
               <li
                 key={row.id}
@@ -223,7 +235,7 @@ export function QuotationDraftSectionServices({
                     ) : null}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                       {t("serviceCostPrice")}
@@ -272,6 +284,25 @@ export function QuotationDraftSectionServices({
                       onChange={(e) => {
                         const sell = Number.parseFloat(e.target.value) || 0;
                         patchService(index, { selling_price: sell });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {t("serviceTimeHours")}
+                    </label>
+                    <NumericInput
+                      value={String(hours)}
+                      disabled={saving || readOnly}
+                      maxDecimals={2}
+                      trimTrailingZeros
+                      variant="plain"
+                      className={cn(surfaceInputClassName, "w-full")}
+                      onChange={(v) => {
+                        const next = Number.parseFloat(v);
+                        patchService(index, {
+                          time_hours: Number.isFinite(next) && next >= 0 ? next : 0,
+                        });
                       }}
                     />
                   </div>

@@ -4,11 +4,17 @@ import type { QuotationScopeNavContext } from "@/features/quotations/utils/quota
 export const QUOTATION_SECTION_SCOPE_SESSION_KEY = "quotation-section-scope-v1";
 
 export type QuotationSectionScopeSession = {
+  /** Working draft while editing the section. */
   draft: QuotationDraft;
+  /**
+   * Snapshot when the section editor was opened. Restored if the user leaves
+   * without Done so description/notes/lines are not applied to the parent.
+   */
+  entryDraft: QuotationDraft;
   sectionId: string;
   backHref: string;
   readOnly: boolean;
-  /** Parent Scope & Pricing should apply `draft` when returning. */
+  /** Parent Scope & Pricing should apply `draft` only after Done. */
   pendingApply: boolean;
 };
 
@@ -29,6 +35,9 @@ export function readQuotationSectionScopeSession(): QuotationSectionScopeSession
     const parsed = JSON.parse(raw) as QuotationSectionScopeSession;
     if (!parsed?.draft || !Array.isArray(parsed.draft.sections) || typeof parsed.sectionId !== "string") {
       return null;
+    }
+    if (!parsed.entryDraft || !Array.isArray(parsed.entryDraft.sections)) {
+      parsed.entryDraft = parsed.draft;
     }
     return parsed;
   } catch {

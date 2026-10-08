@@ -17,6 +17,8 @@ export type UseQuickCreateArgs = {
   /** Required for vendor-scoped contact quick create. */
   vendorId?: number;
   contactType?: ContactType;
+  /** Prefill item create with goods/service. */
+  itemType?: "goods" | "service";
   /** When true, the + control is hidden. */
   addDisabled?: boolean;
   /** Override return URL (defaults to current page with query string). */
@@ -30,6 +32,7 @@ export function useQuickCreate({
   clientId,
   vendorId,
   contactType,
+  itemType,
   addDisabled = false,
   returnTo: returnToProp,
   getFormDraft,
@@ -64,9 +67,10 @@ export function useQuickCreate({
       clientId: clientId && clientId > 0 ? clientId : undefined,
       vendorId: vendorId && vendorId > 0 ? vendorId : undefined,
       contactType,
+      itemType,
     });
     router.push(href);
-  }, [canAdd, kind, returnTo, clientId, vendorId, contactType, router, getFormDraft]);
+  }, [canAdd, kind, returnTo, clientId, vendorId, contactType, itemType, router, getFormDraft]);
 
   return {
     canAdd,

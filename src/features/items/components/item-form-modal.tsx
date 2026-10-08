@@ -102,7 +102,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     mode === "edit" && item ? String(parseItemNumber(item.markup)) : "0",
   );
   const [sell, setSell] = React.useState(() => (mode === "edit" && item ? String(item.selling_price ?? 0) : ""));
-  const [sellTouched, setSellTouched] = React.useState(() => mode === "edit" && !!item);
   const isService = itemType === "service";
 
   const [unitType, setUnitType] = React.useState(() => (mode === "edit" && item ? String(getUnitTypeId(item.unit_type) ?? "") : ""));
@@ -148,7 +147,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setCost(String(item.cost_price ?? 0));
       setMarkup(String(parseItemNumber(item.markup)));
       setSell(String(item.selling_price ?? 0));
-      setSellTouched(true);
       const unitId = getUnitTypeId(item.unit_type);
       setUnitType(unitId != null ? String(unitId) : "");
       setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
@@ -177,7 +175,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setCost("");
       setMarkup("0");
       setSell("");
-      setSellTouched(false);
       setUnitType("");
       setLength("");
       setWidth("");
@@ -234,7 +231,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   }, [open, t]);
 
   function syncSellFromCostMarkup(nextCost: string, nextMarkup: string) {
-    if (sellTouched) return;
     setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
   }
 
@@ -470,10 +466,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
               min={0}
               step="0.01"
               value={sell}
-              onChange={(e) => {
-                setSellTouched(true);
-                setSell(e.target.value);
-              }}
+              onChange={(e) => setSell(e.target.value)}
               disabled={submitting}
             />
           </FieldGroup>

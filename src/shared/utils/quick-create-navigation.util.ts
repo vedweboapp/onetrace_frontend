@@ -16,6 +16,8 @@ export const QUICK_CREATE_SELECT_TARGET_PARAM = "selectTarget";
 export const QUICK_CREATE_CLIENT_PARAM = "client";
 export const QUICK_CREATE_VENDOR_PARAM = "vendor";
 export const QUICK_CREATE_CONTACT_TYPE_PARAM = "contact_type";
+/** Prefill item create form with goods/service (`?item_type=`). */
+export const QUICK_CREATE_ITEM_TYPE_PARAM = "item_type";
 
 /** Any internal dashboard path (used when returning from cross-entity quick create). */
 export function sanitizeInternalDashboardBack(raw: string | null | undefined): string | null {
@@ -78,7 +80,14 @@ export function getQuickCreateNewPath(kind: QuickCreateKind): string {
 
 export function buildQuickCreateNavigateHref(
   kind: QuickCreateKind,
-  args: { returnTo: string; clientId?: number; vendorId?: number; contactType?: ContactType },
+  args: {
+    returnTo: string;
+    clientId?: number;
+    vendorId?: number;
+    contactType?: ContactType;
+    /** When creating an item, preselect catalog kind. */
+    itemType?: "goods" | "service";
+  },
 ): string {
   const path = getQuickCreateNewPath(kind);
   storeBackHrefForPath(path, args.returnTo);
@@ -92,6 +101,9 @@ export function buildQuickCreateNavigateHref(
   }
   if (args.contactType === "client" || args.contactType === "vendor") {
     params.set(QUICK_CREATE_CONTACT_TYPE_PARAM, args.contactType);
+  }
+  if (kind === "item" && (args.itemType === "goods" || args.itemType === "service")) {
+    params.set(QUICK_CREATE_ITEM_TYPE_PARAM, args.itemType);
   }
   return params.toString() ? `${path}?${params.toString()}` : path;
 }
