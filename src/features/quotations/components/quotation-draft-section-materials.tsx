@@ -9,6 +9,7 @@ import {
   catalogSellingPriceString,
   parseItemSellingPrice,
 } from "@/features/items/utils/item-selling-price.util";
+import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
@@ -58,11 +59,11 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       try {
         const [gRes, iRes] = await Promise.all([
           fetchGroupsPage(1, 20, { dropdown: true }),
-          fetchItemsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { dropdown: true, itemType: "goods" }),
         ]);
         if (!cancelled) {
           setGroups(gRes.items);
-          setItemRows(iRes.items);
+          setItemRows(iRes.items.filter((row) => resolveItemType(row.item_type) === "goods"));
         }
       } catch {
         if (!cancelled) {

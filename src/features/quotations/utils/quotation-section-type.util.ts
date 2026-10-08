@@ -17,3 +17,9 @@ export function isOptionalQuoteSection(section: {
 }): boolean {
   return resolveQuotationSectionType(section, "primary") === "optional";
 }
+
+/** Selling price from cost and markup % (service quote lines). */
+export function serviceLineSellPrice(costPrice: number, markupPct: number): number {
+  if (!Number.isFinite(costPrice) || !Number.isFinite(markupPct)) return 0;
+  return Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
+}

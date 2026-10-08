@@ -52,6 +52,8 @@ export async function fetchItemsPage(
   }
   if (filters?.itemType === "goods" || filters?.itemType === "service") {
     params.item_type = filters.itemType;
+    // Some backends also filter service catalog rows via `service_type`.
+    if (filters.itemType === "service") params.service_type = "service";
   }
   applyDropdownListParam(params, filters?.dropdown);
 

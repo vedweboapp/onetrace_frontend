@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
+import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -194,10 +195,23 @@ export function ItemsPanel() {
     return [
       massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
-      c.mono("sku", t("table.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
-      c.tabular("qty", t("table.quantity"), (r) => formatQuantity(r.quantity), {
+      c.text(
+        "itemType",
+        t("table.itemType"),
+        (r) => (resolveItemType(r.item_type) === "service" ? t("modal.itemTypeService") : t("modal.itemTypeGoods")),
+        { cellClassName: "text-slate-600 dark:text-slate-400" },
+      ),
+      c.mono("sku", t("table.sku"), (r) => (resolveItemType(r.item_type) === "service" ? "—" : r.sku || "—"), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
+      c.tabular(
+        "qty",
+        t("table.quantity"),
+        (r) => (resolveItemType(r.item_type) === "service" ? "—" : formatQuantity(r.quantity)),
+        {
+          cellClassName: "text-slate-600 dark:text-slate-400",
+        },
+      ),
       c.tabular("cost", t("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
