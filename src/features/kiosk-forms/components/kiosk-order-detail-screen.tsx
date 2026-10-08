@@ -4,8 +4,10 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { useRouter, Link } from "@/i18n/navigation";
 import { User, MapPin, Receipt, Image as ImageIcon, Calendar, CreditCard, Copy, Check, Eye } from "lucide-react";
-import { getCustomerOrderById } from "@/features/kiosk/api/kiosk.api";
-import type { CustomerOrderDetail } from "@/features/kiosk/types/kiosk.types";
+import { getCustomerOrderById, getKioskById } from "@/features/kiosk/api/kiosk.api";
+import type { CustomerOrderDetail, KioskConfig, KioskQuestion } from "@/features/kiosk/types/kiosk.types";
+import { fetchGroup } from "@/features/groups/api/group.api";
+import type { GroupItemRef } from "@/features/groups/types/group.types";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -74,6 +76,10 @@ export function KioskOrderDetailScreen() {
   const [error, setError] = React.useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  // Kiosk config to resolve question labels by q_id
+  const [kioskConfig, setKioskConfig] = React.useState<KioskConfig | null>(null);
+  // Map: item_group_id → group items (for lookup questions)
+  const [lookupGroupItems, setLookupGroupItems] = React.useState<Record<string, GroupItemRef[]>>({});
 
   React.useEffect(() => {
     let cancelled = false;
@@ -108,6 +114,50 @@ export function KioskOrderDetailScreen() {
       cancelled = true;
     };
   }, [orderId]);
+
+  // Load kiosk config once orderId resolves, to get question labels + detect lookup questions
+  React.useEffect(() => {
+    if (!kioskId) return;
+    let cancelled = false;
+    void getKioskById(kioskId).then((cfg) => {
+      if (cancelled || !cfg) return;
+      setKioskConfig(cfg);
+      // For every lookup question that has an item_group_id, prefetch the group items
+      const lookupQuestions = (cfg.questions ?? []).filter(
+        (q: KioskQuestion) => (q.is_lookup || q.item_group_id != null) && q.item_group_id != null,
+      );
+      if (lookupQuestions.length === 0) return;
+      void Promise.allSettled(
+        lookupQuestions.map(async (q: KioskQuestion) => {
+          const gid = Number(q.item_group_id);
+          if (!gid) return;
+          try {
+            const group = await fetchGroup(gid);
+            if (!cancelled && group?.items) {
+              setLookupGroupItems((prev) => ({
+                ...prev,
+                [String(q.item_group_id)]: group.items as GroupItemRef[],
+              }));
+            }
+          } catch {
+            // silent – labels simply fall back to raw value
+          }
+        }),
+      );
+    });
+    return () => { cancelled = true; };
+  }, [kioskId]);
+
+  // Build a quick lookup: q_id (string) → KioskQuestion
+  const questionByQId = React.useMemo<Record<string, KioskQuestion>>(() => {
+    if (!kioskConfig) return {};
+    const map: Record<string, KioskQuestion> = {};
+    for (const q of kioskConfig.questions ?? []) {
+      if (q.q_id != null) map[String(q.q_id)] = q;
+      if (q.id != null) map[String(q.id)] = q;
+    }
+    return map;
+  }, [kioskConfig]);
 
   const handleCopyOrderNumber = () => {
     const text = order?.order_number || `#${orderId}`;
@@ -394,16 +444,93 @@ export function KioskOrderDetailScreen() {
                         const itemTotalPrice = item.total_price;
                         const itemSnapshot = item.snapshot_image_url;
 
-                        // Check configurations list (backend structure: configurations: [{ question_label, option_value, option_price }])
-                        const configurations = Array.isArray(item.configurations)
-                          ? item.configurations
-                          : Array.isArray(item.values)
-                            ? item.values
-                            : Array.isArray(item.options)
-                              ? item.options
-                              : item.value != null
-                                ? [{ question_label: item.question_title || `Question`, option_value: item.value, option_price: item.price }]
-                                : [];
+                        // -------------------------------------------------------
+                        // Resolve configurations from the actual API payload shape:
+                        //   item.items = [{ q_id, values: [{ o_id, value, price }] }]
+                        // Fall back to legacy shapes for backward compat.
+                        // -------------------------------------------------------
+                        type ResolvedConfig = {
+                          key: string;
+                          questionLabel: string;
+                          displayValue: string;
+                          rawValue: string;
+                          price: number | string | null;
+                          isLookup: boolean;
+                        };
+
+                        const resolvedConfigs: ResolvedConfig[] = [];
+
+                        const nestedItems = Array.isArray(item.items) ? item.items : [];
+
+                        if (nestedItems.length > 0) {
+                          // New API shape: item.items = [{ q_id, values: [{o_id, value, price}] }]
+                          for (const qi of nestedItems) {
+                            const qId = String(qi.q_id ?? qi.id ?? "");
+                            const question = questionByQId[qId];
+                            const questionLabel = question?.label || `Question ${qId}`;
+                            const isLookup = !!(question?.is_lookup || question?.item_group_id != null);
+                            const groupId = question?.item_group_id ? String(question.item_group_id) : null;
+                            const groupItems = groupId ? (lookupGroupItems[groupId] ?? []) : [];
+
+                            const vals = Array.isArray(qi.values) ? qi.values : [];
+                            for (const v of vals) {
+                              const rawValue = String(v.value ?? v.label ?? "—");
+                              let displayValue = rawValue;
+
+                              if (isLookup && groupItems.length > 0) {
+                                // Match by item id (the value field stores the item id for lookup)
+                                const matchedItem = groupItems.find(
+                                  (gi) => String(gi.item) === rawValue || String(gi.id) === rawValue,
+                                );
+                                if (matchedItem) {
+                                  displayValue = matchedItem.item_name || matchedItem.abbreviation || rawValue;
+                                }
+                              } else if (question && !isLookup) {
+                                // For regular questions, try to match option label by o_id or value
+                                const allOptions = [
+                                  ...(question.options ?? []),
+                                  ...(question.groups ?? []).flatMap((g: any) => g.options ?? []),
+                                ];
+                                const oId = String(v.o_id ?? v.id ?? "");
+                                const matchedOpt =
+                                  allOptions.find((o) => String(o.id) === oId || String(o.o_id) === oId) ||
+                                  allOptions.find((o) => String(o.value) === rawValue);
+                                if (matchedOpt?.label) displayValue = matchedOpt.label;
+                              }
+
+                              resolvedConfigs.push({
+                                key: `${qId}-${v.o_id ?? v.id ?? resolvedConfigs.length}`,
+                                questionLabel,
+                                displayValue,
+                                rawValue,
+                                price: v.price ?? null,
+                                isLookup,
+                              });
+                            }
+                          }
+                        } else {
+                          // Legacy fallback: flat configurations / values arrays
+                          const legacyList = Array.isArray(item.configurations)
+                            ? item.configurations
+                            : Array.isArray(item.values)
+                              ? item.values
+                              : Array.isArray(item.options)
+                                ? item.options
+                                : item.value != null
+                                  ? [{ question_label: item.question_title || "Question", option_value: item.value, option_price: item.price }]
+                                  : [];
+                          for (let li = 0; li < legacyList.length; li++) {
+                            const cfg = legacyList[li];
+                            resolvedConfigs.push({
+                              key: String(cfg.id ?? li),
+                              questionLabel: cfg.question_label || cfg.question_title || cfg.label || `Option #${li + 1}`,
+                              displayValue: String(cfg.option_label || cfg.option_value || cfg.value || cfg.name || "—"),
+                              rawValue: String(cfg.option_value || cfg.value || ""),
+                              price: cfg.option_price ?? cfg.price ?? null,
+                              isLookup: false,
+                            });
+                          }
+                        }
 
                         return (
                           <div key={item.id ?? idx} className="p-5 space-y-4 hover:bg-slate-50/30 dark:hover:bg-slate-800/10">
@@ -441,42 +568,40 @@ export function KioskOrderDetailScreen() {
                             </div>
 
                             {/* Configurations / Questions Breakdown */}
-                            {configurations.length > 0 && (
+                            {resolvedConfigs.length > 0 && (
                               <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-800/40">
                                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                   Configured Options
                                 </p>
                                 <div className="grid gap-2 sm:grid-cols-2">
-                                  {configurations.map((cfg: any, cfgIdx: number) => {
-                                    const label = cfg.question_label || cfg.question_title || cfg.label || `Option #${cfgIdx + 1}`;
-                                    const value = cfg.option_label || cfg.option_value || cfg.value || cfg.name || "—";
-                                    const price = cfg.option_price ?? cfg.price;
-                                    const isHexColor = typeof value === "string" && /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value.trim());
-
+                                  {resolvedConfigs.map((cfg) => {
+                                    const isHexColor =
+                                      typeof cfg.rawValue === "string" &&
+                                      /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(cfg.rawValue.trim());
                                     return (
                                       <div
-                                        key={cfg.id ?? cfgIdx}
+                                        key={cfg.key}
                                         className="flex items-center justify-between rounded-md border border-slate-200/80 bg-white px-3 py-2 text-xs shadow-xs dark:border-slate-800 dark:bg-slate-900"
                                       >
                                         <div className="min-w-0 pr-2">
                                           <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                                            {label}
+                                            {cfg.questionLabel}
                                           </p>
                                           <div className="flex items-center gap-1.5 mt-0.5">
                                             {isHexColor && (
                                               <span
                                                 className="size-3.5 shrink-0 rounded-full border border-black/10 shadow-xs"
-                                                style={{ backgroundColor: value }}
+                                                style={{ backgroundColor: cfg.rawValue }}
                                               />
                                             )}
                                             <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                              {String(value)}
+                                              {cfg.displayValue}
                                             </p>
                                           </div>
                                         </div>
-                                        {price != null && Number(price) > 0 && (
+                                        {cfg.price != null && Number(cfg.price) > 0 && (
                                           <span className="shrink-0 font-semibold text-emerald-600 dark:text-emerald-400">
-                                            +{formatCurrency(price)}
+                                            +{formatCurrency(cfg.price)}
                                           </span>
                                         )}
                                       </div>
