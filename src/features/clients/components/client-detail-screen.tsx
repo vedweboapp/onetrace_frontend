@@ -20,7 +20,8 @@ import {
 } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   clientId: number;
@@ -33,6 +34,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("clientDetail");
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: t("detail.tabs.details") },
@@ -80,7 +82,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
       }}
 
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={(tab) => {
@@ -91,6 +93,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
             const qs = p.toString();
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="client-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

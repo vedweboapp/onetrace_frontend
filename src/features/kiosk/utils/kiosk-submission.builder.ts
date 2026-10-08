@@ -1,268 +1,605 @@
 /**
- * buildKioskSubmissionPayload
+ * Kiosk Checkout Payload Builders & Helpers
  * ──────────────────────────────────────────────────────────────────────────────
- * Converts the raw `answers` state from KioskRenderer into the structured
- * KioskSubmissionPayload ready to POST to the backend.
- *
- * Usage in KioskRenderer:
- *   const payload = buildKioskSubmissionPayload(config, answers);
- *   await api.post("/kiosks/submissions/", payload);
+ * Converts kiosk configuration and user form answers into the checkout payload
+ * expected by POST /api/v1/checkout/.
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
 import type { KioskConfig, KioskQuestion, KioskOption } from "../types/kiosk.types";
 import type {
-  KioskSubmissionPayload,
-  KioskResponseItem,
-  KioskSelectedOption,
-  KioskSubmissionSummaryItem,
+  CheckoutItem,
+  CheckoutValueItem,
+  KioskCheckoutPayload,
 } from "../types/kiosk-submission.types";
+import type { KioskBillingDetails } from "../components/kiosk-invoice-details";
+import type { LiveBuildScene } from "./kiosk-live-build";
 import { getQuestionOptions } from "./kiosk-lookup";
+import { applyColorFill } from "./kiosk-color-fill";
+import { DEFAULT_PLACEMENT_COORDINATES } from "./kiosk-placement-styles";
 
-// ── Internal answer shapes produced by KioskRenderer ─────────────────────────
+export type KioskAnswerEntry = {
+  uid?: string;
+  o_id?: string;
+  id?: string | number;
+  value?: string | number;
+  color?: string;
+  label?: string;
+  [key: string]: unknown;
+};
 
-interface RawSingleAnswer {
-  uid: string;
-  value: string | number;
+export type KioskAnswerValue =
+  | string
+  | number
+  | KioskAnswerEntry
+  | Array<string | number | KioskAnswerEntry>
+  | null
+  | undefined;
+
+/**
+ * Returns options in the exact order they are displayed in the form.
+ * For grouped questions, groups are displayed in sequence with their options.
+ */
+export function getDisplayedQuestionOptions(question: KioskQuestion): KioskOption[] {
+  if (question.groups && question.groups.length > 0) {
+    const groupedOptions = question.groups.flatMap((g) => g.options || []);
+    const directOptions = (question.options || []).filter(
+      (opt) => !groupedOptions.some((go) => (go.o_id || go.uid || go._uid) === (opt.o_id || opt.uid || opt._uid)),
+    );
+    return [...groupedOptions, ...directOptions];
+  }
+  return getQuestionOptions(question);
 }
 
-type RawAnswer = RawSingleAnswer | RawSingleAnswer[];
+function parsePrice(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    const cleaned = parseFloat(raw.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(cleaned) ? cleaned : 0;
+  }
+  return 0;
+}
 
-// ── Helper: resolve an option into a KioskSelectedOption ─────────────────────
+/**
+ * Reads the price from a KioskOption, checking all known field name variants:
+ * price, selling_price, unit_price, retail_price.
+ */
+function resolveRawPrice(option: KioskOption): number {
+  const raw =
+    option.price ??
+    (option as any).selling_price ??
+    (option as any).unit_price ??
+    (option as any).retail_price;
+  return parsePrice(raw);
+}
 
-function resolveSelectedOption(
+function normalizeId(raw: unknown): number | string {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed !== "" && !isNaN(Number(trimmed))) {
+      return Number(trimmed);
+    }
+    return trimmed;
+  }
+  return String(raw ?? "");
+}
+
+/**
+ * Checks whether an option is selected within the raw answer value,
+ * and extracts any user-provided value (e.g. input text or chosen color).
+ */
+function findOptionSelection(
   option: KioskOption,
-  rawValue: string | number,
-): KioskSelectedOption {
-  const fieldType = (option.field_type as string) || "radio";
-  const isColor = fieldType === "color" || fieldType === "color_swatch";
-  const isImageRadio = fieldType === "image_radio";
+  rawAnswer: KioskAnswerValue,
+): { isSelected: boolean; value: string | number } {
+  const optKeys = new Set<string>(
+    [
+      option.o_id,
+      option.uid,
+      option._uid,
+      option.id != null ? String(option.id) : undefined,
+    ]
+      .filter((k): k is string => Boolean(k))
+      .map(String),
+  );
 
-  const placementMode =
-    option.placement_mode ||
-    (option.placement?.mode as "place" | "group" | undefined) ||
-    null;
+  const isColorSwatch = option.field_type === "color_swatch";
 
-  const placementTargetUid =
-    option.target_image_field ||
-    (option.placement?.target_field as string | undefined) ||
-    null;
-  const placementTargetUids = [
-    ...(Array.isArray(option.placement_targets) ? option.placement_targets : []),
-    ...(Array.isArray(option.placement?.target_fields) ? option.placement.target_fields : []),
-    ...(placementTargetUid ? [placementTargetUid] : []),
-  ].filter((uid, index, arr): uid is string => Boolean(uid) && arr.indexOf(uid) === index);
+  /**
+   * Prefer option.value (backend preset) as fallback.
+   * For color swatches the preset lives in option.color — we intentionally
+   * do NOT use option.color as the fallback here because the user's chosen
+   * color is always stored explicitly as value/color in the answer entry.
+   * Using option.color as fallback would silently replace the user's custom
+   * choice with the preset whenever value is missing.
+   */
+  const fallbackValue: string | number =
+    option.value ?? option.label ?? (option.id != null ? String(option.id) : "") ?? "";
 
-  return {
-    option_uid: option.uid || option._uid || "",
-    option_id: option.id ?? null,
-    option_api_name: option.api_name || "",
-    option_label: option.label || "",
-    value: rawValue,
-    price: parseFloat(String(option.price || 0)) || 0,
+  /**
+   * Helper: extract the resolved value from a single answer entry object.
+   * For color swatches: prefer entry.value (hex chosen by user), then entry.color.
+   * For everything else: prefer entry.value, then option fallback.
+   */
+  function resolveEntryValue(entry: KioskAnswerEntry): string | number {
+    if (isColorSwatch) {
+      // entry.value and entry.color both hold the user-chosen hex string
+      const v = entry.value;
+      const c = entry.color;
+      if (v !== undefined && v !== null && String(v).startsWith("#")) return String(v);
+      if (c !== undefined && c !== null && String(c).startsWith("#")) return String(c);
+      // last resort: any non-null stored value
+      if (v !== undefined && v !== null) return v;
+    }
+    return entry.value !== undefined && entry.value !== null ? entry.value : fallbackValue;
+  }
 
-    // Color extras
-    color: isColor
-      ? String(typeof rawValue === "string" ? rawValue : option.color || option.value || "")
-      : null,
+  if (rawAnswer == null) {
+    return { isSelected: false, value: fallbackValue };
+  }
 
-    // Image extras
-    image_url: isImageRadio && option.image ? String(option.image) : null,
+  if (Array.isArray(rawAnswer)) {
+    for (const item of rawAnswer) {
+      if (item == null) continue;
+      if (typeof item === "object") {
+        const itemKey = item.uid ?? item.o_id ?? (item.id != null ? String(item.id) : undefined);
+        if (itemKey != null && optKeys.has(String(itemKey))) {
+          return { isSelected: true, value: resolveEntryValue(item as KioskAnswerEntry) };
+        }
+      } else {
+        const itemStr = String(item);
+        if (optKeys.has(itemStr) || itemStr === String(option.value) || itemStr === String(option.label)) {
+          return { isSelected: true, value: fallbackValue };
+        }
+      }
+    }
+    return { isSelected: false, value: fallbackValue };
+  }
 
-    // Placement extras (image_radio only)
-    placement_mode: isImageRadio ? placementMode : null,
-    placement_coordinates:
-      isImageRadio && placementMode === "place"
-        ? option.placement?.coordinates || null
-        : null,
-    placement_target_uid: isImageRadio && placementMode === "place" ? placementTargetUid : null,
-    placement_target_uids:
-      isImageRadio && placementMode === "place" && placementTargetUids.length > 0
-        ? placementTargetUids
-        : null,
+  if (typeof rawAnswer === "object") {
+    const itemKey = rawAnswer.uid ?? rawAnswer.o_id ?? (rawAnswer.id != null ? String(rawAnswer.id) : undefined);
+    if (itemKey != null && optKeys.has(String(itemKey))) {
+      return { isSelected: true, value: resolveEntryValue(rawAnswer as KioskAnswerEntry) };
+    }
+    return { isSelected: false, value: fallbackValue };
+  }
 
-    // Group & Input extras
-    group_uid: option.gid || option.group_uid || null,
-    group_name: option.group_name || null,
-    input_type: option.input_type || null,
-    placeholder: option.placeholder || null,
-  };
+  const rawStr = String(rawAnswer);
+  if (optKeys.has(rawStr) || rawStr === String(option.value) || rawStr === String(option.label)) {
+    return { isSelected: true, value: rawAnswer };
+  }
+
+  return { isSelected: false, value: fallbackValue };
 }
 
-// ── Build a flat option map for fast lookup ───────────────────────────────────
-
-function buildOptionMap(
-  questions: KioskQuestion[],
-): Map<string, { option: KioskOption; question: KioskQuestion }> {
-  const map = new Map<string, { option: KioskOption; question: KioskQuestion }>();
-  questions.forEach((q) => {
-    const allOptions = getQuestionOptions(q);
-    allOptions.forEach((opt) => {
-      const optId = opt.uid || opt._uid;
-      if (optId) map.set(optId, { option: opt, question: q });
-    });
-  });
-  return map;
-}
-
-// ── Determine dominant field_type for a question ─────────────────────────────
-
-function getQuestionFieldType(question: KioskQuestion): string {
-  const options = getQuestionOptions(question);
-  if (options.length === 0) return "radio";
-  // Use the first non-deleted option's field_type as the question's type
-  const first = options.find((o) => !o.is_deleted);
-  return (first?.field_type as string) || "radio";
-}
-
-// ── Main builder function ─────────────────────────────────────────────────────
-
-export function buildKioskSubmissionPayload(
+/**
+ * Builds the `items` array for the checkout payload:
+ * - Checkboxes: one entry in `values` per selected option.
+ * - Groups: one entry in `values` per selected option across groups.
+ * - Single-select (radio/dropdown): exactly one entry in `values`.
+ * - Deselected options are excluded.
+ * - If nothing is selected, sends an empty `values: []`.
+ * - Selection order strictly preserves the form display order.
+ * - Each object in `values` has EXACTLY 4 keys: o_id, id, value, price.
+ */
+export function buildKioskCheckoutItems(
   config: KioskConfig,
-  answers: Record<string, RawAnswer>,
-): KioskSubmissionPayload {
+  answers: Record<string, unknown>,
+  scene?: LiveBuildScene,
+): CheckoutItem[] {
   const activeQuestions = (config.questions ?? []).filter(
     (q) => q.is_deleted !== true,
   );
 
-  const optionMap = buildOptionMap(activeQuestions);
-  const responses: KioskResponseItem[] = [];
-  const summary: KioskSubmissionSummaryItem[] = [];
-  let totalPrice = 0;
-
-  for (const question of activeQuestions) {
-    const qKey = question.api_name || question.q_id || question._uid || "";
-    const rawAnswer: RawAnswer | undefined = answers[qKey];
-    const fieldType = getQuestionFieldType(question);
-    const isCheckbox = fieldType === "checkbox";
-    const allOpts = getQuestionOptions(question);
-    const hasInputs = allOpts.some((o) => o.field_type === "input");
-    const inputValues: Record<string, string | number> = {};
-
-    let selectedOption: KioskSelectedOption | null = null;
-    const selectedOptions: KioskSelectedOption[] = [];
-    let subtotal = 0;
-
-    if (rawAnswer != null) {
-      if (Array.isArray(rawAnswer)) {
-        // ── Array of answers: Checkboxes and/or multiple Input fields ────────
-        for (const entry of rawAnswer) {
-          const found = optionMap.get(entry.uid);
-          if (found) {
-            const sel = resolveSelectedOption(found.option, entry.value);
-            if (found.option.field_type === "input") {
-              const valStr = String(entry.value ?? "").trim();
-              if (valStr.length > 0) {
-                sel.value = entry.value;
-                selectedOptions.push(sel);
-                subtotal += sel.price;
-                inputValues[found.option.api_name || found.option.uid || found.option._uid || ""] = entry.value;
-              }
-            } else if (isCheckbox) {
-              selectedOptions.push(sel);
-              subtotal += sel.price;
-            } else {
-              selectedOption = sel;
-              subtotal += sel.price;
-            }
-          }
+  // Build price map from scene summaries if available (guarantees consistency with UI/live build)
+  const scenePriceByOptKey = new Map<string, number>();
+  if (scene?.summaries) {
+    for (const summary of scene.summaries) {
+      const opt = summary.option;
+      if (!opt) continue;
+      const p = resolveRawPrice(opt);
+      if (p > 0) {
+        const keys = [
+          opt.id != null ? String(opt.id) : null,
+          opt.o_id != null ? String(opt.o_id) : null,
+          opt.uid != null ? String(opt.uid) : null,
+          opt._uid != null ? String(opt._uid) : null,
+          opt.value != null ? String(opt.value) : null,
+          opt.label != null ? String(opt.label) : null,
+          (opt as any).composite_item_id != null ? String((opt as any).composite_item_id) : null,
+        ].filter(Boolean) as string[];
+        for (const k of keys) {
+          scenePriceByOptKey.set(k, p);
         }
-      } else if (!Array.isArray(rawAnswer) && rawAnswer.uid) {
-        // ── Single select or single input ────────────────────────────────────
-        const found = optionMap.get(rawAnswer.uid);
-        if (found) {
-          if (found.option.field_type === "input") {
-            const valStr = String(rawAnswer.value ?? "").trim();
-            if (valStr.length > 0) {
-              const sel = resolveSelectedOption(found.option, rawAnswer.value);
-              selectedOptions.push(sel);
-              subtotal = sel.price;
-              inputValues[found.option.api_name || found.option.uid || found.option._uid || ""] = rawAnswer.value;
-            }
-          } else {
-            selectedOption = resolveSelectedOption(found.option, rawAnswer.value);
-            subtotal = selectedOption.price;
-          }
-        }
-      }
-    }
-
-    totalPrice += subtotal;
-
-    const isAnswered =
-      isCheckbox || hasInputs ? selectedOptions.length > 0 : selectedOption !== null;
-
-    // Resolve group summaries if question has groups
-    const questionGroups = question.groups || [];
-    const resolvedGroupsPayload = questionGroups.map((g) => {
-      const gOptionUids = new Set((g.options || []).map((o) => o.uid || o._uid));
-      const gSelected = selectedOptions.filter((s) => gOptionUids.has(s.option_uid));
-      const gInputs: Record<string, string | number> = {};
-      gSelected
-        .filter((s) => optionMap.get(s.option_uid)?.option.field_type === "input")
-        .forEach((s) => {
-          gInputs[s.option_api_name || s.option_uid] = s.value;
-        });
-      return {
-        group_uid: g.gid || g._uid || "",
-        group_name: g.name,
-        selected_options: gSelected,
-        input_values: Object.keys(gInputs).length > 0 ? gInputs : undefined,
-      };
-    });
-
-    const responseItem: KioskResponseItem = {
-      question_uid: question.q_id || question._uid || "",
-      question_id: question.id ?? null,
-      question_api_name: qKey,
-      question_label: question.label || "",
-      field_type: hasInputs ? "input" : fieldType,
-      is_lookup: question.is_lookup === true,
-      item_group_id: question.item_group_id ?? null,
-      selected_option: isCheckbox || hasInputs ? null : selectedOption,
-      selected_options: isCheckbox || hasInputs ? selectedOptions : [],
-      input_values: Object.keys(inputValues).length > 0 ? inputValues : undefined,
-      groups: resolvedGroupsPayload.length > 0 ? resolvedGroupsPayload : undefined,
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      is_answered: isAnswered,
-    };
-
-    responses.push(responseItem);
-
-    // ── Build flat summary entry ──────────────────────────────────────────────
-    if (isAnswered) {
-      if (hasInputs) {
-        for (const s of selectedOptions) {
-          summary.push({
-            question_api_name: qKey,
-            question_label: question.label || "",
-            field_type: "input",
-            value_label: s.option_label,
-            value: String(s.value),
-            price: s.price,
-          });
-        }
-      } else {
-        const allSel = isCheckbox ? selectedOptions : selectedOption ? [selectedOption] : [];
-        summary.push({
-          question_api_name: qKey,
-          question_label: question.label || "",
-          field_type: fieldType,
-          value_label: allSel.map((s) => s.option_label).join(", "),
-          value: allSel.map((s) => String(s.value)).join(", "),
-          price: parseFloat(subtotal.toFixed(2)),
-        });
       }
     }
   }
 
+  const items: CheckoutItem[] = [];
+
+  for (const question of activeQuestions) {
+    const qKey = question.api_name || question.q_id || question._uid || "";
+    const rawAnswer = (answers[qKey] ??
+      (question.q_id ? answers[question.q_id] : undefined) ??
+      (question._uid ? answers[question._uid] : undefined)) as KioskAnswerValue;
+
+    const rawQId = question.id ?? question.q_id ?? question._uid ?? "";
+    const questionId = normalizeId(rawQId);
+
+    const displayedOptions = getDisplayedQuestionOptions(question);
+    const values: CheckoutValueItem[] = [];
+
+    for (const option of displayedOptions) {
+      if (option.is_deleted) continue;
+
+      const { isSelected, value } = findOptionSelection(option, rawAnswer);
+      if (!isSelected) continue;
+
+      // Skip input fields that have empty values
+      if (option.field_type === "input" && String(value).trim().length === 0) {
+        continue;
+      }
+
+      let price = resolveRawPrice(option);
+
+      const rawOptId = option.id ?? option.o_id ?? option.uid ?? option._uid ?? "";
+      const optId = normalizeId(rawOptId);
+
+      // If price resolved to 0, attempt fallback to scene.summaries price map
+      if (price === 0 && scenePriceByOptKey.size > 0) {
+        const candidateKeys = [
+          optId != null ? String(optId) : null,
+          rawOptId != null ? String(rawOptId) : null,
+          value != null ? String(value) : null,
+          option.value != null ? String(option.value) : null,
+          option.label != null ? String(option.label) : null,
+          (option as any).composite_item_id != null ? String((option as any).composite_item_id) : null,
+        ].filter(Boolean) as string[];
+        for (const ck of candidateKeys) {
+          const sp = scenePriceByOptKey.get(ck);
+          if (sp && sp > 0) {
+            price = sp;
+            break;
+          }
+        }
+      }
+
+      // Rule: Exactly four keys: o_id, id, value, price.
+      values.push({
+        o_id: optId,
+        id: optId,
+        value,
+        price: Number(price.toFixed(2)),
+      });
+    }
+
+    items.push({
+      q_id: questionId,
+      id: questionId,
+      values,
+    });
+  }
+
+  return items;
+}
+
+export interface BuildCheckoutPayloadParams {
+  config: KioskConfig;
+  answers: Record<string, unknown>;
+  billingDetails: KioskBillingDetails;
+  snapshotImage: string;
+  organizationId?: number;
+  items?: CheckoutItem[];
+  scene?: LiveBuildScene;
+}
+
+/**
+ * Converts a base64 Data URL to a Blob for multipart FormData upload
+ */
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  try {
+    if (!dataUrl || !dataUrl.startsWith("data:")) return null;
+    const parts = dataUrl.split(",");
+    if (parts.length < 2) return null;
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/png";
+    const binary = atob(parts[1]);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Builds the complete checkout payload conforming to POST /api/v1/checkout/ (JSON)
+ */
+export function buildKioskCheckoutPayload({
+  config,
+  answers,
+  billingDetails,
+  snapshotImage,
+  organizationId,
+  items: prebuiltItems,
+  scene,
+}: BuildCheckoutPayloadParams): KioskCheckoutPayload {
+  let items = prebuiltItems && prebuiltItems.length > 0
+    ? prebuiltItems
+    : buildKioskCheckoutItems(config, answers, scene);
+
+  // If any item in values has price === 0, attempt to enrich with scene summaries
+  if (scene?.summaries && scene.summaries.length > 0) {
+    const scenePriceByOptKey = new Map<string, number>();
+    for (const summary of scene.summaries) {
+      const opt = summary.option;
+      if (!opt) continue;
+      const p = resolveRawPrice(opt);
+      if (p > 0) {
+        const keys = [
+          opt.id != null ? String(opt.id) : null,
+          opt.o_id != null ? String(opt.o_id) : null,
+          opt.uid != null ? String(opt.uid) : null,
+          opt._uid != null ? String(opt._uid) : null,
+          opt.value != null ? String(opt.value) : null,
+          opt.label != null ? String(opt.label) : null,
+          (opt as any).composite_item_id != null ? String((opt as any).composite_item_id) : null,
+        ].filter(Boolean) as string[];
+        for (const k of keys) {
+          scenePriceByOptKey.set(k, p);
+        }
+      }
+    }
+
+    if (scenePriceByOptKey.size > 0) {
+      items = items.map((item) => ({
+        ...item,
+        values: item.values.map((val) => {
+          if (val.price === 0) {
+            const candidates = [
+              String(val.id),
+              String(val.o_id),
+              String(val.value),
+            ];
+            for (const cand of candidates) {
+              const sp = scenePriceByOptKey.get(cand);
+              if (sp && sp > 0) {
+                return { ...val, price: Number(sp.toFixed(2)) };
+              }
+            }
+          }
+          return val;
+        }),
+      }));
+    }
+  }
+
+  const rawOrg = organizationId ?? config.organization_id ?? config.organization?.id;
+
+  const orgId = typeof rawOrg === "number" ? rawOrg : parseInt(String(rawOrg || 1), 10) || 1;
+
   return {
-    kiosk_id: config.id ?? null,
-    kiosk_api_name: config.api_name || "",
-    kiosk_name: config.name || "",
-    submitted_at: new Date().toISOString(),
-    responses,
-    total_price: parseFloat(totalPrice.toFixed(2)),
-    summary,
+    organization_id: orgId,
+    customer: {
+      full_name: billingDetails.fullName.trim(),
+      email: billingDetails.email.trim(),
+      phone: billingDetails.phone.trim(),
+      company_name: billingDetails.companyName?.trim() || undefined,
+      vat_registered: Boolean(billingDetails.vatRegistered),
+      vat_number: billingDetails.vatRegistered && billingDetails.vatNumber
+        ? billingDetails.vatNumber.trim()
+        : undefined,
+    },
+    billing_address: {
+      address_line1: billingDetails.addressLine1.trim(),
+      address_line2: billingDetails.addressLine2?.trim() || undefined,
+      city: billingDetails.city.trim(),
+      postcode: billingDetails.postcode.trim(),
+      country: "United Kingdom",
+    },
+    items,
+    snapshot_image: snapshotImage,
   };
+}
+
+/**
+ * Builds a multipart/form-data (FormData) checkout payload with ONE snapshot attached as a binary File/Blob.
+ */
+export function buildKioskCheckoutFormData(params: BuildCheckoutPayloadParams): FormData {
+  const jsonPayload = buildKioskCheckoutPayload(params);
+  const fd = new FormData();
+
+  fd.append("organization_id", String(jsonPayload.organization_id));
+
+  // Customer — individual bracket-notation fields only (no redundant full JSON blob)
+  if (jsonPayload.customer.full_name) fd.append("customer[full_name]", jsonPayload.customer.full_name);
+  if (jsonPayload.customer.email) fd.append("customer[email]", jsonPayload.customer.email);
+  if (jsonPayload.customer.phone) fd.append("customer[phone]", jsonPayload.customer.phone);
+  if (jsonPayload.customer.company_name) fd.append("customer[company_name]", jsonPayload.customer.company_name);
+  fd.append("customer[vat_registered]", String(jsonPayload.customer.vat_registered));
+  if (jsonPayload.customer.vat_number) fd.append("customer[vat_number]", jsonPayload.customer.vat_number);
+
+  // Billing address — individual bracket-notation fields only (no redundant full JSON blob)
+  if (jsonPayload.billing_address.address_line1) fd.append("billing_address[address_line1]", jsonPayload.billing_address.address_line1);
+  if (jsonPayload.billing_address.address_line2) fd.append("billing_address[address_line2]", jsonPayload.billing_address.address_line2);
+  if (jsonPayload.billing_address.city) fd.append("billing_address[city]", jsonPayload.billing_address.city);
+  if (jsonPayload.billing_address.postcode) fd.append("billing_address[postcode]", jsonPayload.billing_address.postcode);
+  if (jsonPayload.billing_address.country) fd.append("billing_address[country]", jsonPayload.billing_address.country);
+
+  // Items list
+  fd.append("items", JSON.stringify(jsonPayload.items));
+
+  // Single Binary Snapshot attachment as Blob file
+  const snapshotBlob = dataUrlToBlob(params.snapshotImage);
+  if (snapshotBlob) {
+    fd.append("snapshot_image", snapshotBlob, `snapshot-${jsonPayload.organization_id || "product"}.png`);
+  } else if (params.snapshotImage) {
+    fd.append("snapshot_image", params.snapshotImage);
+  }
+
+  return fd;
+}
+
+/**
+ * Captures a composed visual snapshot of the final live scene to a base64 PNG data URL.
+ * Throws an explicit error if canvas context initialization or composition fails.
+ */
+export async function captureLiveBuildSnapshot(scene: LiveBuildScene): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof window === "undefined" || typeof document === "undefined") {
+        throw new Error("Browser window and document required for snapshot capture.");
+      }
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to initialize 2D canvas context for snapshot capture.");
+      }
+
+      const renderFallback = () => {
+        try {
+          canvas.width = 800;
+          canvas.height = 600;
+          ctx.fillStyle = scene.solidColor || "#ffffff";
+          ctx.fillRect(0, 0, 800, 600);
+
+          ctx.fillStyle = "#1e293b";
+          ctx.font = "bold 20px sans-serif";
+          ctx.fillText("Configured Product Preview", 40, 50);
+
+          ctx.fillStyle = "#475569";
+          ctx.font = "14px sans-serif";
+          let y = 90;
+          for (const s of scene.summaries.slice(0, 10)) {
+            const label = s.option.label || "Selected Option";
+            ctx.fillText(`${s.questionLabel}: ${label}`, 40, y);
+            y += 28;
+          }
+
+          const dataUrl = canvas.toDataURL("image/png");
+          if (!dataUrl || dataUrl === "data:," || dataUrl.length < 50) {
+            throw new Error("Fallback snapshot image data URL is invalid.");
+          }
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error("Failed to render fallback snapshot preview."));
+        }
+      };
+
+      const processBaseImage = async (baseSrc: string) => {
+        const baseImg = new Image();
+        baseImg.crossOrigin = "anonymous";
+        baseImg.onload = async () => {
+          try {
+            const width = baseImg.naturalWidth || baseImg.width || 800;
+            const height = baseImg.naturalHeight || baseImg.height || 600;
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(baseImg, 0, 0, width, height);
+
+            for (const overlay of scene.overlays) {
+              if (!overlay.image) continue;
+              let overlaySrc = overlay.image;
+              if (overlay.color) {
+                overlaySrc = await applyColorFill(overlay.image, overlay.color);
+              }
+
+              await new Promise<void>((resOverlay) => {
+                const ovImg = new Image();
+                ovImg.crossOrigin = "anonymous";
+                ovImg.onload = () => {
+                  const coords = overlay.coordinates || DEFAULT_PLACEMENT_COORDINATES;
+                  const x = (coords.top_left.x / 100) * width;
+                  const y = (coords.top_left.y / 100) * height;
+                  const w = ((coords.bottom_right.x - coords.top_left.x) / 100) * width;
+                  const h = ((coords.bottom_right.y - coords.top_left.y) / 100) * height;
+                  ctx.drawImage(ovImg, x, y, w, h);
+                  resOverlay();
+                };
+                ovImg.onerror = () => resOverlay();
+                ovImg.src = overlaySrc;
+              });
+            }
+
+            const dataUrl = canvas.toDataURL("image/png");
+            if (!dataUrl || dataUrl === "data:," || dataUrl.length < 50) {
+              throw new Error("Composed snapshot image data URL is invalid.");
+            }
+            resolve(dataUrl);
+          } catch (compErr) {
+            reject(compErr instanceof Error ? compErr : new Error("Failed during canvas snapshot composition."));
+          }
+        };
+
+        baseImg.onerror = () => {
+          // If base image cannot be loaded (e.g. cross-origin restriction), render structured fallback
+          renderFallback();
+        };
+
+        baseImg.src = baseSrc;
+      };
+
+      if (scene.canvasImage || (scene.colorApply && scene.colorApply.sourceImage)) {
+        const rawSource = scene.colorApply?.sourceImage || scene.canvasImage || "";
+        if (scene.colorApply?.color && rawSource) {
+          applyColorFill(rawSource, scene.colorApply.color)
+            .then(processBaseImage)
+            .catch(() => processBaseImage(rawSource));
+        } else {
+          void processBaseImage(rawSource);
+        }
+      } else if (scene.solidColor) {
+        canvas.width = 800;
+        canvas.height = 600;
+        ctx.fillStyle = scene.solidColor;
+        ctx.fillRect(0, 0, 800, 600);
+
+        (async () => {
+          try {
+            for (const overlay of scene.overlays) {
+              if (!overlay.image) continue;
+              let overlaySrc = overlay.image;
+              if (overlay.color) {
+                overlaySrc = await applyColorFill(overlay.image, overlay.color);
+              }
+              await new Promise<void>((resOverlay) => {
+                const ovImg = new Image();
+                ovImg.crossOrigin = "anonymous";
+                ovImg.onload = () => {
+                  const coords = overlay.coordinates || DEFAULT_PLACEMENT_COORDINATES;
+                  const x = (coords.top_left.x / 100) * 800;
+                  const y = (coords.top_left.y / 100) * 600;
+                  const w = ((coords.bottom_right.x - coords.top_left.x) / 100) * 800;
+                  const h = ((coords.bottom_right.y - coords.top_left.y) / 100) * 600;
+                  ctx.drawImage(ovImg, x, y, w, h);
+                  resOverlay();
+                };
+                ovImg.onerror = () => resOverlay();
+                ovImg.src = overlaySrc;
+              });
+            }
+            const dataUrl = canvas.toDataURL("image/png");
+            if (!dataUrl || dataUrl === "data:," || dataUrl.length < 50) {
+              throw new Error("Solid color snapshot data URL is invalid.");
+            }
+            resolve(dataUrl);
+          } catch (err) {
+            reject(err instanceof Error ? err : new Error("Failed to compose solid-color snapshot."));
+          }
+        })();
+      } else {
+        renderFallback();
+      }
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error("Failed to capture kiosk snapshot image."));
+    }
+  });
 }

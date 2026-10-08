@@ -305,8 +305,9 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-/* Narrow form hosts (modals, drawers, phones): stack label above control. */
-@container form-fields (max-width: 32rem) {
+/* Truly narrow hosts only (phones / tight drawers): stack label above control.
+ * Keep side labels on map-side form columns (~28–40rem) when Appearance is left/right. */
+@container form-fields (max-width: 24rem) {
   .form-field-row .field-group:not(.detail-field) {
     display: flex !important;
     flex-direction: column;
@@ -426,11 +427,60 @@ html[data-font-size] .text-\[12px\],
   row-gap: 0.25rem;
 }
 
-.dash-appearance-scope[data-form-label="top"] .field-group {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.375rem;
+.dash-appearance-scope[data-form-label="top"] .field-group,
+.render-mode-phone .field-group:not(.detail-field),
+[data-render-mode="phone"] .field-group:not(.detail-field) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.375rem !important;
+  grid-template-columns: none !important;
+}
+
+.render-mode-phone .field-group:not(.detail-field) > .field-label,
+[data-render-mode="phone"] .field-group:not(.detail-field) > .field-label {
+  padding-top: 0 !important;
+  text-align: left !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+  order: 0 !important;
+}
+
+.render-mode-phone .field-group:not(.detail-field) > .field-control-wrap,
+[data-render-mode="phone"] .field-group:not(.detail-field) > .field-control-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  order: 1 !important;
+}
+
+@media (max-width: 768px) {
+  .dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field),
+  .dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field),
+  .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field),
+  .dash-appearance-scope .field-group:not(.detail-field) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+    grid-template-columns: none !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field) > .field-label,
+  .dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field) > .field-label,
+  .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) > .field-label,
+  .dash-appearance-scope .field-group:not(.detail-field) > .field-label {
+    padding-top: 0 !important;
+    text-align: left !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    order: 0 !important;
+  }
+
+  .dash-appearance-scope .field-group:not(.detail-field) > .field-control-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    order: 1 !important;
+  }
 }
 .dash-appearance-scope[data-form-label="top"] .field-group > .field-label {
   margin-bottom: 0;
@@ -648,7 +698,7 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-@container form-fields (max-width: 32rem) {
+@container form-fields (max-width: 24rem) {
   .form-field-row > div:has(> .field-group + p[role="alert"]) {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -662,19 +712,29 @@ html[data-font-size] .text-\[12px\],
  * Per-field stack when a 2-col cell / modal half is too narrow for side labels
  * (label above control — works for Appearance left / right / top).
  */
-@container form-field (max-width: 24rem) {
-  .field-label,
-  .field-control-wrap {
-    grid-column: 1 / -1 !important;
-    order: 0 !important;
-    width: 100%;
+@container form-field (max-width: 28rem) {
+  .dash-appearance-scope .field-group:not(.detail-field),
+  .field-group:not(.detail-field) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+    grid-template-columns: none !important;
   }
 
   .field-label {
     padding-top: 0 !important;
-    margin-bottom: 0;
+    margin-bottom: 0 !important;
     text-align: left !important;
-    white-space: normal;
+    white-space: normal !important;
+    width: 100% !important;
+    order: 0 !important;
+  }
+
+  .field-control-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    order: 1 !important;
   }
 }
 
@@ -704,15 +764,39 @@ html[data-font-size] .text-\[12px\],
   column-gap: var(--detail-label-gap, 0.75rem);
 }
 
+/* Top: same stacked layout as add/edit forms — label full-width, left-aligned above value. */
 .dash-appearance-scope[data-form-label="top"] .detail-field.field-group {
-  display: block;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.375rem !important;
+  grid-template-columns: none !important;
 }
 
 .dash-appearance-scope[data-form-label="top"] .detail-field .field-label {
-  margin-bottom: 0.125rem;
-  padding-top: 0;
-  text-align: left;
+  margin-bottom: 0;
+  padding-top: 0 !important;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: left !important;
   white-space: normal;
+  width: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch;
+  order: 0 !important;
+}
+
+.dash-appearance-scope[data-form-label="top"] .detail-field .field-control-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+  order: 1 !important;
+}
+
+/* Flush value text under the label (forms have no inset label/value mismatch). */
+.dash-appearance-scope[data-form-label="top"] .detail-field .detail-value-surface {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
@@ -826,16 +910,20 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-/* Single-line detail rows: vertically center label + value. */
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+/*
+ * Side-by-side detail rows only: vertically center label + value.
+ * Must NOT apply when labels are on top — align-self:center would
+ * horizontally center short labels above left-aligned values.
+ */
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group {
   align-items: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-label {
   align-self: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
   align-self: stretch;
 }
 

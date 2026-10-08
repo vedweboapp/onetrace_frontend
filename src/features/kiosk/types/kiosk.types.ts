@@ -1,4 +1,4 @@
-export type PlacementMode = "place" | "group";
+export type PlacementMode = "place";
 
 export type LookupOptionType = "radio" | "checkbox" | "image_radio";
 
@@ -143,5 +143,123 @@ export const DEFAULT_KIOSK_CONFIG: KioskConfig = {
     button_text: "Submit",
   },
 };
+
+export interface CustomerOrderConfiguration {
+  id: number;
+  question_label?: string | null;
+  question_api_name?: string | null;
+  option_label?: string | null;
+  option_value?: string | number | null;
+  option_price?: string | number | null;
+  [key: string]: unknown;
+}
+
+export interface CustomerOrderItem {
+  id: number;
+  item_name?: string | null;
+  quantity?: number;
+  unit_price?: string | number | null;
+  total_price?: string | number | null;
+  configurations?: CustomerOrderConfiguration[];
+  snapshot_image_url?: string | null;
+  [key: string]: unknown;
+}
+
+export interface CustomerOrderCustomer {
+  id?: number;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  vat_registered?: boolean | null;
+  vat_number?: string | null;
+}
+
+export interface CustomerOrder {
+  id: number;
+  order_number?: string | null;
+  organization?: number;
+  kiosk_machine?: number | null;
+  customer?: CustomerOrderCustomer | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  order_status?: string | null;
+  payment_status?: string | null;
+  subtotal?: string | number | null;
+  tax_amount?: string | number | null;
+  shipping_amount?: string | number | null;
+  total_amount?: string | number | null;
+  transaction_id?: string | null;
+  failure_reason?: string | null;
+  invoice_url?: string | null;
+  items?: CustomerOrderItem[];
+  created_at?: string | null;
+  modified_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface CustomerOrderDetailItemValue {
+  o_id?: number | string;
+  id?: number | string;
+  value?: string | number | null;
+  label?: string | null;
+  price?: number | string | null;
+  [key: string]: unknown;
+}
+
+export interface CustomerOrderDetailItem {
+  id?: number | string;
+  q_id?: number | string;
+  item_name?: string | null;
+  question_title?: string | null;
+  question_type?: string | null;
+  quantity?: number;
+  unit_price?: string | number | null;
+  total_price?: string | number | null;
+  configurations?: CustomerOrderConfiguration[];
+  snapshot_image_url?: string | null;
+  values?: CustomerOrderDetailItemValue[];
+  [key: string]: unknown;
+}
+
+export interface CustomerOrderDetail {
+  id: number;
+  order_number?: string | null;
+  organization?: number;
+  kiosk_machine?: number | null;
+  order_status?: string | null;
+  payment_status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  modified_at?: string | null;
+  total_amount?: string | number | null;
+  subtotal?: string | number | null;
+  tax_amount?: string | number | null;
+  vat_amount?: string | number | null;
+  shipping_amount?: string | number | null;
+  discount_amount?: string | number | null;
+  transaction_id?: string | null;
+  failure_reason?: string | null;
+  invoice_url?: string | null;
+  snapshot_image?: string | null;
+  snapshot_image_url?: string | null;
+  service_form?: { id: number; name?: string; title?: string } | number | null;
+  kiosk?: { id: number; name?: string; title?: string } | number | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  customer?: CustomerOrderCustomer | null;
+  billing_address?: {
+    id?: number | string;
+    address_line1?: string | null;
+    address_line_1?: string | null;
+    address_line2?: string | null;
+    address_line_2?: string | null;
+    city?: string | null;
+    postcode?: string | null;
+    country?: string | null;
+  } | null;
+  items?: CustomerOrderDetailItem[];
+  [key: string]: unknown;
+}
 
 export * from "./kiosk-submission.types";

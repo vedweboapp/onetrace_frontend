@@ -397,7 +397,7 @@ export async function submitPublicQuotationResponse(
     formData.append("status", payload.status);
   }
 
-  if (payload.comment) {
+  if (payload.comment !== undefined && payload.comment !== null) {
     formData.append("comment", payload.comment);
   }
 

@@ -132,24 +132,37 @@ export function MultiCheckSelect({
     for (const raw of values) {
       const id = raw.trim();
       if (!id || byValue.has(id)) continue;
-      const label = fallbackLabels?.[id]?.trim() || `#${id}`;
-      byValue.set(id, { value: id, label });
+      const label = fallbackLabels?.[id]?.trim();
+      if (label) byValue.set(id, { value: id, label });
     }
     return Array.from(byValue.values());
   }, [options, values, fallbackLabels]);
   const selectedOptions = React.useMemo(
-    () => resolvedOptions.filter((o) => selectedMap.has(o.value)),
-    [resolvedOptions, selectedMap],
+    () =>
+      values
+        .map((raw) => {
+          const id = raw.trim();
+          if (!id) return null;
+          const fromList = resolvedOptions.find((o) => o.value === id) ?? options.find((o) => o.value === id);
+          if (fromList) return fromList;
+          const fb = fallbackLabels?.[id]?.trim();
+          if (fb) return { value: id, label: fb };
+          return { value: id, label: "\u2026" };
+        })
+        .filter((o): o is { value: string; label: string } => o != null),
+    [values, resolvedOptions, options, fallbackLabels],
   );
   const filteredOptions = React.useMemo(() => {
+    const labelMatches = (label: string | null | undefined, q: string) =>
+      String(label ?? "").toLowerCase().includes(q);
     if (onSearchChange && query.trim()) {
       const q = query.trim().toLowerCase();
-      return options.filter((o) => o.label.toLowerCase().includes(q));
+      return options.filter((o) => labelMatches(o.label, q));
     }
     if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
     if (!q) return resolvedOptions;
-    return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
+    return resolvedOptions.filter((o) => labelMatches(o.label, q));
   }, [resolvedOptions, options, query, onSearchChange]);
 
   const updatePlacement = React.useCallback(() => {

@@ -43,6 +43,7 @@ import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.ut
 import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryParam, pathWithoutQueryAndHash, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
@@ -76,6 +77,16 @@ type Props = {
 type Option = { value: string; label: string };
 
 export function JobFormScreen({ mode, jobId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "clients",
+    "projects",
+    "sites",
+    "forms",
+    "groups",
+    "items",
+    "checklistTypes",
+    "jobStatuses",
+  ]);
   const t = useTranslations("Dashboard.jobs");
   const tItems = useTranslations("Dashboard.items");
   const tGroups = useTranslations("Dashboard.groups");
@@ -237,7 +248,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, []);
 
 
+  const checklistFetchSeq = React.useRef(0);
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
+    const seq = ++checklistFetchSeq.current;
     if (isProjectJob && !projectTypeId) {
       setChecklistOptions([]);
       if (!isEdit) {
@@ -251,32 +264,46 @@ export function JobFormScreen({ mode, jobId }: Props) {
       const response = await fetchChecklistTypesPage(1, 20, { is_active: true,
         project_type: isProjectJob ? projectTypeId ?? undefined : undefined,
         search: searchTerm || undefined, dropdown: true });
+      if (seq !== checklistFetchSeq.current) return;
+      const next = response.items.map((item) => ({
+        value: String(item.id),
+        label: item.title ?? `Checklist #${item.id}`,
+      }));
       setChecklistOptions((prev) => {
-        const byValue = new Map(isProjectJob ? [] : prev.map((opt) => [opt.value, opt]));
-        for (const item of response.items) {
-          byValue.set(String(item.id), {
-            value: String(item.id),
-            label: item.title ?? `Checklist #${item.id}`,
-          });
-        }
-        return Array.from(byValue.values());
+        if (isProjectJob) return next;
+        const selected = new Set(
+          (getValues("checklists") ?? []).map((id) => id.trim()).filter(Boolean),
+        );
+        const kept = prev.filter((opt) => selected.has(opt.value) && !next.some((row) => row.value === opt.value));
+        return [...kept, ...next];
       });
     } catch {
       // Keep existing options
     } finally {
-      setChecklistLoading(false);
+      if (seq === checklistFetchSeq.current) setChecklistLoading(false);
     }
-  }, [isEdit, isProjectJob, projectTypeId, setValue]);
+  }, [isEdit, isProjectJob, projectTypeId, setValue, getValues]);
+
+  const checklistTypeRef = React.useRef(projectTypeId);
+  React.useEffect(() => {
+    if (checklistTypeRef.current === projectTypeId) return;
+    checklistTypeRef.current = projectTypeId;
+    if (!isProjectJob) return;
+    checklistFetchSeq.current += 1;
+    setChecklistOptions([]);
+  }, [projectTypeId, isProjectJob]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       void fetchChecklistOptions(checklistSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [checklistSearch, fetchChecklistOptions]);
+  }, [checklistSearch, fetchChecklistOptions, catalogEpoch]);
 
 
+  const projectFetchSeq = React.useRef(0);
   const reloadProjects = React.useCallback(async (searchTerm?: string) => {
+    const seq = ++projectFetchSeq.current;
     if (!clientId || clientId <= 0) {
       setProjectOptions([]);
       return;
@@ -284,52 +311,75 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const { items } = await fetchProjectsPage(1, 20, { client: clientId,
         search: searchTerm || undefined, dropdown: true });
+      if (seq !== projectFetchSeq.current) return;
+      const next = items.map((p) => ({ value: String(p.id), label: p.name }));
       setProjectOptions((prev) => {
-        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
-        for (const p of items) {
-          byValue.set(String(p.id), { value: String(p.id), label: p.name });
+        const selectedId = getValues("project")?.trim() ?? "";
+        if (selectedId && !next.some((opt) => opt.value === selectedId)) {
+          const kept = prev.find((opt) => opt.value === selectedId);
+          if (kept) return [kept, ...next];
         }
-        return Array.from(byValue.values());
+        return next;
       });
     } catch {
-      // Keep existing options
+      // Ignore a stale response from the previous client.
     }
-  }, [clientId]);
+  }, [clientId, getValues]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       void reloadProjects(projectSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [projectSearch, reloadProjects]);
+  }, [projectSearch, reloadProjects, catalogEpoch]);
 
+  const siteFetchSeq = React.useRef(0);
   const reloadSites = React.useCallback(async () => {
+    const seq = ++siteFetchSeq.current;
     if (!clientId || clientId <= 0) {
       setSiteOptions([]);
       return;
     }
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
+      if (seq !== siteFetchSeq.current) return;
       setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
     } catch {
-      setSiteOptions([]);
+      if (seq === siteFetchSeq.current) setSiteOptions([]);
     }
   }, [clientId]);
+
+  const siteClientRef = React.useRef(clientId);
+  React.useEffect(() => {
+    if (siteClientRef.current === clientId) return;
+    siteClientRef.current = clientId;
+    if (isProjectJob) return;
+    siteFetchSeq.current += 1;
+    if (!getValues("site")?.trim()) setSiteOptions([]);
+  }, [clientId, isProjectJob, getValues]);
 
   React.useEffect(() => {
     if (isProjectJob) return;
     void reloadSites();
-  }, [clientId, reloadSites, isProjectJob]);
+  }, [clientId, reloadSites, isProjectJob, catalogEpoch]);
 
   const reloadForms = React.useCallback(async (searchTerm?: string) => {
     if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true }, { silent: true });
+      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true, is_published: true }, { silent: true });
       setFormOptions((prev) => {
-        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+        const currentSelected = new Set(getValues("forms") ?? []);
+        const byValue = new Map<string, Option>();
+        for (const opt of prev) {
+          if (currentSelected.has(opt.value)) {
+            byValue.set(opt.value, opt);
+          }
+        }
         for (const f of items) {
-          byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          if (f.is_published !== false) {
+            byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          }
         }
         return Array.from(byValue.values());
       });
@@ -338,7 +388,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setFormsLoading(false);
     }
-  }, [isProjectJob]);
+  }, [isProjectJob, getValues]);
 
   React.useEffect(() => {
     if (isProjectJob) return;
@@ -346,7 +396,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       void reloadForms(formSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formSearch, reloadForms, isProjectJob]);
+  }, [formSearch, reloadForms, isProjectJob, catalogEpoch]);
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
@@ -423,7 +473,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         ]);
         if (!cancelled) {
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
-          if (!isEdit) {
+          if (!isEdit && !getValues("job_status")?.trim()) {
             const defaultStatusId = resolveDefaultJobStatusId(statuses.items);
             if (defaultStatusId != null) {
               setValue("job_status", String(defaultStatusId), { shouldDirty: false });
@@ -439,12 +489,20 @@ export function JobFormScreen({ mode, jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, setValue]);
+  }, [isEdit, setValue, getValues, catalogEpoch]);
 
   React.useEffect(() => {
     void reloadClients();
     void reloadGroupsAndItems();
-  }, [reloadClients, reloadGroupsAndItems]);
+  }, [reloadClients, reloadGroupsAndItems, catalogEpoch]);
+
+  const projectClientRef = React.useRef(selectedClient);
+  React.useEffect(() => {
+    if (projectClientRef.current === selectedClient) return;
+    projectClientRef.current = selectedClient;
+    projectFetchSeq.current += 1;
+    if (!getValues("project")?.trim()) setProjectOptions([]);
+  }, [selectedClient, getValues]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -452,7 +510,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return;
     }
     void reloadProjects();
-  }, [selectedClient, reloadProjects]);
+  }, [selectedClient, reloadProjects, catalogEpoch]);
 
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {

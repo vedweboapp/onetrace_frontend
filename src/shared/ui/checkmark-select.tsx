@@ -246,13 +246,23 @@ export function CheckmarkSelect({
   const listRef = React.useRef<HTMLDivElement>(null);
   // Defensively coerce value — callers may pass a number or object from the API
   const safeValue = typeof value === "string" ? value : String(value ?? "");
+  const valueInOptions = React.useMemo(() => {
+    const id = safeValue.trim();
+    if (!id) return false;
+    return options.some((opt) => opt.value.trim() === id);
+  }, [options, safeValue]);
+
   const resolvedOptions = React.useMemo(() => {
     const id = safeValue.trim();
-    if (!id || options.some((opt) => opt.value === id)) return options;
-    const label = fallbackLabel?.trim() || id;
+    if (!id || valueInOptions) return options;
+    const label = fallbackLabel?.trim();
+    if (!label) return options;
     return [{ value: id, label }, ...options];
-  }, [options, safeValue, fallbackLabel]);
-  const selected = resolvedOptions.find((o) => o.value === safeValue);
+  }, [options, safeValue, fallbackLabel, valueInOptions]);
+
+  const selected = valueInOptions
+    ? options.find((o) => o.value.trim() === safeValue.trim())
+    : resolvedOptions.find((o) => o.value.trim() === safeValue.trim());
   const canClear = Boolean(clearable && !disabled && !locked && safeValue.trim() !== "");
   const showAdd = Boolean(onAdd && !locked);
   const canOpen = !locked && (!disabled || showAdd);
@@ -292,7 +302,7 @@ export function CheckmarkSelect({
     }
   }, [search, open, onSearchChange]);
 
-  const displayLabel = selected ? selected.label : emptyLabel;
+  const displayLabel = selected?.label ?? emptyLabel;
 
   const listClasses = cn(
     "flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10",
@@ -301,14 +311,16 @@ export function CheckmarkSelect({
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";
   const filteredOptions = React.useMemo(() => {
+    const labelMatches = (opt: CheckmarkSelectOption, q: string) =>
+      String(opt.label ?? "").toLowerCase().includes(q);
     if (onSearchChange && search.trim()) {
       const q = search.trim().toLowerCase();
-      return options.filter((opt) => opt.label.toLowerCase().includes(q));
+      return options.filter((opt) => labelMatches(opt, q));
     }
     if (onSearchChange) return resolvedOptions;
     const q = search.trim().toLowerCase();
     if (!q) return resolvedOptions;
-    return resolvedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+    return resolvedOptions.filter((opt) => labelMatches(opt, q));
   }, [resolvedOptions, options, search, onSearchChange]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {

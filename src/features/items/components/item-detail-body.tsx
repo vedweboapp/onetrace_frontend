@@ -44,7 +44,13 @@ import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { getItemDimensionUnit } from "@/features/items/utils/item-dimensions-input.util";
 import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { DimensionsLwhInput, InputWithEndSelect } from "@/shared/ui";
-import type { DimensionUnit, InstallationCostType, WeightUnit } from "@/features/items/types/item.types";
+import type { DimensionUnit, InstallationCostType, ItemType, WeightUnit } from "@/features/items/types/item.types";
+import { resolveItemType } from "@/features/items/utils/item-type.util";
+import {
+  parseItemNumber,
+  resolveItemDefaultMarkup,
+  suggestedItemSellPrice,
+} from "@/features/items/utils/item-pricing.util";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -123,6 +129,8 @@ export function ItemDetailBody({
   const [vendorOptions, setVendorOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [vendorLabelById, setVendorLabelById] = React.useState<Record<number, string>>({});
 
+  const itemType = resolveItemType(detail.item_type);
+  const isService = itemType === "service";
   const groupId = typeof detail.group === "number" && Number.isFinite(detail.group) && detail.group > 0 ? detail.group : null;
   const installationTypeChip = resolveInstallationTypeChipData(detail.installation_type);
   const unitTypeId = getUnitTypeId(detail.unit_type);
@@ -136,13 +144,21 @@ export function ItemDetailBody({
     : [];
   const installationCostValue = moneyDisplay(detail.installation_cost);
   const hasInstallationCost =
+    !isService &&
     detail.is_composite &&
     (installationCostValue !== "—" || Boolean(detail.installation_cost_type?.trim()));
   const installationHoursRaw =
     detail.installation_hours != null && String(detail.installation_hours).trim() !== ""
       ? String(detail.installation_hours).trim()
       : null;
-  const hasInstallationHours = Boolean(detail.is_composite && installationHoursRaw);
+  const hasInstallationHours = Boolean(!isService && detail.is_composite && installationHoursRaw);
+  const itemTypeOptions = React.useMemo(
+    () => [
+      { value: "goods", label: t("detail.itemTypeGoods") },
+      { value: "service", label: t("detail.itemTypeService") },
+    ],
+    [t],
+  );
 
   const patchField = useDetailPatch(
     (body: Parameters<typeof updateItem>[1]) => updateItem(detail.id, body),
@@ -277,54 +293,68 @@ export function ItemDetailBody({
               />
             ) : null}
             <DetailEditableField
-              label={t("detail.sku")}
-              value={detail.sku ?? ""}
-              kind="text"
-              required
-              requiredMessage={t("modal.skuError")}
+              label={t("detail.itemType")}
+              value={itemType}
+              kind="select"
+              options={itemTypeOptions}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ sku: next.trim() })}
+              onSave={(next) => patchField({ item_type: resolveItemType(next) as ItemType })}
             >
-              <span className="font-mono">{detail.sku?.trim() ? detail.sku : null}</span>
+              <span>{itemType === "service" ? t("detail.itemTypeService") : t("detail.itemTypeGoods")}</span>
             </DetailEditableField>
-            <DetailEditableField
-              label={t("detail.quantity")}
-              value={detail.quantity != null ? String(detail.quantity) : ""}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ quantity: parseRequiredNumber(next) })}
-            >
-              <span className="tabular-nums">
-                {unitTypeLabel !== "—"
-                  ? formatQuantityWithUnit(detail.quantity, unitTypeLabel, formatQuantity(detail.quantity))
-                  : formatQuantity(detail.quantity)}
-              </span>
-            </DetailEditableField>
-            {unitTypeOptions.length > 0 ? (
-              <DetailEditableField
-                label={t("detail.unitType")}
-                value={unitTypeId != null ? String(unitTypeId) : ""}
-                kind="select"
-                options={unitTypeOptions}
-                editAriaLabel={tActions("edit")}
-                onSave={(next) => patchField({ unit_type: Number(next) })}
-              >
-                <span>{unitTypeLabel !== "—" ? unitTypeLabel : null}</span>
-              </DetailEditableField>
-            ) : unitTypeLabel !== "—" ? (
-              <DetailMetricCard label={t("detail.unitType")}>
-                <span>{unitTypeLabel}</span>
-              </DetailMetricCard>
+            {!isService ? (
+              <>
+                <DetailEditableField
+                  label={t("detail.sku")}
+                  value={detail.sku ?? ""}
+                  kind="text"
+                  required
+                  requiredMessage={t("modal.skuError")}
+                  editAriaLabel={tActions("edit")}
+                  onSave={(next) => patchField({ sku: next.trim() })}
+                >
+                  <span className="font-mono">{detail.sku?.trim() ? detail.sku : null}</span>
+                </DetailEditableField>
+                <DetailEditableField
+                  label={t("detail.quantity")}
+                  value={detail.quantity != null ? String(detail.quantity) : ""}
+                  kind="text"
+                  editAriaLabel={tActions("edit")}
+                  onSave={(next) => patchField({ quantity: parseRequiredNumber(next) })}
+                >
+                  <span className="tabular-nums">
+                    {unitTypeLabel !== "—"
+                      ? formatQuantityWithUnit(detail.quantity, unitTypeLabel, formatQuantity(detail.quantity))
+                      : formatQuantity(detail.quantity)}
+                  </span>
+                </DetailEditableField>
+                {unitTypeOptions.length > 0 ? (
+                  <DetailEditableField
+                    label={t("detail.unitType")}
+                    value={unitTypeId != null ? String(unitTypeId) : ""}
+                    kind="select"
+                    options={unitTypeOptions}
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ unit_type: Number(next) })}
+                  >
+                    <span>{unitTypeLabel !== "—" ? unitTypeLabel : null}</span>
+                  </DetailEditableField>
+                ) : unitTypeLabel !== "—" ? (
+                  <DetailMetricCard label={t("detail.unitType")}>
+                    <span>{unitTypeLabel}</span>
+                  </DetailMetricCard>
+                ) : null}
+                <DetailEditableField
+                  label={t("detail.reorder")}
+                  value={detail.reorder_quantity != null ? String(detail.reorder_quantity) : ""}
+                  kind="text"
+                  editAriaLabel={tActions("edit")}
+                  onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
+                >
+                  <span className="tabular-nums">{formatQuantity(detail.reorder_quantity)}</span>
+                </DetailEditableField>
+              </>
             ) : null}
-            <DetailEditableField
-              label={t("detail.reorder")}
-              value={detail.reorder_quantity != null ? String(detail.reorder_quantity) : ""}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
-            >
-              <span className="tabular-nums">{formatQuantity(detail.reorder_quantity)}</span>
-            </DetailEditableField>
             <DetailEditableField
               label={t("detail.cost")}
               value={detail.cost_price != null ? String(detail.cost_price) : ""}
@@ -332,9 +362,32 @@ export function ItemDetailBody({
               required
               requiredMessage={t("modal.costPriceError")}
               editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ cost_price: parseRequiredMoney(next) })}
+              onSave={async (next) => {
+                const cost = parseRequiredMoney(next);
+                const markup = resolveItemDefaultMarkup(detail);
+                return patchField({
+                  cost_price: cost,
+                  selling_price: suggestedItemSellPrice(cost, markup),
+                });
+              }}
             >
               <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("detail.markup")}
+              value={String(resolveItemDefaultMarkup(detail))}
+              kind="text"
+              editAriaLabel={tActions("edit")}
+              onSave={async (next) => {
+                const markup = parseItemNumber(next);
+                const cost = parseItemNumber(detail.cost_price);
+                return patchField({
+                  default_markup: markup,
+                  selling_price: suggestedItemSellPrice(cost, markup),
+                });
+              }}
+            >
+              <span className="tabular-nums">{resolveItemDefaultMarkup(detail)}</span>
             </DetailEditableField>
             <DetailEditableField
               label={t("detail.sell")}
@@ -347,229 +400,233 @@ export function ItemDetailBody({
             >
               <span className="tabular-nums">{moneyDisplay(detail.selling_price)}</span>
             </DetailEditableField>
-            <DetailEditableField
-              label={t("detail.vendors")}
-              kind="multiselect"
-              values={vendorIds.map(String)}
-              options={vendorOptions}
-              selectSearchable
-              editAriaLabel={tActions("edit")}
-              empty="—"
-              onSaveValues={(next) => patchField(vendorIdsPayload(next))}
-            >
-              <DetailMultiValue>
-                {vendorRows.map((row) => (
-                  <DetailMultiValueItem
-                    key={row.id}
-                    href={`${routes.dashboard.vendors}/${row.id}`}
-                    title={row.label}
-                  >
-                    {row.label}
-                  </DetailMultiValueItem>
-                ))}
-              </DetailMultiValue>
-            </DetailEditableField>
-            {installationTypeChip && installationTypeOptions.length > 0 ? (
-              <DetailEditableField
-                label={t("detail.installationType")}
-                value={installationTypeId != null ? String(installationTypeId) : ""}
-                kind="select"
-                options={installationTypeOptions}
-                editAriaLabel={tActions("edit")}
-                onSave={(next) => patchField({ installation_type: Number(next) })}
-              >
-                <InstallationTypeChip row={installationTypeChip} />
-              </DetailEditableField>
-            ) : installationTypeChip ? (
-              <DetailMetricCard label={t("detail.installationType")}>
-                <InstallationTypeChip row={installationTypeChip} />
-              </DetailMetricCard>
-            ) : null}
-            {detail.is_composite ? (
-              <DetailEditableField
-                label={t("detail.installationCost")}
-                value={packFieldParts(
-                  detail.installation_cost != null ? String(detail.installation_cost) : "",
-                  detail.installation_cost_type === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
-                )}
-                kind="text"
-                empty="—"
-                editAriaLabel={tActions("edit")}
-                renderEditor={({ draft, setDraft, saving }) => {
-                  const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(draft, 2);
-                  const costType: InstallationCostType =
-                    typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
-                  return (
-                    <InputWithEndSelect
-                      inputId="item-detail-installation-cost"
-                      orgMoney
-                      showCurrencyAffix
-                      inputMode="decimal"
-                      inputValue={costRaw}
-                      onInputChange={(v) => setDraft(packFieldParts(v, costType))}
-                      disabled={saving}
-                      selectValue={costType}
-                      onSelectChange={(v) =>
-                        setDraft(packFieldParts(costRaw, v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount"))
-                      }
-                      selectOptions={[
-                        { value: "fixed_amount", label: t("detail.installationCostFixed") },
-                        { value: "rate_per_hr", label: t("detail.installationCostRate") },
-                      ]}
-                      selectAriaLabel={t("detail.installationCost")}
-                    />
-                  );
-                }}
-                onSave={(next) => {
-                  const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(next, 2);
-                  return patchField({
-                    installation_cost: parseOrgMoneyOrNull(costRaw) ?? undefined,
-                    installation_cost_type: typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
-                  });
-                }}
-              >
-                {hasInstallationCost ? (
-                  <span className="tabular-nums">
-                    {installationCostValue !== "—"
-                      ? `${installationCostValue} (${installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))})`
-                      : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
-                  </span>
-                ) : null}
-              </DetailEditableField>
-            ) : null}
-            {hasInstallationHours ? (
-              <DetailEditableField
-                label={t("detail.installationHours")}
-                value={installationHoursRaw ?? ""}
-                kind="text"
-                editAriaLabel={tActions("edit")}
-                onSave={(next) => patchField({ installation_hours: parseRequiredNumber(next) })}
-              >
-                <span className="tabular-nums">{installationHoursRaw}</span>
-              </DetailEditableField>
-            ) : null}
-            <DetailEditableField
-              label={t("detail.dimensions")}
-              value={packFieldParts(
-                detail.length != null ? String(detail.length) : "",
-                detail.width != null ? String(detail.width) : "",
-                detail.height != null ? String(detail.height) : "",
-                getItemDimensionUnit(detail),
-              )}
-              kind="text"
-              empty="—"
-              editAriaLabel={tActions("edit")}
-              renderEditor={({ draft, setDraft, saving }) => {
-                const [length = "", width = "", height = "", unit = "cm"] = unpackFieldParts(draft, 4);
-                return (
-                  <DimensionsLwhInput
-                    id="item-detail-dimensions"
-                    length={length}
-                    width={width}
-                    height={height}
-                    onChange={(next) => setDraft(packFieldParts(next.length, next.width, next.height, unit))}
-                    unit={unit}
-                    onUnitChange={(v) => setDraft(packFieldParts(length, width, height, v))}
-                    unitAriaLabel={t("detail.dimensions")}
-                    lengthAriaLabel={t("detail.dimensions")}
-                    widthAriaLabel={t("detail.dimensions")}
-                    heightAriaLabel={t("detail.dimensions")}
-                    disabled={saving}
-                  />
-                );
-              }}
-              onSave={(next) => {
-                const [lengthRaw = "", widthRaw = "", heightRaw = "", unitRaw = "cm"] = unpackFieldParts(next, 4);
-                const lengthN = parseOptionalNumber(lengthRaw);
-                const widthN = parseOptionalNumber(widthRaw);
-                const heightN = parseOptionalNumber(heightRaw);
-                const unit = (["cm", "mm", "m", "in", "ft"].includes(unitRaw) ? unitRaw : "cm") as DimensionUnit;
-                return patchField({
-                  length: lengthN,
-                  width: widthN,
-                  height: heightN,
-                  dimensions_unit: lengthN != null && widthN != null && heightN != null ? unit : null,
-                });
-              }}
-            >
-              {detail.length != null || detail.width != null || detail.height != null ? (
-                <span>
-                  {[
-                    detail.length != null && String(detail.length).trim() !== "" ? String(detail.length) : null,
-                    detail.width != null && String(detail.width).trim() !== "" ? String(detail.width) : null,
-                    detail.height != null && String(detail.height).trim() !== "" ? String(detail.height) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" x ")}
-                  {detail.dimension_unit || detail.dimensions_unit
-                    ? ` ${getItemDimensionUnit(detail)}`
-                    : ""}
-                </span>
-              ) : null}
-            </DetailEditableField>
-            <DetailEditableField
-              label={t("detail.weight")}
-              value={packFieldParts(
-                detail.weight != null ? String(detail.weight) : "",
-                detail.weight_unit === "g" || detail.weight_unit === "lb" ? detail.weight_unit : "kg",
-              )}
-              kind="text"
-              empty="—"
-              editAriaLabel={tActions("edit")}
-              renderEditor={({ draft, setDraft, saving }) => {
-                const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(draft, 2);
-                const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
-                return (
-                  <InputWithEndSelect
-                    inputId="item-detail-weight"
-                    inputType="number"
-                    inputMode="decimal"
-                    min={0}
-                    step="0.01"
-                    inputValue={weightRaw}
-                    onInputChange={(v) => setDraft(packFieldParts(v, unit))}
-                    disabled={saving}
-                    selectValue={unit}
-                    onSelectChange={(v) =>
-                      setDraft(packFieldParts(weightRaw, v === "g" || v === "lb" ? v : "kg"))
-                    }
-                    selectOptions={[
-                      { value: "kg", label: "kg" },
-                      { value: "g", label: "g" },
-                      { value: "lb", label: "lb" },
-                    ]}
-                    selectAriaLabel={t("detail.weight")}
-                  />
-                );
-              }}
-              onSave={(next) => {
-                const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(next, 2);
-                const weightN = parseOptionalNumber(weightRaw);
-                const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
-                return patchField({
-                  weight: weightN ?? undefined,
-                  weight_unit: weightN != null ? unit : undefined,
-                });
-              }}
-            >
-              {detail.weight != null && String(detail.weight).trim() !== "" ? (
-                <span className="tabular-nums">{formatValueWithUnit(detail.weight, detail.weight_unit)}</span>
-              ) : null}
-            </DetailEditableField>
-            {groupId ? (
-              <DetailMetricCard label={t("detail.group")}>
-                <DetailEntityLink
-                  href={`${routes.dashboard.groups}/${groupId}`}
-                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+            {!isService ? (
+              <>
+                <DetailEditableField
+                  label={t("detail.vendors")}
+                  kind="multiselect"
+                  values={vendorIds.map(String)}
+                  options={vendorOptions}
+                  selectSearchable
+                  editAriaLabel={tActions("edit")}
+                  empty="—"
+                  onSaveValues={(next) => patchField(vendorIdsPayload(next))}
                 >
-                  {groupName ?? "—"}
-                </DetailEntityLink>
-              </DetailMetricCard>
+                  <DetailMultiValue>
+                    {vendorRows.map((row) => (
+                      <DetailMultiValueItem
+                        key={row.id}
+                        href={`${routes.dashboard.vendors}/${row.id}`}
+                        title={row.label}
+                      >
+                        {row.label}
+                      </DetailMultiValueItem>
+                    ))}
+                  </DetailMultiValue>
+                </DetailEditableField>
+                {installationTypeChip && installationTypeOptions.length > 0 ? (
+                  <DetailEditableField
+                    label={t("detail.installationType")}
+                    value={installationTypeId != null ? String(installationTypeId) : ""}
+                    kind="select"
+                    options={installationTypeOptions}
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ installation_type: Number(next) })}
+                  >
+                    <InstallationTypeChip row={installationTypeChip} />
+                  </DetailEditableField>
+                ) : installationTypeChip ? (
+                  <DetailMetricCard label={t("detail.installationType")}>
+                    <InstallationTypeChip row={installationTypeChip} />
+                  </DetailMetricCard>
+                ) : null}
+                {detail.is_composite ? (
+                  <DetailEditableField
+                    label={t("detail.installationCost")}
+                    value={packFieldParts(
+                      detail.installation_cost != null ? String(detail.installation_cost) : "",
+                      detail.installation_cost_type === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                    )}
+                    kind="text"
+                    empty="—"
+                    editAriaLabel={tActions("edit")}
+                    renderEditor={({ draft, setDraft, saving }) => {
+                      const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(draft, 2);
+                      const costType: InstallationCostType =
+                        typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount";
+                      return (
+                        <InputWithEndSelect
+                          inputId="item-detail-installation-cost"
+                          orgMoney
+                          showCurrencyAffix
+                          inputMode="decimal"
+                          inputValue={costRaw}
+                          onInputChange={(v) => setDraft(packFieldParts(v, costType))}
+                          disabled={saving}
+                          selectValue={costType}
+                          onSelectChange={(v) =>
+                            setDraft(packFieldParts(costRaw, v === "rate_per_hr" ? "rate_per_hr" : "fixed_amount"))
+                          }
+                          selectOptions={[
+                            { value: "fixed_amount", label: t("detail.installationCostFixed") },
+                            { value: "rate_per_hr", label: t("detail.installationCostRate") },
+                          ]}
+                          selectAriaLabel={t("detail.installationCost")}
+                        />
+                      );
+                    }}
+                    onSave={(next) => {
+                      const [costRaw = "", typeRaw = "fixed_amount"] = unpackFieldParts(next, 2);
+                      return patchField({
+                        installation_cost: parseOrgMoneyOrNull(costRaw) ?? undefined,
+                        installation_cost_type: typeRaw === "rate_per_hr" ? "rate_per_hr" : "fixed_amount",
+                      });
+                    }}
+                  >
+                    {hasInstallationCost ? (
+                      <span className="tabular-nums">
+                        {installationCostValue !== "—"
+                          ? `${installationCostValue} (${installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))})`
+                          : installationCostTypeLabel(detail.installation_cost_type, (key) => t(`detail.${key}`))}
+                      </span>
+                    ) : null}
+                  </DetailEditableField>
+                ) : null}
+                {hasInstallationHours ? (
+                  <DetailEditableField
+                    label={t("detail.installationHours")}
+                    value={installationHoursRaw ?? ""}
+                    kind="text"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ installation_hours: parseRequiredNumber(next) })}
+                  >
+                    <span className="tabular-nums">{installationHoursRaw}</span>
+                  </DetailEditableField>
+                ) : null}
+                <DetailEditableField
+                  label={t("detail.dimensions")}
+                  value={packFieldParts(
+                    detail.length != null ? String(detail.length) : "",
+                    detail.width != null ? String(detail.width) : "",
+                    detail.height != null ? String(detail.height) : "",
+                    getItemDimensionUnit(detail),
+                  )}
+                  kind="text"
+                  empty="—"
+                  editAriaLabel={tActions("edit")}
+                  renderEditor={({ draft, setDraft, saving }) => {
+                    const [length = "", width = "", height = "", unit = "cm"] = unpackFieldParts(draft, 4);
+                    return (
+                      <DimensionsLwhInput
+                        id="item-detail-dimensions"
+                        length={length}
+                        width={width}
+                        height={height}
+                        onChange={(next) => setDraft(packFieldParts(next.length, next.width, next.height, unit))}
+                        unit={unit}
+                        onUnitChange={(v) => setDraft(packFieldParts(length, width, height, v))}
+                        unitAriaLabel={t("detail.dimensions")}
+                        lengthAriaLabel={t("detail.dimensions")}
+                        widthAriaLabel={t("detail.dimensions")}
+                        heightAriaLabel={t("detail.dimensions")}
+                        disabled={saving}
+                      />
+                    );
+                  }}
+                  onSave={(next) => {
+                    const [lengthRaw = "", widthRaw = "", heightRaw = "", unitRaw = "cm"] = unpackFieldParts(next, 4);
+                    const lengthN = parseOptionalNumber(lengthRaw);
+                    const widthN = parseOptionalNumber(widthRaw);
+                    const heightN = parseOptionalNumber(heightRaw);
+                    const unit = (["cm", "mm", "m", "in", "ft"].includes(unitRaw) ? unitRaw : "cm") as DimensionUnit;
+                    return patchField({
+                      length: lengthN,
+                      width: widthN,
+                      height: heightN,
+                      dimensions_unit: lengthN != null && widthN != null && heightN != null ? unit : null,
+                    });
+                  }}
+                >
+                  {detail.length != null || detail.width != null || detail.height != null ? (
+                    <span>
+                      {[
+                        detail.length != null && String(detail.length).trim() !== "" ? String(detail.length) : null,
+                        detail.width != null && String(detail.width).trim() !== "" ? String(detail.width) : null,
+                        detail.height != null && String(detail.height).trim() !== "" ? String(detail.height) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" x ")}
+                      {detail.dimension_unit || detail.dimensions_unit
+                        ? ` ${getItemDimensionUnit(detail)}`
+                        : ""}
+                    </span>
+                  ) : null}
+                </DetailEditableField>
+                <DetailEditableField
+                  label={t("detail.weight")}
+                  value={packFieldParts(
+                    detail.weight != null ? String(detail.weight) : "",
+                    detail.weight_unit === "g" || detail.weight_unit === "lb" ? detail.weight_unit : "kg",
+                  )}
+                  kind="text"
+                  empty="—"
+                  editAriaLabel={tActions("edit")}
+                  renderEditor={({ draft, setDraft, saving }) => {
+                    const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(draft, 2);
+                    const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
+                    return (
+                      <InputWithEndSelect
+                        inputId="item-detail-weight"
+                        inputType="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        inputValue={weightRaw}
+                        onInputChange={(v) => setDraft(packFieldParts(v, unit))}
+                        disabled={saving}
+                        selectValue={unit}
+                        onSelectChange={(v) =>
+                          setDraft(packFieldParts(weightRaw, v === "g" || v === "lb" ? v : "kg"))
+                        }
+                        selectOptions={[
+                          { value: "kg", label: "kg" },
+                          { value: "g", label: "g" },
+                          { value: "lb", label: "lb" },
+                        ]}
+                        selectAriaLabel={t("detail.weight")}
+                      />
+                    );
+                  }}
+                  onSave={(next) => {
+                    const [weightRaw = "", unitRaw = "kg"] = unpackFieldParts(next, 2);
+                    const weightN = parseOptionalNumber(weightRaw);
+                    const unit: WeightUnit = unitRaw === "g" || unitRaw === "lb" ? unitRaw : "kg";
+                    return patchField({
+                      weight: weightN ?? undefined,
+                      weight_unit: weightN != null ? unit : undefined,
+                    });
+                  }}
+                >
+                  {detail.weight != null && String(detail.weight).trim() !== "" ? (
+                    <span className="tabular-nums">{formatValueWithUnit(detail.weight, detail.weight_unit)}</span>
+                  ) : null}
+                </DetailEditableField>
+                {groupId ? (
+                  <DetailMetricCard label={t("detail.group")}>
+                    <DetailEntityLink
+                      href={`${routes.dashboard.groups}/${groupId}`}
+                      className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                    >
+                      {groupName ?? "—"}
+                    </DetailEntityLink>
+                  </DetailMetricCard>
+                ) : null}
+              </>
             ) : null}
           </DetailMetricsGrid>
           </DetailPanelCard>
 
-        {detail.is_composite ? (
+        {!isService && detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionAttachments")}>
             {attachments.length > 0 ? (
               <ul className="space-y-2">
@@ -603,7 +660,7 @@ export function ItemDetailBody({
           </DetailPanelCard>
         ) : null}
 
-        {detail.is_composite ? (
+        {!isService && detail.is_composite ? (
           <DetailPanelCard title={t("detail.sectionComponents")}>
             {components.length > 0 ? (
               <DetailLinkedTable

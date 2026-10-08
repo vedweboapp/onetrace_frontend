@@ -16,6 +16,12 @@ import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
 } from "@/features/quotations/constants/quotation-category";
+import {
+  clearQuotationWorkingDraft,
+  markQuotationFreshCreate,
+} from "@/features/quotations/utils/quotation-working-draft.util";
+import { clearQuotationSectionScopeSession } from "@/features/quotations/utils/quotation-section-scope.util";
+import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import type { QuotationListItem } from "@/features/quotations/types/quotation.types";
 import {
   getQuotationCustomerId,
@@ -68,13 +74,22 @@ import {
   buildQuotationMassUpdateFields,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildDetailHrefWithListReturn, buildPathWithStoredBack, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 
 export function QuotationsPanel() {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+    "tags",
+  ]);
   const t = useTranslations("Dashboard.quotations");
   const tList = useTranslations("Dashboard.list");
   const dateFmt = useDashboardDateFormat();
@@ -144,12 +159,20 @@ export function QuotationsPanel() {
     return items.map((c) => ({ value: String(c.id), label: c.name }));
   }, []);
 
-  const { options: clientOptions } = useDeferredListOptions(loadCustomerOptions, fetchCustomerOptions);
+  const { options: clientOptions } = useDeferredListOptions(
+    loadCustomerOptions,
+    fetchCustomerOptions,
+    catalogEpoch,
+  );
   const openCreate = React.useCallback(() => {
     const cat = categoryFilter ?? QUOTE_CATEGORY.service;
-    router.push(
-      buildPathWithStoredBack(`${pathname}/new?quote_category=${encodeURIComponent(cat)}`, listHref),
-    );
+    const newHref = `${pathname}/new?quote_category=${encodeURIComponent(cat)}`;
+    markQuotationFreshCreate();
+    clearQuotationWorkingDraft("new");
+    clearQuotationSectionScopeSession();
+    clearQuickCreateFormDraft(newHref);
+    clearQuickCreateFormDraft(mergeUrlQueryParam(newHref, "tab", "pricing"));
+    router.push(buildPathWithStoredBack(newHref, listHref));
   }, [categoryFilter, listHref, pathname, router]);
 
   const openEdit = React.useCallback(
@@ -201,7 +224,7 @@ export function QuotationsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [fetchSiteOptions, customerFilter]);
+  }, [fetchSiteOptions, customerFilter, catalogEpoch]);
 
   React.useEffect(() => {
     if (!fetchProjectOptions) return;
@@ -217,7 +240,7 @@ export function QuotationsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [fetchProjectOptions]);
+  }, [fetchProjectOptions, catalogEpoch]);
 
   React.useEffect(() => {
     if (!fetchMassOptions) return;
@@ -256,7 +279,7 @@ export function QuotationsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [fetchMassOptions]);
+  }, [fetchMassOptions, catalogEpoch]);
 
   React.useEffect(() => {
     if (customerParam) setFetchCustomerOptions(true);
@@ -562,7 +585,7 @@ export function QuotationsPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect

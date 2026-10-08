@@ -9,7 +9,10 @@ import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
 } from "@/shared/utils/quick-create-navigation.util";
-import { loadQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  clearQuickCreateFormDraft,
+  loadQuickCreateFormDraft,
+} from "@/shared/utils/quick-create-form-draft.util";
 
 export type QuickCreateSelectApplied = {
   selectTarget: QuickCreateKind;
@@ -46,10 +49,14 @@ export function useQuickCreateReturn({
   React.useLayoutEffect(() => {
     if (!restoreFormDraft) return;
     const draft = loadQuickCreateFormDraft(returnToForDraft);
-    if (draft != null) {
-      restoreFormDraft(draft);
+    if (draft == null) return;
+    restoreFormDraft(draft);
+    // Clear only after a real quick-create return (`?select=`). Section-scope remounts
+    // must keep the snapshot so Details fields can be restored.
+    if (searchParams.get(QUICK_CREATE_SELECT_PARAM)) {
+      clearQuickCreateFormDraft(returnToForDraft);
     }
-  }, [restoreFormDraft, returnToForDraft]);
+  }, [restoreFormDraft, returnToForDraft, searchParams]);
 
   React.useEffect(() => {
     if (appliedRef.current) return;

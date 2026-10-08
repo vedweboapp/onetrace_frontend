@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/core/utils/http.util";
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs } from "@/shared/ui";
 import React from "react";
 
 type TabItem = { id: string; label: string };
@@ -31,6 +32,8 @@ const PersonalProfileHeader = ({
   isSaving,
   ariaLabel = "Personal profile sections",
 }: Props) => {
+  const tabsStorageKey = useTabOrderStorageKey("personalProfile");
+
   function handleCancel() {
     try {
       cancelHandler?.();
@@ -60,10 +63,11 @@ const PersonalProfileHeader = ({
         "bg-slate-50 dark:bg-slate-950",
       )}
     >
-      <AppTabs
+      <CustomizableAppTabs
         tabs={tabs}
         value={activeTab}
         onValueChange={handleTabChange}
+        storageKey={tabsStorageKey}
         ariaLabel={ariaLabel}
         className="relative z-10 min-w-0 flex-1"
       />

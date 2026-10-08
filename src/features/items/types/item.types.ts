@@ -48,6 +48,8 @@ export type ItemAttachment = {
 export type InstallationCostType = "fixed_amount" | "rate_per_hr";
 export type DimensionUnit = "cm" | "mm" | "m" | "in" | "ft";
 export type WeightUnit = "kg" | "g" | "lb";
+/** Catalog kind: physical goods vs service (replaces separate labour catalog in quotes). */
+export type ItemType = "goods" | "service";
 
 export type Item = {
   id: number;
@@ -61,10 +63,19 @@ export type Item = {
 
   name: string;
   sku?: string | null;
+  /** `goods` (default) or `service`. */
+  item_type?: ItemType | string | null;
   quantity?: number | null;
   reorder_quantity?: number | null;
   is_composite: boolean;
   cost_price?: string | number | null;
+  /**
+   * Default markup % over cost (API key). Quote lines may increase above this
+   * but must not reduce below it.
+   */
+  default_markup?: string | number | null;
+  /** Legacy read alias for `default_markup`. */
+  markup?: string | number | null;
   selling_price?: string | number | null;
 
   is_active?: boolean;
@@ -109,9 +120,14 @@ export type ItemVendorRef = {
 export type ItemCreatePayload = {
   name: string;
   sku: string;
+  item_type?: ItemType;
   is_composite: boolean;
   quantity: number;
   cost_price: number;
+  /** Default catalog markup % (preferred write key). */
+  default_markup?: number;
+  /** Legacy write alias; prefer `default_markup`. */
+  markup?: number;
   selling_price: number;
   reorder_quantity?: number;
   group?: number;

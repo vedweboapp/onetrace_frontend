@@ -68,6 +68,14 @@ const PIN_TABLE_ROW_CLASS = cn(
 const SELECTION_CHECKBOX_CLASS_NAME =
   "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)";
 
+const PinsProjectIdContext = React.createContext<string | undefined>(undefined);
+
+function usePinsProjectId(): string | undefined {
+  const fromContext = React.useContext(PinsProjectIdContext);
+  const { id: routeId } = useParams<{ id: string }>();
+  return fromContext || routeId;
+}
+
 const getSelectionState = (
   ids: number[],
   selectedIds: Set<number>,
@@ -396,7 +404,7 @@ function ProjectPinRow({
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
-  const { id: projectId } = useParams<{ id: string }>();
+  const projectId = usePinsProjectId();
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation
@@ -742,8 +750,14 @@ function PlotPinsBlock({
 }
 const ProjectPinsListTab = ({
   sites,
+  projectId: projectIdProp,
+  quotationId,
 }: {
   sites?: Array<number | ProjectSiteRef> | null;
+  /** When opened from a quotation (or other non-project route), pass the project id. */
+  projectId?: number;
+  /** When set, levels are loaded with `?quotations=<id>` (this quote only). */
+  quotationId?: number;
 }) => {
   const siteOptions = useMemo(() => {
     if (!sites || sites.length === 0)
@@ -760,7 +774,8 @@ const ProjectPinsListTab = ({
       .filter((option) => option.value);
   }, [sites]);
 
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = projectIdProp != null && Number.isFinite(projectIdProp) ? String(projectIdProp) : routeId;
 
   const [collapsedLevelIds, setCollapsedLevelIds] = useState<Set<number>>(
     () => new Set(),
@@ -875,13 +890,16 @@ const ProjectPinsListTab = ({
       setLoadError(null);
 
       try {
-        const rawParams: Record<string, string> = {
+        const rawParams: Record<string, string | number> = {
           is_converted_job: selectedJobStatus,
           quote_status: selectedQuoteStatus,
         };
+        if (quotationId != null && Number.isFinite(quotationId) && quotationId > 0) {
+          rawParams.quotations = quotationId;
+        }
         // Strip empty-string values — empty means "All", so omit them entirely
         const params = Object.fromEntries(
-          Object.entries(rawParams).filter(([, v]) => v !== "")
+          Object.entries(rawParams).filter(([, v]) => v !== ""),
         );
         const { items, pagination: p } = await fetchDrawingsPage(
           Number(id),
@@ -907,7 +925,7 @@ const ProjectPinsListTab = ({
         }
       }
     },
-    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus],
+    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId],
   );
 
   useEffect(() => {
@@ -917,7 +935,7 @@ const ProjectPinsListTab = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus]);
+  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId]);
 
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
@@ -945,12 +963,13 @@ const ProjectPinsListTab = ({
     if (!id) return;
     let cancelled = false;
     setLoadingForms(true);
-    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true })
+    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true, is_published: true })
       .then((res) => {
         if (!cancelled) {
-          setProjectForms(res.items);
+          const publishedForms = res.items.filter((form) => form.is_published !== false);
+          setProjectForms(publishedForms);
           setFormOptions(
-            res.items.map((form) => ({
+            publishedForms.map((form) => ({
               value: String(form.id),
               label: form.name,
             })),
@@ -1055,18 +1074,29 @@ const ProjectPinsListTab = ({
   });
 
   const filteredLocations = useMemo(() => {
+    const quoteScoped = quotationId != null && quotationId > 0;
     return locations
       .filter((level) => levelFilter == null || level.id === levelFilter)
       .map((level) => {
-        const plots = (level.plots ?? [])
+        let plots = (level.plots ?? [])
           .filter((plot) => plotFilter == null || plot.id === plotFilter)
-          .map((plot) => ({ ...plot, pins: plot.pins ?? [] }))
-          .filter((p) => p.pins.length > 0);
-
+          .map((plot) => ({
+            ...plot,
+            pins: Array.isArray(plot.pins) ? plot.pins : [],
+          }));
+        // Project location tab: only plots that still have pins.
+        // Quote location tab: keep API rows for this quote even if a plot is temporarily empty.
+        if (!quoteScoped) {
+          plots = plots.filter((p) => p.pins.length > 0);
+        }
         return { ...level, plots };
       })
-      .filter((level) => level.plots.length > 0);
-  }, [locations, levelFilter, plotFilter]);
+      .filter((level) => {
+        if (level.plots.length > 0) return true;
+        // Quote tab: still render API levels for this quote (avoid empty tab when data exists).
+        return quoteScoped;
+      });
+  }, [locations, levelFilter, plotFilter, quotationId]);
 
   const levelOptions = useMemo(
     () =>
@@ -1311,6 +1341,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
+    <PinsProjectIdContext.Provider value={id}>
     <div className="flex h-[calc(100dvh-12rem)] min-h-[22rem] w-full min-w-0 flex-col overflow-hidden">
       {dialogVisible && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm sm:py-10">
@@ -1735,7 +1766,9 @@ const ProjectPinsListTab = ({
                 iconName: "pinStatus",
                 title: "No locations yet",
                 description:
-                  "No locations or blueprints have been added to this project yet.",
+                  quotationId != null
+                    ? "No approved locations were found for this quote."
+                    : "No locations or blueprints have been added to this project yet.",
                 action: null,
               }}
               onClearFilters={clearFilters}
@@ -1908,6 +1941,7 @@ const ProjectPinsListTab = ({
         />
       )}
     </div>
+    </PinsProjectIdContext.Provider>
   );
 };
 
