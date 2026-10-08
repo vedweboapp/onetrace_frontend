@@ -34,7 +34,12 @@ export type JobListFilters = {
   client?: number;
   job_category?: string;
   job_type?: string;
-  /** Jobs linked to a quotation — `GET jobs/?quotations=<id>`. */
+  /**
+   * Jobs linked to a quotation — `GET jobs/?quote=<id>`.
+   * Project quotes may return multiple jobs for one quote.
+   */
+  quote?: number;
+  /** @deprecated Prefer `quote` (`GET jobs/?quote=`). */
   quotations?: number;
   project?: number;
   dropdown?: boolean;
@@ -71,8 +76,14 @@ export async function fetchJobsPage(
   if (filters?.job_type) {
     params.job_type = filters.job_type;
   }
-  if (typeof filters?.quotations === "number" && Number.isFinite(filters.quotations) && filters.quotations > 0) {
-    params.quotations = filters.quotations;
+  const quoteId =
+    typeof filters?.quote === "number" && Number.isFinite(filters.quote) && filters.quote > 0
+      ? filters.quote
+      : typeof filters?.quotations === "number" && Number.isFinite(filters.quotations) && filters.quotations > 0
+        ? filters.quotations
+        : null;
+  if (quoteId != null) {
+    params.quote = quoteId;
   }
   if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
     params.project = filters.project;

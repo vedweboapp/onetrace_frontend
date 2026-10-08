@@ -11,7 +11,11 @@ import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/ite
 import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
 import type { DimensionUnit, Item, ItemType, WeightUnit } from "@/features/items/types/item.types";
 import { generateServiceItemSku, resolveItemType } from "@/features/items/utils/item-type.util";
-import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
+import {
+  parseItemNumber,
+  resolveItemDefaultMarkup,
+  suggestedItemSellPrice,
+} from "@/features/items/utils/item-pricing.util";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
@@ -99,7 +103,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const [qty, setQty] = React.useState(() => (mode === "edit" && item ? String(item.quantity ?? 0) : ""));
   const [cost, setCost] = React.useState(() => (mode === "edit" && item ? String(item.cost_price ?? 0) : ""));
   const [markup, setMarkup] = React.useState(() =>
-    mode === "edit" && item ? String(parseItemNumber(item.markup)) : "0",
+    mode === "edit" && item ? String(resolveItemDefaultMarkup(item)) : "0",
   );
   const [sell, setSell] = React.useState(() => (mode === "edit" && item ? String(item.selling_price ?? 0) : ""));
   const isService = itemType === "service";
@@ -145,7 +149,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       setSku(String(item.sku ?? ""));
       setQty(String(item.quantity ?? 0));
       setCost(String(item.cost_price ?? 0));
-      setMarkup(String(parseItemNumber(item.markup)));
+      setMarkup(String(resolveItemDefaultMarkup(item)));
       setSell(String(item.selling_price ?? 0));
       const unitId = getUnitTypeId(item.unit_type);
       setUnitType(unitId != null ? String(unitId) : "");
@@ -270,7 +274,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
       item_type: itemType,
       quantity: qtyN,
       cost_price: costN,
-      markup: markupN,
+      default_markup: markupN,
       selling_price: sellN,
     };
 

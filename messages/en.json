@@ -3185,6 +3185,7 @@
         "serviceMarkup": "Markup (%)",
         "serviceTimeHours": "Time (hours)",
         "serviceHoursShort": "{hours} hrs",
+        "serviceMarkupMin": "Min {min}% (item default)",
         "serviceTotal": "Service total",
         "sectionInnerTabsAria": "Labour or materials for this section",
         "labourSelect": "Select labour type",

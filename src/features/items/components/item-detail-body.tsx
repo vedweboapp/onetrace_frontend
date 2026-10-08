@@ -46,7 +46,11 @@ import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/i
 import { DimensionsLwhInput, InputWithEndSelect } from "@/shared/ui";
 import type { DimensionUnit, InstallationCostType, ItemType, WeightUnit } from "@/features/items/types/item.types";
 import { resolveItemType } from "@/features/items/utils/item-type.util";
-import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
+import {
+  parseItemNumber,
+  resolveItemDefaultMarkup,
+  suggestedItemSellPrice,
+} from "@/features/items/utils/item-pricing.util";
 
 function installationCostTypeLabel(
   value: InstallationCostType | string | null | undefined,
@@ -360,7 +364,7 @@ export function ItemDetailBody({
               editAriaLabel={tActions("edit")}
               onSave={async (next) => {
                 const cost = parseRequiredMoney(next);
-                const markup = parseItemNumber(detail.markup);
+                const markup = resolveItemDefaultMarkup(detail);
                 return patchField({
                   cost_price: cost,
                   selling_price: suggestedItemSellPrice(cost, markup),
@@ -371,19 +375,19 @@ export function ItemDetailBody({
             </DetailEditableField>
             <DetailEditableField
               label={t("detail.markup")}
-              value={detail.markup != null ? String(detail.markup) : "0"}
+              value={String(resolveItemDefaultMarkup(detail))}
               kind="text"
               editAriaLabel={tActions("edit")}
               onSave={async (next) => {
                 const markup = parseItemNumber(next);
                 const cost = parseItemNumber(detail.cost_price);
                 return patchField({
-                  markup,
+                  default_markup: markup,
                   selling_price: suggestedItemSellPrice(cost, markup),
                 });
               }}
             >
-              <span className="tabular-nums">{parseItemNumber(detail.markup)}</span>
+              <span className="tabular-nums">{resolveItemDefaultMarkup(detail)}</span>
             </DetailEditableField>
             <DetailEditableField
               label={t("detail.sell")}
