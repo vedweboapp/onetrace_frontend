@@ -6,11 +6,16 @@ import ProjectPinsListTab from "@/features/projects/components/project-pins-list
 import type { ProjectSiteRef } from "@/features/projects/types/project.types";
 import { EntityDetailTabLoadingState } from "@/shared/components/entity";
 
-type Props = {
+export type QuotationLocationsTabProps = {
   projectId: number;
+  /** Scope levels/pins to this quote via `quote` query param. */
+  quotationId: number;
 };
 
-export function QuotationLocationsTab({ projectId }: Props) {
+export function QuotationLocationsTab({
+  projectId,
+  quotationId,
+}: QuotationLocationsTabProps) {
   const [sites, setSites] = React.useState<Array<number | ProjectSiteRef> | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -34,5 +39,7 @@ export function QuotationLocationsTab({ projectId }: Props) {
 
   if (loading) return <EntityDetailTabLoadingState />;
 
-  return <ProjectPinsListTab sites={sites} projectId={projectId} />;
+  return (
+    <ProjectPinsListTab sites={sites} projectId={projectId} quotationId={quotationId} />
+  );
 }
