@@ -103,6 +103,7 @@ import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   clearQuickCreateFormDraft,
@@ -113,7 +114,7 @@ import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -166,6 +167,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
+  const tabsStorageKey = useTabOrderStorageKey("quotationForm");
   const isEdit = mode === "edit";
   const catalogEpoch = useDropdownCatalogEpoch([
     "users",
@@ -1110,7 +1112,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 {t("noClientsHint")}
               </p>
             ) : null} */}
-            <AppTabs
+            <CustomizableAppTabs
               tabs={[
                 { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
                 { id: "pricing", label: t("formTabs.pricing") },
@@ -1120,6 +1122,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 persistFormDraft();
                 setFormTab(id === "pricing" ? "pricing" : "project");
               }}
+              storageKey={tabsStorageKey}
               ariaLabel={t("formTabs.aria")}
               panelIdPrefix="quotation-form-screen"
             />
