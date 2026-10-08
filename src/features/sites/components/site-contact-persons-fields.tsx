@@ -51,14 +51,19 @@ export function SiteContactPersonsFields({
   const [titleModalOpen, setTitleModalOpen] = React.useState(false);
   const pendingTitleRowRef = React.useRef<number | null>(null);
 
+  const contactFetchSeq = React.useRef(0);
   const reloadContacts = React.useCallback(async () => {
+    const seq = ++contactFetchSeq.current;
     if (!clientId || clientId <= 0) {
       setContactOptions([]);
+      setLoadingContacts(false);
       return;
     }
+    setContactOptions([]);
     setLoadingContacts(true);
     try {
       const { items } = await fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true });
+      if (seq !== contactFetchSeq.current) return;
       setContactOptions(
         items.map((c) => ({
           value: String(c.id),
@@ -66,9 +71,9 @@ export function SiteContactPersonsFields({
         })),
       );
     } catch {
-      setContactOptions([]);
+      if (seq === contactFetchSeq.current) setContactOptions([]);
     } finally {
-      setLoadingContacts(false);
+      if (seq === contactFetchSeq.current) setLoadingContacts(false);
     }
   }, [clientId]);
 

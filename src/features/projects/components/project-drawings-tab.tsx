@@ -1,7 +1,6 @@
 "use client";
 
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-
 import * as React from "react";
 import { ArrowUpRight, Check, Layers, MapPinned, Pencil, User, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,10 +25,13 @@ import {
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
+  AppButton,
+  AppModal,
   DataTablePaginationBar,
   ListPageEmptyStates,
   ListViewModeToggle,
   surfaceInputClassName,
+  surfaceSelectClassName,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -433,7 +435,11 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploadSession, setUploadSession] = React.useState(0);
-
+  const [cloneOpen, setCloneOpen] = React.useState(false);
+  const [cloneDrawings, setCloneDrawings] = React.useState<Drawing[]>([]);
+  const [cloneLoading, setCloneLoading] = React.useState(false);
+  const [sourceDrawingId, setSourceDrawingId] = React.useState("");
+  const [showChoice, setShowChocie] = React.useState(false);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   React.useEffect(() => {
@@ -465,6 +471,25 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     };
   }, [projectId, page, pageSize, refreshNonce, t]);
 
+  React.useEffect(() => {
+    if (!cloneOpen) return;
+    let cancelled = false;
+    setCloneLoading(true);
+    void fetchDrawingsPage(projectId, 1, 100, undefined, { dropdown: true })
+      .then(({ items: drawings }) => {
+        if (!cancelled) setCloneDrawings(drawings);
+      })
+      .catch((error) => {
+        if (!cancelled) toastApiError(error, t("loadError"));
+      })
+      .finally(() => {
+        if (!cancelled) setCloneLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneOpen, projectId, t]);
+
   const suggestedOrder = React.useMemo(() => {
     if (items.length === 0) return 1;
     return Math.max(...items.map((i) => i.order)) + 1;
@@ -477,6 +502,12 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   function handleCreated() {
     setRefreshNonce((n) => n + 1);
     setPage(1);
+  }
+
+  function openUpload() {
+    setShowChocie(false);
+    setUploadSession((session) => session + 1);
+    setUploadOpen(true);
   }
 
   const handleRenamed = React.useCallback((next: Drawing) => {
@@ -497,10 +528,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           action: (
             <AddButton
               type="button"
-              onClick={() => {
-                setUploadSession((s) => s + 1);
-                setUploadOpen(true);
-              }}
+              onClick={openUpload}
             />
           ),
         }}
@@ -568,14 +596,45 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
-        <AddButton
+        <div className="relative ml-auto shrink-0">
+        <AppButton
+          onClick={() => setShowChocie(true)}
+        >
+          Add
+        </AppButton>
+        {
+          showChoice && (
+            <div className="absolute right-0 top-full z-30 mt-1 flex w-24 flex-col rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={openUpload}
+                className="w-full rounded px-2 py-1.5 text-right text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChocie(false);
+                  setCloneOpen(true);
+                }}
+                className="w-full rounded px-2 py-1.5 text-right text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Clone
+              </button>
+            </div>
+          )
+        }
+        </div>
+        
+        {/* <AddButton
           type="button"
           className="shrink-0"
           onClick={() => {
             setUploadSession((s) => s + 1);
             setUploadOpen(true);
           }}
-        />
+        /> */}
       </div>
 
       <div className={cn(detailTabFilterBarClassName, "sm:justify-end")}>
@@ -673,6 +732,41 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         suggestedOrder={suggestedOrder}
         onCreated={handleCreated}
       />
+      <AppModal
+        open={cloneOpen}
+        onClose={() => setCloneOpen(false)}
+        title="Clone Drawing"
+        size="md"
+      >
+        <div>
+          <label
+            htmlFor="clone-source-drawing"
+            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Select drawing
+          </label>
+          <select
+            id="clone-source-drawing"
+            value={sourceDrawingId}
+            onChange={(event) => setSourceDrawingId(event.target.value)}
+            disabled={cloneLoading || cloneDrawings.length === 0}
+            className={surfaceSelectClassName}
+          >
+            <option value="">
+              {cloneLoading
+                ? "Loading drawings..."
+                : cloneDrawings.length > 0
+                  ? "Choose a drawing"
+                  : "No drawings available"}
+            </option>
+            {cloneDrawings.map((drawing) => (
+              <option key={drawing.id} value={String(drawing.id)}>
+                {drawing.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </AppModal>
     </div>
   );
 }

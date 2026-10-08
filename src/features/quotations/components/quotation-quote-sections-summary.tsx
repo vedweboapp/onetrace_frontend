@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { QuotationQuoteSection } from "@/features/quotations/types/quotation.types";
 import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { getQuotePlotPinsForDisplay } from "@/features/quotations/utils/quotation-quote-plot-pins.util";
+import { sumQuoteSectionsGrandTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -25,10 +26,7 @@ export function QuotationQuoteSectionsSummary({ sections, grandTotal, className 
   const scopeGrandTotal = React.useMemo(() => {
     if (grandTotal != null && Number.isFinite(grandTotal)) return grandTotal;
     if (!sorted.length) return null;
-    return sorted.reduce(
-      (acc, s) => acc + (typeof s.section_total === "number" && Number.isFinite(s.section_total) ? s.section_total : 0),
-      0,
-    );
+    return sumQuoteSectionsGrandTotal(sorted);
   }, [grandTotal, sorted]);
 
   return (

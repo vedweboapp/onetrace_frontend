@@ -3,9 +3,10 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
@@ -31,6 +32,7 @@ import {
   fetchUsersForAppRoles,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -38,12 +40,13 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { DetailTabStepNav } from "@/shared/components/layout/detail-tab-step-nav";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
   AppModal,
-  AppTabs,
+  CustomizableAppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -65,8 +68,16 @@ type Props = {
 };
 
 export function QuotationFormModal({ open, onClose, onSaved }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "contacts",
+    "sites",
+    "projects",
+  ]);
   const t = useTranslations("Dashboard.quotations");
   const router = useRouter();
+  const tabsStorageKey = useTabOrderStorageKey("quotationFormModal");
   const [saving, setSaving] = React.useState(false);
   const [formTab, setFormTab] = React.useState<"project" | "pricing">("project");
 
@@ -116,7 +127,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     (async () => {
       try {
         const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-        if (!cancelled) setClientOptions(clients.map((c) => ({ value: String(c.id), label: c.name })));
+        if (!cancelled) setClientOptions(clientsToSelectOptions(clients));
       } catch {
         if (!cancelled) setClientOptions([]);
       }
@@ -124,7 +135,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
 
   const customerId =
     customerIdStr && /^\d+$/.test(customerIdStr.trim())
@@ -134,6 +145,14 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     projectIdStr && /^\d+$/.test(projectIdStr.trim())
       ? Number.parseInt(projectIdStr.trim(), 10)
       : undefined;
+
+  const projectCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (projectCustomerRef.current === customerId) return;
+    projectCustomerRef.current = customerId;
+    setProjectRows([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -151,7 +170,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -175,7 +194,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, catalogEpoch]);
+
+  const siteProjectRef = React.useRef(projectId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (siteProjectRef.current === projectId) return;
+    siteProjectRef.current = projectId;
+    setSiteRows([]);
+  }, [open, projectId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -197,7 +224,15 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, projectId]);
+  }, [open, projectId, catalogEpoch]);
+
+  const contactCustomerRef = React.useRef(customerId);
+  React.useEffect(() => {
+    if (!open) return;
+    if (contactCustomerRef.current === customerId) return;
+    contactCustomerRef.current = customerId;
+    setContactOptions([]);
+  }, [open, customerId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -218,7 +253,7 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, customerId]);
+  }, [open, customerId, catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -306,7 +341,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     setSaving(true);
     try {
       const base = mapQuotationFormToPayload(values, { quote_category: QUOTE_CATEGORY.project });
-      const withDraft = quoteDraft ? mergeQuotationDraftIntoPayload(base, quoteDraft) : base;
+      const withDraft = quoteDraft
+        ? mergeQuotationDraftIntoPayload(base, quoteDraft, { defaultSectionType: "project" })
+        : base;
       const payload = withDraft;
       const saved = await createQuotation(payload);
       toastSuccess(t("createdToast"));
@@ -318,6 +355,31 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  function onInvalid(formErrors: FieldErrors<QuotationFormValues>) {
+    const detailKeys = ["quote_name", "customer", "sites", "project"] as const;
+    const hasDetailErrors = detailKeys.some((key) => formErrors[key] != null);
+    if (hasDetailErrors) {
+      setFormTab("project");
+      toastError(t("validation.requiredOnTab", { tab: t("formTabs.project") }));
+      window.setTimeout(() => {
+        const root = document.getElementById("quotation-form-modal-project");
+        const invalid =
+          root?.querySelector<HTMLElement>("[aria-invalid='true']") ??
+          root?.querySelector<HTMLElement>(".border-red-500");
+        invalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (invalid && typeof invalid.focus === "function") {
+          try {
+            invalid.focus({ preventScroll: true });
+          } catch {
+            invalid.focus();
+          }
+        }
+      }, 80);
+      return;
+    }
+    toastError(t("saveError"));
   }
 
   const noClients = clientOptions.length === 0;
@@ -362,20 +424,21 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
       }
     >
       <>
-      <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit)}>
+      <form id={FORM_DOM_ID} className="max-h-[min(70vh,680px)] space-y-6 overflow-y-auto pr-1" noValidate onSubmit={handleSubmit(submit, onInvalid)}>
         {/* {noClients ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             {t("noClientsHint")}
           </p>
         ) : null} */}
 
-        <AppTabs
+        <CustomizableAppTabs
           tabs={[
             { id: "project", label: t("formTabs.project") },
             { id: "pricing", label: t("formTabs.pricing") },
           ]}
           value={formTab}
           onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
+          storageKey={tabsStorageKey}
           ariaLabel={t("formTabs.aria")}
           panelIdPrefix="quotation-form-modal"
         />

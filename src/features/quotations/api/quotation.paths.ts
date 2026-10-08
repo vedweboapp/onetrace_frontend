@@ -4,6 +4,7 @@ export const QUOTATION_PATHS = {
   send: (id: number) => `quotations/${id}/send/`,
   createJob: (id: number) => `quotations/${id}/create-job/`,
   createPurchaseOrder: (id: number) => `quotations/${id}/create-purchase-order/`,
+  updateItemStatus: (id: number) => `quotations/${id}/update-item-status/`,
   /** Project levels (drawings) for quotation form. */
   projectLevels: (projectId: number) => `project/${projectId}/level/`,
 } as const;

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { ChevronLeft, ChevronRight, Funnel } from "lucide-react";
+import { EntityDetailTabLoadingState } from "@/shared/components/entity";
 import {
   deleteSchedule,
   deleteWorkerTimeOff,
@@ -36,8 +37,9 @@ import {
 } from "@/features/scheduling/components/scheduling-people-header";
 import { SchedulingWeekCalendar } from "@/features/scheduling/components/scheduling-week-calendar";
 import { SchedulingWeekDayStrip } from "@/features/scheduling/components/scheduling-week-day-strip";
-import { useSchedulingCatalog } from "@/features/scheduling/hooks/use-scheduling-catalog";
+import { useSchedulingCatalog, jobSelectLabel } from "@/features/scheduling/hooks/use-scheduling-catalog";
 import type { Schedule, ScheduleBulkSkipRow, WorkerTimeOff } from "@/features/scheduling/types/schedule.types";
+import type { Job } from "@/features/jobs/types/job.types";
 import {
   availabilityHeaderBarClass,
   availabilityToneClass,
@@ -108,6 +110,11 @@ export type SchedulingPanelProps = {
   defaultAssignedWorkerId?: number;
   /** Job serial (e.g. JB390) used to match schedules when job_id is missing. */
   defaultJobSerial?: string | null;
+  /**
+   * Restrict create/filter job pickers to these jobs (e.g. project quote Schedule tab).
+   * When set, drag-to-book opens the schedule form so the user picks which job — no auto-create.
+   */
+  allowedJobs?: Job[];
   /** Sync view/filters to URL search params. Default true on /scheduling. */
   syncUrl?: boolean;
   /** Fired after create/delete so parent screens can refresh job assignment data. */
@@ -133,6 +140,7 @@ export function SchedulingPanel({
   defaultProjectId,
   defaultAssignedWorkerId,
   defaultJobSerial: _defaultJobSerial,
+  allowedJobs,
   syncUrl = true,
   onJobSchedulesChanged,
 }: SchedulingPanelProps) {
@@ -155,8 +163,14 @@ export function SchedulingPanel({
   const [localWorkerFilter, setLocalWorkerFilter] = React.useState("");
   const [localGroupFilter, setLocalGroupFilter] = React.useState("");
 
+  const restrictToAllowedJobs = Boolean(allowedJobs && allowedJobs.length > 0);
+  /** Single-job scope auto-creates on drag; multi-job quote scope opens the create form instead. */
   const jobScopedId =
-    typeof defaultJobId === "number" && defaultJobId > 0 ? defaultJobId : null;
+    restrictToAllowedJobs
+      ? null
+      : typeof defaultJobId === "number" && defaultJobId > 0
+        ? defaultJobId
+        : null;
   const jobScopedClientId =
     typeof defaultClientId === "number" && defaultClientId > 0 ? defaultClientId : null;
   const jobScopedProjectId =
@@ -464,6 +478,12 @@ export function SchedulingPanel({
 
   const jobOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
     const all: CheckmarkSelectOption[] = [{ value: "", label: t("allJobs") }];
+    if (restrictToAllowedJobs && allowedJobs) {
+      return [
+        ...all,
+        ...allowedJobs.map((j) => ({ value: String(j.id), label: jobSelectLabel(j) })),
+      ];
+    }
     if (!catalog) return all;
     const clientId = clientFilter && Number.isFinite(Number(clientFilter)) ? Number(clientFilter) : null;
     const projectId = projectFilter && Number.isFinite(Number(projectFilter)) ? Number(projectFilter) : null;
@@ -471,7 +491,7 @@ export function SchedulingPanel({
     if (clientId != null) jobs = jobs.filter((j) => j.clientId === clientId);
     if (projectId != null) jobs = jobs.filter((j) => j.projectId === projectId);
     return [...all, ...jobs.map((j) => ({ value: String(j.id), label: j.label }))];
-  }, [catalog, clientFilter, projectFilter, t]);
+  }, [catalog, clientFilter, projectFilter, t, restrictToAllowedJobs, allowedJobs]);
 
   const groupOptions = React.useMemo<CheckmarkSelectOption[]>(() => {
     const all: CheckmarkSelectOption[] = [{ value: "", label: t("allUserGroups") }];
@@ -740,6 +760,7 @@ export function SchedulingPanel({
       startTime: times?.startTime,
       endTime: times?.endTime,
       workerId: tech?.id,
+      clientId: jobScopedClientId ?? undefined,
     };
     if (!tech) {
       setCreatePrefill(scopedPrefill);
@@ -1168,8 +1189,9 @@ export function SchedulingPanel({
     setViewMode("day");
   }
 
-  const loading = catalogLoading || loadingSchedules;
-  const showScheduleSkeleton = !schedulesReady && loading;
+  // Catalog can finish after schedules; keep loader until users are loaded so we
+  // never flash "No users found" on first paint.
+  const showScheduleSkeleton = catalogLoading || (!schedulesReady && loadingSchedules);
   const colTemplate = `minmax(232px, 252px) repeat(${days.length}, minmax(148px, 1fr))`;
 
   function clearPeopleFilters() {
@@ -1394,11 +1416,12 @@ export function SchedulingPanel({
   );
 
   React.useEffect(() => {
-    // Keep chrome slot clear — interactive Day/Week/Month lives in-panel so clicks
-    // are not lost when setSecondaryRow remounts the toolbar every render.
+    // Standalone scheduling page only — never clear detail chrome (quote/job tabs)
+    // when this panel is embedded with syncUrl={false}.
+    if (!syncUrl) return;
     setSecondaryRow(null);
     return () => setSecondaryRow(null);
-  }, [setSecondaryRow]);
+  }, [setSecondaryRow, syncUrl]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -1489,10 +1512,7 @@ export function SchedulingPanel({
 
       {viewMode === "day" && days[0] ? (
         showScheduleSkeleton ? (
-          <div className="space-y-2 p-4">
-            <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          </div>
+          <EntityDetailTabLoadingState />
         ) : (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {focusedWorker ? (
@@ -1553,10 +1573,7 @@ export function SchedulingPanel({
         )
       ) : viewMode === "month" ? (
         showScheduleSkeleton ? (
-          <div className="space-y-2 p-4">
-            <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-            <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          </div>
+          <EntityDetailTabLoadingState />
         ) : filteredTechs.length === 0 ? (
           <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
         ) : (
@@ -1572,11 +1589,7 @@ export function SchedulingPanel({
           />
         )
       ) : showScheduleSkeleton ? (
-        <div className="space-y-2 p-4">
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-        </div>
+        <EntityDetailTabLoadingState />
       ) : filteredTechs.length === 0 ? (
         <SchedulingEmptyUsers onClear={hasPeopleFilters ? clearPeopleFilters : undefined} />
       ) : focusedWorker ? (
@@ -1749,6 +1762,7 @@ export function SchedulingPanel({
         groupId={createGroupId}
         defaultDateKey={createDateKey}
         prefill={createPrefill}
+        allowedJobs={restrictToAllowedJobs ? allowedJobs : undefined}
         getBookingConflict={getBookingConflict}
         onCreated={(schedule) => {
           onScheduleCreated(schedule);

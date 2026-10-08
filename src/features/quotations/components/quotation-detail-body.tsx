@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { Pencil } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -14,13 +13,11 @@ import {
 } from "@/features/quotations/constants/quotation-category";
 import type {
   QuotationContactNested,
-  QuotationCreatePayload,
   QuotationDetail,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
-import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import {
   getQuotationAdditionalContactEntries,
   getQuotationAdditionalContactIds,
@@ -39,7 +36,6 @@ import {
   quotationSiteSnapshotToAddressMapPoint,
   siteToAddressMapPoint,
 } from "@/features/quotations/utils/quotation-site-map.util";
-import { mergeQuotationDraftIntoPayload } from "@/features/quotations/utils/quotation-draft-payload.util";
 import { seedDraftFromQuoteSections } from "@/features/quotations/utils/quotation-draft-seed.util";
 import {
   QUOTATION_STATUS_OPTIONS,
@@ -63,7 +59,8 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
 import {
@@ -258,16 +255,11 @@ export function QuotationDetailBody({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [detailTab, setDetailTab] = React.useState<"project" | "pricing" | "vendor-quotations">(() => {
+  const tabsStorageKey = useTabOrderStorageKey("quotationDetailBody");
+  const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() => {
+    const sectionParam = searchParams.get("section");
     const tabParam = searchParams.get("tab");
-    if (tabParam === "pricing") return "pricing";
-    if (
-      tabParam === "vendor-quotations" ||
-      tabParam === "vendor_quotations" ||
-      tabParam === "vendors"
-    ) {
-      return "vendor-quotations";
-    }
+    if (sectionParam === "pricing" || tabParam === "pricing") return "pricing";
     return "project";
   });
 
@@ -287,11 +279,12 @@ export function QuotationDetailBody({
   );
 
   const goToTab = React.useCallback(
-    (tab: "project" | "pricing" | "vendor-quotations") => {
+    (tab: "project" | "pricing") => {
       setDetailTab(tab);
       const params = new URLSearchParams(searchParams.toString());
-      if (tab === "project") params.delete("tab");
-      else params.set("tab", tab);
+      if (tab === "project") params.delete("section");
+      else params.set("section", tab);
+      if (params.get("tab") === "pricing") params.delete("tab");
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       if (typeof window !== "undefined") {
@@ -302,15 +295,10 @@ export function QuotationDetailBody({
   );
 
   React.useEffect(() => {
+    const sectionParam = searchParams.get("section");
     const tabParam = searchParams.get("tab");
-    if (tabParam === "pricing") {
+    if (sectionParam === "pricing" || tabParam === "pricing") {
       setDetailTab("pricing");
-    } else if (
-      tabParam === "vendor-quotations" ||
-      tabParam === "vendor_quotations" ||
-      tabParam === "vendors"
-    ) {
-      setDetailTab("vendor-quotations");
     } else {
       setDetailTab("project");
     }
@@ -344,17 +332,8 @@ export function QuotationDetailBody({
   );
 
   const [scopeDraft, setScopeDraft] = React.useState<QuotationDraft | null>(null);
-  const [scopeDirty, setScopeDirty] = React.useState(false);
-  const [scopeSaving, setScopeSaving] = React.useState(false);
-  const [scopeEditing, setScopeEditing] = React.useState(false);
 
   React.useEffect(() => {
-    setScopeEditing(false);
-    setScopeDirty(false);
-  }, [detail.id]);
-
-  React.useEffect(() => {
-    if (scopeDirty) return;
     if (quoteSectionsSorted.length > 0) {
       setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
     } else if (isServiceQuotation) {
@@ -362,49 +341,12 @@ export function QuotationDetailBody({
     } else {
       setScopeDraft(null);
     }
-  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation, scopeDirty]);
+  }, [quoteSectionsSeedKey, quoteSectionsSorted, isServiceQuotation]);
 
-  const handleScopeDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
-    (action) => {
-      setScopeDraft(action);
-      setScopeDirty(true);
-    },
+  const noopDraftChange = React.useCallback<React.Dispatch<React.SetStateAction<QuotationDraft | null>>>(
+    () => undefined,
     [],
   );
-
-  function resetScopeDraft() {
-    if (quoteSectionsSorted.length > 0) {
-      setScopeDraft(seedDraftFromQuoteSections(quoteSectionsSorted));
-    } else if (isServiceQuotation) {
-      setScopeDraft({ sections: [] });
-    } else {
-      setScopeDraft(null);
-    }
-    setScopeDirty(false);
-  }
-
-  function cancelScopeEdit() {
-    resetScopeDraft();
-    setScopeEditing(false);
-  }
-
-  async function saveScopeDraft() {
-    if (!scopeDraft) return;
-    setScopeSaving(true);
-    try {
-      const merged = mergeQuotationDraftIntoPayload({} as QuotationCreatePayload, scopeDraft);
-      await patchField({
-        quote_sections: merged.quote_sections,
-        grand_total: merged.grand_total,
-        levels: merged.levels,
-        select_all_levels: false,
-      });
-      setScopeDirty(false);
-      setScopeEditing(false);
-    } finally {
-      setScopeSaving(false);
-    }
-  }
 
   const additionalContactEntries = React.useMemo(
     () => getQuotationAdditionalContactEntries(detail.additional_customer_contact),
@@ -632,14 +574,14 @@ export function QuotationDetailBody({
 
   return (
     <DetailPagePadding>
-      <AppTabs
+      <CustomizableAppTabs
         tabs={[
-          { id: "project", label: t("formTabs.project") },
+          { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
           { id: "pricing", label: t("formTabs.pricing") },
-          { id: "vendor-quotations", label: t("formTabs.vendorQuotations") },
         ]}
         value={detailTab}
-        onValueChange={(id) => goToTab(id as "project" | "pricing" | "vendor-quotations")}
+        onValueChange={(id) => goToTab(id as "project" | "pricing")}
+        storageKey={tabsStorageKey}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
         className="mb-1"
@@ -700,75 +642,21 @@ export function QuotationDetailBody({
         aria-labelledby="quotation-detail-trigger-pricing"
         className={cn(detailTab !== "pricing" && "hidden")}
       >
-        <DetailPanelCard
-          title={t("levels.sectionsTitle")}
-          headerRight={
-            isServiceQuotation ? (
-              scopeEditing ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={scopeSaving}
-                    onClick={cancelScopeEdit}
-                  >
-                    {tActions("cancel")}
-                  </AppButton>
-                  <AppButton
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    loading={scopeSaving}
-                    disabled={!scopeDirty || scopeSaving}
-                    onClick={() => void saveScopeDraft()}
-                  >
-                    {t("page.saveEdit")}
-                  </AppButton>
-                </div>
-              ) : (
-                <AppButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={tActions("edit")}
-                  title={tActions("edit")}
-                  className="h-8 w-8 px-0"
-                  onClick={() => setScopeEditing(true)}
-                >
-                  <Pencil className="size-4" strokeWidth={1.75} />
-                </AppButton>
-              )
-            ) : undefined
-          }
-        >
+        <DetailPanelCard title={t("levels.sectionsTitle")}>
           {scopeDraft ? (
             <QuotationDraftComposer
               draft={scopeDraft}
-              onDraftChange={handleScopeDraftChange}
-              saving={scopeSaving}
+              onDraftChange={noopDraftChange}
+              saving={false}
               canShow
-              readOnly={!isServiceQuotation || !scopeEditing}
+              readOnly
               allowManualLines
+              sectionKindTabs={isServiceQuotation}
             />
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("page.editQuoteScopeEmpty")}</p>
           )}
         </DetailPanelCard>
-      </div>
-      <div
-        role="tabpanel"
-        id="quotation-detail-vendor-quotations"
-        aria-labelledby="quotation-detail-trigger-vendor-quotations"
-        className={cn(detailTab !== "vendor-quotations" && "hidden")}
-      >
-        <QuotationVendorQuotationsTab
-          quotationId={detail.id}
-          quoteName={detail.quote_name}
-          detail={detail}
-          onGoToPricingTab={() => goToTab("pricing")}
-          onSent={onSaved}
-        />
       </div>
     </DetailPagePadding>
   );

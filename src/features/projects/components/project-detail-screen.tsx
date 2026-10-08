@@ -9,8 +9,19 @@ import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-tra
 import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
-import { createQuotationFromProject } from "@/features/quotations/api/quotation.api";
-import { deleteProject, fetchProject, patchProject, updateProject } from "@/features/projects/api/project.api";
+import { createQuotationFromProject, fetchQuotationsPage } from "@/features/quotations/api/quotation.api";
+import {
+  deleteProject,
+  fetchProject,
+  fetchProjectJobsHierarchy,
+  patchProject,
+  updateProject,
+} from "@/features/projects/api/project.api";
+import {
+  DEFAULT_PROJECT_JOBS_SOURCE,
+  filterProjectJobsHierarchy,
+  flattenFilteredHierarchyToListItems,
+} from "@/features/projects/utils/project-jobs-list.util";
 import { ProjectDetailBody } from "@/features/projects/components/project-detail-body";
 import { ProjectDrawingsTab } from "@/features/projects/components/project-drawings-tab";
 import { ProjectFormsTab } from "@/features/projects/components/project-forms-tab";
@@ -30,14 +41,14 @@ import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { buildEntityDetailHrefAfterSave, buildProjectOverviewHref } from "@/shared/utils/detail-from-list.util";
 import {
   AppButton,
-  AppTabs,
+  CustomizableAppTabs,
   type AppTabItem,
   CheckmarkSelect,
   ConfirmDialog,
-  DashboardUnderDevelopmentState,
 } from "@/shared/ui";
 import ProjectPinsListTab from "./project-pins-list-tab";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
@@ -52,13 +63,13 @@ type Props = {
 
 export function ProjectDetailScreen({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
-  const tHome = useTranslations("Dashboard.home");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const dateFmt = useDashboardDateFormat();
   const dateOnlyFmt = useDashboardDateFormat({ dateOnly: true });
+  const projectTabsStorageKey = useTabOrderStorageKey("projectDetail");
 
   const [clientName, setClientName] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<CheckmarkSelectOption[]>([]);
@@ -69,6 +80,9 @@ export function ProjectDetailScreen({ projectId }: Props) {
   const [quoting, setQuoting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("details");
   const [togglingActive, setTogglingActive] = React.useState(false);
+  /** Data-driven related tabs: Quotes/Location after a quote exists; Jobs after a job exists. */
+  const [hasQuotations, setHasQuotations] = React.useState(false);
+  const [hasJobs, setHasJobs] = React.useState(false);
 
   // --- Project Status Dialog ---
   const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
@@ -143,21 +157,52 @@ export function ProjectDetailScreen({ projectId }: Props) {
     }
   }, [statusDialogOpen, detailForClient]);
 
-  const detailTabs = React.useMemo<AppTabItem[]>(
-    () => [
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [quotesRes, hierarchy] = await Promise.all([
+          fetchQuotationsPage(1, 1, { project: projectId }),
+          fetchProjectJobsHierarchy(projectId, { silent: true }),
+        ]);
+        if (cancelled) return;
+        setHasQuotations((quotesRes.pagination?.total_records ?? quotesRes.items.length) > 0);
+        const filtered = filterProjectJobsHierarchy(hierarchy, {
+          job_source: DEFAULT_PROJECT_JOBS_SOURCE,
+        });
+        setHasJobs(flattenFilteredHierarchyToListItems(filtered).length > 0);
+      } catch {
+        if (!cancelled) {
+          setHasQuotations(false);
+          setHasJobs(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  const detailTabs = React.useMemo<AppTabItem[]>(() => {
+    // Always: Overview, Forms (Assign), Take Off (Add), Timeline.
+    // Quotes + Location only after at least one quote exists.
+    // Jobs only after at least one job exists.
+    // Job sheets / Docs / Approvals: no data and no create action → hidden.
+    const tabs: AppTabItem[] = [
       { id: "details", label: t("detail.tabs.details") },
       { id: "forms", label: t("detail.tabs.forms") },
       { id: "drawings", label: t("detail.tabs.drawings") },
-      { id: "jobs", label: t("detail.tabs.jobs") },
-      { id: "location", label: t("detail.tabs.location") },
-      { id: "quotations", label: t("detail.tabs.quotations") },
-      { id: "jobsheets", label: t("detail.tabs.jobsheets") },
-      { id: "docs", label: t("detail.tabs.docs") },
-      { id: "approvals", label: t("detail.tabs.approvals") },
-      { id: "timeline", label: tAudit("tabTimeline") },
-    ],
-    [t, tAudit],
-  );
+    ];
+    if (hasQuotations) {
+      tabs.push({ id: "quotations", label: t("detail.tabs.quotations") });
+      tabs.push({ id: "location", label: t("detail.tabs.location") });
+    }
+    if (hasJobs) {
+      tabs.push({ id: "jobs", label: t("detail.tabs.jobs") });
+    }
+    tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
+    return tabs;
+  }, [hasQuotations, hasJobs, t, tAudit]);
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
 
@@ -171,6 +216,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }, [searchParams, pathname, router, allowedDetailTabIds]);
+
+  React.useEffect(() => {
+    if (allowedDetailTabIds.has(activeTab)) return;
+    setActiveTab("details");
+  }, [activeTab, allowedDetailTabIds]);
 
   React.useEffect(() => {
     if (!detailForClient) {
@@ -260,10 +310,11 @@ export function ProjectDetailScreen({ projectId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={projectTabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="project-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -449,12 +500,6 @@ export function ProjectDetailScreen({ projectId }: Props) {
               module={AUDIT_TRAIL_MODULES.project}
               objectId={detail.id}
               dateFmt={dateFmt}
-            />
-          ) : activeTab !== "details" ? (
-            <DashboardUnderDevelopmentState
-              className="rounded-none"
-              title={tHome("title")}
-              description={tHome("body")}
             />
           ) : null}
         </div>

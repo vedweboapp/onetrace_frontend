@@ -9,6 +9,9 @@ type LookupItem = {
   abbreviation?: string | null;
   selling_price?: number | string | null;
   item_selling_price?: number | string | null;
+  price?: number | string | null;
+  unit_price?: number | string | null;
+  retail_price?: number | string | null;
   composite_item_id?: number | string | null;
   image?: string | null;
   image_url?: string | null;
@@ -52,7 +55,13 @@ export function buildLookupOptions(
       resolveLookupImageUrl(item.thumbnail);
     const runtimeImage = groupImage || resolveLookupImageUrl(runtimeImagesById[id]);
     const itemLabel = item.item_name || item.name || item.abbreviation || `Item ${id}`;
-    const sellingPrice = item.item_selling_price ?? item.selling_price ?? "";
+    const sellingPrice =
+      item.item_selling_price ??
+      item.selling_price ??
+      item.price ??
+      item.unit_price ??
+      item.retail_price ??
+      "";
     const isImageLookup = presentation === "image_radio";
 
     options.push({
@@ -87,11 +96,20 @@ export function mergeLookupOptions(
   runtimeOptions: KioskOption[],
   savedOptions: KioskOption[] = [],
 ): KioskOption[] {
-  const savedByCompositeId = new Map(
-    savedOptions
-      .filter((option) => option.composite_item_id != null)
-      .map((option) => [String(option.composite_item_id), option]),
-  );
+  const savedByCompositeId = new Map<string, KioskOption>();
+  for (const option of savedOptions) {
+    const key =
+      option.composite_item_id != null
+        ? String(option.composite_item_id)
+        : option.value != null && !isNaN(Number(option.value))
+        ? String(option.value)
+        : option.api_name != null && !isNaN(Number(option.api_name))
+        ? String(option.api_name)
+        : null;
+    if (key) {
+      savedByCompositeId.set(key, option);
+    }
+  }
 
   return runtimeOptions.map((runtimeOption) => {
     const savedOption = savedByCompositeId.get(
@@ -109,8 +127,8 @@ export function mergeLookupOptions(
       api_name: runtimeOption.api_name,
       label: runtimeOption.label,
       sub_label: runtimeOption.sub_label || runtimeOption.subLabel,
-      price: runtimeOption.price,
-      selling_price: runtimeOption.selling_price,
+      price: runtimeOption.price ?? (savedOption as any).price,
+      selling_price: runtimeOption.selling_price ?? (savedOption as any).selling_price,
       image: runtimeOption.image,
     };
   });

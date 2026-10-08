@@ -42,17 +42,23 @@ export function formatGroupedInteger(integerPart: string, format: string): strin
   return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-export function formatGroupedNumber(amount: number, decimalPlaces: number, format: string): string {
+export function formatGroupedNumber(
+  amount: number,
+  decimalPlaces: number,
+  format: string,
+  options?: { trimTrailingZeros?: boolean },
+): string {
   if (!Number.isFinite(amount)) return "";
   const decimals = Number.isFinite(decimalPlaces) ? Math.max(0, Math.min(8, Math.trunc(decimalPlaces))) : 0;
   const parts = Math.abs(amount).toFixed(decimals).split(".");
   const integerPart = parts[0] ?? "0";
-  const fraction = parts[1];
+  let fraction = parts[1] ?? "";
+  if (options?.trimTrailingZeros) {
+    fraction = fraction.replace(/0+$/, "");
+  }
   const formattedInteger = formatGroupedInteger(integerPart, format);
-  const formattedNumber =
-    format === "1.234.567,89"
-      ? formattedInteger + (fraction ? `,${fraction}` : "")
-      : formattedInteger + (fraction ? `.${fraction}` : "");
+  const dec = format === "1.234.567,89" ? "," : ".";
+  const formattedNumber = fraction ? `${formattedInteger}${dec}${fraction}` : formattedInteger;
   return amount < 0 ? `-${formattedNumber}` : formattedNumber;
 }
 

@@ -132,7 +132,10 @@ export function DetailEditableField({
 }) {
   const tLocked = useTranslations("Dashboard.common.lockedField");
   const fieldId = React.useId();
-  const hasValue = children != null && children !== "";
+  const hasChildren = children != null && children !== "";
+  const trimmedValue = typeof value === "string" ? value.trim() : "";
+  const hasValue = hasChildren || trimmedValue.length > 0;
+  const displayNode = hasChildren ? children : trimmedValue || empty;
   const readOnly = disabled || locked;
   const canInline =
     !readOnly &&
@@ -663,7 +666,7 @@ export function DetailEditableField({
                 multiline && "whitespace-pre-wrap",
               )}
             >
-              {hasValue ? children : empty}
+              {hasValue ? displayNode : empty}
             </div>
             {locked ? (
               <span
