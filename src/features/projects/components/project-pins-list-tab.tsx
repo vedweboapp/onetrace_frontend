@@ -751,10 +751,13 @@ function PlotPinsBlock({
 const ProjectPinsListTab = ({
   sites,
   projectId: projectIdProp,
+  quotationId,
 }: {
   sites?: Array<number | ProjectSiteRef> | null;
   /** When opened from a quotation (or other non-project route), pass the project id. */
   projectId?: number;
+  /** When set, levels are loaded with `?quote=<id>` (this quote only). */
+  quotationId?: number;
 }) => {
   const siteOptions = useMemo(() => {
     if (!sites || sites.length === 0)
@@ -887,13 +890,16 @@ const ProjectPinsListTab = ({
       setLoadError(null);
 
       try {
-        const rawParams: Record<string, string> = {
+        const rawParams: Record<string, string | number> = {
           is_converted_job: selectedJobStatus,
           quote_status: selectedQuoteStatus,
         };
+        if (quotationId != null && Number.isFinite(quotationId) && quotationId > 0) {
+          rawParams.quote = quotationId;
+        }
         // Strip empty-string values — empty means "All", so omit them entirely
         const params = Object.fromEntries(
-          Object.entries(rawParams).filter(([, v]) => v !== "")
+          Object.entries(rawParams).filter(([, v]) => v !== ""),
         );
         const { items, pagination: p } = await fetchDrawingsPage(
           Number(id),
@@ -919,7 +925,7 @@ const ProjectPinsListTab = ({
         }
       }
     },
-    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus],
+    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId],
   );
 
   useEffect(() => {
@@ -929,7 +935,7 @@ const ProjectPinsListTab = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus]);
+  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId]);
 
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
@@ -1068,18 +1074,29 @@ const ProjectPinsListTab = ({
   });
 
   const filteredLocations = useMemo(() => {
+    const quoteScoped = quotationId != null && quotationId > 0;
     return locations
       .filter((level) => levelFilter == null || level.id === levelFilter)
       .map((level) => {
-        const plots = (level.plots ?? [])
+        let plots = (level.plots ?? [])
           .filter((plot) => plotFilter == null || plot.id === plotFilter)
-          .map((plot) => ({ ...plot, pins: plot.pins ?? [] }))
-          .filter((p) => p.pins.length > 0);
-
+          .map((plot) => ({
+            ...plot,
+            pins: Array.isArray(plot.pins) ? plot.pins : [],
+          }));
+        // Project location tab: only plots that still have pins.
+        // Quote location tab: keep API rows for this quote even if a plot is temporarily empty.
+        if (!quoteScoped) {
+          plots = plots.filter((p) => p.pins.length > 0);
+        }
         return { ...level, plots };
       })
-      .filter((level) => level.plots.length > 0);
-  }, [locations, levelFilter, plotFilter]);
+      .filter((level) => {
+        if (level.plots.length > 0) return true;
+        // Quote tab: still render API levels for this quote (avoid empty tab when data exists).
+        return quoteScoped;
+      });
+  }, [locations, levelFilter, plotFilter, quotationId]);
 
   const levelOptions = useMemo(
     () =>
@@ -1749,7 +1766,9 @@ const ProjectPinsListTab = ({
                 iconName: "pinStatus",
                 title: "No locations yet",
                 description:
-                  "No locations or blueprints have been added to this project yet.",
+                  quotationId != null
+                    ? "No approved locations were found for this quote."
+                    : "No locations or blueprints have been added to this project yet.",
                 action: null,
               }}
               onClearFilters={clearFilters}

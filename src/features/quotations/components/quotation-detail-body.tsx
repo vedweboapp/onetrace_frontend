@@ -59,8 +59,7 @@ import {
   DetailPanelCard,
 } from "@/shared/components/layout/detail-metric-card";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
-import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { CustomizableAppTabs } from "@/shared/ui";
+import { AppTabs } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { routes } from "@/shared/config/routes";
 import {
@@ -255,7 +254,6 @@ export function QuotationDetailBody({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tabsStorageKey = useTabOrderStorageKey("quotationDetailBody");
   const [detailTab, setDetailTab] = React.useState<"project" | "pricing">(() => {
     const sectionParam = searchParams.get("section");
     const tabParam = searchParams.get("tab");
@@ -574,14 +572,13 @@ export function QuotationDetailBody({
 
   return (
     <DetailPagePadding>
-      <CustomizableAppTabs
+      <AppTabs
         tabs={[
-          { id: "project", label: t("formTabs.project") },
+          { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
           { id: "pricing", label: t("formTabs.pricing") },
         ]}
         value={detailTab}
         onValueChange={(id) => goToTab(id as "project" | "pricing")}
-        storageKey={tabsStorageKey}
         ariaLabel={t("formTabs.aria")}
         panelIdPrefix="quotation-detail"
         className="mb-1"
