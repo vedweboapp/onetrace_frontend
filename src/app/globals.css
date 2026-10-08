@@ -764,15 +764,39 @@ html[data-font-size] .text-\[12px\],
   column-gap: var(--detail-label-gap, 0.75rem);
 }
 
+/* Top: same stacked layout as add/edit forms — label full-width, left-aligned above value. */
 .dash-appearance-scope[data-form-label="top"] .detail-field.field-group {
-  display: block;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.375rem !important;
+  grid-template-columns: none !important;
 }
 
 .dash-appearance-scope[data-form-label="top"] .detail-field .field-label {
-  margin-bottom: 0.125rem;
-  padding-top: 0;
-  text-align: left;
+  margin-bottom: 0;
+  padding-top: 0 !important;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: left !important;
   white-space: normal;
+  width: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch;
+  order: 0 !important;
+}
+
+.dash-appearance-scope[data-form-label="top"] .detail-field .field-control-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+  order: 1 !important;
+}
+
+/* Flush value text under the label (forms have no inset label/value mismatch). */
+.dash-appearance-scope[data-form-label="top"] .detail-field .detail-value-surface {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
@@ -886,16 +910,20 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-/* Single-line detail rows: vertically center label + value. */
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+/*
+ * Side-by-side detail rows only: vertically center label + value.
+ * Must NOT apply when labels are on top — align-self:center would
+ * horizontally center short labels above left-aligned values.
+ */
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group {
   align-items: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-label {
   align-self: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
   align-self: stretch;
 }
 

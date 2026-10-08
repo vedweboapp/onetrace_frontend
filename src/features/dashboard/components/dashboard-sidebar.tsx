@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, PackageCheck, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -419,6 +419,7 @@ function DashboardMainSidebar({
   const quotationProjectHref = routes.dashboard.quotationProject;
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
+  const purchaseReceivesHref = routes.dashboard.purchaseReceives;
   const jobsHref = routes.dashboard.jobs;
   const schedulingHref = routes.dashboard.scheduling;
   const qrCodesHref = routes.dashboard.qrCodes;
@@ -466,6 +467,8 @@ function DashboardMainSidebar({
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
+  const purchaseReceivesActive =
+    pathname === purchaseReceivesHref || pathname.startsWith(`${purchaseReceivesHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const schedulingActive =
     pathname === schedulingHref || pathname.startsWith(`${schedulingHref}/`);
@@ -593,6 +596,14 @@ function DashboardMainSidebar({
           active={purchaseOrdersActive}
           label={t("purchaseOrders")}
           icon={ClipboardList}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={purchaseReceivesHref}
+          active={purchaseReceivesActive}
+          label={t("purchaseReceives")}
+          icon={PackageCheck}
           expanded={expanded}
           resolved={resolved}
         />
