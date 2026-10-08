@@ -32,7 +32,7 @@ function mergeJobs(target: Map<number, Job>, jobs: Job[]) {
 }
 
 /**
- * Load jobs for a quotation via `GET /jobs/?quote=<id>`.
+ * Load jobs for a quotation via `GET /jobs/?quotations=<id>`.
  * Service quotes expect a single linked job; project quotes may return several.
  */
 export async function fetchJobsForQuotation(options: {
@@ -49,7 +49,7 @@ export async function fetchJobsForQuotation(options: {
       1,
       isService ? 20 : 100,
       {
-        quote: quotationId,
+        quotations: quotationId,
         ...extra,
       },
       { silent: true },
