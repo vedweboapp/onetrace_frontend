@@ -3173,6 +3173,7 @@
         "serviceMarkup": "Margen (%)",
         "serviceTimeHours": "Tiempo (horas)",
         "serviceHoursShort": "{hours} h",
+        "serviceMarkupMin": "Mín. {min}% (predeterminado del ítem)",
         "serviceTotal": "Total servicio",
         "labourSelect": "Seleccionar tipo de mano de obra",
         "labourType": "Tipo de mano de obra",

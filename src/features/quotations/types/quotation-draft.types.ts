@@ -36,6 +36,11 @@ export type QuotationDraftServiceLine = {
   item_name?: string | null;
   cost_price: number;
   markup_percentage: number;
+  /**
+   * Catalog `default_markup` floor for this line. Quote markup may go above
+   * this value but must not go below it.
+   */
+  default_markup: number;
   /** Unit selling price (before time). */
   selling_price: number;
   /** Hours; line total = selling_price × time_hours. */

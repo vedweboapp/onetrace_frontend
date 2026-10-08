@@ -5,7 +5,11 @@ import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchItem, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
-import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
+import {
+  parseItemNumber,
+  resolveItemDefaultMarkup,
+  suggestedItemSellPrice,
+} from "@/features/items/utils/item-pricing.util";
 import { resolveItemType } from "@/features/items/utils/item-type.util";
 import type { QuotationDraftServiceLine } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
@@ -31,18 +35,32 @@ type Props = {
 
 function serviceFromItem(row: Item): QuotationDraftServiceLine {
   const cost = parseItemNumber(row.cost_price);
-  const markup = parseItemNumber(row.markup);
+  const defaultMarkup = resolveItemDefaultMarkup(row);
   const sell =
-    parseItemNumber(row.selling_price) || suggestedItemSellPrice(cost, markup) || serviceLineSellPrice(cost, markup);
+    parseItemNumber(row.selling_price) ||
+    suggestedItemSellPrice(cost, defaultMarkup) ||
+    serviceLineSellPrice(cost, defaultMarkup);
   return {
     id: newQuotationDraftId("svc"),
     item_id: row.id,
     item_name: row.name?.trim() || null,
     cost_price: cost,
-    markup_percentage: markup,
+    markup_percentage: defaultMarkup,
+    default_markup: defaultMarkup,
     selling_price: sell,
     time_hours: 1,
   };
+}
+
+function lineDefaultMarkup(row: QuotationDraftServiceLine): number {
+  return typeof row.default_markup === "number" && Number.isFinite(row.default_markup) && row.default_markup >= 0
+    ? row.default_markup
+    : 0;
+}
+
+function clampQuoteMarkup(raw: number, floor: number): number {
+  if (!Number.isFinite(raw) || raw < 0) return floor;
+  return raw < floor ? floor : raw;
 }
 
 function lineHours(row: QuotationDraftServiceLine): number {
@@ -152,12 +170,16 @@ export function QuotationDraftSectionServices({
       try {
         const row = await fetchItem(id);
         setOptions((prev) => [...prev.filter((x) => x.id !== row.id), row]);
-        addServiceFromId(id, [row]);
+        // Preselect in the field so the user can confirm with "Add service".
+        setPickId(String(id));
       } catch {
         try {
           const { items } = await fetchItemsPage(1, 100, { dropdown: true, itemType: "service" });
-          setOptions(items.filter((x) => resolveItemType(x.item_type) === "service"));
-          addServiceFromId(id, items);
+          const filtered = items.filter((x) => resolveItemType(x.item_type) === "service");
+          setOptions(filtered);
+          if (filtered.some((x) => x.id === id) || items.some((x) => x.id === id)) {
+            setPickId(String(id));
+          }
         } catch {
           // leave picker empty
         }
@@ -265,13 +287,28 @@ export function QuotationDraftSectionServices({
                       variant="plain"
                       className={cn(surfaceInputClassName, "w-full")}
                       onChange={(v) => {
-                        const markup = Number.parseFloat(v) || 0;
+                        const parsed = Number.parseFloat(v);
+                        const markup = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+                        patchService(index, {
+                          markup_percentage: markup,
+                          selling_price: serviceLineSellPrice(row.cost_price, markup),
+                        });
+                      }}
+                      onBlur={() => {
+                        const floor = lineDefaultMarkup(row);
+                        const markup = clampQuoteMarkup(row.markup_percentage, floor);
+                        if (markup === row.markup_percentage) return;
                         patchService(index, {
                           markup_percentage: markup,
                           selling_price: serviceLineSellPrice(row.cost_price, markup),
                         });
                       }}
                     />
+                    {lineDefaultMarkup(row) > 0 ? (
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        {t("serviceMarkupMin", { min: lineDefaultMarkup(row) })}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
