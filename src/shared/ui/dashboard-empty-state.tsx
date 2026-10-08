@@ -19,6 +19,7 @@ import {
   MapPinHouse,
   MonitorSmartphone,
   Package,
+  PackageCheck,
   Palette,
   QrCode,
   Receipt,
@@ -48,6 +49,7 @@ export type DashboardEmptyStateIconName =
   | "quotations"
   | "invoices"
   | "purchaseOrders"
+  | "purchaseReceives"
   | "jobs"
   | "scheduling"
   | "qrCodes"
@@ -108,6 +110,7 @@ const ICON_BY_NAME: Record<DashboardEmptyStateIconName, LucideIcon> = {
   quotations: FileText,
   invoices: Receipt,
   purchaseOrders: ClipboardList,
+  purchaseReceives: PackageCheck,
   jobs: ListTodo,
   scheduling: CalendarDays,
   qrCodes: QrCode,

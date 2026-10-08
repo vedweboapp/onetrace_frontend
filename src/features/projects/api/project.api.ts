@@ -75,6 +75,15 @@ export async function fetchProject(id: number): Promise<Project> {
   assertApiSuccess(data);
   return data.data;
 }
+
+/** GET project/{id}/approved-vendor-quotations/ */
+export async function fetchProjectApprovedVendorQuotations(projectId: number): Promise<unknown> {
+  const { data } = await api.get(PROJECT_PATHS.approvedVendorQuotations(projectId), {
+    skipErrorToast: true,
+  });
+  return data;
+}
+
 import type { Drawing } from "../types/drawing.types";
 
 export async function fetchLocation(id: number | string): Promise<Drawing[]> {

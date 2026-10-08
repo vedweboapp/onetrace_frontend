@@ -14,6 +14,7 @@ import {
   MapPinHouse,
   MonitorSmartphone,
   Package,
+  PackageCheck,
   Palette,
   PanelLeft,
   PanelLeftClose,
@@ -109,6 +110,7 @@ export function DashboardHeader() {
   const quotationProjectHref = routes.dashboard.quotationProject;
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
+  const purchaseReceivesHref = routes.dashboard.purchaseReceives;
   const jobsHref = routes.dashboard.jobs;
   const serviceJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.service}`;
   const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
@@ -178,6 +180,8 @@ export function DashboardHeader() {
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
+  const purchaseReceivesActive =
+    pathname === purchaseReceivesHref || pathname.startsWith(`${purchaseReceivesHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
   const serviceJobActive =
@@ -266,6 +270,8 @@ export function DashboardHeader() {
           ? tNav("invoices")
           : purchaseOrdersActive
             ? tNav("purchaseOrders")
+            : purchaseReceivesActive
+              ? tNav("purchaseReceives")
             : clientsActive
               ? tNav("clients")
               : vendorsActive
@@ -483,6 +489,7 @@ export function DashboardHeader() {
             />
             <TopNavLink href={invoicesHref} label={tNav("invoices")} icon={Receipt} active={invoicesActive} resolved={resolved} />
             <TopNavLink href={purchaseOrdersHref} label={tNav("purchaseOrders")} icon={ClipboardList} active={purchaseOrdersActive} resolved={resolved} />
+            <TopNavLink href={purchaseReceivesHref} label={tNav("purchaseReceives")} icon={PackageCheck} active={purchaseReceivesActive} resolved={resolved} />
             <TopNavGroup
               label={tNav("jobs")}
               icon={ListTodo}

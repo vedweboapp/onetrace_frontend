@@ -998,7 +998,7 @@ const SECTIONS: DocSection[] = [
       table(
         ["Setting", "Purpose"],
         [
-          ["Form Builder", "Custom forms and layouts"],
+          ["Modules", "Custom forms and layouts"],
           ["Project Forms", "Forms associated with project types / job use"],
         ]
       ),
