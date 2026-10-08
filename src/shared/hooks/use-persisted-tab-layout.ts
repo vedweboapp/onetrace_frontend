@@ -68,10 +68,11 @@ export function usePersistedTabLayout(
     (fromIndex: number, toIndex: number) => {
       persist({
         order: moveTabOrderItem(resolved.order, fromIndex, toIndex),
-        hidden: resolved.hidden,
+        // Hide/show UI removed — never re-persist hidden tabs.
+        hidden: [],
       });
     },
-    [persist, resolved.hidden, resolved.order],
+    [persist, resolved.order],
   );
 
   const setHidden = React.useCallback(

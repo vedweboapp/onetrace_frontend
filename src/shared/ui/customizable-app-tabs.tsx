@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppTabs, type AppTabItem, type AppTabsProps } from "@/shared/ui/app-tabs";
 import { usePersistedTabLayout } from "@/shared/hooks/use-persisted-tab-layout";
@@ -26,7 +26,7 @@ export type CustomizableAppTabsProps = Omit<AppTabsProps, "tabs"> & {
   tabs: readonly AppTabItem[];
   /** localStorage key — include user id so preferences are personal (see `useTabOrderStorageKey`). */
   storageKey: string;
-  /** Tabs that cannot be hidden (defaults to the first tab). */
+  /** Kept for API compatibility; hide/show is disabled everywhere. */
   pinnedTabIds?: readonly string[];
   /** Override copy; defaults to `Dashboard.common.customizeTabs`. */
   labels?: Partial<CustomizableAppTabsLabels>;
@@ -61,21 +61,19 @@ export function CustomizableAppTabs({
     if (pinnedTabIdsProp?.length) return [...pinnedTabIdsProp];
     return defaultIds[0] ? [defaultIds[0]] : [];
   }, [defaultIds, pinnedTabIdsProp]);
-  const { order, hidden, visibleIds, move, setHidden, reset, isCustom } = usePersistedTabLayout(
-    storageKey,
-    defaultIds,
-    pinnedTabIds,
-  );
-  const hiddenSet = React.useMemo(() => new Set(hidden), [hidden]);
+  const { order, move, reset, isCustom } = usePersistedTabLayout(storageKey, defaultIds, pinnedTabIds);
 
+  // Order-only: never hide tabs via the customize panel (eye control removed).
   const orderedTabs = React.useMemo(
     () => order.map((id) => byId.get(id)).filter((tab): tab is AppTabItem => tab != null),
     [order, byId],
   );
-  const visibleTabs = React.useMemo(
-    () => visibleIds.map((id) => byId.get(id)).filter((tab): tab is AppTabItem => tab != null),
-    [visibleIds, byId],
-  );
+  // Include any new tabs not yet in stored order (e.g. Jobs appears after first job).
+  const visibleTabs = React.useMemo(() => {
+    const seen = new Set(orderedTabs.map((tab) => tab.id));
+    const extras = tabs.filter((tab) => !seen.has(tab.id));
+    return [...orderedTabs, ...extras];
+  }, [orderedTabs, tabs]);
 
   React.useEffect(() => {
     if (visibleTabs.length === 0) return;
@@ -162,10 +160,8 @@ export function CustomizableAppTabs({
               <p className="mt-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">{labels.arrangeHint}</p>
             </div>
             <ul className="max-h-[14rem] overflow-y-auto py-1">
-              {orderedTabs.map((tab, index) => {
+              {visibleTabs.map((tab, index) => {
                 const labelText = typeof tab.label === "string" ? tab.label : tab.id;
-                const pinned = pinnedTabIds.includes(tab.id);
-                const isHidden = !pinned && hiddenSet.has(tab.id);
                 return (
                   <li
                     key={tab.id}
@@ -187,7 +183,6 @@ export function CustomizableAppTabs({
                     className={cn(
                       "flex items-center gap-1 border-b border-slate-50 px-2 py-1 last:border-b-0 dark:border-slate-800/60",
                       dragFrom === index && "bg-slate-50 opacity-60 dark:bg-slate-800/50",
-                      isHidden && "opacity-55",
                     )}
                   >
                     <span
@@ -199,23 +194,6 @@ export function CustomizableAppTabs({
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                       {labelText}
                     </span>
-                    <div className="flex shrink-0 items-center gap-0.5">
-                      <button
-                        type="button"
-                        className="flex size-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                        aria-label={pinned ? labels.pinnedHint : isHidden ? labels.showAria : labels.hideAria}
-                        aria-pressed={!isHidden}
-                        title={pinned ? labels.pinnedHint : isHidden ? labels.showAria : labels.hideAria}
-                        disabled={pinned}
-                        onClick={() => setHidden(tab.id, !isHidden)}
-                      >
-                        {isHidden ? (
-                          <EyeOff className="size-3.5" aria-hidden />
-                        ) : (
-                          <Eye className="size-3.5" aria-hidden />
-                        )}
-                      </button>
-                    </div>
                   </li>
                 );
               })}

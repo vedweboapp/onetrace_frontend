@@ -56,7 +56,8 @@ import {
 import { routes } from "@/shared/config/routes";
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
-import { AppButton, AppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, DashboardEmptyState, type AppTabItem } from "@/shared/ui";
 import type { CheckmarkSelectOption } from "@/shared/ui/checkmark-select";
 import { cn } from "@/core/utils/http.util";
 
@@ -91,6 +92,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
+  const quotationTabsStorageKey = useTabOrderStorageKey("quotationDetail");
   const catalogEpoch = useDropdownCatalogEpoch([
     "users",
     "clients",
@@ -426,10 +428,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={handleTabChange}
+          storageKey={quotationTabsStorageKey}
           ariaLabel={t("relatedTabs.aria")}
           panelIdPrefix="quotation-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

@@ -756,7 +756,7 @@ const ProjectPinsListTab = ({
   sites?: Array<number | ProjectSiteRef> | null;
   /** When opened from a quotation (or other non-project route), pass the project id. */
   projectId?: number;
-  /** When set, levels are loaded with `?quote=<id>` (this quote only). */
+  /** When set, levels are loaded with `?quotations=<id>` (this quote only). */
   quotationId?: number;
 }) => {
   const siteOptions = useMemo(() => {
@@ -895,7 +895,7 @@ const ProjectPinsListTab = ({
           quote_status: selectedQuoteStatus,
         };
         if (quotationId != null && Number.isFinite(quotationId) && quotationId > 0) {
-          rawParams.quote = quotationId;
+          rawParams.quotations = quotationId;
         }
         // Strip empty-string values — empty means "All", so omit them entirely
         const params = Object.fromEntries(
