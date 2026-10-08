@@ -28,9 +28,12 @@ import {
   purchaseOrderToFormDefaults,
 } from "@/features/purchase-orders/utils/purchase-order-form-map";
 import { computeLineAmount, formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/invoice-money.util";
-import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { fetchItemsPage } from "@/features/items/api/item.api";
-import { fetchProjectsPage } from "@/features/projects/api/project.api";
+import { fetchVendorApprovedQuotations, fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { fetchProjectApprovedVendorQuotations, fetchProjectsPage } from "@/features/projects/api/project.api";
+import {
+  parseApprovedVendorQuotations,
+  parseVendorApprovedQuotations,
+} from "@/features/purchase-orders/utils/purchase-order-approved-quotations.util";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
@@ -125,10 +128,14 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
 
   const { fields, append, remove } = useFieldArray({ control, name: "line_items" });
   const selectedVendor = useWatch({ control, name: "vendor" });
+  const selectedProject = useWatch({ control, name: "project" });
   const lineItems = useWatch({ control, name: "line_items" }) ?? [];
+  const prevVendorForItemsRef = React.useRef<string | null>(null);
 
   const vendorId =
     selectedVendor && /^\d+$/.test(selectedVendor) ? Number.parseInt(selectedVendor, 10) : undefined;
+  const projectId =
+    selectedProject && /^\d+$/.test(selectedProject) ? Number.parseInt(selectedProject, 10) : undefined;
   const getFormDraft = React.useCallback(() => getValues(), [getValues]);
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
@@ -137,7 +144,6 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     [reset],
   );
   const groupQuickCreate = useQuickCreate({ kind: "group", getFormDraft: !isEdit ? getFormDraft : undefined });
-  const itemQuickCreate = useQuickCreate({ kind: "item", getFormDraft: !isEdit ? getFormDraft : undefined });
   const vendorQuickCreate = useQuickCreate({ kind: "vendor", getFormDraft: !isEdit ? getFormDraft : undefined });
   const contactQuickCreate = useQuickCreate({
     kind: "contact",
@@ -177,37 +183,40 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     onReloadOptions: async () => {
       try {
-        const [vendors, projects, groups, items, contacts] = await Promise.all([
-          fetchVendorsPage(1, 20, { is_active: true, dropdown: true }),
+        const [projects, groups, contacts] = await Promise.all([
           fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
           fetchGroupsPage(1, 20, { dropdown: true }),
-          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
           vendorId
-            ? fetchContactsPage(1, 20, { vendor: vendorId, contact_type: "vendor", is_active: true, dropdown: true })
-            : Promise.resolve({ items: [] }),
+            ? fetchContactsPage(1, 20, {
+                vendor: vendorId,
+                contact_type: "vendor",
+                is_active: true,
+                dropdown: true,
+              })
+            : Promise.resolve({ items: [] as Awaited<ReturnType<typeof fetchContactsPage>>["items"] }),
         ]);
-        setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
+        setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
+        setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
         setContactOptions(
           contacts.items.map((c) => ({
             value: String(c.id),
             label: formatContactOptionLabel(c),
           })),
         );
-        setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
-        setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
-        const prices = new Map<number, number>();
-        const groupMap = new Map<number, number | null>();
-        setItemOptions(
-          items.items.map((p) => {
-            const raw = p.selling_price;
-            const n = typeof raw === "number" ? raw : Number.parseFloat(String(raw ?? ""));
-            if (Number.isFinite(n)) prices.set(p.id, n);
-            groupMap.set(p.id, typeof p.group === "number" ? p.group : null);
-            return { value: String(p.id), label: p.name?.trim() || p.sku?.trim() || `#${p.id}` };
-          }),
-        );
-        setItemPriceById(prices);
-        setItemGroupById(groupMap);
+
+        if (projectId && projectId > 0) {
+          const raw = await fetchProjectApprovedVendorQuotations(projectId);
+          const vendors = parseApprovedVendorQuotations(raw);
+          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
+        } else {
+          const vendors = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
+          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
+        }
+
+        if (vendorId && vendorId > 0) {
+          const raw = await fetchVendorApprovedQuotations(vendorId);
+          applyApprovedItemOptions(parseVendorApprovedQuotations(raw));
+        }
       } catch {
         setVendorOptions([]);
         setProjectOptions([]);
@@ -238,51 +247,60 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
           .catch(() => {
             setValue("line_items.0.group_name", "", { shouldDirty: true });
           });
-        return;
-      }
-      if (selectTarget === "item") {
-        setValue("line_items.0.item", selectId, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
+
+  function applyApprovedItemOptions(
+    items: ReturnType<typeof parseVendorApprovedQuotations>,
+  ) {
+    const prices = new Map<number, number>();
+    const groupMap = new Map<number, number | null>();
+    const groupExtras: Option[] = [];
+    const seenGroups = new Set<number>();
+    setItemOptions(
+      items.map((it) => {
+        if (it.rate != null && Number.isFinite(it.rate)) prices.set(it.id, it.rate);
+        groupMap.set(it.id, it.groupId);
+        if (it.groupId != null && it.groupId > 0 && !seenGroups.has(it.groupId)) {
+          seenGroups.add(it.groupId);
+          groupExtras.push({
+            value: String(it.groupId),
+            label: it.groupName || `Group #${it.groupId}`,
+          });
+        }
+        return { value: String(it.id), label: it.name };
+      }),
+    );
+    setItemPriceById(prices);
+    setItemGroupById(groupMap);
+    if (groupExtras.length > 0) {
+      setGroupOptions((prev) => {
+        const map = new Map(prev.map((o) => [o.value, o]));
+        for (const g of groupExtras) {
+          if (!map.has(g.value)) map.set(g.value, g);
+        }
+        return Array.from(map.values());
+      });
+    }
+  }
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [vendors, projects, groups, items] = await Promise.all([
-          fetchVendorsPage(1, 20, { is_active: true, dropdown: true }),
+        const [projects, groups] = await Promise.all([
           fetchProjectsPage(1, 20, { is_active: true, dropdown: true }),
           fetchGroupsPage(1, 20, { dropdown: true }),
-          fetchItemsPage(1, 20, { isActive: true, dropdown: true }),
         ]);
         if (!cancelled) {
-          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
           setProjectOptions(projects.items.map((p) => ({ value: String(p.id), label: p.name })));
           setGroupOptions(groups.items.map((g) => ({ value: String(g.id), label: g.name })));
-          const prices = new Map<number, number>();
-          const groupMap = new Map<number, number | null>();
-          setItemOptions(
-            items.items.map((p) => {
-              const raw = p.selling_price;
-              const n = typeof raw === "number" ? raw : Number.parseFloat(String(raw ?? ""));
-              if (Number.isFinite(n)) prices.set(p.id, n);
-              groupMap.set(p.id, typeof p.group === "number" ? p.group : null);
-              return {
-                value: String(p.id),
-                label: p.name?.trim() || p.sku?.trim() || `#${p.id}`,
-              };
-            }),
-          );
-          setItemPriceById(prices);
-          setItemGroupById(groupMap);
         }
       } catch {
         if (!cancelled) {
-          setVendorOptions([]);
           setProjectOptions([]);
           setGroupOptions([]);
-          setItemOptions([]);
         }
       }
     })();
@@ -292,32 +310,95 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
   }, []);
 
   React.useEffect(() => {
-    if (!vendorId || vendorId <= 0) {
-      setContactOptions([]);
-      return;
-    }
     let cancelled = false;
     (async () => {
       try {
-        const { items } = await fetchContactsPage(1, 20, { vendor: vendorId,
-          contact_type: "vendor",
-          is_active: true, dropdown: true });
-        if (!cancelled) {
-          setContactOptions(
-            items.map((c) => ({
-              value: String(c.id),
-              label: formatContactOptionLabel(c),
-            })),
-          );
+        if (projectId && projectId > 0) {
+          const raw = await fetchProjectApprovedVendorQuotations(projectId);
+          if (cancelled) return;
+          const vendors = parseApprovedVendorQuotations(raw);
+          setVendorOptions(vendors.map((v) => ({ value: String(v.id), label: v.name })));
+          const currentVendor = getValues("vendor");
+          if (currentVendor && !vendors.some((v) => String(v.id) === currentVendor)) {
+            setValue("vendor", "", { shouldDirty: true });
+            setValue("contact", "", { shouldDirty: true });
+          }
+        } else {
+          const vendors = await fetchVendorsPage(1, 20, { is_active: true, dropdown: true });
+          if (cancelled) return;
+          setVendorOptions(vendors.items.map((v) => ({ value: String(v.id), label: v.name })));
         }
       } catch {
-        if (!cancelled) setContactOptions([]);
+        if (!cancelled) setVendorOptions([]);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [vendorId]);
+  }, [projectId, getValues, setValue]);
+
+  React.useEffect(() => {
+    if (!vendorId || vendorId <= 0) {
+      setContactOptions([]);
+      setItemOptions([]);
+      setItemPriceById(new Map());
+      setItemGroupById(new Map());
+      prevVendorForItemsRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ items: contacts }, approvedRaw] = await Promise.all([
+          fetchContactsPage(1, 20, {
+            vendor: vendorId,
+            contact_type: "vendor",
+            is_active: true,
+            dropdown: true,
+          }),
+          fetchVendorApprovedQuotations(vendorId),
+        ]);
+        if (cancelled) return;
+        setContactOptions(
+          contacts.map((c) => ({
+            value: String(c.id),
+            label: formatContactOptionLabel(c),
+          })),
+        );
+        const approvedItems = parseVendorApprovedQuotations(approvedRaw);
+        applyApprovedItemOptions(approvedItems);
+
+        const vendorKey = String(vendorId);
+        const prevVendor = prevVendorForItemsRef.current;
+        prevVendorForItemsRef.current = vendorKey;
+        if (prevVendor != null && prevVendor !== vendorKey) {
+          setValue("line_items", [emptyPurchaseOrderLineItem()], { shouldDirty: true });
+        } else {
+          const allowed = new Set(approvedItems.map((it) => String(it.id)));
+          const lines = getValues("line_items");
+          let changed = false;
+          const next = lines.map((row) => {
+            if (row.item && allowed.size > 0 && !allowed.has(row.item)) {
+              changed = true;
+              return { ...row, item: "", item_name: "", rate: "" };
+            }
+            return row;
+          });
+          if (changed) setValue("line_items", next, { shouldDirty: true });
+        }
+      } catch {
+        if (!cancelled) {
+          setContactOptions([]);
+          setItemOptions([]);
+          setItemPriceById(new Map());
+          setItemGroupById(new Map());
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [vendorId, getValues, setValue]);
 
   React.useEffect(() => {
     const groupIds = Array.from(
@@ -449,6 +530,29 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("sections.basic")}
               </h2>
+              <Controller
+                control={control}
+                name="project"
+                render={({ field }) => (
+                  <CheckmarkSelect
+                    id="po-project"
+                    label={t("fields.projectName")}
+                    options={projectOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    emptyLabel={t("placeholders.project")}
+                    disabled={saving}
+                    listLabel={t("fields.projectName")}
+                    portaled
+                    searchable
+                    clearable
+                    className="h-9"
+                    onAdd={projectQuickCreate.onAdd}
+                    addAriaLabel={projectQuickCreate.addAriaLabel}
+                    addLabel={projectQuickCreate.addLabel}
+                  />
+                )}
+              />
               <FormFieldRow cols="2">
                 <Controller
                   control={control}
@@ -469,9 +573,9 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                         listLabel={t("fields.vendorName")}
                         portaled
                         searchable
-                        onAdd={vendorQuickCreate.onAdd}
-                        addAriaLabel={vendorQuickCreate.addAriaLabel}
-                        addLabel={vendorQuickCreate.addLabel}
+                        onAdd={projectId ? undefined : vendorQuickCreate.onAdd}
+                        addAriaLabel={projectId ? undefined : vendorQuickCreate.addAriaLabel}
+                        addLabel={projectId ? undefined : vendorQuickCreate.addLabel}
                       />
                       <FieldErrorText>{errors.vendor?.message}</FieldErrorText>
                     </FieldGroup>
@@ -502,29 +606,6 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                   )}
                 />
               </FormFieldRow>
-              <Controller
-                control={control}
-                name="project"
-                render={({ field }) => (
-                  <CheckmarkSelect
-                    id="po-project"
-                    label={t("fields.projectName")}
-                    options={projectOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    emptyLabel={t("placeholders.project")}
-                    disabled={saving}
-                    listLabel={t("fields.projectName")}
-                    portaled
-                    searchable
-                    clearable
-                    className="h-9"
-                    onAdd={projectQuickCreate.onAdd}
-                    addAriaLabel={projectQuickCreate.addAriaLabel}
-                    addLabel={projectQuickCreate.addLabel}
-                  />
-                )}
-              />
             </section>
 
             <section className="space-y-6 pt-1">
@@ -596,7 +677,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                   type="button"
                   variant="primary"
                   size="sm"
-                  disabled={saving}
+                  disabled={saving || !vendorId}
                   onClick={() => append(emptyPurchaseOrderLineItem())}
                 >
                   {t("lineItems.addItem")}
@@ -645,7 +726,7 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                                     setValue(`line_items.${index}.rate`, "", { shouldDirty: true });
                                   }}
                                   emptyLabel={t("placeholders.group")}
-                                  disabled={saving}
+                                  disabled={saving || !vendorId}
                                   portaled
                                   searchable
                                   size="sm"
@@ -702,14 +783,16 @@ export function PurchaseOrderFormScreen({ mode, purchaseOrderId }: Props) {
                                         }
                                       }
                                     }}
-                                    emptyLabel={t("lineItems.selectProduct")}
-                                    disabled={saving}
+                                    emptyLabel={
+                                      vendorId
+                                        ? t("lineItems.selectProduct")
+                                        : t("placeholders.vendor")
+                                    }
+                                    disabled={saving || !vendorId}
                                     portaled
                                     searchable
                                     size="sm"
                                     className="h-8"
-                                    onAdd={itemQuickCreate.onAdd}
-                                    addAriaLabel={itemQuickCreate.addAriaLabel}
                                   />
                                 )}
                               />

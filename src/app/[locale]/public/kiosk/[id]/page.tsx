@@ -22,7 +22,10 @@ import {
   savePendingKioskCheckout,
   type PendingKioskCheckout,
 } from "@/features/kiosk/utils/kiosk-pending-checkout.util";
-import { parseCheckoutOrderSummary, type KioskOrderCompleteInfo } from "@/features/kiosk/utils/kiosk-order-summary.util";
+import {
+  resolveOrderCompleteFromPaymentStatus,
+  type KioskOrderCompleteInfo,
+} from "@/features/kiosk/utils/kiosk-order-summary.util";
 import { KioskOrderCompleteCard } from "@/features/kiosk/components/kiosk-order-complete-card";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AlertCircle, ShoppingCart } from "lucide-react";
@@ -219,12 +222,11 @@ export default function PublicKioskPage() {
         items: pending.items,
       });
       const checkoutRes = await submitKioskCheckout(checkoutFormData);
-      const orderSummary = parseCheckoutOrderSummary(checkoutRes);
-      if (orderSummary.totalAmount == null && pending.cartTotals?.grandTotal != null) {
-        orderSummary.totalAmount = pending.cartTotals.grandTotal;
-      }
-      orderSummary.email = pending.billingDetails.email;
-      orderSummary.productName = pending.configName;
+      const orderSummary = await resolveOrderCompleteFromPaymentStatus(checkoutRes, {
+        email: pending.billingDetails.email,
+        productName: pending.configName,
+        totalAmount: pending.cartTotals?.grandTotal,
+      });
       setCompletedOrder(orderSummary);
 
       if (pending.snapshotImage) {

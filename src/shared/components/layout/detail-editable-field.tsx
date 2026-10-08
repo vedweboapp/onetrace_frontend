@@ -38,7 +38,7 @@ export const detailFieldLabelClassName = cn(
 
 /** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
+  "detail-value-surface flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
   "text-[length:var(--dash-body-size,0.875rem)] font-normal leading-normal text-slate-700",
   "dark:text-slate-300",
 );

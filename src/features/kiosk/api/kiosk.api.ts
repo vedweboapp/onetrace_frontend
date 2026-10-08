@@ -214,6 +214,18 @@ export async function submitKioskCheckout(
 }
 
 /**
+ * Payment / order status for the success card after Stripe.
+ * GET /api/v1/order/{orderNumber}/payment-status/
+ */
+export async function fetchOrderPaymentStatus(orderNumber: string): Promise<unknown> {
+  const encoded = encodeURIComponent(orderNumber.trim());
+  const res = await api.get(`/order/${encoded}/payment-status/`, {
+    skipErrorToast: true,
+  });
+  return res.data;
+}
+
+/**
  * Fetch a kiosk config via the public (unauthenticated) API endpoint.
  * Endpoint: /api/v1/public/{organization_uuid}/service-forms/{id}/
  */

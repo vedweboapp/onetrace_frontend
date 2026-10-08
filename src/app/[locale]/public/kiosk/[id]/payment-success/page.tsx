@@ -7,7 +7,10 @@ import {
   buildKioskCheckoutFormData,
   dataUrlToBlob,
 } from "@/features/kiosk/utils/kiosk-submission.builder";
-import { parseCheckoutOrderSummary, type KioskOrderCompleteInfo } from "@/features/kiosk/utils/kiosk-order-summary.util";
+import {
+  resolveOrderCompleteFromPaymentStatus,
+  type KioskOrderCompleteInfo,
+} from "@/features/kiosk/utils/kiosk-order-summary.util";
 import { KioskOrderCompleteCard } from "@/features/kiosk/components/kiosk-order-complete-card";
 import type { KioskBillingDetails } from "@/features/kiosk/components/kiosk-invoice-details";
 import type { CheckoutItem } from "@/features/kiosk/types/kiosk-submission.types";
@@ -212,15 +215,15 @@ export default function PaymentSuccessPage() {
         }
 
         const checkoutRes = await submitKioskCheckout(checkoutFormData);
-        const orderSummary = parseCheckoutOrderSummary(checkoutRes);
-        if (orderSummary.totalAmount == null && pendingData.cartTotals?.grandTotal != null) {
-          orderSummary.totalAmount = pendingData.cartTotals.grandTotal;
-        }
-        if (verifyData.amount_total != null && orderSummary.totalAmount == null) {
-          orderSummary.totalAmount = (verifyData.amount_total / 100).toFixed(2);
-        }
-        orderSummary.productName = pendingData.configName;
-        orderSummary.email = pendingData.billingDetails.email || verifyData.customer_email;
+        const orderSummary = await resolveOrderCompleteFromPaymentStatus(checkoutRes, {
+          email: pendingData.billingDetails.email || verifyData.customer_email,
+          productName: pendingData.configName,
+          totalAmount:
+            pendingData.cartTotals?.grandTotal ??
+            (verifyData.amount_total != null
+              ? (verifyData.amount_total / 100).toFixed(2)
+              : null),
+        });
 
         setOrderDetails(orderSummary);
 

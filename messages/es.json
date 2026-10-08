@@ -368,6 +368,7 @@
       "quotationProject": "Cotizaciones de Proyecto",
       "invoices": "Facturas",
       "purchaseOrders": "Órdenes de compra",
+      "purchaseReceives": "Recepciones de compra",
       "jobs": "Trabajos",
       "serviceJob": "Trabajos de Servicio",
       "projectJob": "Trabajos de Proyecto",
@@ -413,9 +414,9 @@
       "personalProfile": "Perfil personal",
       "companySettings": "Ajustes de la empresa",
       "documentation": "Documentación",
-      "formBuilder": "Form Builder",
+      "formBuilder": "Módulos",
       "projectForms": "Project Forms",
-      "modules": "Form Builder",
+      "modules": "Módulos",
       "kiosk": "Kiosco",
       "kiosks": "Formularios de kiosco",
       "kioskBuilder": "Creador de kioscos",
@@ -527,6 +528,7 @@
         "dispatch": "Despacho",
         "invoice": "Factura",
         "purchaseOrder": "Orden de compra",
+        "purchaseReceive": "Recepción de compra",
         "item": "Ítem",
         "group": "Grupo",
         "compositeItem": "Ítem compuesto"
@@ -2302,12 +2304,12 @@
       }
     },
     "modules": {
-      "title": "Form Builder",
+      "title": "Módulos",
       "subtitle": "Crea y gestiona formularios y layouts personalizados para tu organización.",
       "add": "Crear nuevo formulario",
       "searchPlaceholder": "Buscar…",
-      "searchAria": "Buscar form builder",
-      "loadError": "No se pudo cargar el form builder. Inténtalo de nuevo.",
+      "searchAria": "Buscar módulos",
+      "loadError": "No se pudieron cargar los módulos. Inténtalo de nuevo.",
       "emptyTitle": "Aún no hay formularios",
       "emptyDescription": "Crea un formulario para organizar datos personalizados en tu espacio de trabajo.",
       "table": {
@@ -3677,6 +3679,114 @@
         "pincode": "Introduce un código postal.",
         "addressType": "Selecciona un tipo de dirección.",
         "addressesMin": "Añade al menos una dirección."
+      }
+    },
+    "purchaseReceives": {
+      "metaTitle": "Recepciones de compra",
+      "detailMetaTitle": "Detalles de la recepción",
+      "title": "Recepciones de compra",
+      "subtitle": "Registra la mercancía recibida frente a órdenes de compra.",
+      "createPurchaseReceive": "Crear recepción de compra",
+      "edit": "Editar",
+      "searchPlaceholder": "Buscar recepciones…",
+      "searchAria": "Buscar recepciones de compra",
+      "emptyTitle": "Aún no hay recepciones",
+      "emptyDescription": "Crea tu primera recepción cuando llegue mercancía de un proveedor.",
+      "loadError": "No se pudieron cargar las recepciones. Inténtalo de nuevo.",
+      "detailLoadError": "No se pudieron cargar los detalles de la recepción. Inténtalo de nuevo.",
+      "createdToast": "Recepción creada correctamente",
+      "updatedToast": "Recepción actualizada correctamente",
+      "createError": "No se pudo crear la recepción. Inténtalo de nuevo.",
+      "updateError": "No se pudo actualizar la recepción. Inténtalo de nuevo.",
+      "filterStatus": "Estado",
+      "filterAllStatuses": "Todos los estados",
+      "filterVendor": "Proveedor",
+      "filterAllVendors": "Todos los proveedores",
+      "pageLabel": "Mostrando {start} a {end} de {total} resultados",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "status": {
+        "draft": "Borrador",
+        "partial": "Parcial",
+        "received": "Recibido",
+        "cancelled": "Cancelado"
+      },
+      "table": {
+        "purchaseReceiveNumber": "Recepción #",
+        "vendor": "Proveedor",
+        "purchaseOrder": "Orden de compra",
+        "receiveDate": "Fecha de recepción",
+        "totalReceived": "Cant. recibida",
+        "status": "Estado"
+      },
+      "card": {
+        "receiveDate": "Fecha de recepción",
+        "totalReceived": "Cant. recibida"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "lineItems": "Líneas"
+      },
+      "detail": {
+        "loadingTitle": "Cargando…",
+        "retry": "Reintentar",
+        "backAria": "Volver a la lista de recepciones",
+        "sectionReceiveDetails": "Detalles de la recepción",
+        "sectionLineItems": "Líneas",
+        "sectionAttachments": "Adjuntos",
+        "sectionSystemMetadata": "Metadatos del sistema",
+        "notModifiedYet": "Aún no modificado"
+      },
+      "fields": {
+        "purchaseReceiveNumber": "Número de recepción",
+        "receiveDate": "Fecha de recepción",
+        "vendor": "Proveedor",
+        "purchaseOrder": "Orden de compra",
+        "status": "Estado",
+        "trackingNumber": "Número de seguimiento",
+        "trackingLink": "Enlace de seguimiento",
+        "totalQuantityReceived": "Cantidad total recibida",
+        "notes": "Notas",
+        "createdAt": "Creado el",
+        "updatedAt": "Actualizado el",
+        "createdBy": "Creado por",
+        "modifiedBy": "Modificado por"
+      },
+      "placeholders": {
+        "vendor": "Seleccionar proveedor",
+        "purchaseOrder": "Seleccionar orden de compra",
+        "status": "Seleccionar estado"
+      },
+      "sections": {
+        "basic": "Información básica",
+        "lineItems": "Líneas",
+        "notes": "Notas"
+      },
+      "lineItems": {
+        "item": "Ítem",
+        "orderedQty": "Cant. pedida",
+        "receivedQty": "Cant. recibida",
+        "billedQty": "Cant. facturada",
+        "unitPrice": "Precio unitario",
+        "addItem": "Añadir línea",
+        "remove": "Eliminar línea",
+        "empty": "No hay líneas en esta recepción.",
+        "fromPurchaseOrderHint": "Las líneas se cargaron desde la orden de compra seleccionada. Ajusta las cantidades recibidas según corresponda."
+      },
+      "page": {
+        "createTitle": "Crear recepción de compra",
+        "editTitle": "Editar recepción de compra"
+      },
+      "modal": {
+        "cancel": "Cancelar",
+        "save": "Guardar cambios"
+      },
+      "validation": {
+        "vendor": "Selecciona un proveedor.",
+        "receiveDate": "Introduce una fecha de recepción.",
+        "status": "Selecciona un estado.",
+        "lineItem": "Añade al menos una línea con un ítem válido.",
+        "receivedQuantity": "Introduce una cantidad recibida válida."
       }
     },
     "materialRequests": {

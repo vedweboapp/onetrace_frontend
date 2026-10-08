@@ -375,6 +375,7 @@
       "quotationProject": "Project Quotes",
       "invoices": "Invoices",
       "purchaseOrders": "Purchase orders",
+      "purchaseReceives": "Purchase receives",
       "jobs": "Jobs",
       "serviceJob": "Service Jobs",
       "projectJob": "Project Jobs",
@@ -420,9 +421,9 @@
       "personalProfile": "Personal Profile",
       "companySettings": "Company Settings",
       "documentation": "Documentation",
-      "formBuilder": "Form Builder",
+      "formBuilder": "Modules",
       "projectForms": "Project Forms",
-      "modules": "Form Builder",
+      "modules": "Modules",
       "kiosk": "Kiosk",
       "kiosks": "Kiosk Forms",
       "kioskBuilder": "Kiosk Builder",
@@ -534,6 +535,7 @@
         "dispatch": "Dispatch",
         "invoice": "Invoice",
         "purchaseOrder": "Purchase order",
+        "purchaseReceive": "Purchase receive",
         "item": "Item",
         "group": "Group",
         "compositeItem": "Composite item"
@@ -897,7 +899,7 @@
       },
       "settings": {
         "title": "Relevant settings sections",
-        "description": "The main settings area includes profile, documentation, company settings, Form Builder, Project Forms, customization, users, and integrations.",
+        "description": "The main settings area includes profile, documentation, company settings, Modules, Project Forms, customization, users, and integrations.",
         "flow": {
           "personalProfile": "Access the personal profile page through Settings → Personal Profile to update contact and address details.",
           "integration": "Connect and configure Zoho integration under Settings → Integrations, then follow callback/connection/key mapping flows.",
@@ -2313,12 +2315,12 @@
       }
     },
     "modules": {
-      "title": "Form Builder",
+      "title": "Modules",
       "subtitle": "Create and manage custom forms and layouts for your organization.",
       "add": "Create New Form",
       "searchPlaceholder": "Search…",
-      "searchAria": "Search form builder",
-      "loadError": "Could not load form builder. Try again.",
+      "searchAria": "Search modules",
+      "loadError": "Could not load modules. Try again.",
       "emptyTitle": "No Forms Yet",
       "emptyDescription": "Create a form to organize custom data in your workspace.",
       "table": {
@@ -3691,6 +3693,114 @@
         "pincode": "Enter a postal or ZIP code.",
         "addressType": "Select an address type.",
         "addressesMin": "Add at least one address."
+      }
+    },
+    "purchaseReceives": {
+      "metaTitle": "Purchase Receives",
+      "detailMetaTitle": "Purchase Receive Details",
+      "title": "Purchase receives",
+      "subtitle": "Record goods received against purchase orders.",
+      "createPurchaseReceive": "Create purchase receive",
+      "edit": "Edit",
+      "searchPlaceholder": "Search purchase receives…",
+      "searchAria": "Search purchase receives",
+      "emptyTitle": "No Purchase Receives Yet",
+      "emptyDescription": "Create your first purchase receive when goods arrive from a vendor.",
+      "loadError": "Could not load purchase receives. Try again.",
+      "detailLoadError": "Could not load purchase receive details. Try again.",
+      "createdToast": "Purchase receive created successfully",
+      "updatedToast": "Purchase receive updated successfully",
+      "createError": "Could not create the purchase receive. Try again.",
+      "updateError": "Could not update the purchase receive. Try again.",
+      "filterStatus": "Status",
+      "filterAllStatuses": "All statuses",
+      "filterVendor": "Vendor",
+      "filterAllVendors": "All vendors",
+      "pageLabel": "Showing {start} to {end} of {total} results",
+      "prev": "Previous",
+      "next": "Next",
+      "status": {
+        "draft": "Draft",
+        "partial": "Partial",
+        "received": "Received",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "purchaseReceiveNumber": "Receive #",
+        "vendor": "Vendor",
+        "purchaseOrder": "Purchase order",
+        "receiveDate": "Receive date",
+        "totalReceived": "Qty received",
+        "status": "Status"
+      },
+      "card": {
+        "receiveDate": "Receive date",
+        "totalReceived": "Qty received"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "lineItems": "Line items"
+      },
+      "detail": {
+        "loadingTitle": "Loading…",
+        "retry": "Retry",
+        "backAria": "Back to purchase receives list",
+        "sectionReceiveDetails": "Receive details",
+        "sectionLineItems": "Line items",
+        "sectionAttachments": "Attachments",
+        "sectionSystemMetadata": "System metadata",
+        "notModifiedYet": "Not modified yet"
+      },
+      "fields": {
+        "purchaseReceiveNumber": "Receive number",
+        "receiveDate": "Receive date",
+        "vendor": "Vendor",
+        "purchaseOrder": "Purchase order",
+        "status": "Status",
+        "trackingNumber": "Tracking number",
+        "trackingLink": "Tracking link",
+        "totalQuantityReceived": "Total quantity received",
+        "notes": "Notes",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at",
+        "createdBy": "Created by",
+        "modifiedBy": "Modified by"
+      },
+      "placeholders": {
+        "vendor": "Select vendor",
+        "purchaseOrder": "Select purchase order",
+        "status": "Select status"
+      },
+      "sections": {
+        "basic": "Basic information",
+        "lineItems": "Line items",
+        "notes": "Notes"
+      },
+      "lineItems": {
+        "item": "Item",
+        "orderedQty": "Ordered qty",
+        "receivedQty": "Received qty",
+        "billedQty": "Billed qty",
+        "unitPrice": "Unit price",
+        "addItem": "Add line",
+        "remove": "Remove line",
+        "empty": "No line items on this purchase receive.",
+        "fromPurchaseOrderHint": "Lines were loaded from the selected purchase order. Adjust received quantities as needed."
+      },
+      "page": {
+        "createTitle": "Create Purchase Receive",
+        "editTitle": "Edit Purchase Receive"
+      },
+      "modal": {
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "validation": {
+        "vendor": "Select a vendor.",
+        "receiveDate": "Enter a receive date.",
+        "status": "Select a status.",
+        "lineItem": "Add at least one line item with a valid item.",
+        "receivedQuantity": "Enter a valid received quantity."
       }
     },
     "materialRequests": {
