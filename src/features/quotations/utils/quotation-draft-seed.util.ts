@@ -1,5 +1,17 @@
-import type { ProjectLevelForQuotation, QuotationQuoteSection, QuotationQuoteSectionPin, QuotationQuoteSectionPlot } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
+import type {
+  ProjectLevelForQuotation,
+  QuotationQuoteSection,
+  QuotationQuoteSectionLabour,
+  QuotationQuoteSectionPin,
+  QuotationQuoteSectionPlot,
+} from "@/features/quotations/types/quotation.types";
+import type {
+  QuotationDraft,
+  QuotationDraftLine,
+  QuotationDraftPlot,
+  QuotationDraftSection,
+  QuotationDraftServiceLine,
+} from "@/features/quotations/types/quotation-draft.types";
 import { aggregateCompositeLinesForPlot } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import {
@@ -55,6 +67,7 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       order: typeof lv.order === "number" ? lv.order : null,
       included: true,
       kind: "project",
+      services: [],
       section_pins: [],
       plots,
     });
@@ -94,6 +107,40 @@ function readSectionText(sec: QuotationQuoteSection, keys: string[]): string {
     if (typeof value === "string") return value;
   }
   return "";
+}
+
+function readNestedId(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (raw && typeof raw === "object" && "id" in raw) {
+    const id = Number((raw as { id: unknown }).id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+}
+
+function mapQuoteApiLaboursToDraftServices(
+  labours: QuotationQuoteSectionLabour[] | undefined,
+): QuotationDraftServiceLine[] {
+  if (!Array.isArray(labours) || labours.length === 0) return [];
+  return labours.map((row) => {
+    const itemId =
+      readNestedId((row as QuotationQuoteSectionLabour & { item?: unknown }).item) ??
+      readNestedId(row.labour_type);
+    const nestedItem = (row as QuotationQuoteSectionLabour & { item?: unknown }).item;
+    const nestedName =
+      nestedItem && typeof nestedItem === "object" && "name" in nestedItem
+        ? String((nestedItem as { name?: unknown }).name ?? "").trim()
+        : "";
+    const name = (typeof row.name === "string" && row.name.trim()) || nestedName || null;
+    return {
+      id: newQuotationDraftId("svc"),
+      item_id: itemId,
+      item_name: name,
+      cost_price: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
+      markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
+      selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
+    };
+  });
 }
 
 function isDirectMaterialPlot(p: QuotationQuoteSectionPlot): boolean {
@@ -147,6 +194,7 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       order: typeof sec.order === "number" ? sec.order : null,
       included: true,
       kind: resolveQuotationSectionType(sec, "primary"),
+      services: mapQuoteApiLaboursToDraftServices(sec.labours),
       section_pins: sectionPins,
       plots,
     };

@@ -11,7 +11,6 @@ export type DropdownCatalogKind =
   | "tags"
   | "items"
   | "compositeItems"
-  | "labours"
   | "vendors"
   | "vendorTypes"
   | "groups"
@@ -51,9 +50,6 @@ const PREFIX_KINDS: ReadonlyArray<readonly [string, DropdownCatalogKind]> = [
   ["project-form", "forms"],
   ["checklist-type", "checklistTypes"],
   ["composite-item", "compositeItems"],
-  ["labourtypes", "labours"],
-  ["labour-type", "labours"],
-  ["labourtype", "labours"],
   ["installation-type", "installationTypes"],
   ["unit-type", "unitTypes"],
   ["vendor-type", "vendorTypes"],

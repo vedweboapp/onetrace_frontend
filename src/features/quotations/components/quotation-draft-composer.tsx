@@ -116,6 +116,10 @@ function draftSectionMaterialsCount(section: QuotationDraftSection): number {
   return direct + fromPlots;
 }
 
+function draftSectionServicesCount(section: QuotationDraftSection): number {
+  return Array.isArray(section.services) ? section.services.length : 0;
+}
+
 function draftSectionPlotsPinsPreview(
   section: QuotationDraftSection,
   t: (key: string, values?: Record<string, number>) => string,
@@ -126,13 +130,37 @@ function draftSectionPlotsPinsPreview(
   return t("sectionPlotsPinsPreview", { plots, pins });
 }
 
-function draftSectionMaterialsPreview(
+function draftSectionServicesMaterialsPreview(
   section: QuotationDraftSection,
   t: (key: string, values?: Record<string, number>) => string,
 ): string | null {
+  const service = draftSectionServicesCount(section);
   const materials = draftSectionMaterialsCount(section);
+  if (service > 0 && materials > 0) return t("sectionServiceMaterialsPreview", { service, materials });
+  if (service > 0) return t("sectionServicePreview", { count: service });
   if (materials > 0) return t("sectionMaterialsPreview", { count: materials });
   return null;
+}
+
+type SectionLinePreview = { id: string; name: string; amount: number };
+
+function draftSectionLinePreviews(section: QuotationDraftSection): SectionLinePreview[] {
+  const lines: SectionLinePreview[] = [];
+  for (const row of section.services ?? []) {
+    lines.push({
+      id: row.id,
+      name: row.item_name?.trim() || (row.item_id != null ? `#${row.item_id}` : "—"),
+      amount: row.selling_price,
+    });
+  }
+  for (const pin of section.section_pins ?? []) {
+    lines.push({
+      id: pin.id,
+      name: pin.name?.trim() || (pin.composite_item_id != null ? `#${pin.composite_item_id}` : "—"),
+      amount: draftPinTotal(pin),
+    });
+  }
+  return lines;
 }
 
 function QuotationDraftQuoteTotalBar({
@@ -625,6 +653,7 @@ export function QuotationDraftComposer({
           notes: "",
           included: true,
           kind,
+          services: [],
           section_pins: [],
           plots: [],
         },
@@ -647,6 +676,7 @@ export function QuotationDraftComposer({
           name: source.name,
           description: source.description ?? "",
           notes: source.notes ?? "",
+          services: (source.services ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("svc") })),
           section_pins: (source.section_pins ?? []).map((ln) => ({ ...ln, id: newQuotationDraftId("line") })),
           plots: source.plots.map((p) => ({
             ...p,
@@ -1233,14 +1263,15 @@ export function QuotationDraftComposer({
             {visibleSections.map((section) => {
               const si = draft.sections.findIndex((s) => s.id === section.id);
               const editingTitle = !readOnly && sectionTitleEditId === section.id;
-              const scopePreview = draftSectionMaterialsPreview(section, t);
+              const scopePreview = draftSectionServicesMaterialsPreview(section, t);
+              const linePreviews = draftSectionLinePreviews(section);
               return (
                 <li key={section.id}>
                   <div
                     role={editingTitle ? undefined : "button"}
                     tabIndex={editingTitle || saving ? undefined : 0}
                     className={cn(
-                      "group flex w-full items-start gap-3 rounded-xl border-2 px-3 py-3 text-left transition",
+                      "group w-full rounded-xl border-2 px-3 py-3 text-left transition",
                       "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
                       "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
                       !editingTitle && "cursor-pointer",
@@ -1266,113 +1297,130 @@ export function QuotationDraftComposer({
                           }
                     }
                   >
-                    <div className="min-w-0 flex-1">
-                      {editingTitle && si >= 0 ? (
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <DraftAutosizeTitleTextarea
-                            value={section.name}
-                            onValueChange={(v) => updateSectionName(si, v)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                confirmSectionTitleEdit(si);
-                              }
-                              if (e.key === "Escape") {
-                                e.preventDefault();
-                                cancelSectionTitleEdit(si);
-                              }
-                            }}
-                            disabled={saving}
-                            aria-label={t("newSectionPlaceholder")}
-                            className="min-h-[2.25rem] min-w-[6rem] font-semibold"
-                            autoFocus
-                          />
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            <button
-                              type="button"
-                              disabled={saving}
-                              className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                              aria-label={t("confirmRowName")}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                confirmSectionTitleEdit(si);
+                    <div className="flex w-full items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        {editingTitle && si >= 0 ? (
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <DraftAutosizeTitleTextarea
+                              value={section.name}
+                              onValueChange={(v) => updateSectionName(si, v)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  confirmSectionTitleEdit(si);
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  cancelSectionTitleEdit(si);
+                                }
                               }}
-                            >
-                              <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
-                            </button>
-                            <button
-                              type="button"
                               disabled={saving}
-                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                              aria-label={t("cancelRowName")}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                cancelSectionTitleEdit(si);
-                              }}
-                            >
-                              <X className="size-3.5" strokeWidth={2.5} aria-hidden />
-                            </button>
+                              aria-label={t("newSectionPlaceholder")}
+                              className="min-h-[2.25rem] min-w-[6rem] font-semibold"
+                              autoFocus
+                            />
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                disabled={saving}
+                                className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                aria-label={t("confirmRowName")}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  confirmSectionTitleEdit(si);
+                                }}
+                              >
+                                <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={saving}
+                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                aria-label={t("cancelRowName")}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  cancelSectionTitleEdit(si);
+                                }}
+                              >
+                                <X className="size-3.5" strokeWidth={2.5} aria-hidden />
+                              </button>
+                            </div>
                           </div>
+                        ) : (
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span className="max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {section.name?.trim() || t("newSectionPlaceholder")}
+                            </span>
+                            {!readOnly && si >= 0 ? (
+                              <button
+                                type="button"
+                                disabled={saving}
+                                data-draft-row-actions
+                                className={cn(
+                                  "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
+                                  "opacity-0 group-hover:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
+                                  "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
+                                )}
+                                aria-label={t("editRowName")}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  beginSectionTitleEdit(section.id, section.name);
+                                }}
+                              >
+                                <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
+                        {scopePreview ? (
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{scopePreview}</p>
+                        ) : null}
+                      </div>
+                      <span className="ml-auto shrink-0 pt-0.5 tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {formatMoneyDisplay(draftSectionTotal(section), loc)}
+                      </span>
+                      {!readOnly && si >= 0 ? (
+                        <div data-draft-row-actions className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <DataTableRowActionsMenu
+                            menuAriaLabel={t("rowActions")}
+                            items={[
+                              {
+                                id: "dup-sec",
+                                label: t("duplicateSection"),
+                                icon: Copy,
+                                onSelect: () => openDuplicatePrompt({ kind: "section", si }),
+                              },
+                              {
+                                id: "del-sec",
+                                label: t("deleteSection"),
+                                icon: Trash2,
+                                tone: "danger",
+                                onSelect: () => deleteSection(si),
+                              },
+                            ]}
+                          />
                         </div>
-                      ) : (
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {section.name?.trim() || t("newSectionPlaceholder")}
-                          </span>
-                          {!readOnly && si >= 0 ? (
-                            <button
-                              type="button"
-                              disabled={saving}
-                              data-draft-row-actions
-                              className={cn(
-                                "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
-                                "opacity-0 group-hover:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
-                                "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
-                              )}
-                              aria-label={t("editRowName")}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                beginSectionTitleEdit(section.id, section.name);
-                              }}
-                            >
-                              <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                            </button>
-                          ) : null}
-                        </div>
-                      )}
-                      {scopePreview ? (
-                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{scopePreview}</p>
                       ) : null}
                     </div>
-                    <span className="ml-auto shrink-0 pt-0.5 tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {formatMoneyDisplay(draftSectionTotal(section), loc)}
-                    </span>
-                    {!readOnly && si >= 0 ? (
-                      <div data-draft-row-actions className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <DataTableRowActionsMenu
-                          menuAriaLabel={t("rowActions")}
-                          items={[
-                            {
-                              id: "dup-sec",
-                              label: t("duplicateSection"),
-                              icon: Copy,
-                              onSelect: () => openDuplicatePrompt({ kind: "section", si }),
-                            },
-                            {
-                              id: "del-sec",
-                              label: t("deleteSection"),
-                              icon: Trash2,
-                              tone: "danger",
-                              onSelect: () => deleteSection(si),
-                            },
-                          ]}
-                        />
-                      </div>
+                    {linePreviews.length > 0 ? (
+                      <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2 dark:border-slate-800">
+                        {linePreviews.map((line) => (
+                          <li
+                            key={line.id}
+                            className="flex items-baseline justify-between gap-3 text-xs text-slate-600 dark:text-slate-300"
+                          >
+                            <span className="min-w-0 truncate">{line.name}</span>
+                            <span className="shrink-0 tabular-nums font-medium text-slate-800 dark:text-slate-100">
+                              {formatMoneyDisplay(line.amount, loc)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     ) : null}
                   </div>
                 </li>

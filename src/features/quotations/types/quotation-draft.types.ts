@@ -28,6 +28,17 @@ export type QuotationDraftLine = {
   source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
+/** Service catalog item line on a section (replaces legacy labour-type lines). */
+export type QuotationDraftServiceLine = {
+  id: string;
+  /** Catalog item id (`item_type=service`). */
+  item_id: number | null;
+  item_name?: string | null;
+  cost_price: number;
+  markup_percentage: number;
+  selling_price: number;
+};
+
 export type QuotationDraftPlot = {
   id: string;
   plot_id: number | null;
@@ -57,6 +68,8 @@ export type QuotationDraftSection = {
    * - project quote (manual or level-seeded) → project
    */
   kind?: QuotationQuoteSectionKind;
+  /** Service catalog lines (item_type=service). */
+  services: QuotationDraftServiceLine[];
   /** Composite / catalog pins on the section itself (not tied to a drawing plot). */
   section_pins: QuotationDraftLine[];
   plots: QuotationDraftPlot[];

@@ -71,8 +71,6 @@ export function getQuickCreateNewPath(kind: QuickCreateKind): string {
       return `${routes.dashboard.compositeItems}/new`;
     case "item":
       return `${routes.dashboard.items}/new`;
-    case "labour":
-      return `${routes.dashboard.labours}/new`;
     default:
       return routes.dashboard.root;
   }

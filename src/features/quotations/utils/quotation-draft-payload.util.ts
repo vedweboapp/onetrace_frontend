@@ -1,14 +1,20 @@
 import type {
   QuotationCreatePayload,
   QuotationQuoteSection,
+  QuotationQuoteSectionLabour,
   QuotationQuoteSectionPin,
   QuotationQuoteSectionPlot,
 } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
+import type {
+  QuotationDraft,
+  QuotationDraftLine,
+  QuotationDraftServiceLine,
+} from "@/features/quotations/types/quotation-draft.types";
 import {
   draftGrandTotal,
   draftPinTotal,
   draftSectionTotal,
+  draftServiceLineTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { quotationDraftLineGroupPayload } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import { resolveQuotationSectionType } from "@/features/quotations/utils/quotation-section-type.util";
@@ -41,9 +47,28 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
   });
 }
 
+function mapDraftServicesToQuoteLabours(services: QuotationDraftServiceLine[]): QuotationQuoteSectionLabour[] {
+  return services
+    .filter((row) => row.item_id != null && row.item_id > 0)
+    .map((row) => {
+      const itemId = row.item_id as number;
+      return {
+        item: itemId,
+        // Legacy backends that still read labour_type as the catalog id.
+        labour_type: itemId,
+        time_hours: 1,
+        cost_rate: row.cost_price,
+        markup_percentage: row.markup_percentage,
+        selling_price: row.selling_price,
+        total_cost: draftServiceLineTotal(row),
+        name: row.item_name?.trim() || null,
+      };
+    });
+}
+
 /**
  * Maps the client draft into `quote_sections`, `grand_total`, and ordered legacy `levels` ids.
- * Service sections keep description / notes; project sections stay plot/pin-only.
+ * Service sections keep description / notes / service lines; project sections stay plot/pin-only.
  */
 export function mergeQuotationDraftIntoPayload(
   base: QuotationCreatePayload,
@@ -109,6 +134,7 @@ export function mergeQuotationDraftIntoPayload(
       block: typeof section.block === "string" ? section.block : null,
       level: typeof section.level === "string" ? section.level : null,
       order: typeof section.order === "number" ? section.order : null,
+      ...(isProjectSection ? {} : { labours: mapDraftServicesToQuoteLabours(section.services ?? []) }),
       plots: plotsOut,
       section_total: draftSectionTotal(section),
     };

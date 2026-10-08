@@ -12,12 +12,20 @@ export function draftPlotTotal(plot: { pins: Array<{ quantity: number; selling_p
   return plot.pins.reduce((acc, ln) => acc + draftPinTotal(ln), 0);
 }
 
+/** Service line total (selling price; hours no longer used). */
+export function draftServiceLineTotal(line: { selling_price: number }): number {
+  const u = line.selling_price;
+  return Number.isFinite(u) && u >= 0 ? u : 0;
+}
+
 export function draftSectionTotal(section: {
+  services?: Array<{ selling_price: number }>;
   section_pins?: Array<{ quantity: number; selling_price: number }>;
   plots: Array<{ pins: Array<{ quantity: number; selling_price: number }> }>;
 }): number {
+  const services = (section.services ?? []).reduce((acc, ln) => acc + draftServiceLineTotal(ln), 0);
   const direct = (section.section_pins ?? []).reduce((acc, ln) => acc + draftPinTotal(ln), 0);
-  return direct + section.plots.reduce((acc, p) => acc + draftPlotTotal(p), 0);
+  return services + direct + section.plots.reduce((acc, p) => acc + draftPlotTotal(p), 0);
 }
 
 /** Quote total: included primary/project sections only — optional sections are excluded. */

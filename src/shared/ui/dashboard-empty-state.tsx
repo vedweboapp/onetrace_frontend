@@ -13,7 +13,6 @@ import {
   FileQuestion,
   FileText,
   FolderKanban,
-  HardHat,
   Home,
   Layers,
   ListTodo,
@@ -64,7 +63,6 @@ export type DashboardEmptyStateIconName =
   | "groups"
   | "items"
   | "compositeItems"
-  | "labours"
   | "users"
   | "roles"
   | "profiles"
@@ -125,7 +123,6 @@ const ICON_BY_NAME: Record<DashboardEmptyStateIconName, LucideIcon> = {
   groups: Layers,
   items: Package,
   compositeItems: Package,
-  labours: HardHat,
   users: UserRound,
   roles: ShieldCheck,
   profiles: Layers,
