@@ -36,7 +36,10 @@ export type QuotationDraftServiceLine = {
   item_name?: string | null;
   cost_price: number;
   markup_percentage: number;
+  /** Unit selling price (before time). */
   selling_price: number;
+  /** Hours; line total = selling_price × time_hours. */
+  time_hours: number;
 };
 
 export type QuotationDraftPlot = {

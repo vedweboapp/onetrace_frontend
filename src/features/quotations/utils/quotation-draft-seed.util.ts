@@ -132,6 +132,10 @@ function mapQuoteApiLaboursToDraftServices(
         ? String((nestedItem as { name?: unknown }).name ?? "").trim()
         : "";
     const name = (typeof row.name === "string" && row.name.trim()) || nestedName || null;
+    const hours =
+      typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours >= 0
+        ? row.time_hours
+        : 1;
     return {
       id: newQuotationDraftId("svc"),
       item_id: itemId,
@@ -139,6 +143,7 @@ function mapQuoteApiLaboursToDraftServices(
       cost_price: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
       markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
       selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
+      time_hours: hours > 0 ? hours : 1,
     };
   });
 }
