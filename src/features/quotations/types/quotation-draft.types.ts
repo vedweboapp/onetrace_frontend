@@ -28,14 +28,23 @@ export type QuotationDraftLine = {
   source_pins?: QuotationQuoteSectionSourcePin[];
 };
 
-export type QuotationDraftLabour = {
+/** Service catalog item line on a section (replaces legacy labour-type lines). */
+export type QuotationDraftServiceLine = {
   id: string;
-  labour_type: number | null;
-  labour_name?: string | null;
-  time_hours: number;
-  cost_rate: number;
+  /** Catalog item id (`item_type=service`). */
+  item_id: number | null;
+  item_name?: string | null;
+  cost_price: number;
   markup_percentage: number;
+  /**
+   * Catalog `default_markup` floor for this line. Quote markup may go above
+   * this value but must not go below it.
+   */
+  default_markup: number;
+  /** Unit selling price (before time). */
   selling_price: number;
+  /** Hours; line total = selling_price × time_hours. */
+  time_hours: number;
 };
 
 export type QuotationDraftPlot = {
@@ -67,9 +76,9 @@ export type QuotationDraftSection = {
    * - project quote (manual or level-seeded) → project
    */
   kind?: QuotationQuoteSectionKind;
-  /** Labour lines on this section. */
-  labours: QuotationDraftLabour[];
-  /** Composite pins on the section itself (not tied to a drawing plot). */
+  /** Service catalog lines (item_type=service). */
+  services: QuotationDraftServiceLine[];
+  /** Composite / catalog pins on the section itself (not tied to a drawing plot). */
   section_pins: QuotationDraftLine[];
   plots: QuotationDraftPlot[];
 };

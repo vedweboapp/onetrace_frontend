@@ -9,7 +9,10 @@ import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
 } from "@/shared/utils/quick-create-navigation.util";
-import { loadQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  clearQuickCreateFormDraft,
+  loadQuickCreateFormDraft,
+} from "@/shared/utils/quick-create-form-draft.util";
 
 export type QuickCreateSelectApplied = {
   selectTarget: QuickCreateKind;
@@ -46,9 +49,10 @@ export function useQuickCreateReturn({
   React.useLayoutEffect(() => {
     if (!restoreFormDraft) return;
     const draft = loadQuickCreateFormDraft(returnToForDraft);
-    if (draft != null) {
-      restoreFormDraft(draft);
-    }
+    if (draft == null) return;
+    // One-shot: avoid re-applying a stale snapshot when the host remounts (e.g. tab switch).
+    clearQuickCreateFormDraft(returnToForDraft);
+    restoreFormDraft(draft);
   }, [restoreFormDraft, returnToForDraft]);
 
   React.useEffect(() => {

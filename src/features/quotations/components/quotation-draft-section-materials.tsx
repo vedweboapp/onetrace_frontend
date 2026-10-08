@@ -9,6 +9,7 @@ import {
   catalogSellingPriceString,
   parseItemSellingPrice,
 } from "@/features/items/utils/item-selling-price.util";
+import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
 import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
 import type { QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
@@ -50,6 +51,10 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
   const [compositeId, setCompositeId] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
   const [unitPrice, setUnitPrice] = React.useState("");
+  const pinsRef = React.useRef(pins);
+  pinsRef.current = pins;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
 
   React.useEffect(() => {
     if (readOnly) return;
@@ -58,11 +63,11 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       try {
         const [gRes, iRes] = await Promise.all([
           fetchGroupsPage(1, 20, { dropdown: true }),
-          fetchItemsPage(1, 20, { dropdown: true }),
+          fetchItemsPage(1, 20, { dropdown: true, itemType: "goods" }),
         ]);
         if (!cancelled) {
           setGroups(gRes.items);
-          setItemRows(iRes.items);
+          setItemRows(iRes.items.filter((row) => resolveItemType(row.item_type) === "goods"));
         }
       } catch {
         if (!cancelled) {
@@ -165,8 +170,8 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       groups,
       optionLabelById: Object.fromEntries(groupOptions.filter((o) => o.value).map((o) => [o.value, o.label])),
     });
-    onChange([
-      ...pins,
+    onChangeRef.current([
+      ...pinsRef.current,
       {
         id: newQuotationDraftId("line"),
         pin_id: null,
@@ -258,17 +263,18 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
         locale={loc}
         labels={labels}
         onDuplicateLine={(li) => {
-          const line = pins[li];
+          const current = pinsRef.current;
+          const line = current[li];
           if (!line) return;
-          onChange([
-            ...pins.slice(0, li + 1),
+          onChangeRef.current([
+            ...current.slice(0, li + 1),
             { ...line, id: newQuotationDraftId("line"), pin_count: 1, quantity: 1 },
-            ...pins.slice(li + 1),
+            ...current.slice(li + 1),
           ]);
         }}
         onRemoveLines={(indices) => {
           const drop = new Set(indices);
-          onChange(pins.filter((_, i) => !drop.has(i)));
+          onChangeRef.current(pinsRef.current.filter((_, i) => !drop.has(i)));
         }}
         readOnly={readOnly}
       />

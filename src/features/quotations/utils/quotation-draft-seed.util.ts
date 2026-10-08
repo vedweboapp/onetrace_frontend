@@ -1,5 +1,17 @@
-import type { ProjectLevelForQuotation, QuotationQuoteSection, QuotationQuoteSectionLabour, QuotationQuoteSectionPin, QuotationQuoteSectionPlot } from "@/features/quotations/types/quotation.types";
-import type { QuotationDraft, QuotationDraftLabour, QuotationDraftLine, QuotationDraftPlot, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
+import type {
+  ProjectLevelForQuotation,
+  QuotationQuoteSection,
+  QuotationQuoteSectionLabour,
+  QuotationQuoteSectionPin,
+  QuotationQuoteSectionPlot,
+} from "@/features/quotations/types/quotation.types";
+import type {
+  QuotationDraft,
+  QuotationDraftLine,
+  QuotationDraftPlot,
+  QuotationDraftSection,
+  QuotationDraftServiceLine,
+} from "@/features/quotations/types/quotation-draft.types";
 import { aggregateCompositeLinesForPlot } from "@/features/quotations/utils/quotation-level-pricing.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import {
@@ -55,7 +67,7 @@ export function seedDraftFromSortedLevels(sortedLevels: ProjectLevelForQuotation
       order: typeof lv.order === "number" ? lv.order : null,
       included: true,
       kind: "project",
-      labours: [],
+      services: [],
       section_pins: [],
       plots,
     });
@@ -97,34 +109,54 @@ function readSectionText(sec: QuotationQuoteSection, keys: string[]): string {
   return "";
 }
 
-function mapQuoteApiLaboursToDraft(labours: QuotationQuoteSectionLabour[] | undefined): QuotationDraftLabour[] {
+function readNestedId(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (raw && typeof raw === "object" && "id" in raw) {
+    const id = Number((raw as { id: unknown }).id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+}
+
+function mapQuoteApiLaboursToDraftServices(
+  labours: QuotationQuoteSectionLabour[] | undefined,
+): QuotationDraftServiceLine[] {
   if (!Array.isArray(labours) || labours.length === 0) return [];
   return labours.map((row) => {
-    const nestedType = (row as QuotationQuoteSectionLabour & { labour_type?: unknown }).labour_type;
-    const typeId =
-      typeof nestedType === "number" && nestedType > 0
-        ? nestedType
-        : nestedType && typeof nestedType === "object" && "id" in nestedType
-          ? Number((nestedType as { id: unknown }).id)
-          : typeof row.labour_type === "number" && row.labour_type > 0
-            ? row.labour_type
-            : null;
+    const itemId =
+      readNestedId((row as QuotationQuoteSectionLabour & { item?: unknown }).item) ??
+      readNestedId(row.labour_type);
+    const nestedItem = (row as QuotationQuoteSectionLabour & { item?: unknown }).item;
     const nestedName =
-      nestedType && typeof nestedType === "object" && "name" in nestedType
-        ? String((nestedType as { name?: unknown }).name ?? "").trim()
+      nestedItem && typeof nestedItem === "object" && "name" in nestedItem
+        ? String((nestedItem as { name?: unknown }).name ?? "").trim()
         : "";
-    const name =
-      (typeof row.name === "string" && row.name.trim()) ||
-      nestedName ||
-      null;
+    const name = (typeof row.name === "string" && row.name.trim()) || nestedName || null;
+    const hours =
+      typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours >= 0
+        ? row.time_hours
+        : 1;
+    const markupPct = Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0;
+    const nestedDefaultRaw =
+      nestedItem && typeof nestedItem === "object"
+        ? (nestedItem as { default_markup?: unknown; markup?: unknown }).default_markup ??
+          (nestedItem as { markup?: unknown }).markup
+        : undefined;
+    const nestedDefault =
+      nestedDefaultRaw != null && String(nestedDefaultRaw).trim() !== ""
+        ? Number(nestedDefaultRaw)
+        : NaN;
+    const defaultMarkup = Number.isFinite(nestedDefault) && nestedDefault >= 0 ? nestedDefault : 0;
+    const markupClamped = markupPct < defaultMarkup ? defaultMarkup : markupPct;
     return {
-      id: newQuotationDraftId("lab"),
-      labour_type: Number.isFinite(typeId) && (typeId as number) > 0 ? (typeId as number) : null,
-      labour_name: name,
-      time_hours: Number.isFinite(row.time_hours) ? row.time_hours : 1,
-      cost_rate: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
-      markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
+      id: newQuotationDraftId("svc"),
+      item_id: itemId,
+      item_name: name,
+      cost_price: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
+      markup_percentage: markupClamped,
+      default_markup: defaultMarkup,
       selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
+      time_hours: hours > 0 ? hours : 1,
     };
   });
 }
@@ -180,7 +212,7 @@ export function seedDraftFromQuoteSections(quoteSections: QuotationQuoteSection[
       order: typeof sec.order === "number" ? sec.order : null,
       included: true,
       kind: resolveQuotationSectionType(sec, "primary"),
-      labours: mapQuoteApiLaboursToDraft(sec.labours),
+      services: mapQuoteApiLaboursToDraftServices(sec.labours),
       section_pins: sectionPins,
       plots,
     };

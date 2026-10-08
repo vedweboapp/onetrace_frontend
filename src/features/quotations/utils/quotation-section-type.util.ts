@@ -18,12 +18,8 @@ export function isOptionalQuoteSection(section: {
   return resolveQuotationSectionType(section, "primary") === "optional";
 }
 
-export function labourLineSellPrice(costRate: number, markupPct: number): number {
-  if (!Number.isFinite(costRate) || !Number.isFinite(markupPct)) return 0;
-  return Math.round(costRate * (1 + markupPct / 100) * 100) / 100;
-}
-
-export function labourLineTotalCost(sellingPrice: number, timeHours: number): number {
-  if (!Number.isFinite(sellingPrice) || !Number.isFinite(timeHours) || timeHours < 0) return 0;
-  return Math.round(sellingPrice * timeHours * 100) / 100;
+/** Selling price from cost and markup % (service quote lines). */
+export function serviceLineSellPrice(costPrice: number, markupPct: number): number {
+  if (!Number.isFinite(costPrice) || !Number.isFinite(markupPct)) return 0;
+  return Math.round(costPrice * (1 + markupPct / 100) * 100) / 100;
 }

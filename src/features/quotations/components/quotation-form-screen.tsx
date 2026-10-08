@@ -104,6 +104,7 @@ import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   clearQuickCreateFormDraft,
+  loadQuickCreateFormDraft,
   saveQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
@@ -847,19 +848,30 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     appliedRestoredDraftRef.current = true;
     preventQuoteDraftSeedRef.current = true;
     writeQuotationWorkingDraft(workingDraftKey, restored);
-    // Keep QC snapshot in sync so a later remount cannot re-apply a pre-section draft.
+    // Keep QC snapshot in sync with the returned scope draft, but never wipe Details
+    // fields — getValues() is still empty on this remount before form restore runs.
     if (!isEdit) {
+      const scopeReturnHref = buildQuotationScopeReturnHref(pathname);
+      const existing =
+        loadQuickCreateFormDraft<QuotationFormDraftBundle>(draftReturnTo) ??
+        loadQuickCreateFormDraft<QuotationFormDraftBundle>(scopeReturnHref);
+      const values =
+        existing && isQuotationFormDraftBundle(existing) ? existing.values : getValues();
       const bundle = {
-        values: getValues(),
+        values,
         quoteDraft: restored,
         formTab: "pricing" as const,
       };
       saveQuickCreateFormDraft(draftReturnTo, bundle);
-      saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
+      saveQuickCreateFormDraft(scopeReturnHref, bundle);
+      if (existing && isQuotationFormDraftBundle(existing)) {
+        skipPresetFromUrlRef.current = true;
+        reset(existing.values, { keepDefaultValues: false });
+      }
     }
     clearTakenQuotationSectionScopeDraft();
     setFormTab("pricing");
-  }, [workingDraftKey, isEdit, getValues, draftReturnTo, pathname]);
+  }, [workingDraftKey, isEdit, getValues, draftReturnTo, pathname, reset]);
 
   React.useEffect(() => {
     // Drop stale taken cache after apply so a later section round-trip can consume again.
