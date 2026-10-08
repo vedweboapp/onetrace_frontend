@@ -173,6 +173,8 @@ export type QuotationQuoteSectionLabour = {
   item?: number | null;
   /** @deprecated Prefer `item` — legacy labour-type id. */
   labour_type?: number | null;
+  /** Denormalized name for `labour_type` / service catalog item. */
+  labour_type_name?: string | null;
   time_hours?: number;
   cost_rate: number;
   markup_percentage: number;

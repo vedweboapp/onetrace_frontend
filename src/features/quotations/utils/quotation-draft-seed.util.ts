@@ -131,7 +131,10 @@ function mapQuoteApiLaboursToDraftServices(
       nestedItem && typeof nestedItem === "object" && "name" in nestedItem
         ? String((nestedItem as { name?: unknown }).name ?? "").trim()
         : "";
-    const name = (typeof row.name === "string" && row.name.trim()) || nestedName || null;
+    const labourTypeName =
+      typeof row.labour_type_name === "string" ? row.labour_type_name.trim() : "";
+    const name =
+      (typeof row.name === "string" && row.name.trim()) || labourTypeName || nestedName || null;
     const hours =
       typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours >= 0
         ? row.time_hours
