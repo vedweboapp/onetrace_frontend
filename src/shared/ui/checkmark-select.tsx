@@ -311,14 +311,16 @@ export function CheckmarkSelect({
   const optionTextSize = size === "sm" ? "text-xs" : "text-sm";
   const optionY = size === "sm" ? "py-2" : "py-2.5";
   const filteredOptions = React.useMemo(() => {
+    const labelMatches = (opt: CheckmarkSelectOption, q: string) =>
+      String(opt.label ?? "").toLowerCase().includes(q);
     if (onSearchChange && search.trim()) {
       const q = search.trim().toLowerCase();
-      return options.filter((opt) => opt.label.toLowerCase().includes(q));
+      return options.filter((opt) => labelMatches(opt, q));
     }
     if (onSearchChange) return resolvedOptions;
     const q = search.trim().toLowerCase();
     if (!q) return resolvedOptions;
-    return resolvedOptions.filter((opt) => opt.label.toLowerCase().includes(q));
+    return resolvedOptions.filter((opt) => labelMatches(opt, q));
   }, [resolvedOptions, options, search, onSearchChange]);
 
   function renderOptionList(extraStyle: CSSProperties, extraClass?: string) {
