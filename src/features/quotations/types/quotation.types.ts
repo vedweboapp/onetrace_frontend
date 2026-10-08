@@ -164,15 +164,21 @@ export type QuotationQuoteSectionPlot = {
 /** Scope bucket: Primary / Optional (service) or Project (project quote). */
 export type QuotationQuoteSectionKind = "primary" | "optional" | "project";
 
-/** Labour line on a quote section (service / project scope & pricing). */
+/**
+ * Service / labour-compatible line on a quote section.
+ * Prefer `item` (service catalog item). `labour_type` kept for older payloads.
+ */
 export type QuotationQuoteSectionLabour = {
-  labour_type: number;
-  time_hours: number;
+  /** Service catalog item id (`item_type=service`). */
+  item?: number | null;
+  /** @deprecated Prefer `item` — legacy labour-type id. */
+  labour_type?: number | null;
+  time_hours?: number;
   cost_rate: number;
   markup_percentage: number;
   selling_price: number;
   total_cost: number;
-  /** Present when API embeds the labour type name. */
+  /** Present when API embeds the item / labour name. */
   name?: string | null;
 };
 
