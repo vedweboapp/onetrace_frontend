@@ -15,6 +15,7 @@ import {
   draftPinTotal,
   draftSectionTotal,
   draftServiceLineTotal,
+  roundQuoteMoney,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { quotationDraftLineGroupPayload } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import { resolveQuotationSectionType } from "@/features/quotations/utils/quotation-section-type.util";
@@ -37,7 +38,7 @@ function mapDraftPinsToQuotePins(pins: QuotationDraftLine[]): QuotationQuoteSect
       composite_item_id: pin.composite_item_id,
       name: pin.name,
       quantity: pin.quantity,
-      selling_price: pin.selling_price,
+      selling_price: roundQuoteMoney(pin.selling_price),
       pins_total,
       // Manual catalog items use composite_item_id but are not composite kits.
       is_composite: pin.is_composite === true && hasItem,
@@ -53,14 +54,22 @@ function mapDraftServicesToQuoteLabours(services: QuotationDraftServiceLine[]): 
     .map((row) => {
       const itemId = row.item_id as number;
       const hours = Number.isFinite(row.time_hours) && row.time_hours >= 0 ? row.time_hours : 1;
+      const floor =
+        typeof row.default_markup === "number" && Number.isFinite(row.default_markup) && row.default_markup >= 0
+          ? row.default_markup
+          : 0;
+      const markupPct =
+        Number.isFinite(row.markup_percentage) && row.markup_percentage >= floor
+          ? row.markup_percentage
+          : floor;
       return {
         item: itemId,
         // Legacy backends that still read labour_type as the catalog id.
         labour_type: itemId,
         time_hours: hours,
-        cost_rate: row.cost_price,
-        markup_percentage: row.markup_percentage,
-        selling_price: row.selling_price,
+        cost_rate: roundQuoteMoney(row.cost_price),
+        markup_percentage: roundQuoteMoney(markupPct),
+        selling_price: roundQuoteMoney(row.selling_price),
         total_cost: draftServiceLineTotal(row),
         name: row.item_name?.trim() || null,
       };
@@ -86,7 +95,7 @@ export function mergeQuotationDraftIntoPayload(
     const sectionPins = section.section_pins ?? [];
     if (sectionPins.length > 0) {
       const pins = mapDraftPinsToQuotePins(sectionPins);
-      const plot_total = pins.reduce((a, x) => a + x.pins_total, 0);
+      const plot_total = roundQuoteMoney(pins.reduce((a, x) => a + x.pins_total, 0));
       plotsOut.push({
         plot_order: plotOrder++,
         plot_id: null,
@@ -100,7 +109,7 @@ export function mergeQuotationDraftIntoPayload(
     }
     for (const plot of section.plots) {
       const pins = mapDraftPinsToQuotePins(plot.pins);
-      const plot_total = pins.reduce((a, x) => a + x.pins_total, 0);
+      const plot_total = roundQuoteMoney(pins.reduce((a, x) => a + x.pins_total, 0));
       plotsOut.push({
         plot_order: plotOrder++,
         plot_id: plot.plot_id,

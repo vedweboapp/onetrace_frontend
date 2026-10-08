@@ -30,7 +30,11 @@ import { getItemVendorIds, itemVendorFallbackLabels, vendorIdsPayload } from "@/
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import type { DimensionUnit, ItemType, WeightUnit } from "@/features/items/types/item.types";
 import { generateServiceItemSku, resolveItemType } from "@/features/items/utils/item-type.util";
-import { parseItemNumber, suggestedItemSellPrice } from "@/features/items/utils/item-pricing.util";
+import {
+  parseItemNumber,
+  resolveItemDefaultMarkup,
+  suggestedItemSellPrice,
+} from "@/features/items/utils/item-pricing.util";
 
 type Props = {
   mode: "create" | "edit";
@@ -138,7 +142,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           setSku(String(item.sku ?? ""));
           setQty(String(item.quantity ?? 0));
           setCost(String(item.cost_price ?? 0));
-          setMarkup(String(parseItemNumber(item.markup)));
+          setMarkup(String(resolveItemDefaultMarkup(item)));
           setSell(String(item.selling_price ?? 0));
           const unitId = getUnitTypeId(item.unit_type);
           setUnitType(unitId != null ? String(unitId) : "");
@@ -369,7 +373,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         item_type: itemType,
         quantity: qtyN,
         cost_price: costN,
-        markup: markupN,
+        default_markup: markupN,
         selling_price: sellN,
       };
 

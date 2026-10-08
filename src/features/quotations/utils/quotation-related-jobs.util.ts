@@ -32,7 +32,7 @@ function mergeJobs(target: Map<number, Job>, jobs: Job[]) {
 }
 
 /**
- * Load jobs for a quotation via `GET /jobs/?quotations=<id>`.
+ * Load jobs for a quotation via `GET /jobs/?quote=<id>`.
  * Service quotes expect a single linked job; project quotes may return several.
  */
 export async function fetchJobsForQuotation(options: {
@@ -44,13 +44,13 @@ export async function fetchJobsForQuotation(options: {
   const byId = new Map<number, Job>();
   const isService = jobCategory === JOB_CATEGORY.service;
 
-  try {
+  async function loadByQuote(extra?: { job_category?: string }) {
     const { items } = await fetchJobsPage(
       1,
       isService ? 20 : 100,
       {
-        quotations: quotationId,
-        job_category: jobCategory,
+        quote: quotationId,
+        ...extra,
       },
       { silent: true },
     );
@@ -59,8 +59,21 @@ export async function fetchJobsForQuotation(options: {
       return qid == null || qid === quotationId;
     });
     mergeJobs(byId, matched);
+  }
+
+  try {
+    await loadByQuote(jobCategory ? { job_category: jobCategory } : undefined);
   } catch {
     /* list filter may not be supported */
+  }
+
+  // Project quotes: if category filter returned nothing, retry with quote only.
+  if (!isService && byId.size === 0) {
+    try {
+      await loadByQuote();
+    } catch {
+      /* ignore */
+    }
   }
 
   if (linkedJobId && !byId.has(linkedJobId)) {

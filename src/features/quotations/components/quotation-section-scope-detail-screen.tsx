@@ -108,23 +108,31 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
     [draft, sectionId],
   );
 
-  function patchSection(patch: Partial<QuotationDraftSection>) {
-    if (!draft || readOnly) return;
-    const next: QuotationDraft = {
-      sections: draft.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)),
-    };
-    setDraft(next);
-    // Working session only — parent applies after Done.
-    persistSession(next, false);
-  }
+  const patchSection = React.useCallback(
+    (patch: Partial<QuotationDraftSection>) => {
+      if (readOnlyRef.current) return;
+      const current = draftRef.current;
+      if (!current) return;
+      const sid = sectionIdRef.current;
+      const next: QuotationDraft = {
+        sections: current.sections.map((s) => (s.id === sid ? { ...s, ...patch } : s)),
+      };
+      draftRef.current = next;
+      setDraft(next);
+      // Working session only — parent applies after Done.
+      persistSession(next, false);
+    },
+    [persistSession],
+  );
 
   function onDone() {
     leaveIntentRef.current = "done";
-    if (!draft) {
+    const latest = draftRef.current;
+    if (!latest) {
       router.push(backHref);
       return;
     }
-    persistSession(draft, true);
+    persistSession(latest, true);
     router.push(backHref);
   }
 
@@ -132,12 +140,13 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
     (saved: unknown) => {
       const s = saved as { draft?: QuotationDraft; sectionId?: string };
       if (s?.draft && Array.isArray(s.draft.sections)) {
-        setDraft(s.draft);
         draftRef.current = s.draft;
+        setDraft(s.draft);
         persistSession(s.draft, false);
       }
       if (typeof s?.sectionId === "string" && s.sectionId.trim()) {
         setSectionId(s.sectionId);
+        sectionIdRef.current = s.sectionId;
       }
     },
     [persistSession],
@@ -234,7 +243,8 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
               panelIdPrefix="quotation-section-scope"
             />
             <div className="mt-4 space-y-3">
-              {innerTab === "service" ? (
+              {/* Keep both panels mounted so Service ↔ Items switches do not drop lines. */}
+              <div className={innerTab === "service" ? "space-y-3" : "hidden"} hidden={innerTab !== "service"}>
                 <QuotationDraftSectionServices
                   services={section.services ?? []}
                   readOnly={readOnly}
@@ -242,13 +252,17 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   getFormDraft={readOnly ? undefined : getFormDraft}
                   restoreFormDraft={readOnly ? undefined : restoreFormDraft}
                 />
-              ) : (
+              </div>
+              <div
+                className={innerTab === "materials" ? "space-y-3" : "hidden"}
+                hidden={innerTab !== "materials"}
+              >
                 <QuotationDraftSectionMaterials
                   pins={section.section_pins ?? []}
                   readOnly={readOnly}
                   onChange={(section_pins) => patchSection({ section_pins })}
                 />
-              )}
+              </div>
               <QuotationDraftPriceTotalBar
                 label={t("sectionTotal")}
                 amount={sectionTotal}

@@ -69,7 +69,12 @@ export type Item = {
   reorder_quantity?: number | null;
   is_composite: boolean;
   cost_price?: string | number | null;
-  /** Markup percentage applied over cost to suggest selling price. */
+  /**
+   * Default markup % over cost (API key). Quote lines may increase above this
+   * but must not reduce below it.
+   */
+  default_markup?: string | number | null;
+  /** Legacy read alias for `default_markup`. */
   markup?: string | number | null;
   selling_price?: string | number | null;
 
@@ -119,6 +124,9 @@ export type ItemCreatePayload = {
   is_composite: boolean;
   quantity: number;
   cost_price: number;
+  /** Default catalog markup % (preferred write key). */
+  default_markup?: number;
+  /** Legacy write alias; prefer `default_markup`. */
   markup?: number;
   selling_price: number;
   reorder_quantity?: number;

@@ -136,12 +136,25 @@ function mapQuoteApiLaboursToDraftServices(
       typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours >= 0
         ? row.time_hours
         : 1;
+    const markupPct = Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0;
+    const nestedDefaultRaw =
+      nestedItem && typeof nestedItem === "object"
+        ? (nestedItem as { default_markup?: unknown; markup?: unknown }).default_markup ??
+          (nestedItem as { markup?: unknown }).markup
+        : undefined;
+    const nestedDefault =
+      nestedDefaultRaw != null && String(nestedDefaultRaw).trim() !== ""
+        ? Number(nestedDefaultRaw)
+        : NaN;
+    const defaultMarkup = Number.isFinite(nestedDefault) && nestedDefault >= 0 ? nestedDefault : 0;
+    const markupClamped = markupPct < defaultMarkup ? defaultMarkup : markupPct;
     return {
       id: newQuotationDraftId("svc"),
       item_id: itemId,
       item_name: name,
       cost_price: Number.isFinite(row.cost_rate) ? row.cost_rate : 0,
-      markup_percentage: Number.isFinite(row.markup_percentage) ? row.markup_percentage : 0,
+      markup_percentage: markupClamped,
+      default_markup: defaultMarkup,
       selling_price: Number.isFinite(row.selling_price) ? row.selling_price : 0,
       time_hours: hours > 0 ? hours : 1,
     };
