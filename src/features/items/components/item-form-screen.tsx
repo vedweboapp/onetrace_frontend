@@ -16,6 +16,7 @@ import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-cr
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import {
   hrefAfterEntityCreate,
+  QUICK_CREATE_ITEM_TYPE_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
 } from "@/shared/utils/quick-create-navigation.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
@@ -92,13 +93,15 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const sellId = React.useId();
 
   const [name, setName] = React.useState("");
-  const [itemType, setItemType] = React.useState<ItemType>("goods");
+  const [itemType, setItemType] = React.useState<ItemType>(() => {
+    if (isEdit) return "goods";
+    return resolveItemType(searchParams.get(QUICK_CREATE_ITEM_TYPE_PARAM));
+  });
   const [sku, setSku] = React.useState("");
   const [qty, setQty] = React.useState("");
   const [cost, setCost] = React.useState("");
   const [markup, setMarkup] = React.useState("0");
   const [sell, setSell] = React.useState("");
-  const [sellTouched, setSellTouched] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean; cost?: boolean; sell?: boolean }>({});
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
@@ -137,7 +140,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           setCost(String(item.cost_price ?? 0));
           setMarkup(String(parseItemNumber(item.markup)));
           setSell(String(item.selling_price ?? 0));
-          setSellTouched(true);
           const unitId = getUnitTypeId(item.unit_type);
           setUnitType(unitId != null ? String(unitId) : "");
           setLength(item.length != null && String(item.length).trim() !== "" ? String(item.length) : "");
@@ -226,7 +228,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       cost,
       markup,
       sell,
-      sellTouched,
       unitType,
       length,
       width,
@@ -244,7 +245,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       cost,
       markup,
       sell,
-      sellTouched,
       unitType,
       length,
       width,
@@ -265,7 +265,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
       cost: string;
       markup: string;
       sell: string;
-      sellTouched: boolean;
       unitType: string;
       length: string;
       width: string;
@@ -282,7 +281,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.cost === "string") setCost(saved.cost);
     if (typeof saved.markup === "string") setMarkup(saved.markup);
     if (typeof saved.sell === "string") setSell(saved.sell);
-    if (typeof saved.sellTouched === "boolean") setSellTouched(saved.sellTouched);
     if (typeof saved.unitType === "string") setUnitType(saved.unitType);
     if (typeof saved.length === "string") setLength(saved.length);
     if (typeof saved.width === "string") setWidth(saved.width);
@@ -322,7 +320,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   });
 
   function syncSellFromCostMarkup(nextCost: string, nextMarkup: string) {
-    if (sellTouched) return;
     setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
   }
 
@@ -584,10 +581,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   min={0}
                   step="0.01"
                   value={sell}
-                  onChange={(e) => {
-                    setSellTouched(true);
-                    setSell(e.target.value);
-                  }}
+                  onChange={(e) => setSell(e.target.value)}
                   onBlur={() => setTouched((p) => ({ ...p, sell: true }))}
                   disabled={submitting}
                   invalid={!!sellError}

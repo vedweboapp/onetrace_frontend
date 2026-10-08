@@ -26,6 +26,7 @@ import {
   draftPinTotal,
   draftPlotTotal,
   draftSectionTotal,
+  draftServiceLineTotal,
 } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { reorderArray } from "@/features/quotations/utils/quotation-draft-ops.util";
 import { resolveQuotationDraftLineGroup } from "@/features/quotations/utils/quotation-draft-line-group.util";
@@ -142,25 +143,42 @@ function draftSectionServicesMaterialsPreview(
   return null;
 }
 
-type SectionLinePreview = { id: string; name: string; amount: number };
+type SectionLinePreview = {
+  id: string;
+  name: string;
+  amount: number;
+  kind: "service" | "item";
+  meta?: string | null;
+};
 
-function draftSectionLinePreviews(section: QuotationDraftSection): SectionLinePreview[] {
-  const lines: SectionLinePreview[] = [];
+function draftSectionGroupedLinePreviews(section: QuotationDraftSection): {
+  services: SectionLinePreview[];
+  items: SectionLinePreview[];
+} {
+  const services: SectionLinePreview[] = [];
+  const items: SectionLinePreview[] = [];
   for (const row of section.services ?? []) {
-    lines.push({
+    const hours =
+      typeof row.time_hours === "number" && Number.isFinite(row.time_hours) && row.time_hours > 0
+        ? row.time_hours
+        : 1;
+    services.push({
       id: row.id,
       name: row.item_name?.trim() || (row.item_id != null ? `#${row.item_id}` : "—"),
-      amount: row.selling_price,
+      amount: draftServiceLineTotal(row),
+      kind: "service",
+      meta: hours !== 1 ? `${hours}` : null,
     });
   }
   for (const pin of section.section_pins ?? []) {
-    lines.push({
+    items.push({
       id: pin.id,
       name: pin.name?.trim() || (pin.composite_item_id != null ? `#${pin.composite_item_id}` : "—"),
       amount: draftPinTotal(pin),
+      kind: "item",
     });
   }
-  return lines;
+  return { services, items };
 }
 
 function QuotationDraftQuoteTotalBar({
@@ -447,6 +465,8 @@ export function QuotationDraftComposer({
   const [groupItemsByGroupId, setGroupItemsByGroupId] = React.useState<Record<string, GroupItemRef[]>>({});
   const [openSectionIds, setOpenSectionIds] = React.useState<Set<string>>(() => new Set());
   const [openPlotIds, setOpenPlotIds] = React.useState<Set<string>>(() => new Set());
+  /** Collapsed line lists on service Scope & pricing section cards (expanded by default). */
+  const [collapsedScopePreviewIds, setCollapsedScopePreviewIds] = React.useState<Set<string>>(() => new Set());
   const [sectionTitleEditId, setSectionTitleEditId] = React.useState<string | null>(null);
   const [sectionTitleEditOriginal, setSectionTitleEditOriginal] = React.useState<string | null>(null);
   const [duplicatePrompt, setDuplicatePrompt] = React.useState<DuplicatePrompt | null>(null);
@@ -1176,11 +1196,12 @@ export function QuotationDraftComposer({
           : ({ mode: "new" as const });
       writeQuotationSectionScopeSession({
         draft,
+        entryDraft: draft,
         sectionId,
         backHref,
         readOnly,
-        // Parent remounts when returning; keep draft applyable even if user hits back without Done.
-        pendingApply: !readOnly,
+        // Only Done in the section editor sets pendingApply so Back discards edits.
+        pendingApply: false,
       });
       // Persist before navigation so edit form can restore even if session consume races.
       onBeforeLeavePage?.();
@@ -1264,126 +1285,166 @@ export function QuotationDraftComposer({
               const si = draft.sections.findIndex((s) => s.id === section.id);
               const editingTitle = !readOnly && sectionTitleEditId === section.id;
               const scopePreview = draftSectionServicesMaterialsPreview(section, t);
-              const linePreviews = draftSectionLinePreviews(section);
+              const { services: serviceLines, items: itemLines } = draftSectionGroupedLinePreviews(section);
+              const hasLines = serviceLines.length > 0 || itemLines.length > 0;
+              const linesExpanded = !collapsedScopePreviewIds.has(section.id);
               return (
                 <li key={section.id}>
                   <div
-                    role={editingTitle ? undefined : "button"}
-                    tabIndex={editingTitle || saving ? undefined : 0}
                     className={cn(
                       "group w-full rounded-xl border-2 px-3 py-3 text-left transition",
-                      "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
-                      "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80",
-                      !editingTitle && "cursor-pointer",
+                      "border-slate-200 bg-white hover:border-slate-300",
+                      "dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600",
                     )}
-                    onClick={
-                      editingTitle || saving
-                        ? undefined
-                        : (e) => {
-                            const el = e.target as HTMLElement;
-                            if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
-                            openSectionScope(section.id);
-                          }
-                    }
-                    onKeyDown={
-                      editingTitle || saving
-                        ? undefined
-                        : (e) => {
-                            if (e.key !== "Enter" && e.key !== " ") return;
-                            const el = e.target as HTMLElement;
-                            if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
-                            e.preventDefault();
-                            openSectionScope(section.id);
-                          }
-                    }
                   >
-                    <div className="flex w-full items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        {editingTitle && si >= 0 ? (
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <DraftAutosizeTitleTextarea
-                              value={section.name}
-                              onValueChange={(v) => updateSectionName(si, v)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  confirmSectionTitleEdit(si);
-                                }
-                                if (e.key === "Escape") {
-                                  e.preventDefault();
-                                  cancelSectionTitleEdit(si);
-                                }
-                              }}
-                              disabled={saving}
-                              aria-label={t("newSectionPlaceholder")}
-                              className="min-h-[2.25rem] min-w-[6rem] font-semibold"
-                              autoFocus
-                            />
-                            <div className="flex shrink-0 items-center gap-0.5">
-                              <button
-                                type="button"
-                                disabled={saving}
-                                className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                                aria-label={t("confirmRowName")}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  confirmSectionTitleEdit(si);
-                                }}
-                              >
-                                <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={saving}
-                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                                aria-label={t("cancelRowName")}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  cancelSectionTitleEdit(si);
-                                }}
-                              >
-                                <X className="size-3.5" strokeWidth={2.5} aria-hidden />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <span className="max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {section.name?.trim() || t("newSectionPlaceholder")}
-                            </span>
-                            {!readOnly && si >= 0 ? (
-                              <button
-                                type="button"
-                                disabled={saving}
-                                data-draft-row-actions
-                                className={cn(
-                                  "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
-                                  "opacity-0 group-hover:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
-                                  "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
-                                )}
-                                aria-label={t("editRowName")}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  beginSectionTitleEdit(section.id, section.name);
-                                }}
-                              >
-                                <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                              </button>
-                            ) : null}
-                          </div>
+                    <div className="flex w-full items-start gap-2">
+                      {hasLines ? (
+                        <button
+                          type="button"
+                          data-draft-row-actions
+                          disabled={saving}
+                          className="-m-1 mt-0.5 inline-flex shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                          aria-expanded={linesExpanded}
+                          aria-label={t("toggleRowExpand")}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCollapsedScopePreviewIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(section.id)) next.delete(section.id);
+                              else next.add(section.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "size-4 shrink-0 transition-transform duration-200",
+                              linesExpanded && "rotate-180",
+                            )}
+                            aria-hidden
+                          />
+                        </button>
+                      ) : null}
+                      <div
+                        role={editingTitle ? undefined : "button"}
+                        tabIndex={editingTitle || saving ? undefined : 0}
+                        className={cn(
+                          "min-w-0 flex-1 rounded-md",
+                          !editingTitle && "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60",
                         )}
-                        {scopePreview ? (
-                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{scopePreview}</p>
-                        ) : null}
+                        onClick={
+                          editingTitle || saving
+                            ? undefined
+                            : (e) => {
+                                const el = e.target as HTMLElement;
+                                if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
+                                openSectionScope(section.id);
+                              }
+                        }
+                        onKeyDown={
+                          editingTitle || saving
+                            ? undefined
+                            : (e) => {
+                                if (e.key !== "Enter" && e.key !== " ") return;
+                                const el = e.target as HTMLElement;
+                                if (el.closest("[data-draft-row-actions]") || el.closest("textarea, input")) return;
+                                e.preventDefault();
+                                openSectionScope(section.id);
+                              }
+                        }
+                      >
+                        <div className="flex w-full items-start gap-3 px-1 py-0.5">
+                          <div className="min-w-0 flex-1">
+                            {editingTitle && si >= 0 ? (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <DraftAutosizeTitleTextarea
+                                  value={section.name}
+                                  onValueChange={(v) => updateSectionName(si, v)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      confirmSectionTitleEdit(si);
+                                    }
+                                    if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      cancelSectionTitleEdit(si);
+                                    }
+                                  }}
+                                  disabled={saving}
+                                  aria-label={t("newSectionPlaceholder")}
+                                  className="min-h-[2.25rem] min-w-[6rem] font-semibold"
+                                  autoFocus
+                                />
+                                <div className="flex shrink-0 items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                    aria-label={t("confirmRowName")}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      confirmSectionTitleEdit(si);
+                                    }}
+                                  >
+                                    <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                    aria-label={t("cancelRowName")}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      cancelSectionTitleEdit(si);
+                                    }}
+                                  >
+                                    <X className="size-3.5" strokeWidth={2.5} aria-hidden />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <span className="max-w-full truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                  {section.name?.trim() || t("newSectionPlaceholder")}
+                                </span>
+                                {!readOnly && si >= 0 ? (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    data-draft-row-actions
+                                    className={cn(
+                                      "-m-0.5 shrink-0 rounded p-1 text-slate-400 transition-opacity duration-150",
+                                      "opacity-0 group-hover:opacity-100 hover:text-slate-600 dark:hover:text-slate-300",
+                                      "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 dark:focus-visible:ring-slate-500/80",
+                                    )}
+                                    aria-label={t("editRowName")}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      beginSectionTitleEdit(section.id, section.name);
+                                    }}
+                                  >
+                                    <Pencil className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                                  </button>
+                                ) : null}
+                              </div>
+                            )}
+                            {scopePreview ? (
+                              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{scopePreview}</p>
+                            ) : (
+                              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{t("sectionEmptyPreview")}</p>
+                            )}
+                          </div>
+                          <span className="ml-auto shrink-0 pt-0.5 tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {formatMoneyDisplay(draftSectionTotal(section), loc)}
+                          </span>
+                        </div>
                       </div>
-                      <span className="ml-auto shrink-0 pt-0.5 tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        {formatMoneyDisplay(draftSectionTotal(section), loc)}
-                      </span>
                       {!readOnly && si >= 0 ? (
                         <div data-draft-row-actions className="shrink-0" onClick={(e) => e.stopPropagation()}>
                           <DataTableRowActionsMenu
@@ -1407,20 +1468,60 @@ export function QuotationDraftComposer({
                         </div>
                       ) : null}
                     </div>
-                    {linePreviews.length > 0 ? (
-                      <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2 dark:border-slate-800">
-                        {linePreviews.map((line) => (
-                          <li
-                            key={line.id}
-                            className="flex items-baseline justify-between gap-3 text-xs text-slate-600 dark:text-slate-300"
-                          >
-                            <span className="min-w-0 truncate">{line.name}</span>
-                            <span className="shrink-0 tabular-nums font-medium text-slate-800 dark:text-slate-100">
-                              {formatMoneyDisplay(line.amount, loc)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                    {hasLines && linesExpanded ? (
+                      <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                        {serviceLines.length > 0 ? (
+                          <div>
+                            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                              {t("sectionServiceTab")}
+                            </p>
+                            <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/80 dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-950/50">
+                              {serviceLines.map((line) => (
+                                <li
+                                  key={line.id}
+                                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                                      {line.name}
+                                    </p>
+                                    {line.meta ? (
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {t("serviceHoursShort", { hours: line.meta })}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <span className="shrink-0 tabular-nums font-semibold text-slate-900 dark:text-slate-50">
+                                    {formatMoneyDisplay(line.amount, loc)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {itemLines.length > 0 ? (
+                          <div>
+                            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                              {t("sectionMaterialsTab")}
+                            </p>
+                            <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/80 dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-950/50">
+                              {itemLines.map((line) => (
+                                <li
+                                  key={line.id}
+                                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                                >
+                                  <p className="min-w-0 truncate font-medium text-slate-800 dark:text-slate-100">
+                                    {line.name}
+                                  </p>
+                                  <span className="shrink-0 tabular-nums font-semibold text-slate-900 dark:text-slate-50">
+                                    {formatMoneyDisplay(line.amount, loc)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </li>

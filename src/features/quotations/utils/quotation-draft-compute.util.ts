@@ -12,14 +12,17 @@ export function draftPlotTotal(plot: { pins: Array<{ quantity: number; selling_p
   return plot.pins.reduce((acc, ln) => acc + draftPinTotal(ln), 0);
 }
 
-/** Service line total (selling price; hours no longer used). */
-export function draftServiceLineTotal(line: { selling_price: number }): number {
+/** Service line total = unit selling price × time hours. */
+export function draftServiceLineTotal(line: { selling_price: number; time_hours?: number }): number {
   const u = line.selling_price;
-  return Number.isFinite(u) && u >= 0 ? u : 0;
+  const h = line.time_hours;
+  if (!Number.isFinite(u) || u < 0) return 0;
+  const hours = Number.isFinite(h) && (h as number) >= 0 ? (h as number) : 1;
+  return Math.round(u * hours * 100) / 100;
 }
 
 export function draftSectionTotal(section: {
-  services?: Array<{ selling_price: number }>;
+  services?: Array<{ selling_price: number; time_hours?: number }>;
   section_pins?: Array<{ quantity: number; selling_price: number }>;
   plots: Array<{ pins: Array<{ quantity: number; selling_price: number }> }>;
 }): number {

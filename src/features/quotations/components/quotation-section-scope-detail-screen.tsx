@@ -25,6 +25,8 @@ type Props = {
   defaultBackHref: string;
 };
 
+type LeaveIntent = "idle" | "done" | "quickcreate";
+
 export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const locale = useLocale();
@@ -56,17 +58,22 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   readOnlyRef.current = readOnly;
   const backHrefRef = React.useRef(backHref);
   backHrefRef.current = backHref;
+  const leaveIntentRef = React.useRef<LeaveIntent>("idle");
 
-  const persistSession = React.useCallback((nextDraft: QuotationDraft, pendingApply: boolean) => {
-    const session = readQuotationSectionScopeSession();
-    writeQuotationSectionScopeSession({
-      draft: nextDraft,
-      sectionId: sectionIdRef.current,
-      backHref: session?.backHref ?? backHrefRef.current,
-      readOnly: session?.readOnly ?? readOnlyRef.current,
-      pendingApply: pendingApply && !(session?.readOnly ?? readOnlyRef.current),
-    });
-  }, []);
+  const persistSession = React.useCallback(
+    (nextDraft: QuotationDraft, pendingApply: boolean, entryDraft?: QuotationDraft) => {
+      const session = readQuotationSectionScopeSession();
+      writeQuotationSectionScopeSession({
+        draft: nextDraft,
+        entryDraft: entryDraft ?? session?.entryDraft ?? nextDraft,
+        sectionId: sectionIdRef.current,
+        backHref: session?.backHref ?? backHrefRef.current,
+        readOnly: session?.readOnly ?? readOnlyRef.current,
+        pendingApply: pendingApply && !(session?.readOnly ?? readOnlyRef.current),
+      });
+    },
+    [],
+  );
 
   React.useEffect(() => {
     const session = readQuotationSectionScopeSession();
@@ -78,12 +85,21 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
     setReady(true);
   }, [sectionIdFromUrl]);
 
-  // Keep parent draft in session while editing so back/Done both restore sections + fields.
+  // Discard working edits unless Done (or keep them while quick-creating an item).
   React.useEffect(() => {
     return () => {
+      if (readOnlyRef.current) return;
       const latest = draftRef.current;
-      if (!latest || readOnlyRef.current) return;
-      persistSession(latest, true);
+      if (!latest) return;
+      const intent = leaveIntentRef.current;
+      if (intent === "done") return;
+      if (intent === "quickcreate") {
+        persistSession(latest, false);
+        return;
+      }
+      const session = readQuotationSectionScopeSession();
+      const entry = session?.entryDraft ?? latest;
+      persistSession(entry, false, entry);
     };
   }, [persistSession]);
 
@@ -98,21 +114,44 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
       sections: draft.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)),
     };
     setDraft(next);
-    persistSession(next, true);
-  }
-
-  function persistAndBack(nextDraft: QuotationDraft) {
-    persistSession(nextDraft, true);
-    router.push(backHref);
+    // Working session only — parent applies after Done.
+    persistSession(next, false);
   }
 
   function onDone() {
+    leaveIntentRef.current = "done";
     if (!draft) {
       router.push(backHref);
       return;
     }
-    persistAndBack(draft);
+    persistSession(draft, true);
+    router.push(backHref);
   }
+
+  const restoreFormDraft = React.useCallback(
+    (saved: unknown) => {
+      const s = saved as { draft?: QuotationDraft; sectionId?: string };
+      if (s?.draft && Array.isArray(s.draft.sections)) {
+        setDraft(s.draft);
+        draftRef.current = s.draft;
+        persistSession(s.draft, false);
+      }
+      if (typeof s?.sectionId === "string" && s.sectionId.trim()) {
+        setSectionId(s.sectionId);
+      }
+    },
+    [persistSession],
+  );
+
+  const getFormDraft = React.useCallback(() => {
+    leaveIntentRef.current = "quickcreate";
+    const latest = draftRef.current;
+    if (latest) persistSession(latest, false);
+    return {
+      draft: latest,
+      sectionId: sectionIdRef.current,
+    };
+  }, [persistSession]);
 
   if (!ready) {
     return (
@@ -200,14 +239,8 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   services={section.services ?? []}
                   readOnly={readOnly}
                   onChange={(services) => patchSection({ services })}
-                  getFormDraft={
-                    readOnly
-                      ? undefined
-                      : () => ({
-                          draft: draftRef.current,
-                          sectionId: sectionIdRef.current,
-                        })
-                  }
+                  getFormDraft={readOnly ? undefined : getFormDraft}
+                  restoreFormDraft={readOnly ? undefined : restoreFormDraft}
                 />
               ) : (
                 <QuotationDraftSectionMaterials

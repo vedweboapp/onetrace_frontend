@@ -52,11 +52,12 @@ function mapDraftServicesToQuoteLabours(services: QuotationDraftServiceLine[]): 
     .filter((row) => row.item_id != null && row.item_id > 0)
     .map((row) => {
       const itemId = row.item_id as number;
+      const hours = Number.isFinite(row.time_hours) && row.time_hours >= 0 ? row.time_hours : 1;
       return {
         item: itemId,
         // Legacy backends that still read labour_type as the catalog id.
         labour_type: itemId,
-        time_hours: 1,
+        time_hours: hours,
         cost_rate: row.cost_price,
         markup_percentage: row.markup_percentage,
         selling_price: row.selling_price,
