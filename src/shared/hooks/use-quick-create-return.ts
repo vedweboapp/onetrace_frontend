@@ -50,10 +50,13 @@ export function useQuickCreateReturn({
     if (!restoreFormDraft) return;
     const draft = loadQuickCreateFormDraft(returnToForDraft);
     if (draft == null) return;
-    // One-shot: avoid re-applying a stale snapshot when the host remounts (e.g. tab switch).
-    clearQuickCreateFormDraft(returnToForDraft);
     restoreFormDraft(draft);
-  }, [restoreFormDraft, returnToForDraft]);
+    // Clear only after a real quick-create return (`?select=`). Section-scope remounts
+    // must keep the snapshot so Details fields can be restored.
+    if (searchParams.get(QUICK_CREATE_SELECT_PARAM)) {
+      clearQuickCreateFormDraft(returnToForDraft);
+    }
+  }, [restoreFormDraft, returnToForDraft, searchParams]);
 
   React.useEffect(() => {
     if (appliedRef.current) return;

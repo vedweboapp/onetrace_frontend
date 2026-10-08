@@ -19,7 +19,12 @@ export function buildQuickCreateDraftKey(returnTo: string): string {
   const params = new URLSearchParams(qs);
   params.delete(QUICK_CREATE_SELECT_PARAM);
   params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
-  const cleanQs = params.toString();
+  // Sort keys so `?a=1&tab=pricing` and `?tab=pricing&a=1` share one storage slot.
+  const sorted = new URLSearchParams();
+  for (const key of [...params.keys()].sort()) {
+    for (const value of params.getAll(key)) sorted.append(key, value);
+  }
+  const cleanQs = sorted.toString();
   return `${STORAGE_PREFIX}${path}${cleanQs ? `?${cleanQs}` : ""}`;
 }
 

@@ -40,7 +40,9 @@ import { isOptionalQuoteSection } from "@/features/quotations/utils/quotation-se
 import {
   clearQuotationWorkingDraft,
   consumeQuotationFreshCreate,
+  readQuotationFormValuesDraft,
   readQuotationWorkingDraft,
+  writeQuotationFormValuesDraft,
   writeQuotationWorkingDraft,
   type QuotationWorkingDraftKey,
 } from "@/features/quotations/utils/quotation-working-draft.util";
@@ -108,11 +110,10 @@ import {
   saveQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
-import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
   AppButton,
-  CustomizableAppTabs,
+  AppTabs,
   CheckmarkSelect,
   FieldErrorText,
   FieldGroup,
@@ -165,7 +166,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useQuotationFormBackUrl();
-  const tabsStorageKey = useTabOrderStorageKey("quotationForm");
   const isEdit = mode === "edit";
   const catalogEpoch = useDropdownCatalogEpoch([
     "users",
@@ -309,21 +309,25 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (discardDraftsRef.current) return;
     const draft = quoteDraftSnapshotRef.current;
     if (draft) writeQuotationWorkingDraft(workingDraftKey, draft);
-    if (isEdit) return;
     const bundle = { ...getFormDraft(), formTab: "pricing" as const };
+    // Stable key — survives tab query param order changes on section return.
+    writeQuotationFormValuesDraft(workingDraftKey, bundle);
     saveQuickCreateFormDraft(draftReturnTo, bundle);
     saveQuickCreateFormDraft(buildQuotationScopeReturnHref(pathname), bundle);
-  }, [isEdit, getFormDraft, draftReturnTo, pathname, workingDraftKey]);
+  }, [getFormDraft, draftReturnTo, pathname, workingDraftKey]);
 
   React.useEffect(() => {
     const persist = () => persistFormDraft();
     window.addEventListener("pagehide", persist);
     return () => window.removeEventListener("pagehide", persist);
   }, [persistFormDraft]);
+  const formValuesRestoredRef = React.useRef(false);
+
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
       skipPresetFromUrlRef.current = true;
       if (isQuotationFormDraftBundle(draft)) {
+        formValuesRestoredRef.current = true;
         reset(draft.values, { keepDefaultValues: false });
         if (draft.formTab) setFormTab(draft.formTab);
         // Section Done restores the latest scope draft first — never overwrite it with a
@@ -334,6 +338,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         }
         return;
       }
+      formValuesRestoredRef.current = true;
       reset(draft as QuotationFormValues, { keepDefaultValues: false });
     },
     [reset],
@@ -349,7 +354,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         const row = await fetchQuotation(quotationId);
         if (!cancelled) {
           setExistingDetail(row);
-          reset(mapQuotationDetailToFormDefaults(row));
+          // Keep Details values restored after Scope & pricing section navigation.
+          if (!formValuesRestoredRef.current) {
+            reset(mapQuotationDetailToFormDefaults(row));
+          }
         }
       } catch {
         if (!cancelled) setScreenError(t("detailLoadError"));
@@ -848,30 +856,28 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     appliedRestoredDraftRef.current = true;
     preventQuoteDraftSeedRef.current = true;
     writeQuotationWorkingDraft(workingDraftKey, restored);
-    // Keep QC snapshot in sync with the returned scope draft, but never wipe Details
-    // fields — getValues() is still empty on this remount before form restore runs.
-    if (!isEdit) {
-      const scopeReturnHref = buildQuotationScopeReturnHref(pathname);
-      const existing =
-        loadQuickCreateFormDraft<QuotationFormDraftBundle>(draftReturnTo) ??
-        loadQuickCreateFormDraft<QuotationFormDraftBundle>(scopeReturnHref);
-      const values =
-        existing && isQuotationFormDraftBundle(existing) ? existing.values : getValues();
+    // Restore Details fields from the stable form snapshot (never overwrite with empty getValues()).
+    const scopeReturnHref = buildQuotationScopeReturnHref(pathname);
+    const existing =
+      readQuotationFormValuesDraft<QuotationFormDraftBundle>(workingDraftKey) ??
+      loadQuickCreateFormDraft<QuotationFormDraftBundle>(draftReturnTo) ??
+      loadQuickCreateFormDraft<QuotationFormDraftBundle>(scopeReturnHref);
+    if (existing && isQuotationFormDraftBundle(existing)) {
+      formValuesRestoredRef.current = true;
+      skipPresetFromUrlRef.current = true;
+      reset(existing.values, { keepDefaultValues: false });
       const bundle = {
-        values,
+        values: existing.values,
         quoteDraft: restored,
         formTab: "pricing" as const,
       };
+      writeQuotationFormValuesDraft(workingDraftKey, bundle);
       saveQuickCreateFormDraft(draftReturnTo, bundle);
       saveQuickCreateFormDraft(scopeReturnHref, bundle);
-      if (existing && isQuotationFormDraftBundle(existing)) {
-        skipPresetFromUrlRef.current = true;
-        reset(existing.values, { keepDefaultValues: false });
-      }
     }
     clearTakenQuotationSectionScopeDraft();
     setFormTab("pricing");
-  }, [workingDraftKey, isEdit, getValues, draftReturnTo, pathname, reset]);
+  }, [workingDraftKey, draftReturnTo, pathname, reset]);
 
   React.useEffect(() => {
     // Drop stale taken cache after apply so a later section round-trip can consume again.
@@ -879,7 +885,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, []);
 
   useQuickCreateReturn({
-    restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    restoreFormDraft,
     onReloadOptions: async () => {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
@@ -1104,14 +1110,16 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 {t("noClientsHint")}
               </p>
             ) : null} */}
-            <CustomizableAppTabs
+            <AppTabs
               tabs={[
                 { id: "project", label: t(isServiceQuotation ? "formTabs.details" : "formTabs.project") },
                 { id: "pricing", label: t("formTabs.pricing") },
               ]}
               value={formTab}
-              onValueChange={(id) => setFormTab(id === "pricing" ? "pricing" : "project")}
-              storageKey={tabsStorageKey}
+              onValueChange={(id) => {
+                persistFormDraft();
+                setFormTab(id === "pricing" ? "pricing" : "project");
+              }}
               ariaLabel={t("formTabs.aria")}
               panelIdPrefix="quotation-form-screen"
             />
@@ -1421,7 +1429,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             </FieldGroup>
             </div>
             </DetailPageMapLayout>
-            <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
+            <DetailTabStepNav
+              onNext={() => {
+                persistFormDraft();
+                setFormTab("pricing");
+              }}
+              nextLabel={t("formTabs.nextToPricing")}
+            />
             </div>
             <div
               role="tabpanel"
@@ -1450,7 +1464,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                   onBeforeLeavePage={persistFormDraft}
                 />
               </div>
-              <DetailTabStepNav onPrev={() => setFormTab("project")} prevLabel={t(isServiceQuotation ? "formTabs.prevToDetails" : "formTabs.prevToProject")} />
+              <DetailTabStepNav
+                onPrev={() => {
+                  persistFormDraft();
+                  setFormTab("project");
+                }}
+                prevLabel={t(isServiceQuotation ? "formTabs.prevToDetails" : "formTabs.prevToProject")}
+              />
             </div>
           </form>
         )}

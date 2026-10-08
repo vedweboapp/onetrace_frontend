@@ -140,13 +140,9 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     if (hasJobs) {
       if (isProjectQuote) {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
-        tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheetsPlural") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
-        tabs.push({ id: "docs", label: t("relatedTabs.docs") });
-        tabs.push({ id: "approvals", label: t("relatedTabs.approvals") });
       } else {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
-        tabs.push({ id: "jobsheets", label: t("relatedTabs.jobsheets") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
       }
     }
@@ -553,7 +549,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               aria-labelledby="quotation-detail-tab-trigger-location"
               className="flex min-h-0 w-full flex-1 flex-col"
             >
-              <QuotationLocationsTab projectId={projectId} />
+              <QuotationLocationsTab projectId={projectId} quotationId={quotationId} />
             </div>
           );
         }

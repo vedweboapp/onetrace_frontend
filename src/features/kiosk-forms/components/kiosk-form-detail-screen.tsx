@@ -398,7 +398,7 @@ export function KioskFormDetailScreen() {
                 </Link>
               </div>
             ) : detail ? (
-              <div className="space-y-6">
+              <div className="space-y-2">
                 <dl className="grid gap-4 border-y border-slate-200 p-5 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
                   {/* Title — hyperlink to the kiosk editor */}
                   <div className="lg:col-span-1">

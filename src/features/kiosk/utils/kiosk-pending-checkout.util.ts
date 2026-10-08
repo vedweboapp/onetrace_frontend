@@ -20,23 +20,77 @@ export type PendingKioskCheckout = {
   createdAt: number;
 };
 
+// ---------------------------------------------------------------------------
+// Resilient storage layer
+//
+// Some browsers block sessionStorage / localStorage when:
+//   - The page is loaded inside a cross-origin <iframe>
+//   - The user has strict privacy / tracking-prevention settings enabled
+//   - The browser is running in a sandboxed / kiosk mode
+//
+// Cascade: sessionStorage → localStorage → in-memory Map
+// The in-memory fallback only survives the current page session but is enough
+// for the Stripe redirect flow (same tab, same JS context).
+// ---------------------------------------------------------------------------
+
+const memoryStore = new Map<string, string>();
+
+function trySet(key: string, value: string): void {
+  // 1. Try sessionStorage (preferred — scoped to the tab)
+  try {
+    sessionStorage.setItem(key, value);
+    return;
+  } catch {
+    // blocked
+  }
+  // 2. Fall back to localStorage
+  try {
+    localStorage.setItem(key, value);
+    return;
+  } catch {
+    // blocked
+  }
+  // 3. Last resort: keep in memory for the current page session
+  memoryStore.set(key, value);
+}
+
+function tryGet(key: string): string | null {
+  try {
+    const v = sessionStorage.getItem(key);
+    if (v !== null) return v;
+  } catch {
+    // blocked
+  }
+  try {
+    const v = localStorage.getItem(key);
+    if (v !== null) return v;
+  } catch {
+    // blocked
+  }
+  return memoryStore.get(key) ?? null;
+}
+
+function tryRemove(key: string): void {
+  try { sessionStorage.removeItem(key); } catch { /* blocked */ }
+  try { localStorage.removeItem(key); } catch { /* blocked */ }
+  memoryStore.delete(key);
+}
+
+// ---------------------------------------------------------------------------
+
 function storageKey(kioskId: string): string {
   return `kiosk_pending_checkout_${kioskId}`;
 }
 
 export function savePendingKioskCheckout(kioskId: string, data: PendingKioskCheckout): void {
   if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(storageKey(kioskId), JSON.stringify(data));
-  } catch {
-    throw new Error("Could not save checkout details in this browser. Please try again.");
-  }
+  trySet(storageKey(kioskId), JSON.stringify(data));
 }
 
 export function readPendingKioskCheckout(kioskId: string): PendingKioskCheckout | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(storageKey(kioskId));
+    const raw = tryGet(storageKey(kioskId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingKioskCheckout;
     if (!parsed?.billingDetails || !parsed?.snapshotImage) return null;
@@ -48,7 +102,7 @@ export function readPendingKioskCheckout(kioskId: string): PendingKioskCheckout 
 
 export function clearPendingKioskCheckout(kioskId: string): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(storageKey(kioskId));
+  tryRemove(storageKey(kioskId));
 }
 
 function completedKey(kioskId: string): string {
@@ -57,11 +111,11 @@ function completedKey(kioskId: string): string {
 
 export function markKioskCheckoutCompleted(kioskId: string, sessionId: string): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(completedKey(kioskId), sessionId);
+  trySet(completedKey(kioskId), sessionId);
 }
 
 export function readKioskCheckoutCompleted(kioskId: string): string | null {
   if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(completedKey(kioskId));
+  return tryGet(completedKey(kioskId));
 }
 
