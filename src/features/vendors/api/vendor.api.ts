@@ -71,6 +71,14 @@ export async function fetchVendor(id: number): Promise<Vendor> {
   return data.data;
 }
 
+/** GET vendors/{id}/approved-quotations/ */
+export async function fetchVendorApprovedQuotations(vendorId: number): Promise<unknown> {
+  const { data } = await api.get(VENDOR_PATHS.approvedQuotations(vendorId), {
+    skipErrorToast: true,
+  });
+  return data;
+}
+
 export async function createVendor(body: VendorCreatePayload): Promise<Vendor> {
   const { data } = await api.post<ApiEnvelope<Vendor>>(VENDOR_PATHS.list, body);
   assertApiSuccess(data);

@@ -2,6 +2,7 @@ import type {
   FormBuilderApiHandlers,
   HandlerContext,
 } from "@/shared/form/formbuilder/form-builder.handlers";
+import api from "@/core/api/axios";
 import { createProjectForm } from "@/features/project-forms/api/project-forms.api";
 import {
   getProjectJobForm,
@@ -86,5 +87,18 @@ export const projectJobFormHandlers: FormBuilderApiHandlers = {
     ctx: HandlerContext,
   ): Promise<any> => {
     return createProjectJobFormRules(formId, rules, ctx.purpose);
+  },
+
+  /**
+   * Delete rules for project job forms — POST /project-forms/{formId}/rules/mass-delete/
+   */
+  deleteRules: async (
+    formId: string | number,
+    deletedRuleIds: (string | number)[],
+    _ctx: HandlerContext,
+  ): Promise<any> => {
+    return api.post(`project-forms/${formId}/rules/mass-delete/`, {
+      rule_ids: deletedRuleIds,
+    });
   },
 };

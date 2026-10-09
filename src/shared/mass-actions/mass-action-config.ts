@@ -14,6 +14,7 @@ export type MassActionResourceKey =
   | "projects"
   | "invoices"
   | "purchaseOrders"
+  | "purchaseReceives"
   | "qrCodes";
 
 const RESOURCE_META: Record<MassActionResourceKey, { idsKey: string; apiSegment: string }> = {
@@ -30,6 +31,7 @@ const RESOURCE_META: Record<MassActionResourceKey, { idsKey: string; apiSegment:
   projects: { idsKey: "project_ids", apiSegment: "project" },
   invoices: { idsKey: "invoice_ids", apiSegment: "invoice" },
   purchaseOrders: { idsKey: "purchase_order_ids", apiSegment: "purchase-orders" },
+  purchaseReceives: { idsKey: "purchase_receive_ids", apiSegment: "purchasereceives" },
   qrCodes: { idsKey: "qr_code_ids", apiSegment: "qr-codes" },
 };
 

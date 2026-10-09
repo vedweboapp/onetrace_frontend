@@ -54,6 +54,7 @@ export const DEFAULT_TAB_LAYOUTS: TabLayoutsMap = {
   quotationFormModal: { order: ["project", "pricing"], hidden: [] },
   invoiceDetail: { order: ["overview", "lineItems", "timeline"], hidden: [] },
   purchaseOrderDetail: { order: ["overview", "lineItems", "timeline"], hidden: [] },
+  purchaseReceiveDetail: { order: ["overview", "lineItems", "timeline"], hidden: [] },
   materialRequestDetail: { order: ["overview", "dispatches", "timeline"], hidden: [] },
   userDetail: { order: ["overview", "scheduling"], hidden: [] },
   usersSettings: { order: ["users", "groups"], hidden: [] },
