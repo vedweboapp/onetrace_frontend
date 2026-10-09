@@ -50,6 +50,16 @@ export interface FormBuilderApiHandlers {
   ) => Promise<any>;
 
   /**
+   * Delete rules for a form.
+   * Called automatically during form update when existing rules have been deleted.
+   */
+  deleteRules?: (
+    formId: string | number,
+    deletedRuleIds: (string | number)[],
+    context: HandlerContext,
+  ) => Promise<any>;
+
+  /**
    * Post sections for a form after it has been created.
    * Called automatically after a successful `createForm`.
    */
