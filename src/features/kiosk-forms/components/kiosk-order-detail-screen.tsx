@@ -4,8 +4,10 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { useRouter, Link } from "@/i18n/navigation";
 import { User, MapPin, Receipt, Image as ImageIcon, Calendar, CreditCard, Copy, Check, Eye } from "lucide-react";
-import { getCustomerOrderById } from "@/features/kiosk/api/kiosk.api";
-import type { CustomerOrderDetail } from "@/features/kiosk/types/kiosk.types";
+import { getCustomerOrderById, getKioskById } from "@/features/kiosk/api/kiosk.api";
+import type { CustomerOrderDetail, KioskConfig, KioskQuestion } from "@/features/kiosk/types/kiosk.types";
+import { fetchGroup } from "@/features/groups/api/group.api";
+import type { GroupItemRef } from "@/features/groups/types/group.types";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -74,6 +76,10 @@ export function KioskOrderDetailScreen() {
   const [error, setError] = React.useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  // Kiosk config to resolve question labels by q_id
+  const [kioskConfig, setKioskConfig] = React.useState<KioskConfig | null>(null);
+  // Map: item_group_id → group items (for lookup questions)
+  const [lookupGroupItems, setLookupGroupItems] = React.useState<Record<string, GroupItemRef[]>>({});
 
   React.useEffect(() => {
     let cancelled = false;
@@ -108,6 +114,57 @@ export function KioskOrderDetailScreen() {
       cancelled = true;
     };
   }, [orderId]);
+
+  const effectiveKioskId =
+    kioskId ||
+    (typeof order?.kiosk === "object" ? order?.kiosk?.id : order?.kiosk) ||
+    (order as any)?.kiosk_id ||
+    (typeof order?.service_form === "object" ? order?.service_form?.id : order?.service_form) ||
+    (order as any)?.service_form_id;
+
+  // Load kiosk config once orderId resolves, to get question labels + detect lookup questions
+  React.useEffect(() => {
+    if (!effectiveKioskId) return;
+    let cancelled = false;
+    void getKioskById(String(effectiveKioskId)).then((cfg) => {
+      if (cancelled || !cfg) return;
+      setKioskConfig(cfg);
+      // For every lookup question that has an item_group_id, prefetch the group items
+      const lookupQuestions = (cfg.questions ?? []).filter(
+        (q: KioskQuestion) => (q.is_lookup || q.item_group_id != null) && q.item_group_id != null,
+      );
+      if (lookupQuestions.length === 0) return;
+      void Promise.allSettled(
+        lookupQuestions.map(async (q: KioskQuestion) => {
+          const gid = Number(q.item_group_id);
+          if (!gid) return;
+          try {
+            const group = await fetchGroup(gid);
+            if (!cancelled && group?.items) {
+              setLookupGroupItems((prev) => ({
+                ...prev,
+                [String(q.item_group_id)]: group.items as GroupItemRef[],
+              }));
+            }
+          } catch {
+            // silent – labels simply fall back to raw value
+          }
+        }),
+      );
+    });
+    return () => { cancelled = true; };
+  }, [effectiveKioskId]);
+
+  // Build a quick lookup: q_id (string) → KioskQuestion
+  const questionByQId = React.useMemo<Record<string, KioskQuestion>>(() => {
+    if (!kioskConfig) return {};
+    const map: Record<string, KioskQuestion> = {};
+    for (const q of kioskConfig.questions ?? []) {
+      if (q.q_id != null) map[String(q.q_id)] = q;
+      if (q.id != null) map[String(q.id)] = q;
+    }
+    return map;
+  }, [kioskConfig]);
 
   const handleCopyOrderNumber = () => {
     const text = order?.order_number || `#${orderId}`;
@@ -394,16 +451,193 @@ export function KioskOrderDetailScreen() {
                         const itemTotalPrice = item.total_price;
                         const itemSnapshot = item.snapshot_image_url;
 
-                        // Check configurations list (backend structure: configurations: [{ question_label, option_value, option_price }])
-                        const configurations = Array.isArray(item.configurations)
-                          ? item.configurations
-                          : Array.isArray(item.values)
-                            ? item.values
-                            : Array.isArray(item.options)
-                              ? item.options
-                              : item.value != null
-                                ? [{ question_label: item.question_title || `Question`, option_value: item.value, option_price: item.price }]
+                        // -------------------------------------------------------
+                        // Resolve configurations from the actual API payload shape:
+                        //   item.items = [{ q_id, values: [{ o_id, value, price }] }]
+                        // Fall back to legacy shapes for backward compat.
+                        // -------------------------------------------------------
+                        type ResolvedValue = {
+                          subLabel?: string | null;
+                          displayValue: string;
+                          rawValue: string;
+                          price?: number | string | null;
+                        };
+
+                        type ResolvedConfig = {
+                          key: string;
+                          questionLabel: string;
+                          hasGroup: boolean;
+                          groupTitle?: string | null;
+                          values: ResolvedValue[];
+                          totalPrice: number;
+                        };
+
+                        const resolvedConfigs: ResolvedConfig[] = [];
+
+                        const nestedItems = Array.isArray(item.items) ? item.items : [];
+
+                        if (nestedItems.length > 0) {
+                          // New API shape: item.items = [{ q_id, values: [{o_id, value, price}] }]
+                          // Group nested items by question ID so that each question is processed exactly once
+                          type RawQuestionAcc = {
+                            qId: string;
+                            rawValues: Array<{
+                              o_id?: number | string;
+                              id?: number | string;
+                              value?: string | number | null;
+                              label?: string | null;
+                              title?: string | null;
+                              price?: number | string | null;
+                            }>;
+                          };
+
+                          const questionMap = new Map<string, RawQuestionAcc>();
+
+                          for (let qiIdx = 0; qiIdx < nestedItems.length; qiIdx++) {
+                            const qi = nestedItems[qiIdx];
+                            const qId = String(qi.q_id ?? qi.id ?? `qi_${qiIdx}`);
+                            let acc = questionMap.get(qId);
+                            if (!acc) {
+                              acc = { qId, rawValues: [] };
+                              questionMap.set(qId, acc);
+                            }
+                            const vals = Array.isArray(qi.values)
+                              ? qi.values
+                              : qi.value != null
+                                ? [{ o_id: qi.o_id, id: qi.id, value: qi.value, label: qi.label, price: qi.price }]
                                 : [];
+                            for (const v of vals) {
+                              acc.rawValues.push(v);
+                            }
+                          }
+
+                          for (const [qId, acc] of questionMap.entries()) {
+                            const question = questionByQId[qId];
+                            const questionLabel = question?.label || `Question ${qId}`;
+                            const isLookup = Boolean(question?.is_lookup || question?.item_group_id != null);
+                            const groupId = question?.item_group_id ? String(question.item_group_id) : null;
+                            const groupItems = groupId ? (lookupGroupItems[groupId] ?? []) : [];
+
+                            // Check whether question has a group
+                            const groups =
+                              question?.groups && question.groups.length > 0
+                                ? question.groups
+                                : (question as any)?.group
+                                  ? [(question as any).group]
+                                  : [];
+                            const hasGroup = !isLookup && groups.length > 0;
+                            const groupTitle = hasGroup
+                              ? groups[0]?.name || (groups[0] as any)?.title || null
+                              : null;
+
+                            const groupOptions = hasGroup
+                              ? groups.flatMap((g: any) => g.options ?? [])
+                              : [];
+
+                            const resolvedValues: ResolvedValue[] = [];
+                            let sumPrice = 0;
+
+                            for (let vIdx = 0; vIdx < acc.rawValues.length; vIdx++) {
+                              const v = acc.rawValues[vIdx];
+                              const rawValue = String(v.value ?? v.label ?? "—");
+                              let displayValue = rawValue;
+                              let subLabel: string | null = null;
+                              const vPrice = v.price != null && Number(v.price) > 0 ? Number(v.price) : 0;
+                              sumPrice += vPrice;
+
+                              if (isLookup && groupItems.length > 0) {
+                                // Match by item id (the value field stores the item id for lookup)
+                                const matchedItem = groupItems.find(
+                                  (gi) => String(gi.item) === rawValue || String(gi.id) === rawValue,
+                                );
+                                if (matchedItem) {
+                                  displayValue = matchedItem.item_name || matchedItem.abbreviation || rawValue;
+                                }
+                              } else if (hasGroup) {
+                                const oId = String(v.o_id ?? v.id ?? "");
+                                const matchedOpt =
+                                  groupOptions.find(
+                                    (o: any) =>
+                                      (o.o_id != null && String(o.o_id) === oId) ||
+                                      (o.id != null && String(o.id) === oId),
+                                  ) || groupOptions[vIdx];
+                                if (matchedOpt?.label || (matchedOpt as any)?.title || (matchedOpt as any)?.name) {
+                                  subLabel =
+                                    matchedOpt.label || (matchedOpt as any)?.title || (matchedOpt as any)?.name;
+                                }
+                              } else if (question && !isLookup) {
+                                // For regular questions, try to match option label by o_id or value
+                                const allOptions = [
+                                  ...(question.options ?? []),
+                                  ...(question.groups ?? []).flatMap((g: any) => g.options ?? []),
+                                ];
+                                const oId = String(v.o_id ?? v.id ?? "");
+                                const matchedOpt =
+                                  allOptions.find((o) => String(o.id) === oId || String(o.o_id) === oId) ||
+                                  allOptions.find((o) => String(o.value) === rawValue);
+                                if (matchedOpt?.label) displayValue = matchedOpt.label;
+                              }
+
+                              resolvedValues.push({
+                                subLabel,
+                                displayValue,
+                                rawValue,
+                                price: v.price ?? null,
+                              });
+                            }
+
+                            resolvedConfigs.push({
+                              key: qId,
+                              questionLabel,
+                              hasGroup,
+                              groupTitle,
+                              values: resolvedValues,
+                              totalPrice: sumPrice,
+                            });
+                          }
+                        } else {
+                          // Legacy fallback: group by question
+                          const legacyList = Array.isArray(item.configurations)
+                            ? item.configurations
+                            : Array.isArray(item.values)
+                              ? item.values
+                              : Array.isArray(item.options)
+                                ? item.options
+                                : item.value != null
+                                  ? [{ question_label: item.question_title || "Question", option_value: item.value, option_price: item.price }]
+                                  : [];
+                          for (let li = 0; li < legacyList.length; li++) {
+                            const cfg = legacyList[li];
+                            const qLabel = cfg.question_label || cfg.question_title || cfg.label || `Option #${li + 1}`;
+                            const dVal = String(cfg.option_label || cfg.option_value || cfg.value || cfg.name || "—");
+                            const rVal = String(cfg.option_value || cfg.value || "");
+                            const p = cfg.option_price ?? cfg.price ?? null;
+                            const pNum = p != null && Number(p) > 0 ? Number(p) : 0;
+
+                            const existing = resolvedConfigs.find((r) => r.questionLabel === qLabel);
+                            if (existing) {
+                              existing.values.push({
+                                displayValue: dVal,
+                                rawValue: rVal,
+                                price: p,
+                              });
+                              existing.totalPrice += pNum;
+                            } else {
+                              resolvedConfigs.push({
+                                key: String(cfg.id ?? li),
+                                questionLabel: qLabel,
+                                hasGroup: false,
+                                groupTitle: null,
+                                values: [{
+                                  displayValue: dVal,
+                                  rawValue: rVal,
+                                  price: p,
+                                }],
+                                totalPrice: pNum,
+                              });
+                            }
+                          }
+                        }
 
                         return (
                           <div key={item.id ?? idx} className="p-5 space-y-4 hover:bg-slate-50/30 dark:hover:bg-slate-800/10">
@@ -441,42 +675,101 @@ export function KioskOrderDetailScreen() {
                             </div>
 
                             {/* Configurations / Questions Breakdown */}
-                            {configurations.length > 0 && (
+                            {resolvedConfigs.length > 0 && (
                               <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-800/40">
                                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                   Configured Options
                                 </p>
                                 <div className="grid gap-2 sm:grid-cols-2">
-                                  {configurations.map((cfg: any, cfgIdx: number) => {
-                                    const label = cfg.question_label || cfg.question_title || cfg.label || `Option #${cfgIdx + 1}`;
-                                    const value = cfg.option_label || cfg.option_value || cfg.value || cfg.name || "—";
-                                    const price = cfg.option_price ?? cfg.price;
-                                    const isHexColor = typeof value === "string" && /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value.trim());
-
+                                  {resolvedConfigs.map((cfg) => {
                                     return (
                                       <div
-                                        key={cfg.id ?? cfgIdx}
-                                        className="flex items-center justify-between rounded-md border border-slate-200/80 bg-white px-3 py-2 text-xs shadow-xs dark:border-slate-800 dark:bg-slate-900"
+                                        key={cfg.key}
+                                        className="flex items-start justify-between rounded-md border border-slate-200/80 bg-white px-3 py-2 text-xs shadow-xs dark:border-slate-800 dark:bg-slate-900"
                                       >
-                                        <div className="min-w-0 pr-2">
+                                        <div className="min-w-0 flex-1 pr-2">
                                           <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                                            {label}
+                                            {cfg.questionLabel}
                                           </p>
-                                          <div className="flex items-center gap-1.5 mt-0.5">
-                                            {isHexColor && (
-                                              <span
-                                                className="size-3.5 shrink-0 rounded-full border border-black/10 shadow-xs"
-                                                style={{ backgroundColor: value }}
-                                              />
-                                            )}
-                                            <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                              {String(value)}
-                                            </p>
-                                          </div>
+
+                                          {/* Case 1: Grouped with multiple values -> Hierarchy */}
+                                          {cfg.hasGroup && cfg.values.length > 1 ? (
+                                            <div className="mt-1 space-y-1">
+                                              {cfg.groupTitle && (
+                                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                  {cfg.groupTitle}
+                                                </p>
+                                              )}
+                                              <div className="space-y-0.5">
+                                                {cfg.values.map((v, i) => {
+                                                  const isHexColor =
+                                                    typeof v.rawValue === "string" &&
+                                                    /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(v.rawValue.trim());
+                                                  return (
+                                                    <div key={i} className="flex items-center gap-1.5 text-xs">
+                                                      {v.subLabel && (
+                                                        <span className="text-slate-500 dark:text-slate-400">
+                                                          {v.subLabel}:
+                                                        </span>
+                                                      )}
+                                                      {isHexColor && (
+                                                        <span
+                                                          className="size-3 shrink-0 rounded-full border border-black/10 shadow-xs"
+                                                          style={{ backgroundColor: v.rawValue }}
+                                                        />
+                                                      )}
+                                                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                        {v.displayValue}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          ) : !cfg.hasGroup && cfg.values.length > 1 ? (
+                                            /* Case 2: No group, multiple values (e.g. checkboxes) -> inline chips */
+                                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                                              {cfg.values.map((v, i) => {
+                                                const isHexColor =
+                                                  typeof v.rawValue === "string" &&
+                                                  /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(v.rawValue.trim());
+                                                return (
+                                                  <span
+                                                    key={i}
+                                                    className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                                                  >
+                                                    {isHexColor && (
+                                                      <span
+                                                        className="size-2.5 shrink-0 rounded-full border border-black/10"
+                                                        style={{ backgroundColor: v.rawValue }}
+                                                      />
+                                                    )}
+                                                    {v.displayValue}
+                                                  </span>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : (
+                                            /* Case 3: Single value -> unchanged */
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                              {cfg.values[0] &&
+                                                typeof cfg.values[0].rawValue === "string" &&
+                                                /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(cfg.values[0].rawValue.trim()) && (
+                                                  <span
+                                                    className="size-3.5 shrink-0 rounded-full border border-black/10 shadow-xs"
+                                                    style={{ backgroundColor: cfg.values[0].rawValue }}
+                                                  />
+                                                )}
+                                              <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                                {cfg.values[0]?.displayValue ?? "—"}
+                                              </p>
+                                            </div>
+                                          )}
                                         </div>
-                                        {price != null && Number(price) > 0 && (
+
+                                        {cfg.totalPrice > 0 && (
                                           <span className="shrink-0 font-semibold text-emerald-600 dark:text-emerald-400">
-                                            +{formatCurrency(price)}
+                                            +{formatCurrency(cfg.totalPrice)}
                                           </span>
                                         )}
                                       </div>

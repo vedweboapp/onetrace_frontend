@@ -1522,10 +1522,26 @@ export default function FormBuilderLayout({
           formId &&
           apiHandlers.updateForm
         ) {
-          if (deletedRuleIds.length > 0 && rawPurpose === "edit_project_job_form") {
-            await api.post(`project-forms/${formId}/rules/mass-delete/`, {
-              rule_ids: deletedRuleIds.map((entry) => entry.id),
-            });
+          if (deletedRuleIds.length > 0) {
+            const validDeletedIds = deletedRuleIds
+              .map((entry) => entry.id)
+              .filter((id) => id != null && id !== "")
+              .map((id) => (!isNaN(Number(id)) ? Number(id) : id));
+
+            if (validDeletedIds.length > 0) {
+              if (apiHandlers.deleteRules) {
+                await apiHandlers.deleteRules(formId, validDeletedIds, handlerCtx);
+              } else if (rawPurpose === "edit_project_job_form") {
+                await api.post(`project-forms/${formId}/rules/mass-delete/`, {
+                  rule_ids: validDeletedIds,
+                });
+              } else {
+                await api.delete(`forms/${formId}/rules/`, {
+                  data: { ids: validDeletedIds },
+                  skipErrorToast: true,
+                });
+              }
+            }
           }
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
         }
@@ -2009,7 +2025,7 @@ export default function FormBuilderLayout({
                 <div
                   className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-x-hidden ${previewLayout === "phone"
                     ? "w-[390px] max-w-full rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-slate-300 dark:border-slate-700"
-                    : "w-full max-w-4xl rounded-lg p-3 sm:p-6 lg:p-8"
+                    : "w-full rounded-lg p-3 sm:p-6 lg:p-8"
                     }`}
                 >
                   <FormRenderer
