@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Plus, Pencil, Send } from "lucide-react";
 import {
+    DashboardLoadErrorState,
     AppButton,
     AppModal,
     AppTabs,
@@ -393,10 +394,8 @@ const ProjectTypeFormList = () => {
 
             <SurfaceShell className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-slate-200 dark:border-slate-800">
                 {loadError ? (
-                    <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-                        {loadError}
-                    </p>
-                ) : loading ? (
+          <DashboardLoadErrorState message={loadError} />
+        ) : loading ? (
                     <div className="space-y-2 p-6">
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

@@ -7,6 +7,7 @@ import type { KioskListItem } from "@/features/kiosk/types/kiosk.types";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
+	DashboardLoadErrorState,
 	DataTablePaginationBar,
 	ListPageEmptyStates,
 	ListPageHeader,
@@ -112,7 +113,7 @@ export function KioskFormsPanel() {
 			/>
 			<SurfaceShell className="min-h-0 flex-1 rounded-none! border-0! shadow-none! ring-0!">
 				{error ? (
-					<p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+					<DashboardLoadErrorState message={error} onRetry={() => void loadKiosks()} />
 				) : loading ? (
 					<div className="space-y-2 p-6">
 						{Array.from({ length: 6 }, (_, index) => (

@@ -14,6 +14,7 @@ import {
 } from "@/features/vendors/utils/vendor-nested-fields.util";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useDeferredListOptions } from "@/shared/hooks/use-deferred-list-options";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
@@ -26,6 +27,7 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import {
+  DashboardLoadErrorState,
   AddButton,
   ConfirmDialog,
   DataTablePaginationBar,
@@ -280,7 +282,16 @@ export function VendorsPanel() {
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AddButton type="button" onClick={openCreate} />}
+          action={
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="vendors"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
+          }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -304,7 +315,10 @@ export function VendorsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className={listPageCardScrollClassName()}>
