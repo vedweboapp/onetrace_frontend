@@ -25,6 +25,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   CheckmarkSelect,
@@ -41,6 +42,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { buildDetailHrefWithListReturn } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -308,9 +310,16 @@ export function QrCodesPanel() {
         tableViewLabel={tList("tableView")}
         listViewLabel={tList("listView")}
         action={
-          <AddButton type="button" onClick={() => setGenerateOpen(true)}>
-            {t("generate.button")}
-          </AddButton>
+          <ListPageActionGroup>
+            <ModuleImportControl
+              resource="qrCodes"
+              moduleLabel={t("metaTitle")}
+              onSuccess={() => setRefreshNonce((n) => n + 1)}
+            />
+            <AddButton type="button" onClick={() => setGenerateOpen(true)}>
+              {t("generate.button")}
+            </AddButton>
+          </ListPageActionGroup>
         }
         controls={
           <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -348,7 +357,10 @@ export function QrCodesPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

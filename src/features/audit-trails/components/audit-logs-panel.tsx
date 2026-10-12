@@ -32,6 +32,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import {
+  DashboardLoadErrorState,
   CheckmarkSelect,
   DataTablePaginationBar,
   DataTableScroll,
@@ -283,7 +284,7 @@ export function AuditLogsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState message={loadError} />
         ) : listLoading ? (
           <div className="space-y-2 p-6">
             {Array.from({ length: 6 }, (_, i) => (

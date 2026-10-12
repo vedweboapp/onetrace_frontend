@@ -447,6 +447,12 @@ export default function FormBuilderLayout({
     : rawPurpose === "edit_project_job_form" || rawPurpose === "edit__project_form"
       ? "edit_project_form"
       : rawPurpose;
+  const nameFieldCopy =
+    purpose === "create_module"
+      ? { label: t("moduleNameLabel"), placeholder: t("moduleNamePlaceholder") }
+      : purpose === "create_layout" || purpose === "edit_layout"
+        ? { label: t("layoutNameLabel"), placeholder: t("layoutNamePlaceholder") }
+        : { label: t("nameLabel"), placeholder: t("namePlaceholder") };
   const installationTypeId = searchParams.get("installation_type_id") || undefined;
   const router = useRouter();
   const params = useParams();
@@ -1868,7 +1874,7 @@ export default function FormBuilderLayout({
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <label htmlFor="form-builder-name" className="sr-only">
-              {t("nameLabel")}
+              {nameFieldCopy.label}
             </label>
             <input
               id="form-builder-name"
@@ -1894,7 +1900,7 @@ export default function FormBuilderLayout({
                   ? "border-red-500 focus:border-red-500 dark:border-red-500"
                   : "border-slate-200 hover:border-slate-300 focus:border-[color:var(--dash-accent,#111111)] dark:border-slate-700 dark:hover:border-slate-600",
               )}
-              placeholder={t("namePlaceholder")}
+              placeholder={nameFieldCopy.placeholder}
             />
             <span className={fieldRequiredMarkClassName} aria-hidden>
               *

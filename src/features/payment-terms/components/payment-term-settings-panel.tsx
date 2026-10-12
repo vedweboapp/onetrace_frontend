@@ -35,6 +35,7 @@ import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { routes } from "@/shared/config/routes";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   AppModal,
@@ -356,7 +357,10 @@ export function PaymentTermSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

@@ -1,7 +1,5 @@
 "use client";
 
-import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -30,6 +28,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -58,6 +57,8 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
+import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 
 export function InvoicesPanel() {
   const t = useTranslations("Dashboard.invoices");
@@ -360,7 +361,16 @@ export function InvoicesPanel() {
         onViewModeChange={setListViewMode}
         tableViewLabel={tList("tableView")}
         listViewLabel={tList("listView")}
-        action={<AddButton type="button" onClick={openCreate} />}
+        action={
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="invoices"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
+          }
         controls={
           <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <ListPageSearchField
@@ -414,7 +424,10 @@ export function InvoicesPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/core/utils/http.util";
+import { DashboardLoadErrorState } from "@/shared/ui/dashboard-load-error-state";
 import {
-  detailTabFillStateClassName,
   detailTabStandaloneFillClassName,
   detailTabTableBodyClassName,
 } from "./detail-tab-layout";
@@ -55,11 +55,7 @@ export function DetailTabListShell({
         )}
       >
         {loadError ? (
-          errorFallback ?? (
-            <div className={detailTabFillStateClassName}>
-              <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
-            </div>
-          )
+          errorFallback ?? <DashboardLoadErrorState message={loadError} />
         ) : loading ? (
           loadingFallback
         ) : isEmpty ? (

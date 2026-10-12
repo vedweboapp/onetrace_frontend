@@ -18,6 +18,7 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   CheckmarkSelect,
@@ -44,6 +45,7 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 
 function parseContactTypeParam(raw: string | null): ContactType {
   return raw === "vendor" ? "vendor" : "client";
@@ -353,7 +355,14 @@ export function ContactsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AddButton type="button" onClick={openCreate} />
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="contacts"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -415,7 +424,10 @@ export function ContactsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className={listPageCardScrollClassName()}>

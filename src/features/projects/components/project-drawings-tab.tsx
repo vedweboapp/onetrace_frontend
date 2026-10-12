@@ -16,7 +16,6 @@ import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
-  detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabStandaloneFillClassName,
@@ -27,6 +26,7 @@ import {
   AddButton,
   AppButton,
   AppModal,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   ListPageEmptyStates,
   ListViewModeToggle,
@@ -642,7 +642,10 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       </div>
 
       {loadError ? (
-        <p className={detailTabErrorClassName}>{loadError}</p>
+        <DashboardLoadErrorState
+          message={loadError}
+          onRetry={() => setRefreshNonce((n) => n + 1)}
+        />
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
