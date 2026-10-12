@@ -387,13 +387,7 @@ export function PurchaseReceivesPanel() {
             onboarding={{
               iconName: "purchaseReceives",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-                  {t("createPurchaseReceive")}
-                </AppButton>
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() =>
               setUrl({ search: null, status: null, vendor: null, page: null }, { replace: true })

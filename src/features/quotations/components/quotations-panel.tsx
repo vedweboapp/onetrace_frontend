@@ -688,7 +688,6 @@ export function QuotationsPanel() {
               iconName: "quotations",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl(

@@ -330,13 +330,7 @@ export function SitesPanel() {
             onboarding={{
               iconName: "sites",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AddButton
-                  type="button"
-                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
-                />
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() =>
               setUrl({ search: null, client: null, page: null }, { replace: true })
