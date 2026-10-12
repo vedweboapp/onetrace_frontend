@@ -12,10 +12,10 @@ import {
     DataTableTh,
     DataTableTextModeToggle,
     SurfaceShell,
-    AppButton,
     DataTablePaginationBar,
     ListPageSearchField,
     AddButton,
+    DashboardLoadErrorState,
     ListPageEmptyStates,
     useDataTableTextModeStore,
 } from "@/shared/ui";
@@ -154,12 +154,10 @@ const ModulesDetails = () => {
                         ))}
                     </div>
                 ) : loadError ? (
-                    <div className="p-6 text-center">
-                        <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
-                        <AppButton variant="secondary" size="sm" className="mt-3" onClick={() => void loadModules()}>
-                            Retry
-                        </AppButton>
-                    </div>
+                    <DashboardLoadErrorState
+                        message={loadError}
+                        onRetry={() => void loadModules()}
+                    />
                 ) : emptyStateKind !== "none" ? (
                     <div className="p-8">
                         <ListPageEmptyStates

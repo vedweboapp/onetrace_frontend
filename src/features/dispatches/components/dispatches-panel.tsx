@@ -20,6 +20,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageEmptyStates,
@@ -162,7 +163,7 @@ export function DispatchesPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState message={loadError} />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

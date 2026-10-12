@@ -23,7 +23,13 @@ import {
   quantityTableHeaderClass,
   quantityTableInputCellClass,
 } from "@/shared/components/quantity/quantity-table-columns";
-import { AppButton, CheckmarkSelect, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
+import {
+  AppButton,
+  CheckmarkSelect,
+  DashboardLoadErrorState,
+  SurfaceShell,
+  surfaceInputClassName,
+} from "@/shared/ui";
 import { playFlyToNavCelebration } from "@/shared/ui/fly-to-nav-celebration";
 import { FIELD_MAX_LENGTH, sanitizeDescriptionInput } from "@/shared/form";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
@@ -81,6 +87,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
 
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detail, setDetail] = React.useState<MaterialRequestDetail | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [itemOptions, setItemOptions] = React.useState<{ value: string; label: string }[]>([]);
@@ -91,7 +98,27 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
   const [notes, setNotes] = React.useState<string>("");
   const confirmOriginRef = React.useRef<HTMLElement | null>(null);
 
-  const itemQuickCreate = useQuickCreate({ kind: "item" });
+  type DispatchDraft = {
+    lines?: LineDraft[];
+    extraDraft?: ExtraDraft;
+    extraRows?: ExtraDraft[];
+    notes?: string;
+  };
+  const pendingDraftRef = React.useRef<DispatchDraft | null>(null);
+
+  const getFormDraft = React.useCallback(
+    () => ({ lines, extraDraft, extraRows, notes }),
+    [lines, extraDraft, extraRows, notes],
+  );
+  const restoreFormDraft = React.useCallback((draft: unknown) => {
+    if (!draft || typeof draft !== "object") return;
+    pendingDraftRef.current = draft as DispatchDraft;
+  }, []);
+
+  const itemQuickCreate = useQuickCreate({
+    kind: "item",
+    getFormDraft,
+  });
   const reloadItemOptions = React.useCallback(async () => {
     try {
       const itemsRes = await fetchItemsPage(1, 20, { isActive: true, dropdown: true });
@@ -110,6 +137,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
     }
   }, []);
   useQuickCreateReturn({
+    restoreFormDraft,
     onReloadOptions: reloadItemOptions,
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget !== "item") return;
@@ -158,29 +186,44 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
           bucket.push({ id: line.id, requested });
           linesByItemId.set(itemId, bucket);
         }
-        setLines(
-          summaries.map((itemRow) => {
-            const underlying = linesByItemId.get(itemRow.item_id) ?? [];
-            return {
-              key: itemRow.group_key,
-              itemId: itemRow.item_id,
-              materialRequestLineIds: underlying.map((l) => l.id),
-              lineRequestedQtys: underlying.map((l) => l.requested),
-              materialName: itemRow.item_name,
-              requested: itemRow.requested_quantity,
-              alreadyDispatched: itemRow.dispatched_quantity,
-              fulfilled: itemRow.fulfilled_quantity,
-              surplus: itemRow.surplus_quantity,
-              pending: itemRow.pending_quantity,
-              dispatchQty:
-                itemRow.default_dispatch_quantity != null && itemRow.default_dispatch_quantity > 0
-                  ? String(itemRow.default_dispatch_quantity)
-                  : itemRow.pending_quantity > 0
-                    ? String(itemRow.pending_quantity)
-                    : "",
-            };
-          }),
-        );
+        const nextLines = summaries.map((itemRow) => {
+          const underlying = linesByItemId.get(itemRow.item_id) ?? [];
+          return {
+            key: itemRow.group_key,
+            itemId: itemRow.item_id,
+            materialRequestLineIds: underlying.map((l) => l.id),
+            lineRequestedQtys: underlying.map((l) => l.requested),
+            materialName: itemRow.item_name,
+            requested: itemRow.requested_quantity,
+            alreadyDispatched: itemRow.dispatched_quantity,
+            fulfilled: itemRow.fulfilled_quantity,
+            surplus: itemRow.surplus_quantity,
+            pending: itemRow.pending_quantity,
+            dispatchQty:
+              itemRow.default_dispatch_quantity != null && itemRow.default_dispatch_quantity > 0
+                ? String(itemRow.default_dispatch_quantity)
+                : itemRow.pending_quantity > 0
+                  ? String(itemRow.pending_quantity)
+                  : "",
+          };
+        });
+        const draft = pendingDraftRef.current;
+        pendingDraftRef.current = null;
+        if (draft) {
+          const qtyByKey = new Map(
+            (draft.lines ?? []).map((l) => [l.key, l.dispatchQty] as const),
+          );
+          setLines(
+            nextLines.map((row) =>
+              qtyByKey.has(row.key) ? { ...row, dispatchQty: qtyByKey.get(row.key)! } : row,
+            ),
+          );
+          if (draft.extraDraft) setExtraDraft(draft.extraDraft);
+          if (Array.isArray(draft.extraRows)) setExtraRows(draft.extraRows);
+          if (typeof draft.notes === "string") setNotes(draft.notes);
+        } else {
+          setLines(nextLines);
+        }
       } catch (error) {
         if (!cancelled) setLoadError(getApiErrorDisplayMessage(error, t("detailLoadError")));
       } finally {
@@ -190,7 +233,7 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [materialRequestId, t]);
+  }, [materialRequestId, refreshNonce, t]);
 
   function updateLineQty(lineKey: string, value: string) {
     setLines((prev) =>
@@ -365,7 +408,10 @@ export function MaterialRequestDispatchScreen({ materialRequestId }: Props) {
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : loadError ? (
-          <p className="p-6 text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : (
           <div className="space-y-8 p-4 sm:p-6">
             <p className="text-sm text-slate-600 dark:text-slate-400">{dispatchT("pageHint")}</p>

@@ -171,6 +171,57 @@ function pickDetailRowStyle(raw: string | undefined): DetailRowLineStyle {
     : "solid";
 }
 
+/** True when an object carries appearance preference fields (flat or nested). */
+function looksLikeAppearancePreferences(value: object): boolean {
+  return (
+    "font" in value ||
+    "accent" in value ||
+    "theme_mode" in value ||
+    "language" in value ||
+    "dashboard_layout" in value ||
+    "page_label_position" in value ||
+    "mandatory_field_display" in value ||
+    "detail_row_line" in value ||
+    "error_message" in value ||
+    "tab_layouts" in value
+  );
+}
+
+/**
+ * Backend may return either:
+ * - flat `appearance_settings: { font, accent, theme_mode, ... }`
+ * - nested `appearance_settings: { preferences: { ... } }`
+ */
+export function resolveAppearancePreferencesFromSettings(
+  settings: unknown,
+): ApiAppearancePreferences | null {
+  if (!settings || typeof settings !== "object") return null;
+  const root = settings as ApiAppearancePreferences & {
+    preferences?: ApiAppearancePreferences;
+    available_options?: unknown;
+  };
+
+  if (root.preferences && typeof root.preferences === "object") {
+    if (looksLikeAppearancePreferences(root.preferences)) {
+      return root.preferences;
+    }
+  }
+
+  if (looksLikeAppearancePreferences(root)) {
+    const {
+      preferences: _preferences,
+      available_options: _availableOptions,
+      ...flat
+    } = root as ApiAppearancePreferences & {
+      preferences?: ApiAppearancePreferences;
+      available_options?: unknown;
+    };
+    return flat;
+  }
+
+  return root.preferences ?? null;
+}
+
 /** Map API preferences into dashboard appearance store fields. */
 export function appearanceStoreFromApiPreferences(
   prefs: ApiAppearancePreferences | null | undefined,

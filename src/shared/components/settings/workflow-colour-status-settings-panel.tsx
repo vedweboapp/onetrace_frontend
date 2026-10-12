@@ -26,6 +26,7 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
+  DashboardLoadErrorState,
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
@@ -369,7 +370,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

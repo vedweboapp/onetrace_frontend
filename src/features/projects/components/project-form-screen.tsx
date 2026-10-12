@@ -32,7 +32,7 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
@@ -71,6 +71,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     "forms",
   ]);
   const t = useTranslations("Dashboard.projects");
+  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -221,6 +222,35 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     kind: "site",
     clientId: clientIdForQuick,
     addDisabled: !clientIdForQuick,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+
+  const projectTypeQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsProjectTypes,
+    addLabel: t("placeholders.addProjectType"),
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+  const projectStatusQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsProjectStatus,
+    addLabel: t("placeholders.addProjectStatus"),
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+  const managersQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsUsers,
+    addLabel: tQuick("add.user"),
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+  const formsQuickAdd = useSettingsQuickAdd({
+    href: selectedProjectType
+      ? `${routes.dashboard.settingsProjectForms}/${selectedProjectType}/create?purpose=create_project_form`
+      : undefined,
+    addLabel: t("placeholders.addForm"),
+    addDisabled: !selectedProjectType,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
   });
 
   React.useEffect(() => {
@@ -235,6 +265,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     onReloadOptions: async () => {
       await reloadClients();
       await reloadSites();
+      await reloadManagers(managerSearchQuery);
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
@@ -244,7 +275,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         return;
       }
       if (selectTarget === "site") {
-        setValue("sites", [selectId], { shouldDirty: true, shouldValidate: true });
+        const current = getValues("sites") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
@@ -334,18 +367,22 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     };
   }, [isEdit, setValue, getValues, catalogEpoch]);
 
-  const siteClientRef = React.useRef(selectedClient);
+  const siteClientRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (siteClientRef.current === selectedClient) return;
-    siteClientRef.current = selectedClient;
+    const prev = siteClientRef.current;
+    const next = selectedClient ?? "";
+    // Skip first paint / draft-restore so an empty initial client does not wipe restored sites.
+    if (prev === null) {
+      siteClientRef.current = next;
+      if (next && /^\d+$/.test(next)) void reloadSites();
+      return;
+    }
+    if (prev === next) return;
+    siteClientRef.current = next;
     siteFetchSeq.current += 1;
-    if ((getValues("sites") ?? []).length === 0) setSiteOptions([]);
-  }, [selectedClient, getValues]);
-
-  React.useEffect(() => {
-    if (!selectedClient || !/^\d+$/.test(selectedClient)) {
+    if (!next || !/^\d+$/.test(next)) {
       setSiteOptions([]);
-      setValue("sites", []);
+      if (prev && /^\d+$/.test(prev)) setValue("sites", []);
       return;
     }
     void reloadSites();
@@ -536,12 +573,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         options={projectTypeOptions}
                         value={field.value}
                         emptyLabel={t("placeholders.projectType")}
-                        disabled={saving || noProjectTypes}
+                        disabled={saving}
                         invalid={!!errors.project_type}
                         onBlur={field.onBlur}
-                        onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
-                        addAriaLabel="Add project type"
-                        addLabel="Add project type"
+                        onAdd={projectTypeQuickAdd.onAdd}
+                        addAriaLabel={projectTypeQuickAdd.addAriaLabel}
+                        addLabel={projectTypeQuickAdd.addLabel}
                         onChange={field.onChange}
                       />
                     )}
@@ -561,12 +598,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         options={projectStatusOptions}
                         value={field.value ?? ""}
                         emptyLabel={t("placeholders.projectStatus")}
-                        disabled={saving || projectStatusOptions.length === 0}
+                        disabled={saving}
                         invalid={!!errors.project_status}
                         onBlur={field.onBlur}
-                        onAdd={() => router.push(routes.dashboard.settingsProjectStatus)}
-                        addAriaLabel="Add project status"
-                        addLabel="Add project status"
+                        onAdd={projectStatusQuickAdd.onAdd}
+                        addAriaLabel={projectStatusQuickAdd.addAriaLabel}
+                        addLabel={projectStatusQuickAdd.addLabel}
                         onChange={field.onChange}
                       />
                     )}
@@ -575,7 +612,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                 </FieldGroup>
               </FormFieldRow>
               <FormFieldRow cols="2" from="md">
-                <FieldGroup label="Forms" htmlFor="project-form-ids">
+                <FieldGroup label={t("fields.forms")} htmlFor="project-form-ids">
                   <Controller
                     control={control}
                     name="form_ids"
@@ -586,15 +623,19 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         values={field.value ?? []}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        disabled={saving || !selectedProjectType || formOptions.length === 0}
-                        placeholder="Select forms..."
-                        listLabel="Forms"
+                        disabled={saving || !selectedProjectType}
+                        placeholder={
+                          selectedProjectType
+                            ? t("placeholders.forms")
+                            : t("placeholders.formsNeedProjectType")
+                        }
+                        listLabel={t("fields.forms")}
+                        onAdd={formsQuickAdd.onAdd}
+                        addAriaLabel={formsQuickAdd.addAriaLabel}
+                        addLabel={formsQuickAdd.addLabel}
                       />
                     )}
                   />
-                  {selectedProjectType && formOptions.length === 0 ? (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
-                  ) : null}
                 </FieldGroup>
                 <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
                   <textarea
@@ -635,7 +676,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     )}
                   />
                 </FieldGroup>
-                <FieldGroup label="Managers" htmlFor="project-managers">
+                <FieldGroup label={t("fields.manager")} htmlFor="project-managers">
                   <Controller
                     control={control}
                     name="manager_ids"
@@ -647,10 +688,13 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onChange={field.onChange}
                         onBlur={field.onBlur}
                         disabled={saving}
-                        placeholder="Select managers..."
-                        listLabel="Managers"
+                        placeholder={t("placeholders.managers")}
+                        listLabel={t("fields.manager")}
                         onSearchChange={setManagerSearchQuery}
                         fallbackLabels={managerFallbackLabels}
+                        onAdd={managersQuickAdd.onAdd}
+                        addAriaLabel={managersQuickAdd.addAriaLabel}
+                        addLabel={managersQuickAdd.addLabel}
                       />
                     )}
                   />

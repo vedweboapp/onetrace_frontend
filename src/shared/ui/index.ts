@@ -118,6 +118,7 @@ export { DataTableRowActionsMenu } from "./data-table-row-actions-menu";
 export type { DataTableRowMenuItem } from "./data-table-row-actions-menu";
 export { TableIconActionButton, TableRowActions } from "./table-icon-actions";
 export { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboard-empty-state";
+export { DashboardLoadErrorState } from "./dashboard-load-error-state";
 export {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,
