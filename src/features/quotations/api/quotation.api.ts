@@ -323,9 +323,20 @@ function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
   return (data as ApiEnvelope<Job>).data;
 }
 
+export type CreateJobFromServiceQuotationPayload = {
+  forms?: number[];
+  checklists?: number[];
+};
+
 /** POST `quotations/:id/create-job/` — creates a service job from an approved quotation. */
-export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
-  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
+export async function createJobFromServiceQuotation(
+  quotationId: number,
+  payload?: CreateJobFromServiceQuotationPayload,
+): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(
+    QUOTATION_PATHS.createJob(quotationId),
+    payload ?? {},
+  );
   return parseJobCreateResponse(data);
 }
 

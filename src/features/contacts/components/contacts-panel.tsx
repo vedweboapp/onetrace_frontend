@@ -369,8 +369,6 @@ export function ContactsPanel() {
               <ListPageSearchField
                 value={search}
                 onCommit={commitSearch}
-
-
                 className="sm:max-w-sm"
               />
               {activeContactType === "vendor" ? (
@@ -451,7 +449,6 @@ export function ContactsPanel() {
               iconName: "contacts",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl(

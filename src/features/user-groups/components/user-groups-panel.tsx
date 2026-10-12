@@ -242,13 +242,7 @@ export function UserGroupsPanel() {
             onboarding={{
               iconName: "users",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AddButton
-                  type="button"
-                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
-                />
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />

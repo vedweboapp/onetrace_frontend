@@ -353,7 +353,6 @@ export function ItemsPanel() {
               iconName: "items",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, item_type: null, page: null }, { replace: true })}
           />

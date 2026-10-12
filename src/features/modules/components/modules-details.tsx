@@ -165,12 +165,7 @@ const ModulesDetails = () => {
                             onboarding={{
                                 iconName: "modules",
                                 title: t("emptyTitle"),
-                                description: t("emptyDescription"),
-                                action: (
-                                    <AddButton onClick={() => route.push(createModuleHref)}>
-                                        {t("add")}
-                                    </AddButton>
-                                ),
+                                description: t("emptyDescription")
                             }}
                             onClearFilters={clearFilters}
                         />
