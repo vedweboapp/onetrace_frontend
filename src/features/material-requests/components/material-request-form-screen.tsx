@@ -12,6 +12,7 @@ import { fetchJob } from "@/features/jobs/api/job.api";
 import type { Job } from "@/features/jobs/types/job.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
+import { createMaterialStatus } from "@/features/material-status/api/material-status.api";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   createMaterialRequest,
@@ -41,8 +42,10 @@ import {
   DetailCollapsibleSection,
   DetailSectionCountBadge,
 } from "@/shared/components/layout/detail-metric-card";
+import { WorkflowColourStatusFormModal } from "@/shared/components/settings/workflow-colour-status-form-modal";
 import { routes } from "@/shared/config/routes";
 import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import {
@@ -79,8 +82,9 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
     href: `${routes.dashboard.settingsUsers}/new`,
     addLabel: tQuick("add.user"),
   });
+  const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const statusQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsMaterialStatus,
+    onOpen: () => setStatusModalOpen(true),
     addLabel: tQuick("add.materialStatus"),
   });
 
@@ -91,8 +95,22 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
   const [selectedJobsById, setSelectedJobsById] = React.useState<Record<number, Job>>({});
   const [jobsModalOpen, setJobsModalOpen] = React.useState(false);
   const [applyingJobs, setApplyingJobs] = React.useState(false);
+  const [extraStatusOptions, setExtraStatusOptions] = React.useState<
+    { value: string; label: string }[]
+  >([]);
 
-  const { options: statusOptions, loading: statusCatalogLoading, byKey } = useMaterialStatusCatalog();
+  const { options: catalogStatusOptions, loading: statusCatalogLoading, byKey } =
+    useMaterialStatusCatalog();
+  const statusOptions = React.useMemo(() => {
+    if (extraStatusOptions.length === 0) return catalogStatusOptions;
+    const merged = [...catalogStatusOptions];
+    for (const opt of extraStatusOptions) {
+      const idx = merged.findIndex((row) => row.value === opt.value);
+      if (idx >= 0) merged[idx] = opt;
+      else merged.push(opt);
+    }
+    return merged;
+  }, [catalogStatusOptions, extraStatusOptions]);
 
   const schema = React.useMemo(
     () =>
@@ -167,6 +185,20 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
       cancelled = true;
     };
   }, [catalogEpoch]);
+
+  const handleMaterialStatusCreated = React.useCallback(
+    (row: WorkflowColourStatus) => {
+      const next = { value: String(row.id), label: row.status_name };
+      setExtraStatusOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("status", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
 
   const prevWorkerRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
@@ -462,6 +494,15 @@ export function MaterialRequestFormScreen({ mode, materialRequestId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <WorkflowColourStatusFormModal
+        open={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        translationNamespace="Dashboard.materialStatus"
+        formTitleId="material-status-quick-create-form"
+        create={createMaterialStatus}
+        onSaved={handleMaterialStatusCreated}
+      />
     </div>
   );
 }

@@ -15,6 +15,8 @@ import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-
 import { cn } from "@/core/utils/http.util";
 import type { ItemComponentRef } from "@/features/items/types/item.types";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import { InstallationTypeFormModal } from "@/features/installation-types/components/installation-type-form-modal";
+import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { getInstallationTypeId } from "@/features/items/utils/item-installation-type.util";
 import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
 import { fetchItemsPage } from "@/features/items/api/item.api";
@@ -111,6 +113,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   });
   const [installationTypeOptions, setInstallationTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
+  const [installationTypeModalOpen, setInstallationTypeModalOpen] = React.useState(false);
   const [itemOptions, setItemOptions] = React.useState<Item[]>([]);
   const [itemsError, setItemsError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -122,6 +125,21 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   const skuInvalid = skuTouched && sku.trim().length === 0;
   const hasAtLeastOneComponentItem = rows.some((r) => r.child_item.trim().length > 0);
   const componentsInvalid = componentsTouched && !hasAtLeastOneComponentItem;
+
+  const tQuick = useTranslations("Dashboard.quickCreate");
+  const installationTypeAddLabel = tQuick("add.installationType");
+  const openInstallationTypeModal = React.useCallback(() => setInstallationTypeModalOpen(true), []);
+  const handleInstallationTypeCreated = React.useCallback((row: InstallationType) => {
+    const next = { value: String(row.id), label: formatInstallationTypeLabel(row) };
+    setInstallationTypeOptions((prev) => {
+      if (prev.some((opt) => opt.value === next.value)) {
+        return prev.map((opt) => (opt.value === next.value ? next : opt));
+      }
+      return [...prev, next];
+    });
+    setInstallationType(next.value);
+    setInstallationTypesError(null);
+  }, []);
 
   const itemLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -436,6 +454,7 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
   const noItems = itemOptions.length === 0;
 
   return (
+    <>
     <AppModal
       open={open}
       onClose={handleCloseAttempt}
@@ -521,6 +540,9 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
               searchable
               clearable
               className="w-full"
+              onAdd={openInstallationTypeModal}
+              addAriaLabel={installationTypeAddLabel}
+              addLabel={installationTypeAddLabel}
             />
           </FieldGroup>
         </FormFieldRow>
@@ -639,5 +661,11 @@ export function CompositeItemFormModal({ open, onClose, mode, item, onSaved }: P
         </div>
       </form>
     </AppModal>
+    <InstallationTypeFormModal
+      open={installationTypeModalOpen}
+      onClose={() => setInstallationTypeModalOpen(false)}
+      onSaved={handleInstallationTypeCreated}
+    />
+    </>
   );
 }

@@ -9,10 +9,15 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { ProjectTypeFormModal } from "@/features/project-types/components/project-type-form-modal";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
+import { createProjectStatus } from "@/features/project-status/api/project-status.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { WorkflowColourStatusFormModal } from "@/shared/components/settings/workflow-colour-status-form-modal";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import {
   resolveAppRoleIdMap,
   userProfilesToSelectOptions,
@@ -225,17 +230,16 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
+  const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
+  const [projectStatusModalOpen, setProjectStatusModalOpen] = React.useState(false);
+
   const projectTypeQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsProjectTypes,
+    onOpen: () => setProjectTypeModalOpen(true),
     addLabel: t("placeholders.addProjectType"),
-    getFormDraft: !isEdit ? getFormDraft : undefined,
-    returnTo: draftReturnTo,
   });
   const projectStatusQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsProjectStatus,
+    onOpen: () => setProjectStatusModalOpen(true),
     addLabel: t("placeholders.addProjectStatus"),
-    getFormDraft: !isEdit ? getFormDraft : undefined,
-    returnTo: draftReturnTo,
   });
   const managersQuickAdd = useSettingsQuickAdd({
     href: routes.dashboard.settingsUsers,
@@ -252,6 +256,34 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
     returnTo: draftReturnTo,
   });
+
+  const handleProjectTypeCreated = React.useCallback(
+    (row: ProjectType) => {
+      const next = { value: String(row.id), label: formatProjectTypeLabel(row) };
+      setProjectTypeOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("project_type", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
+
+  const handleProjectStatusCreated = React.useCallback(
+    (row: WorkflowColourStatus) => {
+      const next = { value: String(row.id), label: row.status_name?.trim() || `#${row.id}` };
+      setProjectStatusOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("project_status", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
 
   React.useEffect(() => {
     if (isEdit) return;
@@ -728,6 +760,21 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
           </>
         )}
       </SurfaceShell>
+
+      <ProjectTypeFormModal
+        open={projectTypeModalOpen}
+        onClose={() => setProjectTypeModalOpen(false)}
+        onSaved={handleProjectTypeCreated}
+      />
+      <WorkflowColourStatusFormModal
+        open={projectStatusModalOpen}
+        onClose={() => setProjectStatusModalOpen(false)}
+        translationNamespace="Dashboard.projectStatus"
+        formTitleId="project-status-quick-create-form"
+        showCategory
+        create={createProjectStatus}
+        onSaved={handleProjectStatusCreated}
+      />
     </div>
   );
 }
