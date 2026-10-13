@@ -23,6 +23,8 @@ import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import type { InputWithEndSelectOption } from "@/shared/ui";
 import { AppButton, CheckmarkSelect, DimensionsLwhInput, FieldErrorText, FieldGroup, FormFieldRow, FormSubsection, InputWithEndSelect, MoneyInput, MultiCheckSelect, NumericInput, SurfaceShell, surfaceInputClassName } from "@/shared/ui";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import { UnitTypeFormModal } from "@/features/unit-types/components/unit-type-form-modal";
+import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
 import { getItemDimensionUnit, parseDimensionsInput } from "@/features/items/utils/item-dimensions-input.util";
@@ -82,11 +84,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const safeBack = useFormBackUrl("items", routes.dashboard.items);
   const isEdit = mode === "edit";
 
-  const unitTypeQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsUnitTypes,
-    addLabel: tQuick("add.unitType"),
-  });
-
   const nameId = React.useId();
   const itemTypeId = React.useId();
   const skuId = React.useId();
@@ -116,6 +113,23 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [unitType, setUnitType] = React.useState("");
   const [unitTypeOptions, setUnitTypeOptions] = React.useState<InputWithEndSelectOption[]>([]);
   const [unitTypesError, setUnitTypesError] = React.useState<string | null>(null);
+  const [unitTypeModalOpen, setUnitTypeModalOpen] = React.useState(false);
+  const unitTypeQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setUnitTypeModalOpen(true),
+    addLabel: tQuick("add.unitType"),
+  });
+
+  const handleUnitTypeCreated = React.useCallback((row: UnitType) => {
+    const next = { value: String(row.id), label: formatUnitTypeShortLabel(row) };
+    setUnitTypeOptions((prev) => {
+      if (prev.some((opt) => opt.value === next.value)) {
+        return prev.map((opt) => (opt.value === next.value ? next : opt));
+      }
+      return [...prev, next];
+    });
+    setUnitType(next.value);
+    setUnitTypesError(null);
+  }, []);
 
   const [length, setLength] = React.useState("");
   const [width, setWidth] = React.useState("");
@@ -668,6 +682,12 @@ export function ItemFormScreen({ mode, itemId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <UnitTypeFormModal
+        open={unitTypeModalOpen}
+        onClose={() => setUnitTypeModalOpen(false)}
+        onSaved={handleUnitTypeCreated}
+      />
     </div>
   );
 }

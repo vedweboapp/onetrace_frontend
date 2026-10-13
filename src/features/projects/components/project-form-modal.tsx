@@ -8,6 +8,8 @@ import { fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { useRouter } from "@/i18n/navigation";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { ProjectTypeFormModal } from "@/features/project-types/components/project-type-form-modal";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, updateProject } from "@/features/projects/api/project.api";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
@@ -24,7 +26,7 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { fetchUsersPage } from "@/features/users/api/user.api";
 import {
   resolveAppRoleIdMap,
@@ -370,8 +372,29 @@ export function ProjectFormModal({
   const noProjectTypes = projectTypeOptions.length === 0;
 
   const clientQuickCreate = useQuickCreate({ kind: "client" });
+  const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
+  const projectTypeQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setProjectTypeModalOpen(true),
+    addLabel: t("placeholders.addProjectType"),
+  });
+
+  const handleProjectTypeCreated = React.useCallback(
+    (row: ProjectType) => {
+      const next = { value: String(row.id), label: formatProjectTypeLabel(row) };
+      accumulatedProjectTypeLabels.current[next.value] = next.label;
+      setProjectTypeOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("project_type", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
 
   return (
+    <>
     <AppModal
       open={open}
       onClose={handleCloseAttempt}
@@ -471,9 +494,9 @@ export function ProjectFormModal({
                   disabled={saving || noProjectTypes}
                   invalid={!!errors.project_type}
                   onBlur={field.onBlur}
-                  onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
-                  addAriaLabel="Add project type"
-                  addLabel="Add project type"
+                  onAdd={projectTypeQuickAdd.onAdd}
+                  addAriaLabel={projectTypeQuickAdd.addAriaLabel}
+                  addLabel={projectTypeQuickAdd.addLabel}
                   onSearchChange={setProjectTypeSearchQuery}
                   fallbackLabel={projectTypeFallbackLabel}
                   onChange={field.onChange}
@@ -577,5 +600,11 @@ export function ProjectFormModal({
       </form>
       </>
     </AppModal>
+    <ProjectTypeFormModal
+      open={projectTypeModalOpen}
+      onClose={() => setProjectTypeModalOpen(false)}
+      onSaved={handleProjectTypeCreated}
+    />
+    </>
   );
 }

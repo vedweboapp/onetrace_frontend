@@ -231,7 +231,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       }
     >
       <form id="group-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
-        <FormFieldRow cols="2" from="md" labelTop>
+        <FormFieldRow cols="2" from="md">
           <FieldGroup label={t("name")} htmlFor={nameId} required>
             <input
               id={nameId}

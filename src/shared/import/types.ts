@@ -26,13 +26,29 @@ export type ModuleImportConfig = {
   fields: ImportFieldDef[];
 };
 
-export type ModuleImportResult = {
+/** Immediate response from `POST {segment}/import/` (background queue). */
+export type ModuleImportQueueResult = {
+  task_id: string;
+  status?: string;
+  message?: string;
+};
+
+/**
+ * Progress / final payload from `GET {segment}/import-status/{task_id}/`.
+ * Legacy sync-import counters are optional for backwards compatibility.
+ */
+export type ModuleImportStatusResult = {
+  state?: string;
+  percent?: number;
+  inserted_count?: number;
+  skipped_count?: number;
+  /** Human-readable status line from the API. */
+  status?: string;
   message?: string;
   total_records?: number;
   created_count?: number;
   updated_count?: number;
   merged_row_count?: number;
-  skipped_count?: number;
   failed_count?: number;
   created_notes_count?: number;
   skipped_notes_count?: number;
@@ -43,4 +59,9 @@ export type ModuleImportResult = {
   not_imported_count?: number;
   not_imported_records?: unknown[];
   is_permission?: boolean;
+};
+
+/** Final result shown in the wizard (status payload after SUCCESS / FAILURE). */
+export type ModuleImportResult = ModuleImportStatusResult & {
+  task_id?: string;
 };
