@@ -2,10 +2,18 @@ export type {
   ImportColumnMapping,
   ImportFieldDef,
   ModuleImportConfig,
+  ModuleImportQueueResult,
   ModuleImportResult,
+  ModuleImportStatusResult,
   ParsedImportFile,
 } from "./types";
-export { postModuleImport } from "./import.api";
+export {
+  fetchModuleImportStatus,
+  isImportStatusSuccess,
+  isImportStatusTerminal,
+  isModuleImportQueued,
+  postModuleImport,
+} from "./import.api";
 export { autoMapColumns } from "./auto-map.util";
 export {
   IMPORT_ACCEPT,

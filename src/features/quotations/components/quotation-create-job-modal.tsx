@@ -3,7 +3,10 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
+import { ChecklistTypeFormModal } from "@/features/checklist-types/components/checklist-type-form-modal";
+import type { ChecklistType } from "@/features/checklist-types/types/checklist-type.types";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { AppButton, AppModal, FieldErrorText, FieldGroup, MultiCheckSelect } from "@/shared/ui";
 
 export type QuotationCreateJobSelection = {
@@ -30,6 +33,7 @@ export function QuotationCreateJobModal({
 }: Props) {
   const t = useTranslations("Dashboard.quotations");
   const tJobs = useTranslations("Dashboard.jobs");
+  const tPins = useTranslations("Dashboard.projects.location");
 
   const [forms, setForms] = React.useState<string[]>([]);
   const [checklists, setChecklists] = React.useState<string[]>([]);
@@ -41,6 +45,26 @@ export function QuotationCreateJobModal({
   const [checklistsLoading, setChecklistsLoading] = React.useState(false);
   const [formSearch, setFormSearch] = React.useState("");
   const [checklistSearch, setChecklistSearch] = React.useState("");
+  const [checklistModalOpen, setChecklistModalOpen] = React.useState(false);
+  const checklistQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setChecklistModalOpen(true),
+    addLabel: tPins("addChecklist"),
+  });
+
+  const handleChecklistCreated = React.useCallback((row: ChecklistType) => {
+    const next = {
+      value: String(row.id),
+      label: row.title?.trim() || `Checklist #${row.id}`,
+    };
+    setChecklistOptions((prev) => {
+      if (prev.some((opt) => opt.value === next.value)) {
+        return prev.map((opt) => (opt.value === next.value ? next : opt));
+      }
+      return [...prev, next];
+    });
+    setChecklists((prev) => (prev.includes(next.value) ? prev : [...prev, next.value]));
+    setChecklistError(null);
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -128,67 +152,77 @@ export function QuotationCreateJobModal({
   }
 
   return (
-    <AppModal
-      open={open}
-      onClose={() => (!saving ? onClose() : undefined)}
-      title={t("detail.createJobModalTitle")}
-      description={t("detail.createJobModalDescription", { title: quoteName })}
-      size="md"
-      isBusy={saving}
-      footer={
-        <>
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={onClose}>
-            {t("modal.cancel")}
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="primary"
-            size="sm"
-            loading={saving}
-            disabled={saving || checklistsLoading}
-            onClick={handleConfirm}
-          >
-            {t("detail.createJob")}
-          </AppButton>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <FieldGroup label={tJobs("fields.forms")} htmlFor="service-quote-create-job-forms">
-          <MultiCheckSelect
-            id="service-quote-create-job-forms"
-            options={formOptions}
-            values={forms}
-            onChange={setForms}
-            onSearchChange={setFormSearch}
-            placeholder={tJobs("fields.forms")}
-            listLabel={tJobs("fields.forms")}
-            disabled={saving || formsLoading}
-            searchable
-            portaled
-          />
-        </FieldGroup>
+    <>
+      <AppModal
+        open={open}
+        onClose={() => (!saving ? onClose() : undefined)}
+        title={t("detail.createJobModalTitle")}
+        description={t("detail.createJobModalDescription", { title: quoteName })}
+        size="md"
+        isBusy={saving}
+        footer={
+          <>
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={onClose}>
+              {t("modal.cancel")}
+            </AppButton>
+            <AppButton
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              disabled={saving || checklistsLoading}
+              onClick={handleConfirm}
+            >
+              {t("detail.createJob")}
+            </AppButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FieldGroup label={tJobs("fields.forms")} htmlFor="service-quote-create-job-forms">
+            <MultiCheckSelect
+              id="service-quote-create-job-forms"
+              options={formOptions}
+              values={forms}
+              onChange={setForms}
+              onSearchChange={setFormSearch}
+              placeholder={tJobs("fields.forms")}
+              listLabel={tJobs("fields.forms")}
+              disabled={saving || formsLoading}
+              searchable
+              portaled
+            />
+          </FieldGroup>
 
-        <FieldGroup required label={tJobs("fields.checklists")} htmlFor="service-quote-create-job-checklists">
-          <MultiCheckSelect
-            id="service-quote-create-job-checklists"
-            options={checklistOptions}
-            values={checklists}
-            onChange={(next) => {
-              setChecklists(next);
-              if (next.length > 0) setChecklistError(null);
-            }}
-            onSearchChange={setChecklistSearch}
-            placeholder={tJobs("fields.selectCheckList")}
-            listLabel={tJobs("fields.checklists")}
-            disabled={saving || checklistsLoading}
-            invalid={Boolean(checklistError)}
-            searchable
-            portaled
-          />
-          <FieldErrorText>{checklistError}</FieldErrorText>
-        </FieldGroup>
-      </div>
-    </AppModal>
+          <FieldGroup required label={tJobs("fields.checklists")} htmlFor="service-quote-create-job-checklists">
+            <MultiCheckSelect
+              id="service-quote-create-job-checklists"
+              options={checklistOptions}
+              values={checklists}
+              onChange={(next) => {
+                setChecklists(next);
+                if (next.length > 0) setChecklistError(null);
+              }}
+              onSearchChange={setChecklistSearch}
+              placeholder={tJobs("fields.selectCheckList")}
+              listLabel={tJobs("fields.checklists")}
+              disabled={saving || checklistsLoading}
+              invalid={Boolean(checklistError)}
+              searchable
+              portaled
+              onAdd={checklistQuickAdd.onAdd}
+              addAriaLabel={checklistQuickAdd.addAriaLabel}
+              addLabel={checklistQuickAdd.addLabel}
+            />
+            <FieldErrorText>{checklistError}</FieldErrorText>
+          </FieldGroup>
+        </div>
+      </AppModal>
+      <ChecklistTypeFormModal
+        open={checklistModalOpen}
+        onClose={() => setChecklistModalOpen(false)}
+        onSaved={handleChecklistCreated}
+      />
+    </>
   );
 }
