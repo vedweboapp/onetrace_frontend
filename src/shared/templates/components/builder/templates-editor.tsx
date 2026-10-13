@@ -70,6 +70,33 @@ function hydrateContentWithAttachments(
   });
 }
 
+/**
+ * Returns the IDs of attachments that are no longer referenced in the current
+ * HTML content. An attachment is considered "removed" when neither its full
+ * file URL nor its file_name appears anywhere in the content string.
+ *
+ * These IDs must be sent as `delete_attachment_ids` in the save payload so the
+ * backend can clean up the orphaned files.
+ */
+function findDeletedAttachmentIds(
+  content: string,
+  originalAttachments: Template["attachments"],
+): number[] {
+  if (!originalAttachments?.length) return [];
+  const deletedIds: number[] = [];
+  for (const att of originalAttachments) {
+    const stillReferenced =
+      (att.file && content.includes(att.file)) ||
+      (att.file_name && content.includes(att.file_name)) ||
+      // Also check underscored variant in case editor munged spaces
+      (att.file_name && content.includes(att.file_name.replace(/\s+/g, "_")));
+    if (!stillReferenced) {
+      deletedIds.push(att.id);
+    }
+  }
+  return deletedIds;
+}
+
 export default function TemplatesEditor({
   template,
   onSave,
@@ -135,6 +162,16 @@ export default function TemplatesEditor({
 
       const payload = buildTemplateSavePayload(templateData);
       const rawObject = buildTemplateSaveObject(templateData);
+
+      // Detect which original attachments were removed from the content
+      // and list their IDs so the backend can delete the orphaned files.
+      const deletedAttachmentIds = findDeletedAttachmentIds(
+        contentRef.current,
+        template?.attachments,
+      );
+      if (deletedAttachmentIds.length > 0) {
+        payload.append("delete_attachment_ids", JSON.stringify(deletedAttachmentIds));
+      }
 
       const attachedBinaryFiles = Array.from(payload.entries())
         .filter(([, v]) => typeof v !== "string" && v instanceof File)
