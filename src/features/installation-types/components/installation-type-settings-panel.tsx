@@ -348,7 +348,6 @@ export function InstallationTypeSettingsPanel() {
               iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })

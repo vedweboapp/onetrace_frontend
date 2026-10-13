@@ -185,17 +185,7 @@ export function DispatchesPanel() {
             onboarding={{
               iconName: "dispatches",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AppButton
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => router.push(routes.dashboard.materialRequests)}
-                >
-                  {t("emptyAction")}
-                </AppButton>
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />

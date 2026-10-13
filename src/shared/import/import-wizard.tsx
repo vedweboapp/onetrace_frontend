@@ -302,7 +302,6 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
       size={step === "map" ? "4xl" : "lg"}
       isBusy={parsing || importing}
       footer={footer}
-      className="overflow-hidden"
     >
       {step === "upload" ? (
         <div className="space-y-3">

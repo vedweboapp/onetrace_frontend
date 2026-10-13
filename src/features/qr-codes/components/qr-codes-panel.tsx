@@ -383,12 +383,7 @@ export function QrCodesPanel() {
             onboarding={{
               iconName: "qrCodes",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AddButton type="button" onClick={() => setGenerateOpen(true)}>
-                  {t("generate.button")}
-                </AddButton>
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() => setUrl({ search: null, status: null, page: null }, { replace: true })}
           />

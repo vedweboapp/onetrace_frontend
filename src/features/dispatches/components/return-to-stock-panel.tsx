@@ -475,13 +475,7 @@ export function ReturnToStockPanel() {
             onboarding={{
               iconName: "returnToStock",
               title: t("return.emptyListTitle"),
-              description: t("return.emptyListDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" aria-hidden />
-                  {t("return.newRequest")}
-                </AppButton>
-              ),
+              description: t("return.emptyListDescription")
             }}
             onClearFilters={() =>
               setUrl(
