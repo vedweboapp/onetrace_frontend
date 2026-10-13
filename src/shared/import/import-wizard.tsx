@@ -16,7 +16,13 @@ import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { autoMapColumns } from "./auto-map.util";
-import { postModuleImport } from "./import.api";
+import {
+  fetchModuleImportStatus,
+  isImportStatusSuccess,
+  isImportStatusTerminal,
+  isModuleImportQueued,
+  postModuleImport,
+} from "./import.api";
 import {
   IMPORT_ACCEPT,
   IMPORT_MAX_BYTES,
@@ -27,10 +33,11 @@ import type {
   ImportColumnMapping,
   ModuleImportConfig,
   ModuleImportResult,
+  ModuleImportStatusResult,
   ParsedImportFile,
 } from "./types";
 
-type Step = "upload" | "map" | "result";
+type Step = "upload" | "map" | "progress" | "result";
 
 type Props = {
   open: boolean;
@@ -39,11 +46,33 @@ type Props = {
   onSuccess?: (result: ModuleImportResult) => void;
 };
 
+const IMPORT_STATUS_POLL_MS = 1500;
+
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function clampPercent(value: number | undefined | null): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = window.setTimeout(() => resolve(), ms);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
@@ -58,10 +87,19 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
   /** file column → module field key ("" = skip) */
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const [importing, setImporting] = React.useState(false);
+  const [progress, setProgress] = React.useState<ModuleImportStatusResult | null>(null);
   const [result, setResult] = React.useState<ModuleImportResult | null>(null);
+  const [resultFailed, setResultFailed] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const pollAbortRef = React.useRef<AbortController | null>(null);
+
+  const stopPolling = React.useCallback(() => {
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
+  }, []);
 
   const resetState = React.useCallback(() => {
+    stopPolling();
     setStep("upload");
     setDragActive(false);
     setParseError(null);
@@ -69,14 +107,21 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
     setParsed(null);
     setMapping({});
     setImporting(false);
+    setProgress(null);
     setResult(null);
+    setResultFailed(false);
     if (inputRef.current) inputRef.current.value = "";
-  }, []);
+  }, [stopPolling]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      stopPolling();
+      return;
+    }
     resetState();
-  }, [open, resetState]);
+  }, [open, resetState, stopPolling]);
+
+  React.useEffect(() => () => stopPolling(), [stopPolling]);
 
   const requiredFields = React.useMemo(
     () => config.fields.filter((f) => f.required),
@@ -178,43 +223,108 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
     return out;
   }
 
+  function finishWithResult(res: ModuleImportResult, failed: boolean) {
+    setProgress(res);
+    setResult(res);
+    setResultFailed(failed);
+    setStep("result");
+    setImporting(false);
+    if (!failed) {
+      toastSuccess(res.status || res.message || t("successToast"));
+      onSuccess?.(res);
+    } else {
+      toastApiError(new Error(res.status || res.message || t("errors.importFailed")), t("errors.importFailed"));
+    }
+  }
+
+  async function pollImportStatus(taskId: string, signal: AbortSignal) {
+    while (!signal.aborted) {
+      const status = await fetchModuleImportStatus(config.apiSegment, taskId);
+      if (signal.aborted) return;
+      setProgress(status);
+
+      if (isImportStatusTerminal(status.state)) {
+        finishWithResult({ ...status, task_id: taskId }, !isImportStatusSuccess(status.state));
+        return;
+      }
+
+      await sleep(IMPORT_STATUS_POLL_MS, signal);
+    }
+  }
+
   async function handleImport() {
     if (!parsed || missingRequired.length > 0 || importing) return;
+    stopPolling();
     setImporting(true);
+    setProgress(null);
+    setResult(null);
+    setResultFailed(false);
+
     try {
       const payload = buildPayloadMapping();
-      const res = await postModuleImport(config.apiSegment, parsed.file, payload);
-      setResult(res);
-      setStep("result");
-      toastSuccess(res.message || t("successToast"));
-      onSuccess?.(res);
+      const queued = await postModuleImport(config.apiSegment, parsed.file, payload);
+
+      if (!isModuleImportQueued(queued)) {
+        // Legacy sync response (no task_id) — treat as finished.
+        finishWithResult(queued, false);
+        return;
+      }
+
+      setStep("progress");
+      setProgress({
+        state: queued.status || "PROCESSING",
+        percent: 0,
+        status: queued.message || t("processing"),
+        inserted_count: 0,
+        skipped_count: 0,
+      });
+
+      const controller = new AbortController();
+      pollAbortRef.current = controller;
+      await pollImportStatus(queued.task_id, controller.signal);
     } catch (err) {
-      toastApiError(err, t("errors.importFailed"));
-    } finally {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setImporting(false);
+      toastApiError(err, t("errors.importFailed"));
+      // Stay on map so the user can retry.
+      setStep("map");
+    } finally {
+      pollAbortRef.current = null;
     }
+  }
+
+  function handleClose() {
+    if (importing && step === "progress") return;
+    stopPolling();
+    onClose();
   }
 
   const title =
     step === "map"
       ? t("mapTitle")
-      : step === "result"
-        ? t("resultTitle")
-        : t("uploadTitle", { module: config.moduleLabel });
+      : step === "progress"
+        ? t("progressTitle")
+        : step === "result"
+          ? resultFailed
+            ? t("resultFailedTitle")
+            : t("resultTitle")
+          : t("uploadTitle", { module: config.moduleLabel });
 
   const description =
     step === "map"
       ? t("mapDescription")
-      : step === "result"
-        ? undefined
-        : t("uploadDescription");
+      : step === "progress"
+        ? t("progressDescription")
+        : step === "result"
+          ? undefined
+          : t("uploadDescription");
 
   const footer =
     step === "upload" ? (
       <div className="flex w-full items-center justify-between gap-3">
         <p className="text-xs text-slate-500 dark:text-slate-400">{t("oneFileHint")}</p>
         <div className="flex items-center gap-2">
-          <AppButton type="button" variant="secondary" size="sm" onClick={onClose} disabled={parsing}>
+          <AppButton type="button" variant="secondary" size="sm" onClick={handleClose} disabled={parsing}>
             {tActions("cancel")}
           </AppButton>
           <AppButton
@@ -285,9 +395,16 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
           </AppButton>
         </div>
       </div>
+    ) : step === "progress" ? (
+      <div className="flex w-full justify-end">
+        <AppButton type="button" variant="secondary" size="sm" disabled>
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          {t("importing")}
+        </AppButton>
+      </div>
     ) : (
       <div className="flex w-full justify-end">
-        <AppButton type="button" variant="primary" size="sm" onClick={onClose}>
+        <AppButton type="button" variant="primary" size="sm" onClick={handleClose}>
           {t("done")}
         </AppButton>
       </div>
@@ -296,11 +413,12 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
   return (
     <AppModal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={title}
       description={description}
       size={step === "map" ? "4xl" : "lg"}
       isBusy={parsing || importing}
+      closeOnBackdrop={!importing}
       footer={footer}
     >
       {step === "upload" ? (
@@ -488,32 +606,115 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
         </div>
       ) : null}
 
+      {step === "progress" ? <ImportProgressPanel progress={progress} /> : null}
+
       {step === "result" && result ? (
-        <ImportResultSummary result={result} />
+        <ImportResultSummary result={result} failed={resultFailed} />
       ) : null}
     </AppModal>
   );
 }
 
-function ImportResultSummary({ result }: { result: ModuleImportResult }) {
+function ImportProgressPanel({ progress }: { progress: ModuleImportStatusResult | null }) {
+  const t = useTranslations("Dashboard.import");
+  const percent = clampPercent(progress?.percent);
+  const statusText = progress?.status || progress?.message || t("processing");
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 dark:border-slate-700 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{statusText}</p>
+          <span className="text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+            {t("percentLabel", { percent })}
+          </span>
+        </div>
+        <div
+          className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          aria-label={t("progressTitle")}
+        >
+          <div
+            className="h-full rounded-full bg-[color:var(--dash-accent,#0f766e)] transition-[width] duration-300 ease-out"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("stats.inserted")}
+          </p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+            {progress?.inserted_count ?? progress?.created_count ?? 0}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("stats.skipped")}
+          </p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+            {progress?.skipped_count ?? 0}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportResultSummary({
+  result,
+  failed,
+}: {
+  result: ModuleImportResult;
+  failed: boolean;
+}) {
   const t = useTranslations("Dashboard.import");
 
+  const inserted = result.inserted_count ?? result.created_count ?? 0;
+  const skipped = result.skipped_count ?? 0;
+  const updated = result.updated_count ?? 0;
+  const failedCount = result.failed_count ?? 0;
+  const notImported = result.not_imported_count ?? 0;
+  const total =
+    result.total_records
+    ?? inserted + skipped + updated + failedCount + notImported;
+
   const stats: Array<{ label: string; value: number; tone?: "ok" | "warn" | "bad" }> = [
-    { label: t("stats.total"), value: result.total_records ?? 0 },
-    { label: t("stats.created"), value: result.created_count ?? 0, tone: "ok" },
-    { label: t("stats.updated"), value: result.updated_count ?? 0, tone: "ok" },
-    { label: t("stats.skipped"), value: result.skipped_count ?? 0, tone: "warn" },
-    { label: t("stats.failed"), value: result.failed_count ?? 0, tone: "bad" },
-    { label: t("stats.notImported"), value: result.not_imported_count ?? 0, tone: "warn" },
+    { label: t("stats.total"), value: total },
+    { label: t("stats.inserted"), value: inserted, tone: "ok" },
+    ...(updated > 0 ? [{ label: t("stats.updated"), value: updated, tone: "ok" as const }] : []),
+    { label: t("stats.skipped"), value: skipped, tone: "warn" },
+    ...(failedCount > 0
+      ? [{ label: t("stats.failed"), value: failedCount, tone: "bad" as const }]
+      : []),
+    ...(notImported > 0
+      ? [{ label: t("stats.notImported"), value: notImported, tone: "warn" as const }]
+      : []),
   ];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/30">
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+      <div
+        className={cn(
+          "flex items-start gap-3 rounded-2xl border px-4 py-3",
+          failed
+            ? "border-red-200 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/30"
+            : "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/30",
+        )}
+      >
+        {failed ? (
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-600 dark:text-red-400" />
+        ) : (
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        )}
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {result.message || t("successToast")}
+            {result.status || result.message || (failed ? t("errors.importFailed") : t("successToast"))}
           </p>
         </div>
       </div>

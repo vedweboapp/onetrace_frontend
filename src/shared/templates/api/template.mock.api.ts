@@ -85,12 +85,19 @@ function parseTemplateFormData(formData: FormData): {
   Keys?: { Key: string; Type: string; Module: string }[];
   files: File[];
 } {
-  const name = (formData.get("name") as string) || "Untitled Template";
+  // Support both old keys (name/module/Keys) and new keys (template_name/module_name/keys)
+  const name =
+    (formData.get("template_name") as string) ||
+    (formData.get("name") as string) ||
+    "Untitled Template";
   const content =
     (formData.get("content") as string) ||
     (formData.get("raw_content") as string) ||
     "";
-  const moduleName = (formData.get("module") as string) || "quotations";
+  const moduleName =
+    (formData.get("module_name") as string) ||
+    (formData.get("module") as string) ||
+    "quotations";
   const category = (formData.get("category") as string) || undefined;
   const description = (formData.get("description") as string) || undefined;
   const id = (formData.get("id") as string) || undefined;
@@ -98,7 +105,13 @@ function parseTemplateFormData(formData: FormData): {
   const files: File[] = [];
   for (const [key, value] of formData.entries()) {
     if (
-      (key.startsWith("files[") || key.startsWith("files_") || key === "files" || key === "file") &&
+      (
+        key === "attachments" ||
+        key.startsWith("files[") ||
+        key.startsWith("files_") ||
+        key === "files" ||
+        key === "file"
+      ) &&
       typeof value !== "string"
     ) {
       files.push(value);
@@ -106,7 +119,8 @@ function parseTemplateFormData(formData: FormData): {
   }
 
   let keys: { Key: string; Type: string; Module: string }[] = [];
-  const rawKeys = formData.get("Keys");
+  // Support both "keys" (new) and "Keys" (old)
+  const rawKeys = (formData.get("keys") as string) || (formData.get("Keys") as string);
   if (typeof rawKeys === "string") {
     try {
       const parsed = JSON.parse(rawKeys);

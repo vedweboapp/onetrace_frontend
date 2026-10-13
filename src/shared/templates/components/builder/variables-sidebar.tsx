@@ -39,12 +39,10 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   editor,
   collapsed,
   onToggleCollapse,
-  moduleName = "quotations",
 }: TemplateVariablesSidebarProps) {
-  // Current active top-level module: "quotations" or "orders"
-  const [activeModule, setActiveModule] = useState<string>(
-    moduleName.toLowerCase() === "orders" ? "orders" : "quotations",
-  );
+  // Options & variables in the sidebar are independent of the template's module.
+  // The user can freely toggle between "quotations" and "orders" to browse and insert variables.
+  const [activeModule, setActiveModule] = useState<"quotations" | "orders">("quotations");
 
   const [moduleData, setModuleData] = useState<ModuleVariablesData>({
     moduleName: activeModule,
@@ -89,16 +87,6 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   useEffect(() => {
     void loadVariables(activeModule);
   }, [activeModule, loadVariables]);
-
-  // Keep in sync if parent moduleName prop changes
-  useEffect(() => {
-    const next = moduleName.toLowerCase() === "orders" ? "orders" : "quotations";
-    if (next !== activeModule) {
-      setActiveModule(next);
-      setSelectedModuleFilter("all");
-      setSearch("");
-    }
-  }, [moduleName]);
 
   const handleSwitchModule = (target: "quotations" | "orders") => {
     if (activeModule === target) return;
@@ -247,7 +235,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
 
       {/* ── Controls: Module Buttons + Filter Dropdown + Search ── */}
       <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 shrink-0 space-y-2.5 bg-slate-50/40 dark:bg-slate-850/40">
-        {/* Module Switcher Buttons (Quotation & Orders) */}
+        {/* Module Switcher Buttons (Quotation & Orders only) */}
         <div className="grid grid-cols-2 gap-2">
           <AppButton
             variant={activeModule === "quotations" ? "primary" : "secondary"}

@@ -36,6 +36,7 @@ export default function EditTemplatePage({
         toastSuccess(`Template "${saved.name}" saved successfully!`);
       } else {
         const fd = new FormData();
+        fd.append("template_name", name);
         fd.append("name", name);
         fd.append("content", content);
         const saved = await updateTemplate(id, fd);
@@ -62,7 +63,11 @@ export default function EditTemplatePage({
       data-full-bleed-page
       className="dashboard-full-bleed-page flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <TemplatesEditor template={template} onSave={handleSave} />
+      <TemplatesEditor
+        template={template}
+        onSave={handleSave}
+        moduleName={template?.module || template?.module_name || "quotations"}
+      />
     </div>
   );
 }

@@ -48,6 +48,8 @@ import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-f
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
+import { ChecklistTypeFormModal } from "@/features/checklist-types/components/checklist-type-form-modal";
+import type { ChecklistType } from "@/features/checklist-types/types/checklist-type.types";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
@@ -1151,12 +1153,30 @@ const ProjectPinsListTab = ({
     getFormDraft: getCreateJobDraft,
   });
 
+  const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   const checklistQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsChecklistTypes,
+    onOpen: () => setChecklistModalOpen(true),
     addLabel: t("addChecklist"),
     addDisabled: !projectTypeId,
-    getFormDraft: getCreateJobDraft,
   });
+
+  const handleChecklistCreated = useCallback(
+    (row: ChecklistType) => {
+      const id = String(row.id);
+      const label = row.title?.trim() || `Checklist #${row.id}`;
+      setCheckListData((prev) => {
+        if (prev.some((item) => String(item.id) === id)) {
+          return prev.map((item) => (String(item.id) === id ? { id: row.id, label } : item));
+        }
+        return [...prev, { id: row.id, label }];
+      });
+      const current = getValues("checklists") ?? [];
+      if (!current.includes(id)) {
+        setValue("checklists", [...current, id], { shouldDirty: true, shouldValidate: true });
+      }
+    },
+    [getValues, setValue],
+  );
 
   useQuickCreateReturn({
     restoreFormDraft: restoreCreateJobDraft,
@@ -1557,6 +1577,14 @@ const ProjectPinsListTab = ({
           </div>
         </div>
       )}
+
+      <ChecklistTypeFormModal
+        open={checklistModalOpen}
+        onClose={() => setChecklistModalOpen(false)}
+        defaultProjectTypeId={projectTypeId}
+        lockProjectType={projectTypeId != null && projectTypeId > 0}
+        onSaved={handleChecklistCreated}
+      />
 
       {/* Already-a-job conflict warning modal */}
       {jobConflictWarning && (

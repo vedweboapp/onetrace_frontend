@@ -336,11 +336,11 @@ export function buildTemplateSaveObject(params: {
   const keys = extractTemplateKeys(content, moduleName);
 
   return {
-    name,
+    template_name: name,
     content,
-    module: moduleName,
+    module_name: moduleName,
     ...rest,
-    Keys: keys,
+    keys,
   };
 }
 
@@ -467,11 +467,11 @@ export function buildTemplateFormData(params: {
 
   // 3. Assemble FormData (Pure multipart with NO base64 strings)
   const fd = new FormData();
-  fd.append("name", name);
+  fd.append("template_name", name);
   // Send clean HTML content without base64 strings so the payload is lightweight and references binary files
   fd.append("content", cleanHtml);
-  fd.append("module", moduleName);
-  fd.append("Keys", JSON.stringify(keys));
+  fd.append("module_name", moduleName);
+  fd.append("keys", JSON.stringify(keys));
 
   // Deduplicate files by name and size
   const seenFileKeys = new Set<string>();
@@ -484,15 +484,22 @@ export function buildTemplateFormData(params: {
     }
   }
 
-  // 4. Append all binary files with array indexing: files[0], files[1], etc.
-  uniqueBinaryFiles.forEach((file, index) => {
-    fd.append(`files[${index}]`, file, file.name);
+  // 4. Append all binary files under the plain repeated "attachments" key
+  uniqueBinaryFiles.forEach((file) => {
+    fd.append("attachments", file, file.name);
   });
 
   // 6. Append any remaining fields in rest
   for (const [key, value] of Object.entries(rest)) {
     if (value === undefined || value === null) continue;
-    if (key === "files" || key === "file" || key === "images" || key === "attachments") continue;
+    if (
+      key === "files" ||
+      key === "file" ||
+      key === "images" ||
+      key === "attachments"
+    ) {
+      continue;
+    }
 
     if (value instanceof File) {
       fd.append(key, value, value.name);

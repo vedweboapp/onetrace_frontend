@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "@/i18n/navigation";
 import {
   ArrowLeft,
   Save,
   FileText,
-  Loader2,
 } from "lucide-react";
 import type { Template } from "../../types/template.types";
 import {
@@ -28,6 +27,49 @@ interface TemplatesEditorProps {
   moduleName?: string;
 }
 
+/**
+ * Replaces bare filename `src` attributes in the HTML content with the full
+ * backend URL from the template's `attachments` array.
+ *
+ * The backend stores content like:
+ *   <img src="Screenshot from 2026-07-20 17-43-12.png" data-filename="...">
+ * and returns attachments with:
+ *   { file_name: "Screenshot from 2026-07-20 17-43-12.png", file: "http://...full-url.png" }
+ *
+ * This function resolves those references so images render correctly in the editor.
+ */
+function hydrateContentWithAttachments(
+  content: string,
+  attachments: Template["attachments"],
+): string {
+  if (!content || !attachments?.length) return content;
+
+  // Build a lookup: file_name → full file URL
+  const urlByName = new Map<string, string>();
+  for (const att of attachments) {
+    if (att.file_name && att.file) {
+      urlByName.set(att.file_name, att.file);
+      // Also map spaces-as-underscores variant as fallback
+      urlByName.set(att.file_name.replace(/\s+/g, "_"), att.file);
+    }
+  }
+  if (urlByName.size === 0) return content;
+
+  // Replace src="<bare-filename>" with src="<full-url>" when the filename is known.
+  return content.replace(/(<img[^>]*?\ssrc=)(["'])([^"']+)\2/gi, (match, prefix, quote, src) => {
+    // Skip if already a full URL (http/https/data:)
+    if (/^https?:\/\/|^data:/i.test(src)) return match;
+
+    const resolved =
+      urlByName.get(src) ??
+      urlByName.get(decodeURIComponent(src)) ??
+      urlByName.get(src.replace(/\s+/g, "_")) ??
+      null;
+
+    return resolved ? `${prefix}${quote}${resolved}${quote}` : match;
+  });
+}
+
 export default function TemplatesEditor({
   template,
   onSave,
@@ -37,8 +79,17 @@ export default function TemplatesEditor({
   const router = useRouter();
   const isNew = !template;
 
-  const [name, setName] = useState(template?.name ?? "Untitled Template");
-  const contentRef = useRef(template?.content ?? "");
+  const resolvedModuleName = template?.module || template?.module_name || moduleName;
+  const [name, setName] = useState(template?.name || template?.template_name || "Untitled Template");
+
+  // Hydrate the initial content: replace bare filenames with full attachment URLs
+  const hydratedInitialContent = useMemo(
+    () => hydrateContentWithAttachments(template?.content ?? "", template?.attachments),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [template?.id, template?.content, template?.attachments],
+  );
+
+  const contentRef = useRef(hydratedInitialContent);
   const filesRef = useRef<File[]>([]);
   const dirtyRef = useRef(false);
   const [saving, setSaving] = useState(false);
@@ -46,13 +97,16 @@ export default function TemplatesEditor({
   const [editingName, setEditingName] = useState(false);
 
   useEffect(() => {
-    if (template?.content) {
-      contentRef.current = template.content;
-    }
-    if (template?.name) {
-      setName(template.name);
-    }
-  }, [template?.content, template?.name]);
+    // Re-hydrate when the template is (re-)loaded after a save
+    const hydrated = hydrateContentWithAttachments(
+      template?.content ?? "",
+      template?.attachments,
+    );
+    contentRef.current = hydrated;
+
+    const tName = template?.name || template?.template_name;
+    if (tName) setName(tName);
+  }, [template?.content, template?.name, template?.template_name, template?.attachments]);
 
   const handleContentChange = useCallback((html: string, newFiles?: File[]) => {
     contentRef.current = html;
@@ -72,20 +126,18 @@ export default function TemplatesEditor({
       const templateData = {
         name: name.trim(),
         content: contentRef.current,
-        moduleName,
+        moduleName: resolvedModuleName,
         files: filesRef.current,
         ...(template?.category ? { category: template.category } : {}),
         ...(template?.description ? { description: template.description } : {}),
         ...(template?.id ? { id: template.id } : {}),
       };
 
-      // Build FormData payload (with binary files attached)
       const payload = buildTemplateSavePayload(templateData);
       const rawObject = buildTemplateSaveObject(templateData);
 
-      // Log both so developer can inspect either easily
       const attachedBinaryFiles = Array.from(payload.entries())
-        .filter(([_, v]) => typeof v !== "string" && v instanceof File)
+        .filter(([, v]) => typeof v !== "string" && v instanceof File)
         .map(([k, v]) => ({
           key: k,
           name: (v as File).name,
@@ -174,10 +226,10 @@ export default function TemplatesEditor({
       {/* ── Editor ── */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <TemplateDocEditor
-          value={template?.content ?? ""}
+          value={hydratedInitialContent}
           onChange={handleContentChange}
           autoFocus={isNew}
-          moduleName={moduleName}
+          moduleName={resolvedModuleName}
         />
       </div>
     </div>
