@@ -8,10 +8,8 @@ import { Plus, Pencil, Send } from "lucide-react";
 import {
     DashboardLoadErrorState,
     AppButton,
-    AppModal,
     AppTabs,
     type AppTabItem,
-    CheckmarkSelect,
     DashboardEmptyState,
     ListPageSearchField,
     SurfaceShell,
@@ -19,15 +17,11 @@ import {
     DataTableTextModeToggle,
     DataTableRowActionsMenu,
     useDataTableTextModeStore,
-    type CheckmarkSelectOption,
 } from "@/shared/ui";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { getProjectFormList, patchProjectForm, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
+import { CreateProjectFormTypeModal } from "@/features/project-forms/components/create-project-form-type-modal";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
-import type { ProjectType } from "@/features/project-types/types/project-type.types";
-import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
-import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -131,17 +125,7 @@ const ProjectTypeFormList = () => {
     const [loading, setLoading] = React.useState(true);
     const [loadError, setLoadError] = React.useState<string | null>(null);
     const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
-    const [projectTypes, setProjectTypes] = React.useState<ProjectType[]>([]);
-    const [projectTypesLoading, setProjectTypesLoading] = React.useState(false);
-    const [projectTypesError, setProjectTypesError] = React.useState<string | null>(null);
     const [togglingId, setTogglingId] = React.useState<string | number | null>(null);
-
-    // Installation type state
-    const [installationTypes, setInstallationTypes] = React.useState<InstallationType[]>([]);
-    const [installationTypesLoading, setInstallationTypesLoading] = React.useState(false);
-    const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
-    const [selectedInstallationTypeId, setSelectedInstallationTypeId] = React.useState<number | null>(null);
-    const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
 
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
@@ -222,67 +206,19 @@ const ProjectTypeFormList = () => {
         };
     }, [page, pageSize, search, activeTab, t]);
 
-    React.useEffect(() => {
-        if (!projectTypeModalOpen) return;
-        let cancelled = false;
-        (async () => {
-            // Fetch project types
-            setProjectTypesLoading(true);
-            setProjectTypesError(null);
-            try {
-                const response = await fetchProjectTypesPage(1, 50, {
-                    is_active: true,
-                    dropdown: true,
-                });
-                if (!cancelled) {
-                    setProjectTypes(Array.isArray(response.items) ? response.items : []);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setProjectTypes([]);
-                    setProjectTypesError(t("projectTypesLoadError"));
-                }
-            } finally {
-                if (!cancelled) setProjectTypesLoading(false);
-            }
-
-            // Fetch installation types
-            setInstallationTypesLoading(true);
-            setInstallationTypesError(null);
-            try {
-                const response = await fetchInstallationTypesPage(1, 50, {
-                    is_active: true,
-                    dropdown: true,
-                });
-                if (!cancelled) {
-                    setInstallationTypes(Array.isArray(response.items) ? response.items : []);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setInstallationTypes([]);
-                    setInstallationTypesError(t("installationTypesLoadError"));
-                }
-            } finally {
-                if (!cancelled) setInstallationTypesLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [projectTypeModalOpen, t]);
-
     const openProjectTypePicker = React.useCallback(() => {
-        setSelectedProjectTypeId(null);
         setProjectTypeModalOpen(true);
     }, []);
 
-    const continueToCreateForm = React.useCallback(() => {
-        if (!selectedProjectTypeId || !selectedInstallationTypeId) return;
-        setProjectTypeModalOpen(false);
-        router.push(
-            `${routes.dashboard.settingsProjectForms}/${selectedProjectTypeId}/create?purpose=create_project_form&installation_type_id=${selectedInstallationTypeId}`,
-        );
-    }, [router, selectedProjectTypeId, selectedInstallationTypeId]);
+    const continueToCreateForm = React.useCallback(
+        ({ projectTypeId, installationTypeId }: { projectTypeId: number; installationTypeId: number }) => {
+            setProjectTypeModalOpen(false);
+            router.push(
+                `${routes.dashboard.settingsProjectForms}/${projectTypeId}/create?purpose=create_project_form&installation_type_id=${installationTypeId}`,
+            );
+        },
+        [router],
+    );
 
     const handleToggleActive = React.useCallback(
         async (row: FormListItem) => {
@@ -335,28 +271,6 @@ const ProjectTypeFormList = () => {
             );
         },
         [router],
-    );
-
-    const projectTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
-        () =>
-            Array.isArray(projectTypes)
-                ? projectTypes.map((projectType) => ({
-                    value: String(projectType.id),
-                    label: projectType.project_type || `#${projectType.id}`,
-                }))
-                : [],
-        [projectTypes],
-    );
-
-    const installationTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
-        () =>
-            Array.isArray(installationTypes)
-                ? installationTypes.map((inst) => ({
-                    value: String(inst.id),
-                    label: inst.installation_type || `#${inst.id}`,
-                }))
-                : [],
-        [installationTypes],
     );
 
     const pageRange = getListPageRange(pagination);
@@ -557,91 +471,11 @@ const ProjectTypeFormList = () => {
                 ) : null}
             </SurfaceShell>
 
-            <AppModal
+            <CreateProjectFormTypeModal
                 open={projectTypeModalOpen}
                 onClose={() => setProjectTypeModalOpen(false)}
-                title={t("modal.selectProjectTypeTitle")}
-                description={t("modal.selectProjectTypeDescription")}
-                size="lg"
-                className="overflow-visible"
-                footer={
-                    <>
-                        <AppButton
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setProjectTypeModalOpen(false)}
-                        >
-                            {t("modal.cancel")}
-                        </AppButton>
-                        <AppButton
-                            type="button"
-                            onClick={continueToCreateForm}
-                            disabled={!selectedProjectTypeId || !selectedInstallationTypeId}
-                        >
-                            {t("modal.next")}
-                        </AppButton>
-                    </>
-                }
-            >
-                <div className="space-y-4">
-                    {projectTypesError ? (
-                        <p className="text-sm text-red-600 dark:text-red-400">
-                            {projectTypesError}
-                        </p>
-                    ) : null}
-                    <CheckmarkSelect
-                      listLabel={t("modal.projectTypesList")}
-                      buttonAriaLabel={t("modal.selectProjectTypeAria")}
-                      value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
-                      onChange={(value) =>
-                        setSelectedProjectTypeId(value ? Number(value) : null)
-                      }
-                      options={projectTypeOptions}
-                      emptyLabel={
-                        projectTypesLoading
-                          ? t("modal.loadingProjectTypes")
-                          : t("modal.selectProjectType")
-                      }
-                      disabled={projectTypesLoading || projectTypesError != null}
-                      searchable
-                      searchPlaceholder={t("modal.searchProjectTypes")}
-                      portaled={false}
-                      side="bottom"
-                      className="w-full"
-                    />
-                    {/* Installation Type Select */}
-                    <CheckmarkSelect
-                      listLabel={t("modal.installationTypesList")}
-                      buttonAriaLabel={t("modal.selectInstallationTypeAria")}
-                      value={selectedInstallationTypeId ? String(selectedInstallationTypeId) : ""}
-                      onChange={(value) =>
-                        setSelectedInstallationTypeId(value ? Number(value) : null)
-                      }
-                      options={installationTypeOptions}
-                      emptyLabel={
-                        installationTypesLoading
-                          ? t("modal.loadingInstallationTypes")
-                          : t("modal.selectInstallationType")
-                      }
-                      disabled={installationTypesLoading || installationTypesError != null}
-                      searchable
-                      searchPlaceholder={t("modal.searchInstallationTypes")}
-                      portaled={false}
-                      side="bottom"
-                      className="w-full mt-2"
-                    />
-                    {!projectTypesLoading && !projectTypesError && projectTypeOptions.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {t("modal.noProjectTypes")}
-                      </p>
-                    ) : null}
-                    {!installationTypesLoading && !installationTypesError && installationTypeOptions.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        {t("modal.noInstallationTypes")}
-                      </p>
-                    ) : null}
-                </div>
-            </AppModal>
+                onContinue={continueToCreateForm}
+            />
         </div>
     );
 };

@@ -1196,29 +1196,20 @@ const ProjectPinsListTab = ({
   });
 
   const filteredLocations = useMemo(() => {
-    const quoteScoped = quotationId != null && quotationId > 0;
     return locations
       .filter((level) => levelFilter == null || level.id === levelFilter)
       .map((level) => {
-        let plots = (level.plots ?? [])
+        const plots = (level.plots ?? [])
           .filter((plot) => plotFilter == null || plot.id === plotFilter)
           .map((plot) => ({
             ...plot,
             pins: Array.isArray(plot.pins) ? plot.pins : [],
-          }));
-        // Project location tab: only plots that still have pins.
-        // Quote location tab: keep API rows for this quote even if a plot is temporarily empty.
-        if (!quoteScoped) {
-          plots = plots.filter((p) => p.pins.length > 0);
-        }
+          }))
+          .filter((plot) => plot.pins.length > 0);
         return { ...level, plots };
       })
-      .filter((level) => {
-        if (level.plots.length > 0) return true;
-        // Quote tab: still render API levels for this quote (avoid empty tab when data exists).
-        return quoteScoped;
-      });
-  }, [locations, levelFilter, plotFilter, quotationId]);
+      .filter((level) => level.plots.length > 0);
+  }, [locations, levelFilter, plotFilter]);
 
   const levelOptions = useMemo(
     () =>

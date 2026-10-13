@@ -11,7 +11,7 @@ import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
-import { fetchQuotation, createJobFromServiceQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import { fetchQuotation, createJobFromServiceQuotation } from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
@@ -25,7 +25,6 @@ import { QuotationLocationsTab } from "@/features/quotations/components/quotatio
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
 import { QuotationCreateJobModal } from "@/features/quotations/components/quotation-create-job-modal";
-import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
 import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
@@ -665,8 +664,6 @@ function QuotationDetailActions({
   onJobCreated: () => void;
   t: ReturnType<typeof useTranslations<"Dashboard.quotations">>;
 }) {
-  const [statusOpen, setStatusOpen] = React.useState(false);
-  const [statusSaving, setStatusSaving] = React.useState(false);
   const [createJobOpen, setCreateJobOpen] = React.useState(false);
   const [creatingJob, setCreatingJob] = React.useState(false);
   const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
@@ -680,20 +677,6 @@ function QuotationDetailActions({
   const isServiceQuotation = resolveQuotationQuoteCategory(detail) === QUOTE_CATEGORY.service;
   const isApproved = normalizeQuotationStatusValue(detail.status) === "approved";
   const showCreateJob = isServiceQuotation && isApproved && !jobCreated;
-
-  async function handleStatusUpdate(status: string) {
-    setStatusSaving(true);
-    try {
-      await updateQuotation(detail.id, { status });
-      toastSuccess(t("statusUpdatedToast"));
-      setStatusOpen(false);
-      onStatusSaved();
-    } catch (error) {
-      toastApiError(error, t("statusUpdateError"));
-    } finally {
-      setStatusSaving(false);
-    }
-  }
 
   async function handleCreateJob(selection: { forms: number[]; checklists: number[] }) {
     setCreatingJob(true);
@@ -728,9 +711,6 @@ function QuotationDetailActions({
           {t("detail.createJob")}
         </AppButton>
       ) : null}
-      <AppButton type="button" variant="secondary" size="sm" onClick={() => setStatusOpen(true)}>
-        {t("updateStatus.action")}
-      </AppButton>
       <QuotationSendDropdown
         quotationId={quotationId}
         quoteName={detail.quote_name}
@@ -748,14 +728,6 @@ function QuotationDetailActions({
         saving={creatingJob}
         onClose={() => (!creatingJob ? setCreateJobOpen(false) : undefined)}
         onConfirm={(selection) => void handleCreateJob(selection)}
-      />
-      <QuotationUpdateStatusDialog
-        open={statusOpen}
-        currentStatus={detail.status}
-        quoteName={detail.quote_name}
-        saving={statusSaving}
-        onClose={() => setStatusOpen(false)}
-        onConfirm={(status) => void handleStatusUpdate(status)}
       />
     </div>
   );

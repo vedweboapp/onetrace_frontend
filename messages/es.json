@@ -1101,8 +1101,8 @@
         "inactive": "Inactivo"
       },
       "modal": {
-        "selectProjectTypeTitle": "Seleccionar tipo de proyecto",
-        "selectProjectTypeDescription": "Elige el tipo de proyecto al que pertenece este formulario.",
+        "selectProjectTypeTitle": "Seleccionar tipo de proyecto e instalación",
+        "selectProjectTypeDescription": "Elige el tipo de proyecto y el tipo de instalación a los que pertenece este formulario.",
         "cancel": "Cancelar",
         "next": "Siguiente",
         "projectTypesList": "Tipos de proyecto",
