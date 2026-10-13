@@ -9,12 +9,14 @@ import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
 import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   AddButton,
   CheckmarkSelect,
   ConfirmDialog,
@@ -275,7 +277,14 @@ export function ItemsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AddButton type="button" onClick={openCreate} />
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="items"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -317,7 +326,10 @@ export function ItemsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -341,7 +353,6 @@ export function ItemsPanel() {
               iconName: "items",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, item_type: null, page: null }, { replace: true })}
           />

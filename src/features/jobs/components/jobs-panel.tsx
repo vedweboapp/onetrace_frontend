@@ -41,6 +41,7 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import {
+  DashboardLoadErrorState,
   AddButton,
   CheckmarkSelect,
   ConfirmDialog,
@@ -61,6 +62,7 @@ import { buildDetailHrefWithListReturn, buildPathWithStoredBack, storeBackHrefFo
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { JobsMapView } from "@/features/jobs/components/jobs-map-view";
 
 export function JobsPanel() {
@@ -532,7 +534,16 @@ export function JobsPanel() {
           listViewLabel={tList("listView")}
           mapViewLabel={tList("mapView")}
           showMapView
-          action={<AddButton type="button" onClick={openCreate} />}
+          action={
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="jobs"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
+          }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -592,7 +603,10 @@ export function JobsPanel() {
         )}
       >
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -623,7 +637,6 @@ export function JobsPanel() {
               iconName: "jobs",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={clearFilters}
           />

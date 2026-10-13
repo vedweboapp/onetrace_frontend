@@ -27,6 +27,7 @@ import type {
   ProjectPagination,
   ProjectSiteRef,
 } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { resolvePinProjectFormId } from "@/features/projects/utils/pin-form-meta.util";
 import { useParams } from "next/navigation";
@@ -35,6 +36,8 @@ import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { DetailEntityLink } from "@/shared/components/entity";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
@@ -46,12 +49,35 @@ import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawi
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import {
   useLevelSnapshots,
   type LevelSnapshotState,
 } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
+
+type SiteOption = { value: string; label: string };
+
+type CreateJobDialogDraft = {
+  dialogVisible?: boolean;
+  site?: string;
+  checklists?: string[];
+  selectedIds?: number[];
+};
+
+function mapProjectSites(sites?: Array<number | ProjectSiteRef> | null): SiteOption[] {
+  if (!sites || sites.length === 0) return [];
+  return sites
+    .map((site) => {
+      if (typeof site === "number") return { value: String(site), label: `#${site}` };
+      return {
+        value: String(site.id),
+        label: site.site_name?.trim() || `#${site.id}`,
+      };
+    })
+    .filter((option) => option.value);
+}
 
 const PIN_TABLE_GRID =
   "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,1fr)_minmax(0,0.45fr)] items-center gap-x-3";
@@ -759,19 +785,11 @@ const ProjectPinsListTab = ({
   /** When set, levels are loaded with `?quotations=<id>` (this quote only). */
   quotationId?: number;
 }) => {
-  const siteOptions = useMemo(() => {
-    if (!sites || sites.length === 0)
-      return [] as { value: string; label: string }[];
-    return sites
-      .map((site) => {
-        if (typeof site === "number")
-          return { value: String(site), label: `#${site}` };
-        return {
-          value: String(site.id),
-          label: site.site_name?.trim() || `#${site.id}`,
-        };
-      })
-      .filter((option) => option.value);
+  const [siteOptions, setSiteOptions] = useState<SiteOption[]>(() => mapProjectSites(sites));
+  const [clientId, setClientId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSiteOptions(mapProjectSites(sites));
   }, [sites]);
 
   const { id: routeId } = useParams<{ id: string }>();
@@ -940,6 +958,7 @@ const ProjectPinsListTab = ({
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
       setProjectTypeId(null);
+      setClientId(null);
       return;
     }
 
@@ -949,9 +968,13 @@ const ProjectPinsListTab = ({
         const project = await fetchProject(Number.parseInt(id, 10));
         if (!cancelled) {
           setProjectTypeId(getProjectTypeId(project));
+          setClientId(getProjectClientId(project));
         }
       } catch {
-        if (!cancelled) setProjectTypeId(null);
+        if (!cancelled) {
+          setProjectTypeId(null);
+          setClientId(null);
+        }
       }
     })();
     return () => {
@@ -1062,6 +1085,8 @@ const ProjectPinsListTab = ({
     handleSubmit,
     reset,
     control,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<{
     site: string;
@@ -1070,6 +1095,83 @@ const ProjectPinsListTab = ({
     defaultValues: {
       site: "",
       checklists: [],
+    },
+  });
+
+  const reloadSites = useCallback(async () => {
+    if (!clientId || clientId <= 0) return;
+    try {
+      const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
+      setSiteOptions(
+        items.map((site) => ({
+          value: String(site.id),
+          label: site.site_name?.trim() || `#${site.id}`,
+        })),
+      );
+    } catch {
+      // Keep existing options
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!dialogVisible || !clientId) return;
+    void reloadSites();
+  }, [dialogVisible, clientId, reloadSites]);
+
+  const getCreateJobDraft = useCallback(
+    (): CreateJobDialogDraft => ({
+      dialogVisible: true,
+      site: getValues("site"),
+      checklists: getValues("checklists") ?? [],
+      selectedIds: Array.from(selectedIds),
+    }),
+    [getValues, selectedIds],
+  );
+
+  const restoreCreateJobDraft = useCallback(
+    (draft: unknown) => {
+      if (!draft || typeof draft !== "object") return;
+      const next = draft as CreateJobDialogDraft;
+      if (next.dialogVisible) setDialogVisible(true);
+      if (Array.isArray(next.selectedIds)) {
+        setSelectedIds(new Set(next.selectedIds.filter((id) => Number.isFinite(id))));
+      }
+      reset({
+        site: typeof next.site === "string" ? next.site : "",
+        checklists: Array.isArray(next.checklists) ? next.checklists.map(String) : [],
+      });
+    },
+    [reset],
+  );
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientId ?? undefined,
+    addDisabled: !clientId,
+    getFormDraft: getCreateJobDraft,
+  });
+
+  const checklistQuickAdd = useSettingsQuickAdd({
+    href: routes.dashboard.settingsChecklistTypes,
+    addLabel: t("addChecklist"),
+    addDisabled: !projectTypeId,
+    getFormDraft: getCreateJobDraft,
+  });
+
+  useQuickCreateReturn({
+    restoreFormDraft: restoreCreateJobDraft,
+    onReloadOptions: async () => {
+      await reloadSites();
+      await fetchCheckListData();
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "site") return;
+      setDialogVisible(true);
+      setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+      setSiteOptions((prev) => {
+        if (prev.some((opt) => opt.value === selectId)) return prev;
+        return [...prev, { value: selectId, label: `#${selectId}` }];
+      });
     },
   });
 
@@ -1374,6 +1476,9 @@ const ProjectPinsListTab = ({
                       portaled
                       searchable
                       clearable
+                      onAdd={siteQuickCreate.onAdd}
+                      addAriaLabel={siteQuickCreate.addAriaLabel}
+                      addLabel={t("addSite")}
                       className={cn(
                         "w-full",
                         errors.site && "ring ring-red-500 rounded-lg",
@@ -1405,10 +1510,16 @@ const ProjectPinsListTab = ({
                       options={checklistOptions}
                       values={field.value ?? []}
                       onChange={(options: string[]) => field.onChange(options)}
+                      onSearchChange={setChecklistSearch}
                       placeholder={t("selectChecklist") || "Select Checklist"}
                       listLabel={t("checkList")}
                       disabled={checkListLoading}
-                      className="w-full "
+                      searchable
+                      portaled
+                      onAdd={checklistQuickAdd.onAdd}
+                      addAriaLabel={checklistQuickAdd.addAriaLabel}
+                      addLabel={checklistQuickAdd.addLabel}
+                      className="w-full"
                     />
                   )}
                 />

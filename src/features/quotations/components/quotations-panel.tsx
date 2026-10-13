@@ -2,6 +2,7 @@
 
 import { cn } from "@/core/utils/http.util";
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
@@ -51,6 +52,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   CheckmarkSelect,
@@ -579,7 +581,14 @@ export function QuotationsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AddButton type="button" onClick={openCreate} />
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="quotations"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -652,7 +661,10 @@ export function QuotationsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className={listPageCardScrollClassName()}>
@@ -676,7 +688,6 @@ export function QuotationsPanel() {
               iconName: "quotations",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl(

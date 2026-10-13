@@ -484,15 +484,10 @@ export function buildTemplateFormData(params: {
     }
   }
 
-  // 4. Append all binary files under "files"
-  for (const file of uniqueBinaryFiles) {
-    fd.append("files", file, file.name);
-  }
-
-  // 5. If single file or primary file exists, also append as "file"
-  if (uniqueBinaryFiles.length > 0) {
-    fd.append("file", uniqueBinaryFiles[0], uniqueBinaryFiles[0].name);
-  }
+  // 4. Append all binary files with array indexing: files[0], files[1], etc.
+  uniqueBinaryFiles.forEach((file, index) => {
+    fd.append(`files[${index}]`, file, file.name);
+  });
 
   // 6. Append any remaining fields in rest
   for (const [key, value] of Object.entries(rest)) {

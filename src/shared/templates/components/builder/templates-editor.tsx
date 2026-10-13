@@ -84,9 +84,22 @@ export default function TemplatesEditor({
       const rawObject = buildTemplateSaveObject(templateData);
 
       // Log both so developer can inspect either easily
-      const attachedBinaryFiles = payload.getAll("files");
+      const attachedBinaryFiles = Array.from(payload.entries())
+        .filter(([_, v]) => typeof v !== "string" && v instanceof File)
+        .map(([k, v]) => ({
+          key: k,
+          name: (v as File).name,
+          size: `${(v as File).size} bytes`,
+          type: (v as File).type,
+        }));
+
       console.log("[Template Save Payload (FormData)]", {
-        fields: Object.fromEntries(payload.entries()),
+        fields: Object.fromEntries(
+          Array.from(payload.entries()).map(([k, v]) => [
+            k,
+            typeof v === "string" ? v : `(binary: ${(v as File).name})`,
+          ])
+        ),
         binaryFiles: attachedBinaryFiles,
       });
       console.log("[Template Save Payload (Object)]", rawObject);

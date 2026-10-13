@@ -19,6 +19,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
+import { AppButton } from "@/shared/ui";
 import {
   fetchModuleVariables,
   formatFieldLabel,
@@ -58,7 +59,6 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [lastInsertedTag, setLastInsertedTag] = useState<string | null>(null);
-  const [customTagInput, setCustomTagInput] = useState("");
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const loadVariables = useCallback(async (targetModule: string) => {
@@ -192,14 +192,6 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
     }, 1200);
   };
 
-  const handleInsertCustomTag = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = customTagInput.trim().replace(/^<|>$/g, "");
-    if (!clean) return;
-    insertVariable(`<${clean}>`);
-    setCustomTagInput("");
-  };
-
   if (collapsed) {
     return (
       <div className="w-10 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center py-3 select-none">
@@ -256,33 +248,25 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
       {/* ── Controls: Module Buttons + Filter Dropdown + Search ── */}
       <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 shrink-0 space-y-2.5 bg-slate-50/40 dark:bg-slate-850/40">
         {/* Module Switcher Buttons (Quotation & Orders) */}
-        <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-200/70 dark:bg-slate-800 rounded-lg">
-          <button
-            type="button"
+        <div className="grid grid-cols-2 gap-2">
+          <AppButton
+            variant={activeModule === "quotations" ? "primary" : "secondary"}
+            size="sm"
             onClick={() => handleSwitchModule("quotations")}
-            className={cn(
-              "flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer",
-              activeModule === "quotations"
-                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
-            )}
+            className="w-full justify-center"
           >
-            <Receipt size={13} />
+            <Receipt className="size-3.5" />
             <span>Quotation</span>
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            variant={activeModule === "orders" ? "primary" : "secondary"}
+            size="sm"
             onClick={() => handleSwitchModule("orders")}
-            className={cn(
-              "flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer",
-              activeModule === "orders"
-                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100",
-            )}
+            className="w-full justify-center"
           >
-            <ShoppingCart size={13} />
+            <ShoppingCart className="size-3.5" />
             <span>Orders</span>
-          </button>
+          </AppButton>
         </div>
 
         {/* Dropdown with "All Variables" as Default */}
@@ -517,33 +501,6 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
             );
           })
         )}
-      </div>
-
-      {/* ── Custom Variable Creator ── */}
-      <div className="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-850 shrink-0">
-        <form onSubmit={handleInsertCustomTag} className="space-y-1.5">
-          <label className="block text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
-            Insert Custom Tag
-          </label>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="text"
-              value={customTagInput}
-              onChange={(e) => setCustomTagInput(e.target.value)}
-              placeholder="e.g. custom_variable"
-              className="flex-1 min-w-0 px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              disabled={!customTagInput.trim()}
-              title="Insert custom tag"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
-            >
-              <Plus size={13} />
-              <span>Add</span>
-            </button>
-          </div>
-        </form>
       </div>
     </aside>
   );

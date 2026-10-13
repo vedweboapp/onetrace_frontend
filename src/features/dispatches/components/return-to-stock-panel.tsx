@@ -32,6 +32,7 @@ import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { useListMassSelection } from "@/shared/mass-actions/use-list-mass-selection";
 import { massSelectionColumn } from "@/shared/mass-actions/mass-selection-column";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -449,7 +450,10 @@ export function ReturnToStockPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -471,13 +475,7 @@ export function ReturnToStockPanel() {
             onboarding={{
               iconName: "returnToStock",
               title: t("return.emptyListTitle"),
-              description: t("return.emptyListDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" aria-hidden />
-                  {t("return.newRequest")}
-                </AppButton>
-              ),
+              description: t("return.emptyListDescription")
             }}
             onClearFilters={() =>
               setUrl(

@@ -31,7 +31,6 @@ import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
 import {
   detailTabBodyClassName,
-  detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabStandaloneFillClassName,
   detailTabSectionClassName,
@@ -43,7 +42,22 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
-import { CheckmarkSelect, ConfirmDialog, DataTableRowActionsMenu, ListPageEmptyStates, SurfaceShell, DataTablePaginationBar, DataTable, DataTableHead, DataTableBody, DataTableRow, DataTableTd, DataTableTh, DataTableScroll } from "@/shared/ui";
+import {
+  CheckmarkSelect,
+  ConfirmDialog,
+  DashboardLoadErrorState,
+  DataTableRowActionsMenu,
+  ListPageEmptyStates,
+  SurfaceShell,
+  DataTablePaginationBar,
+  DataTable,
+  DataTableHead,
+  DataTableBody,
+  DataTableRow,
+  DataTableTd,
+  DataTableTh,
+  DataTableScroll,
+} from "@/shared/ui";
 import {
   buildDetailHrefWithListReturn,
   buildPathWithStoredBack,
@@ -506,7 +520,10 @@ export function ProjectJobsTab({ projectId }: Props) {
 
       <div className={detailTabBodyClassName}>
         {loadError ? (
-          <p className={detailTabErrorClassName}>{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
           ) : loading ? (
           <SurfaceShell className="rounded-none border-0">
             <div className="overflow-auto">

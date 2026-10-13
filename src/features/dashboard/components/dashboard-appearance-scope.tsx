@@ -4,6 +4,8 @@ import type { CSSProperties, ReactNode } from "react";
 import * as React from "react";
 import { useSyncExternalStore } from "react";
 import { useTheme } from "@teispace/next-themes";
+import { useLocale } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import type { DashboardAccentId } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import {
@@ -13,6 +15,7 @@ import {
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { fetchPersonalProfile } from "@/features/settings/personal-profile/api/personal-profile.api";
 import { hydrateAppearanceFromProfile } from "@/features/settings/personal-profile/utils/hydrate-appearance-from-profile";
+import { resolveAppearancePreferencesFromSettings } from "@/features/settings/personal-profile/utils/appearance-preferences.util";
 import type { PersonalProfileResponse } from "@/features/settings/personal-profile/types/types";
 import { useTabLayoutsStore } from "@/shared/store/tab-layouts.store";
 import {
@@ -26,6 +29,8 @@ import {
   applyDashTextScaleVars,
   buildDashTextScale,
 } from "@/features/dashboard/utils/appearance-typography.util";
+import { stripLocaleSegmentsFromPathname } from "@/i18n/locale-path";
+import { routing } from "@/i18n/routing";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -57,7 +62,13 @@ function useIsClient() {
  * Also mirrors tokens onto `document.documentElement` so portaled menus/modals match.
  */
 export function DashboardAppearanceScope({ children, className }: Props) {
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const locale = useLocale();
+  const pathname = usePathname();
+  const localeRef = React.useRef(locale);
+  const pathnameRef = React.useRef(pathname);
+  localeRef.current = locale;
+  pathnameRef.current = pathname;
   const mounted = useIsClient();
   const userId = useAuthStore((s) => s.user?.id);
 
@@ -81,7 +92,28 @@ export function DashboardAppearanceScope({ children, className }: Props) {
           data && typeof data === "object" && "data" in data
             ? (data as { data: PersonalProfileResponse }).data
             : (data as PersonalProfileResponse);
-        hydrateAppearanceFromProfile(resolved?.appearance_settings?.preferences);
+        const preferences = resolveAppearancePreferencesFromSettings(
+          resolved?.appearance_settings,
+        );
+        const hydrated = hydrateAppearanceFromProfile(preferences);
+        if (hydrated.themeMode) {
+          setTheme(hydrated.themeMode);
+        }
+        const nextLang = hydrated.language?.trim();
+        const currentLocale = localeRef.current;
+        if (
+          nextLang &&
+          nextLang !== currentLocale &&
+          (routing.locales as readonly string[]).includes(nextLang)
+        ) {
+          const bare = stripLocaleSegmentsFromPathname(pathnameRef.current || "/");
+          const path = bare === "/" ? "" : bare;
+          const suffix =
+            typeof window !== "undefined"
+              ? `${window.location.search}${window.location.hash}`
+              : "";
+          window.location.assign(`/${nextLang}${path}${suffix}`);
+        }
       } catch {
         /* local tab layouts / appearance remain as appearance defaults */
       }
@@ -89,7 +121,7 @@ export function DashboardAppearanceScope({ children, className }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, setTheme]);
 
   const {
     accentKind,

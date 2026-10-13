@@ -24,6 +24,7 @@ import { QuotationJobsTableTab } from "@/features/quotations/components/quotatio
 import { QuotationLocationsTab } from "@/features/quotations/components/quotation-locations-tab";
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
+import { QuotationCreateJobModal } from "@/features/quotations/components/quotation-create-job-modal";
 import { QuotationUpdateStatusDialog } from "@/features/quotations/components/quotation-update-status-dialog";
 import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
@@ -666,6 +667,7 @@ function QuotationDetailActions({
 }) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
+  const [createJobOpen, setCreateJobOpen] = React.useState(false);
   const [creatingJob, setCreatingJob] = React.useState(false);
   const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
 
@@ -693,12 +695,16 @@ function QuotationDetailActions({
     }
   }
 
-  async function handleCreateJob() {
+  async function handleCreateJob(selection: { forms: number[]; checklists: number[] }) {
     setCreatingJob(true);
     try {
-      const job = await createJobFromServiceQuotation(quotationId);
+      const job = await createJobFromServiceQuotation(quotationId, {
+        forms: selection.forms,
+        checklists: selection.checklists,
+      });
       markServiceQuoteJobCreated(quotationId, job.id);
       setJobCreated(true);
+      setCreateJobOpen(false);
       toastSuccess(t("detail.createJobToast"));
       onJobCreated();
     } catch (error) {
@@ -715,10 +721,9 @@ function QuotationDetailActions({
           type="button"
           variant="primary"
           size="sm"
-          loading={creatingJob}
           disabled={creatingJob}
           aria-label={t("detail.createJobAria")}
-          onClick={() => void handleCreateJob()}
+          onClick={() => setCreateJobOpen(true)}
         >
           {t("detail.createJob")}
         </AppButton>
@@ -736,6 +741,13 @@ function QuotationDetailActions({
         label={t("edit")}
         listBack={listBack}
         fallbackRoute={routes.dashboard.quotations}
+      />
+      <QuotationCreateJobModal
+        open={createJobOpen}
+        quoteName={detail.quote_name}
+        saving={creatingJob}
+        onClose={() => (!creatingJob ? setCreateJobOpen(false) : undefined)}
+        onConfirm={(selection) => void handleCreateJob(selection)}
       />
       <QuotationUpdateStatusDialog
         open={statusOpen}

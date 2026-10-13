@@ -54,6 +54,7 @@ import {
   QUICK_CREATE_SELECT_TARGET_PARAM,
   hrefAfterEntityCreate,
 } from "@/shared/utils/quick-create-navigation.util";
+import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -231,12 +232,19 @@ export function JobFormScreen({ mode, jobId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
   const openFormsSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsProjectForms);
-  }, [router]);
+    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+    router.push(buildPathWithStoredBack(routes.dashboard.settingsProjectForms, draftReturnTo));
+  }, [router, isEdit, draftReturnTo, getFormDraft]);
   const openJobStatusSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsJobStatus);
-  }, [router]);
+    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+    router.push(buildPathWithStoredBack(routes.dashboard.settingsJobStatus, draftReturnTo));
+  }, [router, isEdit, draftReturnTo, getFormDraft]);
 
   const reloadClients = React.useCallback(async () => {
     try {

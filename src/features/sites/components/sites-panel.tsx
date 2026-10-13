@@ -14,6 +14,7 @@ import {
   useEntityListMassActions,
 } from "@/shared/mass-actions";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { DetailEntityLink, EntityDataTable, entityCol, entityNameLinkClassName } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -21,6 +22,7 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -262,9 +264,16 @@ export function SitesPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}>
-              {t("add")}
-            </AppButton>
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="sites"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AppButton type="button" variant="primary" size="sm" onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}>
+                {t("add")}
+              </AppButton>
+            </ListPageActionGroup>
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -305,7 +314,10 @@ export function SitesPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
@@ -318,13 +330,7 @@ export function SitesPanel() {
             onboarding={{
               iconName: "sites",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AddButton
-                  type="button"
-                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
-                />
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() =>
               setUrl({ search: null, client: null, page: null }, { replace: true })

@@ -95,13 +95,14 @@ function parseTemplateFormData(formData: FormData): {
   const description = (formData.get("description") as string) || undefined;
   const id = (formData.get("id") as string) || undefined;
 
-  const rawFiles = formData.getAll("files");
-  const files: File[] = rawFiles.filter(
-    (f): f is File => typeof f !== "string"
-  );
-  const singleFile = formData.get("file");
-  if (singleFile instanceof File && !files.includes(singleFile)) {
-    files.push(singleFile);
+  const files: File[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (
+      (key.startsWith("files[") || key.startsWith("files_") || key === "files" || key === "file") &&
+      typeof value !== "string"
+    ) {
+      files.push(value);
+    }
   }
 
   let keys: { Key: string; Type: string; Module: string }[] = [];
