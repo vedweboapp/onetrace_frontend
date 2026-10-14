@@ -74,14 +74,28 @@ export function storeQuickCreateFieldTarget(returnTo: string, field: string): vo
   }
 }
 
-export function takeQuickCreateFieldTarget(returnTo: string): string | null {
+export function peekQuickCreateFieldTarget(returnTo: string): string | null {
   if (typeof sessionStorage === "undefined") return null;
   try {
     const key = `${FIELD_TARGET_PREFIX}${buildQuickCreateDraftKey(returnTo)}`;
-    const value = sessionStorage.getItem(key);
-    sessionStorage.removeItem(key);
-    return value?.trim() || null;
+    return sessionStorage.getItem(key)?.trim() || null;
   } catch {
     return null;
   }
+}
+
+export function clearQuickCreateFieldTarget(returnTo: string): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.removeItem(`${FIELD_TARGET_PREFIX}${buildQuickCreateDraftKey(returnTo)}`);
+  } catch {
+    // ignore
+  }
+}
+
+/** Read and clear which parent field should receive the created id. */
+export function takeQuickCreateFieldTarget(returnTo: string): string | null {
+  const value = peekQuickCreateFieldTarget(returnTo);
+  clearQuickCreateFieldTarget(returnTo);
+  return value;
 }

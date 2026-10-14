@@ -42,7 +42,10 @@ import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  clearQuickCreateFormDraft,
+  saveQuickCreateFormDraft,
+} from "@/shared/utils/quick-create-form-draft.util";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   QUICK_CREATE_CLIENT_PARAM,
@@ -388,12 +391,17 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   useQuickCreateReturn({
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    persistFormDraft: !isEdit
+      ? () => {
+          saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+        }
+      : undefined,
     onReloadOptions: async () => {
       await reloadClients();
       await reloadSites();
       await reloadManagers(managerSearchQuery);
     },
-    onApplySelect: ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
@@ -402,27 +410,23 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       }
       if (selectTarget === "site") {
         const siteId = Number.parseInt(selectId, 10);
-        void (async () => {
-          if (Number.isFinite(siteId) && siteId > 0) {
-            await ensureSiteInOptions(siteId);
-          }
-          const current = getValues("sites") ?? [];
-          const next = current.includes(selectId) ? current : [...current, selectId];
-          setValue("sites", next, { shouldDirty: true, shouldValidate: true });
-        })();
+        if (Number.isFinite(siteId) && siteId > 0) {
+          await ensureSiteInOptions(siteId);
+        }
+        const current = getValues("sites") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "user") {
         const userId = Number.parseInt(selectId, 10);
-        void (async () => {
-          const managerValue =
-            Number.isFinite(userId) && userId > 0
-              ? await ensureManagerInOptions(userId)
-              : selectId;
-          const current = getValues("manager_ids") ?? [];
-          const next = current.includes(managerValue) ? current : [...current, managerValue];
-          setValue("manager_ids", next, { shouldDirty: true, shouldValidate: true });
-        })();
+        const managerValue =
+          Number.isFinite(userId) && userId > 0
+            ? await ensureManagerInOptions(userId)
+            : selectId;
+        const current = getValues("manager_ids") ?? [];
+        const next = current.includes(managerValue) ? current : [...current, managerValue];
+        setValue("manager_ids", next, { shouldDirty: true, shouldValidate: true });
       }
     },
   });

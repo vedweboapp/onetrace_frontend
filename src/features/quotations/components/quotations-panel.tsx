@@ -167,15 +167,19 @@ export function QuotationsPanel() {
     catalogEpoch,
   );
   const openCreate = React.useCallback(() => {
-    const cat = categoryFilter ?? QUOTE_CATEGORY.service;
-    const newHref = `${pathname}/new?quote_category=${encodeURIComponent(cat)}`;
+    // Read category at click time so Project Quotes Add never falls back to service.
+    const cat =
+      parseQuoteCategoryParam(searchParams.get("quote_category")) ??
+      categoryFilter ??
+      QUOTE_CATEGORY.service;
+    const newHref = `${routes.dashboard.quotations}/new?quote_category=${encodeURIComponent(cat)}`;
     markQuotationFreshCreate();
     clearQuotationWorkingDraft("new");
     clearQuotationSectionScopeSession();
     clearQuickCreateFormDraft(newHref);
     clearQuickCreateFormDraft(mergeUrlQueryParam(newHref, "tab", "pricing"));
     router.push(buildPathWithStoredBack(newHref, listHref));
-  }, [categoryFilter, listHref, pathname, router]);
+  }, [categoryFilter, listHref, router, searchParams]);
 
   const openEdit = React.useCallback(
     (id: number) => {
@@ -197,7 +201,9 @@ export function QuotationsPanel() {
   );
 
   React.useEffect(() => {
+    // Default bare `/quotations` to service quotes only — never overwrite an explicit category.
     if (categoryFilter) return;
+    if (searchParams.get("quote_category")) return;
     const p = new URLSearchParams(searchParams.toString());
     p.set("quote_category", QUOTE_CATEGORY.service);
     const qs = p.toString();
