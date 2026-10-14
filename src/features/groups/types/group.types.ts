@@ -6,6 +6,13 @@ export type GroupUserRef = {
   username: string;
 };
 
+export type GroupItemComponentRef = {
+  id?: number;
+  child_item: number;
+  child_name?: string | null;
+  quantity?: number | null;
+};
+
 export type GroupItemRef = {
   id?: number;
   item: number;
@@ -13,6 +20,8 @@ export type GroupItemRef = {
   item_name?: string;
   item_selling_price?: string | number | null;
   selling_price?: string | number | null;
+  /** Nested on group list/detail payloads — prefer this over a separate composite fetch. */
+  components?: GroupItemComponentRef[];
 };
 
 export type Group = {

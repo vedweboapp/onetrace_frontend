@@ -3421,7 +3421,11 @@
       },
       "page": {
         "createTitle": "Crear cotización",
+        "createServiceTitle": "Crear cotización de servicio",
+        "createProjectTitle": "Crear cotización de proyecto",
         "createSubtitle": "Completa los datos de la cotización y guarda.",
+        "createServiceSubtitle": "Completa los datos de la cotización de servicio y guarda.",
+        "createProjectSubtitle": "Completa los datos de la cotización de proyecto y guarda.",
         "editTitle": "Editar",
         "saveEdit": "Guardar cambios",
         "lastUpdated": "Última actualización {date}",

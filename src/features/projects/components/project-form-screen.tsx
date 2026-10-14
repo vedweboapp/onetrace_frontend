@@ -96,6 +96,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [managerFallbackLabels, setManagerFallbackLabels] = React.useState<Record<string, string>>({});
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [siteFallbackLabels, setSiteFallbackLabels] = React.useState<Record<string, string>>({});
+  const siteFallbackLabelsRef = React.useRef(siteFallbackLabels);
+  siteFallbackLabelsRef.current = siteFallbackLabels;
   const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [projectStatusOptions, setProjectStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
@@ -220,11 +223,32 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, dropdown: true });
       if (seq !== siteFetchSeq.current) return;
-      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+      const incoming = items.map((s) => ({
+        value: String(s.id),
+        label: s.site_name?.trim() || `#${s.id}`,
+      }));
+      setSiteOptions((prev) => {
+        const selected = new Set(getValues("sites") ?? []);
+        const merged = [...incoming];
+        for (const opt of prev) {
+          if (!selected.has(opt.value)) continue;
+          if (merged.some((row) => row.value === opt.value)) continue;
+          merged.push(opt);
+        }
+        for (const id of selected) {
+          if (merged.some((row) => row.value === id)) continue;
+          const fallback = siteFallbackLabelsRef.current[id]?.trim();
+          merged.push({ value: id, label: fallback || `#${id}` });
+        }
+        return merged;
+      });
     } catch {
-      if (seq === siteFetchSeq.current) setSiteOptions([]);
+      // Keep current options so quick-created chips are not wiped on a failed reload.
+      if (seq === siteFetchSeq.current && (getValues("sites") ?? []).length === 0) {
+        setSiteOptions([]);
+      }
     }
-  }, [clientIdForQuick]);
+  }, [clientIdForQuick, getValues]);
 
   const siteQuickCreate = useQuickCreate({
     kind: "site",
@@ -280,14 +304,18 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   );
 
   const ensureSiteInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setSiteOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
     try {
       const site = await fetchSite(id);
-      const next = {
-        value: String(site.id),
-        label: site.site_name?.trim() || `#${site.id}`,
-      };
+      const label = site.site_name?.trim() || `#${site.id}`;
+      setSiteFallbackLabels((prev) => ({ ...prev, [value]: label }));
       setSiteOptions((prev) => {
-        const idx = prev.findIndex((opt) => opt.value === next.value);
+        const next = { value, label };
+        const idx = prev.findIndex((opt) => opt.value === value);
         if (idx >= 0) {
           const copy = [...prev];
           copy[idx] = next;
@@ -295,8 +323,10 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         }
         return [...prev, next];
       });
+      return value;
     } catch {
-      // Keep existing options; chip may still show until sites reload.
+      setSiteFallbackLabels((prev) => ({ ...prev, [value]: prev[value] || `#${id}` }));
+      return value;
     }
   }, []);
 
@@ -371,13 +401,15 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         return;
       }
       if (selectTarget === "site") {
-        const current = getValues("sites") ?? [];
-        const next = current.includes(selectId) ? current : [...current, selectId];
-        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
         const siteId = Number.parseInt(selectId, 10);
-        if (Number.isFinite(siteId) && siteId > 0) {
-          void ensureSiteInOptions(siteId);
-        }
+        void (async () => {
+          if (Number.isFinite(siteId) && siteId > 0) {
+            await ensureSiteInOptions(siteId);
+          }
+          const current = getValues("sites") ?? [];
+          const next = current.includes(selectId) ? current : [...current, selectId];
+          setValue("sites", next, { shouldDirty: true, shouldValidate: true });
+        })();
         return;
       }
       if (selectTarget === "user") {
@@ -481,18 +513,26 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [isEdit, setValue, getValues, catalogEpoch]);
 
   const siteClientRef = React.useRef<string | null>(null);
+  const siteCatalogEpochRef = React.useRef(catalogEpoch);
   React.useEffect(() => {
     const prev = siteClientRef.current;
     const next = selectedClient ?? "";
+    const epochChanged = siteCatalogEpochRef.current !== catalogEpoch;
+    siteCatalogEpochRef.current = catalogEpoch;
     // Skip first paint / draft-restore so an empty initial client does not wipe restored sites.
     if (prev === null) {
       siteClientRef.current = next;
       if (next && /^\d+$/.test(next)) void reloadSites();
       return;
     }
-    if (prev === next) return;
+    if (prev === next) {
+      // After quick-create, catalog epoch bumps — refresh list without clearing selection.
+      if (epochChanged && next && /^\d+$/.test(next)) void reloadSites();
+      return;
+    }
     siteClientRef.current = next;
     siteFetchSeq.current += 1;
+    setSiteFallbackLabels({});
     if (!next || !/^\d+$/.test(next)) {
       setSiteOptions([]);
       if (prev && /^\d+$/.test(prev)) setValue("sites", []);
@@ -785,6 +825,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onAdd={siteQuickCreate.onAdd}
                         addAriaLabel={siteQuickCreate.addAriaLabel}
                         addLabel={siteQuickCreate.addLabel}
+                        fallbackLabels={siteFallbackLabels}
                       />
                     )}
                   />

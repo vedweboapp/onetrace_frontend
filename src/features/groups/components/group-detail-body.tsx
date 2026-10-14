@@ -122,7 +122,10 @@ export function GroupDetailBody({
               {linkedItems.map((entry, index) => {
                 const composite = compositeById.get(entry.item);
                 const displayName = entry.item_name ?? composite?.name ?? "—";
-                const componentCount = composite?.components?.length ?? 0;
+                const componentCount =
+                  entry.components?.length ?? composite?.components?.length ?? null;
+                const sellPrice =
+                  entry.item_selling_price ?? entry.selling_price ?? composite?.selling_price;
                 return (
                   <DetailLinkedTableRow key={`${entry.id ?? index}-${entry.item}`} index={index}>
                     <DetailLinkedTableTd
@@ -142,7 +145,7 @@ export function GroupDetailBody({
                       narrow
                       className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
                     >
-                      {composite ? componentCount : "—"}
+                      {componentCount != null ? componentCount : "—"}
                     </DetailLinkedTableTd>
                     <DetailLinkedTableTd
                       narrow
@@ -160,7 +163,7 @@ export function GroupDetailBody({
                       narrow
                       className={detailLinkedTableCellClassName({ align: "right", narrow: true, cellClassName: "tabular-nums" })}
                     >
-                      {moneyDisplay(composite?.selling_price)}
+                      {moneyDisplay(sellPrice)}
                     </DetailLinkedTableTd>
                   </DetailLinkedTableRow>
                 );

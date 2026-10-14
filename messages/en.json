@@ -3435,7 +3435,11 @@
       },
       "page": {
         "createTitle": "Create Quotation",
+        "createServiceTitle": "Create Service Quotation",
+        "createProjectTitle": "Create Project Quotation",
         "createSubtitle": "Fill in quotation details and save.",
+        "createServiceSubtitle": "Fill in service quotation details and save.",
+        "createProjectSubtitle": "Fill in project quotation details and save.",
         "editTitle": "Edit",
         "saveEdit": "Save changes",
         "lastUpdated": "Last updated {date}",
