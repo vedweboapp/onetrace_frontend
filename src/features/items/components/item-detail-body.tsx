@@ -292,16 +292,18 @@ export function ItemDetailBody({
                 inactiveLabel={tStatus("inactive")}
               />
             ) : null}
-            <DetailEditableField
-              label={t("detail.itemType")}
-              value={itemType}
-              kind="select"
-              options={itemTypeOptions}
-              editAriaLabel={tActions("edit")}
-              onSave={(next) => patchField({ item_type: resolveItemType(next) as ItemType })}
-            >
-              <span>{itemType === "service" ? t("detail.itemTypeService") : t("detail.itemTypeGoods")}</span>
-            </DetailEditableField>
+            {!detail.is_composite ? (
+              <DetailEditableField
+                label={t("detail.itemType")}
+                value={itemType}
+                kind="select"
+                options={itemTypeOptions}
+                editAriaLabel={tActions("edit")}
+                onSave={(next) => patchField({ item_type: resolveItemType(next) as ItemType })}
+              >
+                <span>{itemType === "service" ? t("detail.itemTypeService") : t("detail.itemTypeGoods")}</span>
+              </DetailEditableField>
+            ) : null}
             {!isService ? (
               <>
                 <DetailEditableField
@@ -344,15 +346,17 @@ export function ItemDetailBody({
                     <span>{unitTypeLabel}</span>
                   </DetailMetricCard>
                 ) : null}
-                <DetailEditableField
-                  label={t("detail.reorder")}
-                  value={detail.reorder_quantity != null ? String(detail.reorder_quantity) : ""}
-                  kind="text"
-                  editAriaLabel={tActions("edit")}
-                  onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
-                >
-                  <span className="tabular-nums">{formatQuantity(detail.reorder_quantity)}</span>
-                </DetailEditableField>
+                {!detail.is_composite ? (
+                  <DetailEditableField
+                    label={t("detail.reorder")}
+                    value={detail.reorder_quantity != null ? String(detail.reorder_quantity) : ""}
+                    kind="text"
+                    editAriaLabel={tActions("edit")}
+                    onSave={(next) => patchField({ reorder_quantity: parseRequiredNumber(next) })}
+                  >
+                    <span className="tabular-nums">{formatQuantity(detail.reorder_quantity)}</span>
+                  </DetailEditableField>
+                ) : null}
               </>
             ) : null}
             <DetailEditableField
@@ -364,6 +368,9 @@ export function ItemDetailBody({
               editAriaLabel={tActions("edit")}
               onSave={async (next) => {
                 const cost = parseRequiredMoney(next);
+                if (detail.is_composite) {
+                  return patchField({ cost_price: cost });
+                }
                 const markup = resolveItemDefaultMarkup(detail);
                 return patchField({
                   cost_price: cost,
@@ -373,22 +380,24 @@ export function ItemDetailBody({
             >
               <span className="tabular-nums">{moneyDisplay(detail.cost_price)}</span>
             </DetailEditableField>
-            <DetailEditableField
-              label={t("detail.markup")}
-              value={String(resolveItemDefaultMarkup(detail))}
-              kind="text"
-              editAriaLabel={tActions("edit")}
-              onSave={async (next) => {
-                const markup = parseItemNumber(next);
-                const cost = parseItemNumber(detail.cost_price);
-                return patchField({
-                  default_markup: markup,
-                  selling_price: suggestedItemSellPrice(cost, markup),
-                });
-              }}
-            >
-              <span className="tabular-nums">{resolveItemDefaultMarkup(detail)}</span>
-            </DetailEditableField>
+            {!detail.is_composite ? (
+              <DetailEditableField
+                label={t("detail.markup")}
+                value={String(resolveItemDefaultMarkup(detail))}
+                kind="text"
+                editAriaLabel={tActions("edit")}
+                onSave={async (next) => {
+                  const markup = parseItemNumber(next);
+                  const cost = parseItemNumber(detail.cost_price);
+                  return patchField({
+                    default_markup: markup,
+                    selling_price: suggestedItemSellPrice(cost, markup),
+                  });
+                }}
+              >
+                <span className="tabular-nums">{resolveItemDefaultMarkup(detail)}</span>
+              </DetailEditableField>
+            ) : null}
             <DetailEditableField
               label={t("detail.sell")}
               value={detail.selling_price != null ? String(detail.selling_price) : ""}
@@ -402,28 +411,30 @@ export function ItemDetailBody({
             </DetailEditableField>
             {!isService ? (
               <>
-                <DetailEditableField
-                  label={t("detail.vendors")}
-                  kind="multiselect"
-                  values={vendorIds.map(String)}
-                  options={vendorOptions}
-                  selectSearchable
-                  editAriaLabel={tActions("edit")}
-                  empty="—"
-                  onSaveValues={(next) => patchField(vendorIdsPayload(next))}
-                >
-                  <DetailMultiValue>
-                    {vendorRows.map((row) => (
-                      <DetailMultiValueItem
-                        key={row.id}
-                        href={`${routes.dashboard.vendors}/${row.id}`}
-                        title={row.label}
-                      >
-                        {row.label}
-                      </DetailMultiValueItem>
-                    ))}
-                  </DetailMultiValue>
-                </DetailEditableField>
+                {!detail.is_composite ? (
+                  <DetailEditableField
+                    label={t("detail.vendors")}
+                    kind="multiselect"
+                    values={vendorIds.map(String)}
+                    options={vendorOptions}
+                    selectSearchable
+                    editAriaLabel={tActions("edit")}
+                    empty="—"
+                    onSaveValues={(next) => patchField(vendorIdsPayload(next))}
+                  >
+                    <DetailMultiValue>
+                      {vendorRows.map((row) => (
+                        <DetailMultiValueItem
+                          key={row.id}
+                          href={`${routes.dashboard.vendors}/${row.id}`}
+                          title={row.label}
+                        >
+                          {row.label}
+                        </DetailMultiValueItem>
+                      ))}
+                    </DetailMultiValue>
+                  </DetailEditableField>
+                ) : null}
                 {installationTypeChip && installationTypeOptions.length > 0 ? (
                   <DetailEditableField
                     label={t("detail.installationType")}

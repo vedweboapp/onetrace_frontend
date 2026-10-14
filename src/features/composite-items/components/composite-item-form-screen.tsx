@@ -30,7 +30,7 @@ import {
   resolveItemAttachmentLabel,
   resolveItemAttachmentUrl,
 } from "@/features/items/utils/item-attachment-display.util";
-import { fetchItemsPage } from "@/features/items/api/item.api";
+import { fetchItem, fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
 import type {
   DimensionUnit,
@@ -373,11 +373,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.qty === "string") setQty(saved.qty);
     if (typeof saved.cost === "string") {
       setCost(saved.cost);
-      costManualRef.current = true;
+      // Keep auto-calc enabled so CP/SP refresh after quick-creating a component item.
     }
     if (typeof saved.sell === "string") {
       setSell(saved.sell);
-      sellManualRef.current = true;
     }
     if (typeof saved.installationType === "string") setInstallationType(saved.installationType);
     if (typeof saved.unitType === "string") setUnitType(saved.unitType);
@@ -425,6 +424,24 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       setItemsError(tModal("itemsLoadError"));
     }
   }, [tModal]);
+
+  /** Ensure a newly created / selected component item is in options with price fields. */
+  const ensureItemInOptions = React.useCallback(async (id: number) => {
+    try {
+      const item = await fetchItem(id);
+      setItemOptions((prev) => {
+        const idx = prev.findIndex((row) => row.id === item.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...item };
+          return next;
+        }
+        return [item, ...prev];
+      });
+    } catch {
+      // Keep existing options; select still works with fallback label.
+    }
+  }, []);
 
   const itemQuickCreate = useQuickCreate({
     kind: "item",
@@ -569,6 +586,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         });
       }
       pendingItemRowRef.current = null;
+      // Re-enable auto CP/SP from component prices after quick-create return.
+      costManualRef.current = false;
+      sellManualRef.current = false;
+      const selectedId = toNumberOrNull(selectId);
+      if (selectedId != null) {
+        void ensureItemInOptions(selectedId);
+      }
     },
   });
 

@@ -1624,7 +1624,7 @@ export default function FormBuilderLayout({
         if (purpose === "create_module") {
           router.push(routes.dashboard.settingsModules);
         } else if (purpose === "create_project_form") {
-          router.back();
+          router.push(BackUrl);
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
           router.push(`${routes.dashboard.settingsModules}/${targetModule}/layout`);
         } else if (BackUrl) {

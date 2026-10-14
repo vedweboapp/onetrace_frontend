@@ -464,92 +464,92 @@ export function ContactsPanel() {
                 const parentHref =
                   getContactType(row) === "vendor"
                     ? (() => {
-                        const id = getContactVendorId(row);
-                        return id != null ? `${routes.dashboard.vendors}/${id}` : null;
-                      })()
+                      const id = getContactVendorId(row);
+                      return id != null ? `${routes.dashboard.vendors}/${id}` : null;
+                    })()
                     : (() => {
-                        const id = getContactClientId(row);
-                        return id != null ? `${routes.dashboard.clients}/${id}` : null;
-                      })();
+                      const id = getContactClientId(row);
+                      return id != null ? `${routes.dashboard.clients}/${id}` : null;
+                    })();
                 const parentLabel = contactParentName(row, parentLabels);
                 return (
-                <ListPageCard
-                  key={row.id}
-                  dataListRowId={row.id}
-                  className={highlightClassName(row.id)}
-                  leading={
-                    <input
-                      type="checkbox"
-                      className={mass.selection.rowCheckboxClassName}
-                      checked={mass.selection.isSelected(row.id)}
-                      aria-label={mass.selectRowAriaLabel}
-                      onChange={() => mass.selection.toggleRowSelected(row.id)}
-                    />
-                  }
-                  title={<span className={entityNameLinkClassName}>{formatContactName(row)}</span>}
-                  subtitle={
-                    parentHref ? (
-                      <DetailEntityLink
-                        href={parentHref}
-                        className="font-medium"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {parentLabel}
-                      </DetailEntityLink>
-                    ) : (
-                      parentLabel
-                    )
-                  }
-                  meta={row.email}
-                  footer={
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-3">
-                        {row.phone?.trim() ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-                            <Phone className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
-                            <span className="tabular-nums">{row.phone.trim()}</span>
-                          </span>
-                        ) : null}
-                        <ActiveStatusBadge
-                          active={row.is_active}
-                          label={row.is_active ? t("status.active") : t("status.inactive")}
-                        />
+                  <ListPageCard
+                    key={row.id}
+                    dataListRowId={row.id}
+                    className={highlightClassName(row.id)}
+                    leading={
+                      <input
+                        type="checkbox"
+                        className={mass.selection.rowCheckboxClassName}
+                        checked={mass.selection.isSelected(row.id)}
+                        aria-label={mass.selectRowAriaLabel}
+                        onChange={() => mass.selection.toggleRowSelected(row.id)}
+                      />
+                    }
+                    title={<span className={entityNameLinkClassName}>{formatContactName(row)}</span>}
+                    subtitle={
+                      parentHref ? (
+                        <DetailEntityLink
+                          href={parentHref}
+                          className="font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {parentLabel}
+                        </DetailEntityLink>
+                      ) : (
+                        parentLabel
+                      )
+                    }
+                    meta={row.email}
+                    footer={
+                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-3">
+                          {row.phone?.trim() ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+                              <Phone className="size-3.5 shrink-0 text-slate-500 dark:text-slate-500" aria-hidden />
+                              <span className="tabular-nums">{row.phone.trim()}</span>
+                            </span>
+                          ) : null}
+                          <ActiveStatusBadge
+                            active={row.is_active}
+                            label={row.is_active ? t("status.active") : t("status.inactive")}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
+                        </span>
                       </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {tList("cardCreated", { date: dateFmt.format(new Date(row.created_at)) })}
-                      </span>
-                    </div>
-                  }
-                  onCardClick={() => openContactDetail(row.id)}
-                  menu={
-                    <DataTableRowActionsMenu
-                      menuAriaLabel={tList("openRowActions")}
-                      items={[
-                        {
-                          id: "edit",
-                          label: t("edit"),
-                          icon: Pencil,
-                          onSelect: () => openEdit(row.id),
-                        },
-                        row.is_active
-                          ? {
+                    }
+                    onCardClick={() => openContactDetail(row.id)}
+                    menu={
+                      <DataTableRowActionsMenu
+                        menuAriaLabel={tList("openRowActions")}
+                        items={[
+                          {
+                            id: "edit",
+                            label: t("edit"),
+                            icon: Pencil,
+                            onSelect: () => openEdit(row.id),
+                          },
+                          row.is_active
+                            ? {
                               id: "deactivate",
                               label: t("deactivate"),
                               icon: PowerOff,
                               onSelect: () => void handleToggleActive(row, false),
                               disabled: togglingId === row.id,
                             }
-                          : {
+                            : {
                               id: "activate",
                               label: t("activate"),
                               icon: Power,
                               onSelect: () => void handleToggleActive(row, true),
                               disabled: togglingId === row.id,
                             },
-                      ]}
-                    />
-                  }
-                />
+                        ]}
+                      />
+                    }
+                  />
                 );
               })}
             </ListPageCardGrid>

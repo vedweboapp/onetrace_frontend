@@ -19,10 +19,7 @@ export function useDropdownCatalogEpoch(kinds: readonly DropdownCatalogKind[]): 
   return epoch;
 }
 
-/**
- * Re-runs `refresh` after a matching catalog changes.
- * The first run is skipped so the screen's own initial load stays in charge.
- */
+
 export function useRefreshOnCatalogChange(
   kinds: readonly DropdownCatalogKind[],
   refresh: () => void | Promise<void>,

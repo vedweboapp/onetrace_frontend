@@ -144,6 +144,7 @@ export function DashboardHeader() {
   const checklistTypeHref = routes.dashboard.settingsChecklistTypes;
   const titleHref = routes.dashboard.settingsTitle;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
+  const templatesHref = routes.dashboard.settingsTemplates;
   const usersHref = routes.dashboard.settingsUsers;
   const userGroupsHref = routes.dashboard.settingsUserGroups;
   const rolesHref = routes.dashboard.settingsRoles;
@@ -239,6 +240,8 @@ export function DashboardHeader() {
   const titleActive = pathname === titleHref || pathname.startsWith(`${titleHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
+  const templatesActive =
+    pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);

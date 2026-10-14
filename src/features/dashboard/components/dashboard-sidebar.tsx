@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, PackageCheck, Plug, Settings, FileText, FolderKanban, Home, Layers, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, PackageCheck, Plug, Settings, FileText, FolderKanban, Home, Layers, LayoutTemplate, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -743,6 +743,7 @@ function DashboardSettingsSidebar({
   const kioskMachinesHref = routes.dashboard.settingsKioskMachines;
   const kiosksHref = routes.dashboard.settingsKiosks;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
+  const templatesHref = routes.dashboard.settingsTemplates;
   const integrationsHref = routes.dashboard.settingsIntegrations;
   const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
@@ -766,6 +767,7 @@ function DashboardSettingsSidebar({
     pathname === kioskMachinesHref || pathname.startsWith(`${kioskMachinesHref}/`);
   const kiosksActive = pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
+  const templatesActive = pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
   const auditLogsActive =
@@ -834,6 +836,14 @@ function DashboardSettingsSidebar({
           active={projectFormsActive}
           label={t("projectForms")}
           icon={FileText}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={templatesHref}
+          active={templatesActive}
+          label={t("templates")}
+          icon={LayoutTemplate}
           expanded={expanded}
           resolved={resolved}
         />

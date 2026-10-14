@@ -99,7 +99,10 @@ function fromMatrix(file: File, matrix: unknown[][]): ParsedImportFile {
 }
 
 async function parseExcelFile(file: File): Promise<ParsedImportFile> {
-  const XLSX = await import("xlsx");
+  // Turbopack / bundler compatible import for client components
+  // @ts-ignore
+  const xlsxModule = await import("xlsx/xlsx.mjs").catch(() => import("xlsx"));
+  const XLSX = (xlsxModule as any).default || xlsxModule;
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName = workbook.SheetNames[0];

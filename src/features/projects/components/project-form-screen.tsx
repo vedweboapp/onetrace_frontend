@@ -14,15 +14,18 @@ import type { ProjectType } from "@/features/project-types/types/project-type.ty
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
 import { createProjectStatus } from "@/features/project-status/api/project-status.api";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { CreateProjectFormTypeModal } from "@/features/project-forms/components/create-project-form-type-modal";
 import { WorkflowColourStatusFormModal } from "@/shared/components/settings/workflow-colour-status-form-modal";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import { fetchUserProfile, fetchUsersPage } from "@/features/users/api/user.api";
 import {
   resolveAppRoleIdMap,
+  resolveUserProfileSelectId,
+  userProfileSelectLabel,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
-import { fetchUsersPage } from "@/features/users/api/user.api";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
@@ -40,6 +43,7 @@ import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   QUICK_CREATE_CLIENT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -76,7 +80,6 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     "forms",
   ]);
   const t = useTranslations("Dashboard.projects");
-  const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -232,6 +235,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
 
   const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
   const [projectStatusModalOpen, setProjectStatusModalOpen] = React.useState(false);
+  const [createProjectFormModalOpen, setCreateProjectFormModalOpen] = React.useState(false);
 
   const projectTypeQuickAdd = useSettingsQuickAdd({
     onOpen: () => setProjectTypeModalOpen(true),
@@ -241,21 +245,81 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     onOpen: () => setProjectStatusModalOpen(true),
     addLabel: t("placeholders.addProjectStatus"),
   });
-  const managersQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsUsers,
-    addLabel: tQuick("add.user"),
-    getFormDraft: !isEdit ? getFormDraft : undefined,
-    returnTo: draftReturnTo,
-  });
   const formsQuickAdd = useSettingsQuickAdd({
-    href: selectedProjectType
-      ? `${routes.dashboard.settingsProjectForms}/${selectedProjectType}/create?purpose=create_project_form`
-      : undefined,
+    onOpen: () => setCreateProjectFormModalOpen(true),
     addLabel: t("placeholders.addForm"),
     addDisabled: !selectedProjectType,
     getFormDraft: !isEdit ? getFormDraft : undefined,
     returnTo: draftReturnTo,
   });
+  const managersQuickCreate = useQuickCreate({
+    kind: "user",
+    appRole: "manager",
+    fieldTarget: "manager_ids",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+
+  const defaultCreateFormProjectTypeId = React.useMemo(() => {
+    if (!selectedProjectType || !/^\d+$/.test(selectedProjectType)) return null;
+    return Number(selectedProjectType);
+  }, [selectedProjectType]);
+
+  const defaultCreateFormProjectTypeLabel = React.useMemo(() => {
+    if (!selectedProjectType) return null;
+    return projectTypeOptions.find((opt) => opt.value === selectedProjectType)?.label ?? null;
+  }, [selectedProjectType, projectTypeOptions]);
+
+  const continueToCreateProjectForm = React.useCallback(
+    ({ projectTypeId, installationTypeId }: { projectTypeId: number; installationTypeId: number }) => {
+      setCreateProjectFormModalOpen(false);
+      const href = `${routes.dashboard.settingsProjectForms}/${projectTypeId}/create?purpose=create_project_form&installation_type_id=${installationTypeId}`;
+      router.push(buildPathWithStoredBack(href, draftReturnTo));
+    },
+    [router, draftReturnTo],
+  );
+
+  const ensureSiteInOptions = React.useCallback(async (id: number) => {
+    try {
+      const site = await fetchSite(id);
+      const next = {
+        value: String(site.id),
+        label: site.site_name?.trim() || `#${site.id}`,
+      };
+      setSiteOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [...prev, next];
+      });
+    } catch {
+      // Keep existing options; chip may still show until sites reload.
+    }
+  }, []);
+
+  const ensureManagerInOptions = React.useCallback(async (id: number) => {
+    try {
+      const user = await fetchUserProfile(id);
+      const value = String(resolveUserProfileSelectId(user));
+      const label = userProfileSelectLabel(user);
+      setManagerFallbackLabels((prev) => ({ ...prev, [value]: label }));
+      setManagerOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { value, label };
+          return copy;
+        }
+        return [...prev, { value, label }];
+      });
+      return value;
+    } catch {
+      return String(id);
+    }
+  }, []);
 
   const handleProjectTypeCreated = React.useCallback(
     (row: ProjectType) => {
@@ -310,6 +374,23 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         const current = getValues("sites") ?? [];
         const next = current.includes(selectId) ? current : [...current, selectId];
         setValue("sites", next, { shouldDirty: true, shouldValidate: true });
+        const siteId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(siteId) && siteId > 0) {
+          void ensureSiteInOptions(siteId);
+        }
+        return;
+      }
+      if (selectTarget === "user") {
+        const userId = Number.parseInt(selectId, 10);
+        void (async () => {
+          const managerValue =
+            Number.isFinite(userId) && userId > 0
+              ? await ensureManagerInOptions(userId)
+              : selectId;
+          const current = getValues("manager_ids") ?? [];
+          const next = current.includes(managerValue) ? current : [...current, managerValue];
+          setValue("manager_ids", next, { shouldDirty: true, shouldValidate: true });
+        })();
       }
     },
   });
@@ -724,9 +805,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         listLabel={t("fields.manager")}
                         onSearchChange={setManagerSearchQuery}
                         fallbackLabels={managerFallbackLabels}
-                        onAdd={managersQuickAdd.onAdd}
-                        addAriaLabel={managersQuickAdd.addAriaLabel}
-                        addLabel={managersQuickAdd.addLabel}
+                        onAdd={managersQuickCreate.onAdd}
+                        addAriaLabel={managersQuickCreate.addAriaLabel}
+                        addLabel={managersQuickCreate.addLabel}
                       />
                     )}
                   />
@@ -774,6 +855,14 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         showCategory
         create={createProjectStatus}
         onSaved={handleProjectStatusCreated}
+      />
+      <CreateProjectFormTypeModal
+        open={createProjectFormModalOpen}
+        onClose={() => setCreateProjectFormModalOpen(false)}
+        onContinue={continueToCreateProjectForm}
+        defaultProjectTypeId={defaultCreateFormProjectTypeId}
+        defaultProjectTypeLabel={defaultCreateFormProjectTypeLabel}
+        lockProjectType
       />
     </div>
   );
