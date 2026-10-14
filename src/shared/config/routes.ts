@@ -92,5 +92,6 @@ export const routes = {
     settingsKiosks: "/settings/kiosks",
     settingsKiosk: "/settings/kiosks",
     settingsKioskMachines: "/settings/kiosk-machine",
+    settingsTemplates: "/settings/templates",
   },
 } as const;
