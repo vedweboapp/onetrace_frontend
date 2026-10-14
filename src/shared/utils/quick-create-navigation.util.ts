@@ -18,6 +18,14 @@ export const QUICK_CREATE_VENDOR_PARAM = "vendor";
 export const QUICK_CREATE_CONTACT_TYPE_PARAM = "contact_type";
 /** Prefill item create form with goods/service (`?item_type=`). */
 export const QUICK_CREATE_ITEM_TYPE_PARAM = "item_type";
+/** Prefill user create role (`technician` | `manager` | `sales`). */
+export const QUICK_CREATE_APP_ROLE_PARAM = "app_role";
+
+export type QuickCreateAppRole = "technician" | "manager" | "sales";
+
+export function isQuickCreateAppRole(value: string | null | undefined): value is QuickCreateAppRole {
+  return value === "technician" || value === "manager" || value === "sales";
+}
 
 /** Any internal dashboard path (used when returning from cross-entity quick create). */
 export function sanitizeInternalDashboardBack(raw: string | null | undefined): string | null {
@@ -73,6 +81,8 @@ export function getQuickCreateNewPath(kind: QuickCreateKind): string {
       return `${routes.dashboard.compositeItems}/new`;
     case "item":
       return `${routes.dashboard.items}/new`;
+    case "user":
+      return `${routes.dashboard.settingsUsers}/new`;
     default:
       return routes.dashboard.root;
   }
@@ -87,6 +97,8 @@ export function buildQuickCreateNavigateHref(
     contactType?: ContactType;
     /** When creating an item, preselect catalog kind. */
     itemType?: "goods" | "service";
+    /** When creating a user, preselect app role. */
+    appRole?: QuickCreateAppRole;
   },
 ): string {
   const path = getQuickCreateNewPath(kind);
@@ -104,6 +116,9 @@ export function buildQuickCreateNavigateHref(
   }
   if (kind === "item" && (args.itemType === "goods" || args.itemType === "service")) {
     params.set(QUICK_CREATE_ITEM_TYPE_PARAM, args.itemType);
+  }
+  if (kind === "user" && isQuickCreateAppRole(args.appRole)) {
+    params.set(QUICK_CREATE_APP_ROLE_PARAM, args.appRole);
   }
   return params.toString() ? `${path}?${params.toString()}` : path;
 }

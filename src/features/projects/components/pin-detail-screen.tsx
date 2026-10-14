@@ -209,7 +209,16 @@ async function resolvePinFromPinApi(
         : (pinData as any).project_form?.id != null
           ? Number((pinData as any).project_form.id)
           : null) ??
-      (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null);
+      (typeof (pinData as any).form_id === "number" ? (pinData as any).form_id : null) ??
+      (typeof (pinData as any).form === "number" ? (pinData as any).form : null) ??
+      (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null) ??
+      (typeof (foundPin as any)?.form_id === "number" ? (foundPin as any).form_id : null) ??
+      (typeof (foundPin as any)?.formId === "number" ? (foundPin as any).formId : null) ??
+      (typeof (foundPin as any)?.project_form === "number"
+        ? (foundPin as any).project_form
+        : (foundPin as any)?.project_form?.id != null
+          ? Number((foundPin as any).project_form.id)
+          : null);
     const pFormId = rawPFormId != null && Number(rawPFormId) > 0 ? Number(rawPFormId) : null;
 
     const formLabel =

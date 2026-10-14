@@ -844,7 +844,7 @@ export function JobDetailBody({
               textareaBox
               span="full"
               editAriaLabel={tActions("edit")}
-              empty="—"
+              empty=""
               onSave={(next) => patchField({ description: next })}
             />
           </DetailMetricsGrid>

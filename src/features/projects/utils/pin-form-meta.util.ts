@@ -11,6 +11,8 @@ export type PinFormMeta = {
 /** Resolve the assigned project form id from pin fields (formId / project_form). */
 export function resolvePinProjectFormId(pin: DrawingPin): number | null {
   if (typeof pin.formId === "number" && pin.formId > 0) return pin.formId;
+  if (typeof (pin as any).form_id === "number" && (pin as any).form_id > 0) return (pin as any).form_id;
+  if (typeof (pin as any).form === "number" && (pin as any).form > 0) return (pin as any).form;
   if (typeof pin.project_form === "number" && pin.project_form > 0) return pin.project_form;
   if (pin.project_form && typeof pin.project_form === "object") {
     const id = pin.project_form.id;

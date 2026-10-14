@@ -9,7 +9,7 @@ import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
-import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { fetchContact, fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import {
   createQuotation,
@@ -85,8 +85,12 @@ import { fetchSite } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
+import { fetchUserProfile } from "@/features/users/api/user.api";
 import {
   fetchUsersForAppRoles,
+  invalidateUsersByRoleCache,
+  resolveUserProfileSelectId,
+  userProfileSelectLabel,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
@@ -104,11 +108,13 @@ import { routes } from "@/shared/config/routes";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
+import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
 import {
   clearQuickCreateFormDraft,
   loadQuickCreateFormDraft,
   saveQuickCreateFormDraft,
+  storeQuickCreateFieldTarget,
+  takeQuickCreateFieldTarget,
 } from "@/shared/utils/quick-create-form-draft.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
@@ -409,19 +415,98 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const contactQuickCreate = useQuickCreate({
     kind: "contact",
     clientId: customerId,
+    contactType: "client",
     addDisabled: saving || !customerId,
     returnTo: draftReturnTo,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
-  const pendingAdditionalContactRowRef = React.useRef<number | null>(null);
-  const openUsersSettings = React.useCallback(() => {
-    const current = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : routes.dashboard.quotations;
-    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
-    router.push(buildPathWithStoredBack(`${routes.dashboard.settingsUsers}/new`, current));
-  }, [router, isEdit, draftReturnTo, getFormDraft]);
+  const addPrimaryContact = React.useCallback(() => {
+    storeQuickCreateFieldTarget(draftReturnTo, "primary_customer_contact");
+    contactQuickCreate.onAdd?.();
+  }, [draftReturnTo, contactQuickCreate.onAdd]);
+  const salespersonQuickCreate = useQuickCreate({
+    kind: "user",
+    appRole: "sales",
+    fieldTarget: "salesperson",
+    returnTo: draftReturnTo,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+  const projectManagerQuickCreate = useQuickCreate({
+    kind: "user",
+    appRole: "manager",
+    fieldTarget: "project_manager",
+    returnTo: draftReturnTo,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
+  const technicianQuickCreate = useQuickCreate({
+    kind: "user",
+    appRole: "technician",
+    fieldTarget: "technician_ids",
+    returnTo: draftReturnTo,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);
   }, [router]);
+
+  const ensureContactInOptions = React.useCallback(async (contactId: number) => {
+    if (!Number.isFinite(contactId) || contactId <= 0) return;
+    setContactOptions((prev) => {
+      if (prev.some((opt) => opt.value === String(contactId))) return prev;
+      return [...prev, { value: String(contactId), label: `#${contactId}` }];
+    });
+    try {
+      const contact = await fetchContact(contactId);
+      const label = formatContactOptionLabel(contact);
+      setContactOptions((prev) => {
+        const value = String(contact.id);
+        const next = { value, label };
+        const idx = prev.findIndex((opt) => opt.value === value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [...prev, next];
+      });
+    } catch {
+      // Keep placeholder so the selection chip survives option reloads.
+    }
+  }, []);
+
+  const ensureUserInRoleOptions = React.useCallback(
+    async (
+      userId: number,
+      role: "sales" | "manager" | "technician",
+    ): Promise<string> => {
+      const fallback = String(userId);
+      const setOptions =
+        role === "sales" ? setSalesOptions : role === "manager" ? setManagerOptions : setTechnicianOptions;
+      setOptions((prev) => {
+        if (prev.some((opt) => opt.value === fallback)) return prev;
+        return [...prev, { value: fallback, label: `#${userId}` }];
+      });
+      try {
+        const user = await fetchUserProfile(userId);
+        const value = String(resolveUserProfileSelectId(user));
+        const label = userProfileSelectLabel(user);
+        setOptions((prev) => {
+          const next = { value, label };
+          const idx = prev.findIndex((opt) => opt.value === value || opt.value === fallback);
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = next;
+            return copy;
+          }
+          return [...prev, next];
+        });
+        return value;
+      } catch {
+        return fallback;
+      }
+    },
+    [],
+  );
   const appliedFromProjectIdRef = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (!createFromProjectId) {
@@ -536,6 +621,45 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     setSiteRows([]);
   }, [customerId, projectId, isServiceQuotation]);
 
+  const mergeSiteRowsPreservingSelected = React.useCallback(
+    (incoming: QuotationSiteOptionRow[]) => {
+      setSiteRows((prev) => {
+        const selected = new Set((getValues("sites") ?? []).map(String));
+        const merged = [...incoming];
+        for (const row of prev) {
+          if (!selected.has(String(row.id))) continue;
+          if (merged.some((r) => r.id === row.id)) continue;
+          merged.push(row);
+        }
+        return merged;
+      });
+    },
+    [getValues],
+  );
+
+  const ensureSiteInRows = React.useCallback(async (siteId: number) => {
+    if (!Number.isFinite(siteId) || siteId <= 0) return;
+    setSiteRows((prev) => {
+      if (prev.some((row) => row.id === siteId)) return prev;
+      return [...prev, { id: siteId, site_name: `Site #${siteId}` }];
+    });
+    try {
+      const site = await fetchSite(siteId);
+      const label = site.site_name?.trim() || `Site #${site.id}`;
+      setSiteRows((prev) => {
+        const idx = prev.findIndex((row) => row.id === site.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { id: site.id, site_name: label };
+          return copy;
+        }
+        return [...prev, { id: site.id, site_name: label }];
+      });
+    } catch {
+      // Keep placeholder row so the chip survives option pruning.
+    }
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     const sitesSourceReady = isServiceQuotation
@@ -552,15 +676,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           clientId: customerId,
           projectId,
         });
-        if (!cancelled) setSiteRows(rows);
+        if (!cancelled) mergeSiteRowsPreservingSelected(rows);
       } catch {
-        if (!cancelled) setSiteRows([]);
+        if (!cancelled) mergeSiteRowsPreservingSelected([]);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isServiceQuotation, customerId, projectId, catalogEpoch]);
+  }, [isServiceQuotation, customerId, projectId, catalogEpoch, mergeSiteRowsPreservingSelected]);
 
   const contactCustomerRef = React.useRef(customerId);
   React.useEffect(() => {
@@ -712,6 +836,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   );
 
   React.useEffect(() => {
+    // After draft/quick-create restore, do not auto-pick a single site over saved selections.
+    if (formValuesRestoredRef.current) return;
     const sitesSourceReady = isServiceQuotation
       ? customerId != null && customerId > 0
       : projectId != null && projectId > 0;
@@ -724,6 +850,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   React.useEffect(() => {
     const selectedSites = getValues("sites") ?? [];
     if (selectedSites.length === 0) return;
+    // While the catalog is still loading, keep draft/quick-create selections intact.
+    if (siteOptions.length === 0) return;
     const valid = new Set(siteOptions.map((s) => s.value));
     const next = selectedSites.filter((id) => valid.has(id));
     if (next.length !== selectedSites.length) {
@@ -892,6 +1020,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
       const reloadProjectId = parseFormIdField(values.project);
+      invalidateUsersByRoleCache();
       const [{ items: clients }, byRole, tagsRes] = await Promise.all([
         fetchClientsPage(1, 20, { is_active: true, dropdown: true }),
         fetchUsersForAppRoles(["technician", "sales", "manager"]),
@@ -916,13 +1045,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           isServiceQuotation: true,
           clientId: reloadCustomerId,
         });
-        setSiteRows(rows);
+        mergeSiteRowsPreservingSelected(rows);
       } else if (reloadProjectId) {
         const rows = await fetchQuotationSiteRows({
           isServiceQuotation: false,
           projectId: reloadProjectId,
         });
-        setSiteRows(rows);
+        mergeSiteRowsPreservingSelected(rows);
       }
     },
     onApplySelect: ({ selectTarget, selectId }) => {
@@ -943,22 +1072,64 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       }
       if (selectTarget === "site") {
         const current = getValues("sites") ?? [];
-        if (!current.includes(selectId)) {
-          setValue("sites", [...current, selectId], { shouldDirty: true, shouldValidate: true });
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
+        const siteId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(siteId) && siteId > 0) {
+          void ensureSiteInRows(siteId);
         }
         return;
       }
       if (selectTarget === "contact") {
-        const rowIdx = pendingAdditionalContactRowRef.current;
-        if (rowIdx != null) {
-          setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
-            shouldDirty: true,
-            shouldValidate: true,
-          });
-          pendingAdditionalContactRowRef.current = null;
-        } else {
-          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        const fieldTarget = takeQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
+        const contactId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(contactId) && contactId > 0) {
+          void ensureContactInOptions(contactId);
         }
+        const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
+        if (additionalMatch) {
+          const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
+          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+            setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            return;
+          }
+        }
+        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        return;
+      }
+      if (selectTarget === "user") {
+        const fieldTarget = takeQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        const userId = Number.parseInt(selectId, 10);
+        void (async () => {
+          if (fieldTarget === "salesperson") {
+            const value =
+              Number.isFinite(userId) && userId > 0
+                ? await ensureUserInRoleOptions(userId, "sales")
+                : selectId;
+            setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
+            return;
+          }
+          if (fieldTarget === "technician_ids") {
+            const value =
+              Number.isFinite(userId) && userId > 0
+                ? await ensureUserInRoleOptions(userId, "technician")
+                : selectId;
+            const numericId = Number.parseInt(value, 10);
+            if (!Number.isFinite(numericId) || numericId <= 0) return;
+            const current = getValues("technician_ids") ?? [];
+            const next = current.includes(numericId) ? current : [...current, numericId];
+            setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
+            return;
+          }
+          const value =
+            Number.isFinite(userId) && userId > 0
+              ? await ensureUserInRoleOptions(userId, "manager")
+              : selectId;
+          setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
+        })();
       }
     },
   });
@@ -1289,7 +1460,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.contactOptional")}
                       disabled={saving || !customerId}
                       onBlur={field.onBlur}
-                      onAdd={contactQuickCreate.onAdd}
+                      onAdd={contactQuickCreate.canAdd ? addPrimaryContact : undefined}
                       addAriaLabel={contactQuickCreate.addAriaLabel}
                       addLabel={contactQuickCreate.addLabel}
                       onChange={field.onChange}
@@ -1310,7 +1481,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               addAriaLabel={contactQuickCreate.addAriaLabel}
               addLabel={contactQuickCreate.addLabel}
               onRequestAddContact={(rowIndex) => {
-                pendingAdditionalContactRowRef.current = rowIndex;
+                storeQuickCreateFieldTarget(
+                  draftReturnTo,
+                  `additional_customer_contacts.${rowIndex}`,
+                );
               }}
             />
             {isEdit ? (
@@ -1337,9 +1511,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
-                      onAdd={openUsersSettings}
-                      addAriaLabel="Add user"
-                      addLabel="Add new"
+                      onAdd={salespersonQuickCreate.onAdd}
+                      addAriaLabel={salespersonQuickCreate.addAriaLabel}
+                      addLabel={salespersonQuickCreate.addLabel}
                       onChange={field.onChange}
                     />
                   )}
@@ -1361,9 +1535,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       emptyLabel={t("placeholders.userOptional")}
                       disabled={saving}
                       onBlur={field.onBlur}
-                      onAdd={openUsersSettings}
-                      addAriaLabel="Add user"
-                      addLabel="Add new"
+                      onAdd={projectManagerQuickCreate.onAdd}
+                      addAriaLabel={projectManagerQuickCreate.addAriaLabel}
+                      addLabel={projectManagerQuickCreate.addLabel}
                       onChange={field.onChange}
                     />
                   )}
@@ -1414,9 +1588,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving}
                       listLabel={t("fields.technicians")}
                       placeholder={t("placeholders.userOptional")}
-                      onAdd={openUsersSettings}
-                      addAriaLabel="Add user"
-                      addLabel="Add new"
+                      onAdd={technicianQuickCreate.onAdd}
+                      addAriaLabel={technicianQuickCreate.addAriaLabel}
+                      addLabel={technicianQuickCreate.addLabel}
                     />
                   )}
                 />

@@ -520,6 +520,7 @@
       "documentation": "Documentation",
       "formBuilder": "Modules",
       "projectForms": "Project Forms",
+      "templates": "Templates",
       "modules": "Modules",
       "kiosk": "Kiosk",
       "kiosks": "Kiosk Forms",
@@ -1112,8 +1113,8 @@
         "inactive": "Inactive"
       },
       "modal": {
-        "selectProjectTypeTitle": "Select Project Type",
-        "selectProjectTypeDescription": "Choose the project type this form belongs to.",
+        "selectProjectTypeTitle": "Select Project & Installation Type",
+        "selectProjectTypeDescription": "Choose the project type and installation type this form belongs to.",
         "cancel": "Cancel",
         "next": "Next",
         "projectTypesList": "Project types",
