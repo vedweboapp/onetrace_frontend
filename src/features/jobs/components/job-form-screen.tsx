@@ -531,6 +531,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, []);
 
   useQuickCreateReturn({
+    draftReturnTo,
     restoreFormDraft,
     persistFormDraft: !isEdit
       ? () => {
@@ -548,29 +549,29 @@ export function JobFormScreen({ mode, jobId }: Props) {
     onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         const previousClient = getValues("client")?.trim() ?? "";
-        const id = Number.parseInt(selectId, 10);
-        if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
         if (previousClient && previousClient !== selectId) {
           setValue("project", "", { shouldDirty: true });
           setValue("site", "", { shouldDirty: true });
         }
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
         return;
       }
       if (selectTarget === "project") {
         const previousProject = getValues("project")?.trim() ?? "";
-        const id = Number.parseInt(selectId, 10);
-        if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
         setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
         if (previousProject && previousProject !== selectId) {
           setValue("site", "", { shouldDirty: true });
         }
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
         return;
       }
       if (selectTarget === "site") {
+        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
         const id = Number.parseInt(selectId, 10);
         if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
-        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "group") {

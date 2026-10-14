@@ -390,6 +390,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   }, [isEdit, searchParams, setValue]);
 
   useQuickCreateReturn({
+    draftReturnTo,
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
     persistFormDraft: !isEdit
       ? () => {
