@@ -7,7 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientToSelectOption, clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
@@ -36,7 +37,7 @@ import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/i
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProject, fetchProjectsPage } from "@/features/projects/api/project.api";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
@@ -249,9 +250,91 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const reloadClients = React.useCallback(async () => {
     try {
       const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true });
-      setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+      setClientOptions((prev) => {
+        const incoming = clientsToSelectOptions(items);
+        const selectedId = getValues("client")?.trim() ?? "";
+        if (!selectedId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedId);
+        return kept ? [kept, ...incoming] : incoming;
+      });
     } catch {
-      setClientOptions([]);
+      if (!(getValues("client")?.trim())) setClientOptions([]);
+    }
+  }, [getValues]);
+
+  const ensureClientInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setClientOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
+    try {
+      const client = await fetchClient(id, { silent: true });
+      const next = clientToSelectOption(client);
+      setClientOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const ensureSiteInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setSiteOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
+    try {
+      const site = await fetchSite(id);
+      const next = {
+        value: String(site.id),
+        label: site.site_name?.trim() || `#${site.id}`,
+      };
+      setSiteOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const ensureProjectInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setProjectOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `Project #${id}` }];
+    });
+    try {
+      const project = await fetchProject(id);
+      const next = { value: String(project.id), label: project.name?.trim() || `Project #${project.id}` };
+      setProjectOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
     }
   }, []);
 
@@ -351,11 +434,24 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
       if (seq !== siteFetchSeq.current) return;
-      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+      const incoming = items.map((s) => ({
+        value: String(s.id),
+        label: s.site_name?.trim() || `#${s.id}`,
+      }));
+      setSiteOptions((prev) => {
+        const selectedId = getValues("site")?.trim() ?? "";
+        if (!selectedId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedId);
+        return kept ? [kept, ...incoming] : incoming;
+      });
     } catch {
-      if (seq === siteFetchSeq.current) setSiteOptions([]);
+      // Keep current options so quick-created site chips survive a failed reload.
+      if (seq === siteFetchSeq.current && !(getValues("site")?.trim())) {
+        setSiteOptions([]);
+      }
     }
-  }, [clientId]);
+  }, [clientId, getValues]);
 
   const siteClientRef = React.useRef(clientId);
   React.useEffect(() => {
@@ -445,29 +541,62 @@ export function JobFormScreen({ mode, jobId }: Props) {
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
-        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("project", "", { shouldDirty: true });
-        setValue("site", "", { shouldDirty: true });
+        const previousClient = getValues("client")?.trim() ?? "";
+        void (async () => {
+          const id = Number.parseInt(selectId, 10);
+          if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
+          setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+          if (previousClient && previousClient !== selectId) {
+            setValue("project", "", { shouldDirty: true });
+            setValue("site", "", { shouldDirty: true });
+          }
+        })();
         return;
       }
       if (selectTarget === "project") {
-        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("site", "", { shouldDirty: true });
+        const previousProject = getValues("project")?.trim() ?? "";
+        void (async () => {
+          const id = Number.parseInt(selectId, 10);
+          if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
+          setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+          if (previousProject && previousProject !== selectId) {
+            setValue("site", "", { shouldDirty: true });
+          }
+        })();
         return;
       }
       if (selectTarget === "site") {
-        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+        void (async () => {
+          const id = Number.parseInt(selectId, 10);
+          if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
+          setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+        })();
         return;
       }
       if (selectTarget === "group") {
         setValue("job_meta_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
+        setGroupOptions((prev) => ensureCheckmarkOption(prev, selectId, `Group #${selectId}`));
         void fetchGroup(Number.parseInt(selectId, 10))
           .then((g) => {
-            setValue("job_meta_items.0.group_name", g.name?.trim() ?? "", { shouldDirty: true });
+            const label = g.name?.trim() || `Group #${g.id}`;
+            setGroupOptions((prev) => ensureCheckmarkOption(prev, String(g.id), label));
+            setValue("job_meta_items.0.group_name", label, { shouldDirty: true });
           })
           .catch(() => {
             setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
           });
+        return;
+      }
+      if (selectTarget === "item") {
+        setItemOptions((prev) => ensureCheckmarkOption(prev, selectId, `Item #${selectId}`));
+        const rows = getValues("job_meta_items") ?? [];
+        const emptyIdx = rows.findIndex((row) => !(row.item ?? "").trim());
+        const targetIdx = emptyIdx >= 0 ? emptyIdx : 0;
+        setValue(`job_meta_items.${targetIdx}.item`, selectId, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        void reloadGroupsAndItems();
       }
     },
   });

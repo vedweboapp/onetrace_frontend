@@ -7,8 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { useRouter, usePathname } from "@/i18n/navigation";
-import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
+import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientToSelectOption, clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchContact, fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import {
@@ -78,7 +78,7 @@ import {
   type QuotationSiteOptionRow,
 } from "@/features/quotations/utils/quotation-site-options.util";
 import { siteHasMapableLocation, siteToAddressMapPoint } from "@/features/quotations/utils/quotation-site-map.util";
-import { fetchProjectsPage } from "@/features/projects/api/project.api";
+import { fetchProject, fetchProjectsPage } from "@/features/projects/api/project.api";
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { fetchSite } from "@/features/sites/api/site.api";
@@ -116,6 +116,10 @@ import {
   storeQuickCreateFieldTarget,
   takeQuickCreateFieldTarget,
 } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  QUICK_CREATE_SELECT_PARAM,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+} from "@/shared/utils/quick-create-navigation.util";
 import { useQuotationFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import {
@@ -230,9 +234,21 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   );
 
   const draftReturnTo = React.useMemo(() => {
-    const qs = searchParams.toString();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(QUICK_CREATE_SELECT_PARAM);
+    params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
+    // Keep service vs project context stable across quick-create round-trips.
+    if (!isEdit && !params.get("quote_category")) {
+      params.set(
+        "quote_category",
+        createFromProjectId != null || isProjectQuoteCategory(createQuoteCategory)
+          ? QUOTE_CATEGORY.project
+          : QUOTE_CATEGORY.service,
+      );
+    }
+    const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, isEdit, createFromProjectId, createQuoteCategory]);
 
   const quoteDraftSnapshotRef = React.useRef<QuotationDraft | null>(null);
   const formTabSnapshotRef = React.useRef<"project" | "pricing">("project");
@@ -250,7 +266,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   /** Section return + in-progress edit draft — restore before auto-seed can wipe sections. */
   const restoredDraftRef = React.useRef<QuotationDraft | null | undefined>(undefined);
   if (restoredDraftRef.current === undefined) {
-    const freshCreate = !isEdit && consumeQuotationFreshCreate();
+    const returningFromQuickCreate = Boolean(
+      searchParams.get(QUICK_CREATE_SELECT_PARAM) &&
+        searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+    );
+    const freshCreate = !isEdit && !returningFromQuickCreate && consumeQuotationFreshCreate();
     if (freshCreate) {
       // Brand-new create from list — drop abandoned working / section / QC drafts.
       clearQuotationWorkingDraft(workingDraftKey);
@@ -448,6 +468,55 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);
   }, [router]);
+
+  const ensureClientInOptions = React.useCallback(async (clientIdValue: number) => {
+    if (!Number.isFinite(clientIdValue) || clientIdValue <= 0) return String(clientIdValue);
+    const value = String(clientIdValue);
+    setClientOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${clientIdValue}` }];
+    });
+    try {
+      const client = await fetchClient(clientIdValue, { silent: true });
+      const next = clientToSelectOption(client);
+      setClientOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [...prev, next];
+      });
+      return next.value;
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const ensureProjectInOptions = React.useCallback(async (projectIdValue: number) => {
+    if (!Number.isFinite(projectIdValue) || projectIdValue <= 0) return String(projectIdValue);
+    const value = String(projectIdValue);
+    setProjectRows((prev) => {
+      if (prev.some((row) => String(row.id) === value)) return prev;
+      return [{ id: projectIdValue, name: `Project #${projectIdValue}` } as Project, ...prev];
+    });
+    try {
+      const project = await fetchProject(projectIdValue);
+      setProjectRows((prev) => {
+        const idx = prev.findIndex((row) => row.id === project.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = project;
+          return copy;
+        }
+        return [project, ...prev];
+      });
+      return String(project.id);
+    } catch {
+      return value;
+    }
+  }, []);
 
   const ensureContactInOptions = React.useCallback(async (contactId: number) => {
     if (!Number.isFinite(contactId) || contactId <= 0) return;
@@ -1026,7 +1095,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         fetchUsersForAppRoles(["technician", "sales", "manager"]),
         fetchTagsPage(1, 20, { is_active: true, dropdown: true }),
       ]);
-      setClientOptions(clientsToSelectOptions(clients));
+      setClientOptions((prev) => {
+        const incoming = clientsToSelectOptions(clients);
+        const selectedId = values.customer?.trim() ?? "";
+        if (!selectedId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedId);
+        return kept ? [kept, ...incoming] : incoming;
+      });
       setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
       setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
       setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
@@ -1037,8 +1113,33 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           fetchProjectsPage(1, 20, { client: reloadCustomerId, dropdown: true }),
           fetchContactsPage(1, 20, { client: reloadCustomerId, dropdown: true }),
         ]);
-        setProjectRows(projects.items);
-        setContactOptions(contacts.items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
+        setProjectRows((prev) => {
+          const selectedProjectId = values.project?.trim() ?? "";
+          if (!selectedProjectId) return projects.items;
+          if (projects.items.some((row) => String(row.id) === selectedProjectId)) return projects.items;
+          const kept = prev.find((row) => String(row.id) === selectedProjectId);
+          return kept ? [kept, ...projects.items] : projects.items;
+        });
+        setContactOptions((prev) => {
+          const incoming = contacts.items.map((c) => ({
+            value: String(c.id),
+            label: formatContactOptionLabel(c),
+          }));
+          const selectedIds = new Set<string>();
+          const primary = values.primary_customer_contact?.trim();
+          if (primary) selectedIds.add(primary);
+          for (const row of values.additional_customer_contacts ?? []) {
+            const id = row.contact?.trim();
+            if (id) selectedIds.add(id);
+          }
+          const merged = [...incoming];
+          for (const opt of prev) {
+            if (!selectedIds.has(opt.value)) continue;
+            if (merged.some((row) => row.value === opt.value)) continue;
+            merged.push(opt);
+          }
+          return merged;
+        });
       }
       if (isServiceQuotation && reloadCustomerId) {
         const rows = await fetchQuotationSiteRows({
@@ -1056,48 +1157,71 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     },
     onApplySelect: ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
-        setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("project", "", { shouldDirty: true, shouldValidate: true });
-        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
-        setValue("primary_customer_contact", "", { shouldDirty: true });
-        setValue("additional_customer_contacts", [], { shouldDirty: true });
-        setValue("site_contact", "", { shouldDirty: true });
+        const previousCustomer = getValues("customer")?.trim() ?? "";
+        void (async () => {
+          const clientIdNum = Number.parseInt(selectId, 10);
+          if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
+            await ensureClientInOptions(clientIdNum);
+          }
+          setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
+          // Only clear dependent fields when switching to a different client.
+          if (previousCustomer && previousCustomer !== selectId) {
+            setValue("project", "", { shouldDirty: true, shouldValidate: true });
+            setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+            setValue("primary_customer_contact", "", { shouldDirty: true });
+            setValue("additional_customer_contacts", [], { shouldDirty: true });
+            setValue("site_contact", "", { shouldDirty: true });
+          }
+        })();
         return;
       }
       if (selectTarget === "project") {
-        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("sites", [], { shouldDirty: true, shouldValidate: true });
-        setValue("site_contact", "", { shouldDirty: true });
+        const previousProject = getValues("project")?.trim() ?? "";
+        void (async () => {
+          const projectIdNum = Number.parseInt(selectId, 10);
+          if (Number.isFinite(projectIdNum) && projectIdNum > 0) {
+            await ensureProjectInOptions(projectIdNum);
+          }
+          setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+          if (previousProject && previousProject !== selectId) {
+            setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+            setValue("site_contact", "", { shouldDirty: true });
+          }
+        })();
         return;
       }
       if (selectTarget === "site") {
-        const current = getValues("sites") ?? [];
-        const next = current.includes(selectId) ? current : [...current, selectId];
-        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
-        const siteId = Number.parseInt(selectId, 10);
-        if (Number.isFinite(siteId) && siteId > 0) {
-          void ensureSiteInRows(siteId);
-        }
+        void (async () => {
+          const siteId = Number.parseInt(selectId, 10);
+          if (Number.isFinite(siteId) && siteId > 0) {
+            await ensureSiteInRows(siteId);
+          }
+          const current = getValues("sites") ?? [];
+          const next = current.includes(selectId) ? current : [...current, selectId];
+          setValue("sites", next, { shouldDirty: true, shouldValidate: true });
+        })();
         return;
       }
       if (selectTarget === "contact") {
         const fieldTarget = takeQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
-        const contactId = Number.parseInt(selectId, 10);
-        if (Number.isFinite(contactId) && contactId > 0) {
-          void ensureContactInOptions(contactId);
-        }
-        const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
-        if (additionalMatch) {
-          const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
-          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
-            setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
-              shouldDirty: true,
-              shouldValidate: true,
-            });
-            return;
+        void (async () => {
+          const contactId = Number.parseInt(selectId, 10);
+          if (Number.isFinite(contactId) && contactId > 0) {
+            await ensureContactInOptions(contactId);
           }
-        }
-        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+          const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
+          if (additionalMatch) {
+            const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
+            if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+              setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              return;
+            }
+          }
+          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        })();
         return;
       }
       if (selectTarget === "user") {
@@ -1229,7 +1353,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   return (
     <div className="pb-12">
       <DetailPageHeader
-        title={isEdit ? (existingDetail?.quote_name ?? t("page.editTitle")) : t("page.createTitle")}
+        title={
+          isEdit
+            ? (existingDetail?.quote_name ?? t("page.editTitle"))
+            : isServiceQuotation
+              ? t("page.createServiceTitle")
+              : t("page.createProjectTitle")
+        }
         titleLoading={isEdit && loadingExisting && !existingDetail}
         backHref={safeBack}
         backAriaLabel={t("detail.backAria")}
@@ -1238,7 +1368,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             ? t("page.lastUpdated", {
                 date: dateFmt.format(new Date(existingDetail.modified_at ?? existingDetail.created_at)),
               })
-            : t("page.createSubtitle")
+            : isServiceQuotation
+              ? t("page.createServiceSubtitle")
+              : t("page.createProjectSubtitle")
         }
         actions={
           <div className="flex items-center gap-2">
@@ -1345,7 +1477,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       value={field.value}
                       fallbackLabel={customerSelectFallbackLabel}
                       emptyLabel={t("placeholders.customer")}
-                      disabled={saving || noClients}
+                      disabled={saving || (noClients && !field.value)}
                       invalid={!!errors.customer}
                       onBlur={field.onBlur}
                       onAdd={clientQuickCreate.onAdd}

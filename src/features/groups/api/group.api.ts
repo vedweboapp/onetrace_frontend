@@ -57,9 +57,9 @@ const groupDetailCache = new Map<string, Promise<Group>>();
 
 export async function fetchGroup(id: number): Promise<Group> {
   const cacheKey = `auth:${id}`;
-  if (groupDetailCache.has(cacheKey)) {
-    return groupDetailCache.get(cacheKey)!;
-  }
+  // Dedupe in-flight only — always hit the network on the next detail open/retry.
+  const existing = groupDetailCache.get(cacheKey);
+  if (existing) return existing;
 
   const promise = (async () => {
     try {
@@ -70,8 +70,9 @@ export async function fetchGroup(id: number): Promise<Group> {
       }
       return data as Group;
     } catch (err) {
-      groupDetailCache.delete(cacheKey);
       throw err;
+    } finally {
+      groupDetailCache.delete(cacheKey);
     }
   })();
 
