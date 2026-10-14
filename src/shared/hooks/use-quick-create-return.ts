@@ -27,6 +27,11 @@ type UseQuickCreateReturnArgs = {
   restoreFormDraft?: (draft: unknown) => void;
   /** Persist form (incl. applied select) before clearing the QC draft / stripping URL. */
   persistFormDraft?: () => void;
+  /**
+   * Stable draft key used when navigating away (must match `useQuickCreate` `returnTo`).
+   * Prefer this over deriving from the URL so injected query params stay aligned.
+   */
+  draftReturnTo?: string;
 };
 
 /** Applies `?select=` and `?selectTarget=` after returning from a quick-create form page. */
@@ -35,12 +40,13 @@ export function useQuickCreateReturn({
   onReloadOptions,
   restoreFormDraft,
   persistFormDraft,
+  draftReturnTo: draftReturnToProp,
 }: UseQuickCreateReturnArgs) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const returnToForDraft = React.useMemo(() => {
+  const returnToFromUrl = React.useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete(QUICK_CREATE_SELECT_PARAM);
     params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
@@ -48,32 +54,55 @@ export function useQuickCreateReturn({
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, searchParams]);
 
+  const returnToForDraft = draftReturnToProp?.trim() || returnToFromUrl;
+
+  const onApplySelectRef = React.useRef(onApplySelect);
+  const onReloadOptionsRef = React.useRef(onReloadOptions);
+  const restoreFormDraftRef = React.useRef(restoreFormDraft);
+  const persistFormDraftRef = React.useRef(persistFormDraft);
+  const searchParamsRef = React.useRef(searchParams);
+  onApplySelectRef.current = onApplySelect;
+  onReloadOptionsRef.current = onReloadOptions;
+  restoreFormDraftRef.current = restoreFormDraft;
+  persistFormDraftRef.current = persistFormDraft;
+  searchParamsRef.current = searchParams;
+
+  const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
+  const selectTargetRaw = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+  const selectTarget = isQuickCreateKind(selectTargetRaw) ? selectTargetRaw : null;
+  const hasSelect = Boolean(selectId && /^\d+$/.test(selectId) && selectTarget);
+
   React.useLayoutEffect(() => {
-    if (!restoreFormDraft) return;
-    const draft = loadQuickCreateFormDraft(returnToForDraft);
+    const restore = restoreFormDraftRef.current;
+    if (!restore) return;
+    const draft =
+      loadQuickCreateFormDraft(returnToForDraft) ??
+      (returnToForDraft !== returnToFromUrl ? loadQuickCreateFormDraft(returnToFromUrl) : null);
     if (draft == null) return;
-    restoreFormDraft(draft);
-    // Do not clear here — Strict Mode remounts must be able to restore again, and
-    // selection apply must finish before we drop the snapshot.
-  }, [restoreFormDraft, returnToForDraft]);
+    restore(draft);
+  }, [returnToForDraft, returnToFromUrl, hasSelect, selectId, selectTarget]);
 
   React.useEffect(() => {
-    const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
-    const selectTargetRaw = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
-    if (!selectId || !/^\d+$/.test(selectId) || !isQuickCreateKind(selectTargetRaw)) return;
+    if (!hasSelect || !selectId || !selectTarget) return;
 
     let cancelled = false;
+
     void (async () => {
       try {
-        await onReloadOptions?.();
+        await onReloadOptionsRef.current?.();
         if (cancelled) return;
-        await Promise.resolve(onApplySelect({ selectTarget: selectTargetRaw, selectId }));
+        await Promise.resolve(onApplySelectRef.current({ selectTarget, selectId }));
         if (cancelled) return;
-        persistFormDraft?.();
+        persistFormDraftRef.current?.();
         clearQuickCreateFormDraft(returnToForDraft);
+        if (returnToForDraft !== returnToFromUrl) {
+          clearQuickCreateFormDraft(returnToFromUrl);
+        }
         clearQuickCreateFieldTarget(returnToForDraft);
+        clearQuickCreateFieldTarget(returnToFromUrl);
 
-        const params = new URLSearchParams(searchParams.toString());
+        if (cancelled) return;
+        const params = new URLSearchParams(searchParamsRef.current.toString());
         params.delete(QUICK_CREATE_SELECT_PARAM);
         params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
         const qs = params.toString();
@@ -86,13 +115,5 @@ export function useQuickCreateReturn({
     return () => {
       cancelled = true;
     };
-  }, [
-    searchParams,
-    pathname,
-    router,
-    onApplySelect,
-    onReloadOptions,
-    persistFormDraft,
-    returnToForDraft,
-  ]);
+  }, [hasSelect, selectId, selectTarget, pathname, router, returnToForDraft, returnToFromUrl]);
 }

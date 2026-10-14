@@ -116,6 +116,7 @@ import {
   peekQuickCreateFieldTarget,
   storeQuickCreateFieldTarget,
 } from "@/shared/utils/quick-create-form-draft.util";
+import { isQuickCreateKind } from "@/shared/types/quick-create.types";
 import {
   QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -351,12 +352,69 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [persistFormDraft]);
   const formValuesRestoredRef = React.useRef(false);
 
+  const mergeQuickCreateSelectIntoValues = React.useCallback(
+    (values: QuotationFormValues): QuotationFormValues => {
+      const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
+      const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+      if (!selectId || !/^\d+$/.test(selectId) || !isQuickCreateKind(selectTarget)) return values;
+
+      const next = { ...values };
+      if (selectTarget === "client") {
+        next.customer = selectId;
+        return next;
+      }
+      if (selectTarget === "project") {
+        next.project = selectId;
+        return next;
+      }
+      if (selectTarget === "site") {
+        const sites = next.sites ?? [];
+        next.sites = sites.includes(selectId) ? sites : [...sites, selectId];
+        return next;
+      }
+      if (selectTarget === "contact") {
+        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
+        const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
+        if (additionalMatch) {
+          const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
+          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+            const rows = [...(next.additional_customer_contacts ?? [])];
+            while (rows.length <= rowIdx) rows.push({ contact: "" });
+            rows[rowIdx] = { ...rows[rowIdx], contact: selectId };
+            next.additional_customer_contacts = rows;
+            return next;
+          }
+        }
+        next.primary_customer_contact = selectId;
+        return next;
+      }
+      if (selectTarget === "user") {
+        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        if (fieldTarget === "salesperson") {
+          next.salesperson = selectId;
+          return next;
+        }
+        if (fieldTarget === "technician_ids") {
+          const numericId = Number.parseInt(selectId, 10);
+          if (Number.isFinite(numericId) && numericId > 0) {
+            const current = next.technician_ids ?? [];
+            next.technician_ids = current.includes(numericId) ? current : [...current, numericId];
+          }
+          return next;
+        }
+        next.project_manager = selectId;
+      }
+      return next;
+    },
+    [draftReturnTo, searchParams],
+  );
+
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
       skipPresetFromUrlRef.current = true;
       if (isQuotationFormDraftBundle(draft)) {
         formValuesRestoredRef.current = true;
-        reset(draft.values, { keepDefaultValues: false });
+        reset(mergeQuickCreateSelectIntoValues(draft.values), { keepDefaultValues: false });
         if (draft.formTab) setFormTab(draft.formTab);
         // Section Done restores the latest scope draft first — never overwrite it with a
         // stale quick-create snapshot taken before labour/materials were edited.
@@ -367,9 +425,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return;
       }
       formValuesRestoredRef.current = true;
-      reset(draft as QuotationFormValues, { keepDefaultValues: false });
+      reset(mergeQuickCreateSelectIntoValues(draft as QuotationFormValues), { keepDefaultValues: false });
     },
-    [reset],
+    [mergeQuickCreateSelectIntoValues, reset],
   );
 
   React.useEffect(() => {
@@ -945,18 +1003,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     setValue("sites", [siteOptions[0].value], { shouldValidate: true, shouldDirty: true });
   }, [isServiceQuotation, customerId, projectId, sitesStr, siteOptions, setValue]);
 
-  React.useEffect(() => {
-    const selectedSites = getValues("sites") ?? [];
-    if (selectedSites.length === 0) return;
-    // While the catalog is still loading, keep draft/quick-create selections intact.
-    if (siteOptions.length === 0) return;
-    const valid = new Set(siteOptions.map((s) => s.value));
-    const next = selectedSites.filter((id) => valid.has(id));
-    if (next.length !== selectedSites.length) {
-      setValue("sites", next, { shouldDirty: true, shouldValidate: true });
-    }
-  }, [siteOptions, getValues, setValue]);
-
   const projectOptions = React.useMemo<Option[]>(() => {
     const base = projectRows.map((p) => ({ value: String(p.id), label: p.name }));
     const pid = existingDetail ? getQuotationProjectId(existingDetail.project) : null;
@@ -984,20 +1030,25 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!customerId) return undefined;
     const fromOptions = clientOptions.find((o) => o.value === String(customerId))?.label?.trim();
     if (fromOptions) return fromOptions;
-    if (!existingDetail || getQuotationCustomerId(existingDetail.customer) !== customerId) return undefined;
-    const label = quotationCustomerLabel(existingDetail.customer).trim();
-    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+    if (existingDetail && getQuotationCustomerId(existingDetail.customer) === customerId) {
+      const label = quotationCustomerLabel(existingDetail.customer).trim();
+      if (label && label !== "—") return label;
+    }
+    // Keep the selected chip visible after quick-create before options catch up.
+    return `#${customerId}`;
   }, [customerId, clientOptions, existingDetail]);
 
   const projectSelectFallbackLabel = React.useMemo(() => {
     if (!projectId) return undefined;
     const fromOptions = projectOptions.find((o) => o.value === String(projectId))?.label?.trim();
     if (fromOptions) return fromOptions;
-    if (!existingDetail || getQuotationProjectId(existingDetail.project) !== projectId) return undefined;
-    const nested =
-      existingDetail.project && typeof existingDetail.project === "object" ? existingDetail.project : null;
-    const label = (nested?.name ?? "").trim();
-    return label || undefined;
+    if (existingDetail && getQuotationProjectId(existingDetail.project) === projectId) {
+      const nested =
+        existingDetail.project && typeof existingDetail.project === "object" ? existingDetail.project : null;
+      const label = (nested?.name ?? "").trim();
+      if (label) return label;
+    }
+    return `#${projectId}`;
   }, [projectId, projectOptions, existingDetail]);
 
   const primaryContactFallbackLabel = React.useMemo(() => {
@@ -1005,11 +1056,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!id || !/^\d+$/.test(id)) return undefined;
     const fromOptions = contactOptions.find((o) => o.value === id)?.label?.trim();
     if (fromOptions) return fromOptions;
-    if (!existingDetail || String(getQuotationContactId(existingDetail.primary_customer_contact) ?? "") !== id) {
-      return undefined;
+    if (existingDetail && String(getQuotationContactId(existingDetail.primary_customer_contact) ?? "") === id) {
+      const label = quotationContactLabel(existingDetail.primary_customer_contact).trim();
+      if (label && label !== "—") return label;
     }
-    const label = quotationContactLabel(existingDetail.primary_customer_contact).trim();
-    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+    return `#${id}`;
   }, [primaryContactIdStr, contactOptions, existingDetail]);
 
   const salespersonFallbackLabel = React.useMemo(() => {
@@ -1017,11 +1068,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!id || !/^\d+$/.test(id)) return undefined;
     const fromOptions = salesOptions.find((o) => o.value === id)?.label?.trim();
     if (fromOptions) return fromOptions;
-    if (!existingDetail || String(getQuotationOptionalUserId(existingDetail.salesperson) ?? "") !== id) {
-      return undefined;
+    if (existingDetail && String(getQuotationOptionalUserId(existingDetail.salesperson) ?? "") === id) {
+      const label = quotationUserLabel(existingDetail.salesperson).trim();
+      if (label && label !== "—") return label;
     }
-    const label = quotationUserLabel(existingDetail.salesperson).trim();
-    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+    return `#${id}`;
   }, [salespersonIdStr, salesOptions, existingDetail]);
 
   const projectManagerFallbackLabel = React.useMemo(() => {
@@ -1029,12 +1080,35 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (!id || !/^\d+$/.test(id)) return undefined;
     const fromOptions = managerOptions.find((o) => o.value === id)?.label?.trim();
     if (fromOptions) return fromOptions;
-    if (!existingDetail || String(getQuotationOptionalUserId(existingDetail.project_manager) ?? "") !== id) {
-      return undefined;
+    if (existingDetail && String(getQuotationOptionalUserId(existingDetail.project_manager) ?? "") === id) {
+      const label = quotationUserLabel(existingDetail.project_manager).trim();
+      if (label && label !== "—") return label;
     }
-    const label = quotationUserLabel(existingDetail.project_manager).trim();
-    return label && label !== "—" && !label.startsWith("#") ? label : undefined;
+    return `#${id}`;
   }, [projectManagerIdStr, managerOptions, existingDetail]);
+
+  const sitesFallbackLabels = React.useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const raw of sitesStr ?? []) {
+      const id = String(raw).trim();
+      if (!id || !/^\d+$/.test(id)) continue;
+      if (siteOptions.some((opt) => opt.value === id)) continue;
+      labels[id] = `#${id}`;
+    }
+    return labels;
+  }, [sitesStr, siteOptions]);
+
+  const technicianIdsStr = useWatch({ control, name: "technician_ids" });
+  const techniciansFallbackLabels = React.useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const raw of technicianIdsStr ?? []) {
+      const id = String(raw).trim();
+      if (!id || !/^\d+$/.test(id)) continue;
+      if (technicianOptions.some((opt) => opt.value === id)) continue;
+      labels[id] = `#${id}`;
+    }
+    return labels;
+  }, [technicianIdsStr, technicianOptions]);
 
   const sortedLevelRows = React.useMemo(() => {
     const rows = Array.isArray(levelRows) ? levelRows : [];
@@ -1127,6 +1201,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   }, [isEdit, workingDraftKey, reset, searchParams]);
 
   useQuickCreateReturn({
+    draftReturnTo,
     restoreFormDraft,
     persistFormDraft,
     onReloadOptions: async () => {
@@ -1202,12 +1277,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         const previousCustomer = getValues("customer")?.trim() ?? "";
-        const clientIdNum = Number.parseInt(selectId, 10);
-        if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
-          await ensureClientInOptions(clientIdNum);
-        }
+        // Select immediately so the field is not left empty if option fetch is slow.
         setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
-        // Only clear dependent fields when switching to a different client.
         if (previousCustomer && previousCustomer !== selectId) {
           setValue("project", "", { shouldDirty: true, shouldValidate: true });
           setValue("sites", [], { shouldDirty: true, shouldValidate: true });
@@ -1215,37 +1286,37 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           setValue("additional_customer_contacts", [], { shouldDirty: true });
           setValue("site_contact", "", { shouldDirty: true });
         }
+        const clientIdNum = Number.parseInt(selectId, 10);
+        if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
+          await ensureClientInOptions(clientIdNum);
+        }
         return;
       }
       if (selectTarget === "project") {
         const previousProject = getValues("project")?.trim() ?? "";
-        const projectIdNum = Number.parseInt(selectId, 10);
-        if (Number.isFinite(projectIdNum) && projectIdNum > 0) {
-          await ensureProjectInOptions(projectIdNum);
-        }
         setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
         if (previousProject && previousProject !== selectId) {
           setValue("sites", [], { shouldDirty: true, shouldValidate: true });
           setValue("site_contact", "", { shouldDirty: true });
         }
+        const projectIdNum = Number.parseInt(selectId, 10);
+        if (Number.isFinite(projectIdNum) && projectIdNum > 0) {
+          await ensureProjectInOptions(projectIdNum);
+        }
         return;
       }
       if (selectTarget === "site") {
+        const current = getValues("sites") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
         const siteId = Number.parseInt(selectId, 10);
         if (Number.isFinite(siteId) && siteId > 0) {
           await ensureSiteInRows(siteId);
         }
-        const current = getValues("sites") ?? [];
-        const next = current.includes(selectId) ? current : [...current, selectId];
-        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "contact") {
         const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
-        const contactId = Number.parseInt(selectId, 10);
-        if (Number.isFinite(contactId) && contactId > 0) {
-          await ensureContactInOptions(contactId);
-        }
         const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
         if (additionalMatch) {
           const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
@@ -1254,40 +1325,48 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               shouldDirty: true,
               shouldValidate: true,
             });
-            return;
+          } else {
+            setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
           }
+        } else {
+          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
         }
-        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
+        const contactId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(contactId) && contactId > 0) {
+          await ensureContactInOptions(contactId);
+        }
         return;
       }
       if (selectTarget === "user") {
         const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
         const userId = Number.parseInt(selectId, 10);
         if (fieldTarget === "salesperson") {
-          const value =
-            Number.isFinite(userId) && userId > 0
-              ? await ensureUserInRoleOptions(userId, "sales")
-              : selectId;
-          setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
+          setValue("salesperson", selectId, { shouldDirty: true, shouldValidate: true });
+          if (Number.isFinite(userId) && userId > 0) {
+            const value = await ensureUserInRoleOptions(userId, "sales");
+            if (value !== selectId) {
+              setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
+            }
+          }
           return;
         }
         if (fieldTarget === "technician_ids") {
-          const value =
-            Number.isFinite(userId) && userId > 0
-              ? await ensureUserInRoleOptions(userId, "technician")
-              : selectId;
-          const numericId = Number.parseInt(value, 10);
-          if (!Number.isFinite(numericId) || numericId <= 0) return;
-          const current = getValues("technician_ids") ?? [];
-          const next = current.includes(numericId) ? current : [...current, numericId];
-          setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
+          const numericId = Number.parseInt(selectId, 10);
+          if (Number.isFinite(numericId) && numericId > 0) {
+            const current = getValues("technician_ids") ?? [];
+            const next = current.includes(numericId) ? current : [...current, numericId];
+            setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
+            await ensureUserInRoleOptions(userId, "technician");
+          }
           return;
         }
-        const value =
-          Number.isFinite(userId) && userId > 0
-            ? await ensureUserInRoleOptions(userId, "manager")
-            : selectId;
-        setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
+        setValue("project_manager", selectId, { shouldDirty: true, shouldValidate: true });
+        if (Number.isFinite(userId) && userId > 0) {
+          const value = await ensureUserInRoleOptions(userId, "manager");
+          if (value !== selectId) {
+            setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
+          }
+        }
       }
     },
   });
@@ -1576,6 +1655,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving || (isServiceQuotation ? !customerId : !projectId)}
                       placeholder={t("placeholders.site")}
                       listLabel={t("fields.sites")}
+                      fallbackLabels={sitesFallbackLabels}
                       onAdd={siteQuickCreate.onAdd}
                       addAriaLabel={siteQuickCreate.addAriaLabel}
                       addLabel={siteQuickCreate.addLabel}
@@ -1754,6 +1834,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving}
                       listLabel={t("fields.technicians")}
                       placeholder={t("placeholders.userOptional")}
+                      fallbackLabels={techniciansFallbackLabels}
                       onAdd={technicianQuickCreate.onAdd}
                       addAriaLabel={technicianQuickCreate.addAriaLabel}
                       addLabel={technicianQuickCreate.addLabel}
