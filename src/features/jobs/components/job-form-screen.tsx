@@ -532,6 +532,12 @@ export function JobFormScreen({ mode, jobId }: Props) {
 
   useQuickCreateReturn({
     restoreFormDraft,
+    persistFormDraft: !isEdit
+      ? () => {
+          const returnTo = draftReturnTo;
+          if (returnTo) saveQuickCreateFormDraft(returnTo, getFormDraft());
+        }
+      : undefined,
     onReloadOptions: async () => {
       await reloadClients();
       await reloadProjects();
@@ -539,52 +545,45 @@ export function JobFormScreen({ mode, jobId }: Props) {
       await reloadForms(formSearch);
       await reloadGroupsAndItems();
     },
-    onApplySelect: ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         const previousClient = getValues("client")?.trim() ?? "";
-        void (async () => {
-          const id = Number.parseInt(selectId, 10);
-          if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
-          setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
-          if (previousClient && previousClient !== selectId) {
-            setValue("project", "", { shouldDirty: true });
-            setValue("site", "", { shouldDirty: true });
-          }
-        })();
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
+        setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
+        if (previousClient && previousClient !== selectId) {
+          setValue("project", "", { shouldDirty: true });
+          setValue("site", "", { shouldDirty: true });
+        }
         return;
       }
       if (selectTarget === "project") {
         const previousProject = getValues("project")?.trim() ?? "";
-        void (async () => {
-          const id = Number.parseInt(selectId, 10);
-          if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
-          setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-          if (previousProject && previousProject !== selectId) {
-            setValue("site", "", { shouldDirty: true });
-          }
-        })();
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
+        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+        if (previousProject && previousProject !== selectId) {
+          setValue("site", "", { shouldDirty: true });
+        }
         return;
       }
       if (selectTarget === "site") {
-        void (async () => {
-          const id = Number.parseInt(selectId, 10);
-          if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
-          setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
-        })();
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
+        setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "group") {
         setValue("job_meta_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
         setGroupOptions((prev) => ensureCheckmarkOption(prev, selectId, `Group #${selectId}`));
-        void fetchGroup(Number.parseInt(selectId, 10))
-          .then((g) => {
-            const label = g.name?.trim() || `Group #${g.id}`;
-            setGroupOptions((prev) => ensureCheckmarkOption(prev, String(g.id), label));
-            setValue("job_meta_items.0.group_name", label, { shouldDirty: true });
-          })
-          .catch(() => {
-            setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
-          });
+        try {
+          const g = await fetchGroup(Number.parseInt(selectId, 10));
+          const label = g.name?.trim() || `Group #${g.id}`;
+          setGroupOptions((prev) => ensureCheckmarkOption(prev, String(g.id), label));
+          setValue("job_meta_items.0.group_name", label, { shouldDirty: true });
+        } catch {
+          setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
+        }
         return;
       }
       if (selectTarget === "item") {
@@ -596,7 +595,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
           shouldDirty: true,
           shouldValidate: true,
         });
-        void reloadGroupsAndItems();
+        await reloadGroupsAndItems();
       }
     },
   });

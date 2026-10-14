@@ -10,6 +10,7 @@ import {
   QUICK_CREATE_SELECT_TARGET_PARAM,
 } from "@/shared/utils/quick-create-navigation.util";
 import {
+  clearQuickCreateFieldTarget,
   clearQuickCreateFormDraft,
   loadQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
@@ -19,12 +20,13 @@ export type QuickCreateSelectApplied = {
   selectId: string;
 };
 
-
 type UseQuickCreateReturnArgs = {
-  onApplySelect: (args: QuickCreateSelectApplied) => void;
+  onApplySelect: (args: QuickCreateSelectApplied) => void | Promise<void>;
   onReloadOptions?: () => void | Promise<void>;
   /** Restores form values saved before navigating to quick create. */
   restoreFormDraft?: (draft: unknown) => void;
+  /** Persist form (incl. applied select) before clearing the QC draft / stripping URL. */
+  persistFormDraft?: () => void;
 };
 
 /** Applies `?select=` and `?selectTarget=` after returning from a quick-create form page. */
@@ -32,11 +34,11 @@ export function useQuickCreateReturn({
   onApplySelect,
   onReloadOptions,
   restoreFormDraft,
+  persistFormDraft,
 }: UseQuickCreateReturnArgs) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const appliedRef = React.useRef(false);
 
   const returnToForDraft = React.useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -45,42 +47,52 @@ export function useQuickCreateReturn({
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, searchParams]);
- 
+
   React.useLayoutEffect(() => {
     if (!restoreFormDraft) return;
     const draft = loadQuickCreateFormDraft(returnToForDraft);
     if (draft == null) return;
     restoreFormDraft(draft);
-    // Clear only after a real quick-create return (`?select=`). Section-scope remounts
-    // must keep the snapshot so Details fields can be restored.
-    if (searchParams.get(QUICK_CREATE_SELECT_PARAM)) {
-      clearQuickCreateFormDraft(returnToForDraft);
-    }
-  }, [restoreFormDraft, returnToForDraft, searchParams]);
+    // Do not clear here — Strict Mode remounts must be able to restore again, and
+    // selection apply must finish before we drop the snapshot.
+  }, [restoreFormDraft, returnToForDraft]);
 
   React.useEffect(() => {
-    if (appliedRef.current) return;
     const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
     const selectTargetRaw = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
     if (!selectId || !/^\d+$/.test(selectId) || !isQuickCreateKind(selectTargetRaw)) return;
 
-    appliedRef.current = true;
+    let cancelled = false;
     void (async () => {
-      await onReloadOptions?.();
-      onApplySelect({ selectTarget: selectTargetRaw, selectId });
+      try {
+        await onReloadOptions?.();
+        if (cancelled) return;
+        await Promise.resolve(onApplySelect({ selectTarget: selectTargetRaw, selectId }));
+        if (cancelled) return;
+        persistFormDraft?.();
+        clearQuickCreateFormDraft(returnToForDraft);
+        clearQuickCreateFieldTarget(returnToForDraft);
 
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete(QUICK_CREATE_SELECT_PARAM);
-      params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(QUICK_CREATE_SELECT_PARAM);
+        params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      } catch {
+        // Leave select params / draft so a refresh can retry.
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     searchParams,
     pathname,
     router,
     onApplySelect,
     onReloadOptions,
+    persistFormDraft,
     returnToForDraft,
   ]);
 }

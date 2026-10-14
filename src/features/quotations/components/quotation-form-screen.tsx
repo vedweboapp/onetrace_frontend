@@ -113,8 +113,8 @@ import {
   clearQuickCreateFormDraft,
   loadQuickCreateFormDraft,
   saveQuickCreateFormDraft,
+  peekQuickCreateFieldTarget,
   storeQuickCreateFieldTarget,
-  takeQuickCreateFieldTarget,
 } from "@/shared/utils/quick-create-form-draft.util";
 import {
   QUICK_CREATE_SELECT_PARAM,
@@ -607,7 +607,15 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     (async () => {
       try {
         const { items: clients } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true });
-        if (!cancelled) setClientOptions(clientsToSelectOptions(clients));
+        if (cancelled) return;
+        setClientOptions((prev) => {
+          const incoming = clientsToSelectOptions(clients);
+          const selectedId = getValues("customer")?.trim() ?? "";
+          if (!selectedId) return incoming;
+          if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+          const kept = prev.find((opt) => opt.value === selectedId);
+          return kept ? [kept, ...incoming] : incoming;
+        });
       } catch {
         if (!cancelled) setClientOptions([]);
       }
@@ -615,7 +623,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [catalogEpoch]);
+  }, [catalogEpoch, getValues]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -664,11 +672,32 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     (async () => {
       try {
         const byRole = await fetchUsersForAppRoles(["technician", "sales", "manager"]);
-        if (!cancelled) {
-          setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
-          setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
-          setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
-        }
+        if (cancelled) return;
+        const mergeSelected = (
+          incoming: Option[],
+          selectedIds: string[],
+          prev: Option[],
+        ): Option[] => {
+          const merged = [...incoming];
+          for (const id of selectedIds) {
+            if (!id || merged.some((opt) => opt.value === id)) continue;
+            const kept = prev.find((opt) => opt.value === id);
+            if (kept) merged.push(kept);
+          }
+          return merged;
+        };
+        const techSelected = (getValues("technician_ids") ?? []).map(String);
+        const salesSelected = [getValues("salesperson")?.trim() ?? ""].filter(Boolean);
+        const managerSelected = [getValues("project_manager")?.trim() ?? ""].filter(Boolean);
+        setTechnicianOptions((prev) =>
+          mergeSelected(userProfilesToSelectOptions(byRole.technician ?? []), techSelected, prev),
+        );
+        setSalesOptions((prev) =>
+          mergeSelected(userProfilesToSelectOptions(byRole.sales ?? []), salesSelected, prev),
+        );
+        setManagerOptions((prev) =>
+          mergeSelected(userProfilesToSelectOptions(byRole.manager ?? []), managerSelected, prev),
+        );
       } catch {
         if (!cancelled) {
           setTechnicianOptions([]);
@@ -680,7 +709,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [catalogEpoch]);
+  }, [catalogEpoch, getValues]);
 
   const siteSourceKeyRef = React.useRef(`${customerId ?? ""}:${projectId ?? ""}:${isServiceQuotation}`);
   React.useEffect(() => {
@@ -1083,8 +1112,23 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (restoredDraftRef.current) clearTakenQuotationSectionScopeDraft();
   }, []);
 
+  // After quick-create return (or Strict Mode remount), restore Details fields from the
+  // working-form snapshot when the QC draft was already consumed.
+  React.useLayoutEffect(() => {
+    if (formValuesRestoredRef.current || isEdit) return;
+    // Prefer QC draft restore when `?select=` is present (handled by useQuickCreateReturn).
+    if (searchParams.get(QUICK_CREATE_SELECT_PARAM)) return;
+    const fromWorking = readQuotationFormValuesDraft<QuotationFormDraftBundle>(workingDraftKey);
+    if (!fromWorking || !isQuotationFormDraftBundle(fromWorking)) return;
+    formValuesRestoredRef.current = true;
+    skipPresetFromUrlRef.current = true;
+    reset(fromWorking.values, { keepDefaultValues: false });
+    if (fromWorking.formTab) setFormTab(fromWorking.formTab);
+  }, [isEdit, workingDraftKey, reset, searchParams]);
+
   useQuickCreateReturn({
     restoreFormDraft,
+    persistFormDraft,
     onReloadOptions: async () => {
       const values = getValues();
       const reloadCustomerId = parseFormIdField(values.customer);
@@ -1155,105 +1199,95 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         mergeSiteRowsPreservingSelected(rows);
       }
     },
-    onApplySelect: ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         const previousCustomer = getValues("customer")?.trim() ?? "";
-        void (async () => {
-          const clientIdNum = Number.parseInt(selectId, 10);
-          if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
-            await ensureClientInOptions(clientIdNum);
-          }
-          setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
-          // Only clear dependent fields when switching to a different client.
-          if (previousCustomer && previousCustomer !== selectId) {
-            setValue("project", "", { shouldDirty: true, shouldValidate: true });
-            setValue("sites", [], { shouldDirty: true, shouldValidate: true });
-            setValue("primary_customer_contact", "", { shouldDirty: true });
-            setValue("additional_customer_contacts", [], { shouldDirty: true });
-            setValue("site_contact", "", { shouldDirty: true });
-          }
-        })();
+        const clientIdNum = Number.parseInt(selectId, 10);
+        if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
+          await ensureClientInOptions(clientIdNum);
+        }
+        setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
+        // Only clear dependent fields when switching to a different client.
+        if (previousCustomer && previousCustomer !== selectId) {
+          setValue("project", "", { shouldDirty: true, shouldValidate: true });
+          setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+          setValue("primary_customer_contact", "", { shouldDirty: true });
+          setValue("additional_customer_contacts", [], { shouldDirty: true });
+          setValue("site_contact", "", { shouldDirty: true });
+        }
         return;
       }
       if (selectTarget === "project") {
         const previousProject = getValues("project")?.trim() ?? "";
-        void (async () => {
-          const projectIdNum = Number.parseInt(selectId, 10);
-          if (Number.isFinite(projectIdNum) && projectIdNum > 0) {
-            await ensureProjectInOptions(projectIdNum);
-          }
-          setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-          if (previousProject && previousProject !== selectId) {
-            setValue("sites", [], { shouldDirty: true, shouldValidate: true });
-            setValue("site_contact", "", { shouldDirty: true });
-          }
-        })();
+        const projectIdNum = Number.parseInt(selectId, 10);
+        if (Number.isFinite(projectIdNum) && projectIdNum > 0) {
+          await ensureProjectInOptions(projectIdNum);
+        }
+        setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
+        if (previousProject && previousProject !== selectId) {
+          setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+          setValue("site_contact", "", { shouldDirty: true });
+        }
         return;
       }
       if (selectTarget === "site") {
-        void (async () => {
-          const siteId = Number.parseInt(selectId, 10);
-          if (Number.isFinite(siteId) && siteId > 0) {
-            await ensureSiteInRows(siteId);
-          }
-          const current = getValues("sites") ?? [];
-          const next = current.includes(selectId) ? current : [...current, selectId];
-          setValue("sites", next, { shouldDirty: true, shouldValidate: true });
-        })();
+        const siteId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(siteId) && siteId > 0) {
+          await ensureSiteInRows(siteId);
+        }
+        const current = getValues("sites") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "contact") {
-        const fieldTarget = takeQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
-        void (async () => {
-          const contactId = Number.parseInt(selectId, 10);
-          if (Number.isFinite(contactId) && contactId > 0) {
-            await ensureContactInOptions(contactId);
+        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
+        const contactId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(contactId) && contactId > 0) {
+          await ensureContactInOptions(contactId);
+        }
+        const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
+        if (additionalMatch) {
+          const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
+          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+            setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            return;
           }
-          const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
-          if (additionalMatch) {
-            const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
-            if (Number.isFinite(rowIdx) && rowIdx >= 0) {
-              setValue(`additional_customer_contacts.${rowIdx}.contact`, selectId, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-              return;
-            }
-          }
-          setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
-        })();
+        }
+        setValue("primary_customer_contact", selectId, { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "user") {
-        const fieldTarget = takeQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
         const userId = Number.parseInt(selectId, 10);
-        void (async () => {
-          if (fieldTarget === "salesperson") {
-            const value =
-              Number.isFinite(userId) && userId > 0
-                ? await ensureUserInRoleOptions(userId, "sales")
-                : selectId;
-            setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
-            return;
-          }
-          if (fieldTarget === "technician_ids") {
-            const value =
-              Number.isFinite(userId) && userId > 0
-                ? await ensureUserInRoleOptions(userId, "technician")
-                : selectId;
-            const numericId = Number.parseInt(value, 10);
-            if (!Number.isFinite(numericId) || numericId <= 0) return;
-            const current = getValues("technician_ids") ?? [];
-            const next = current.includes(numericId) ? current : [...current, numericId];
-            setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
-            return;
-          }
+        if (fieldTarget === "salesperson") {
           const value =
             Number.isFinite(userId) && userId > 0
-              ? await ensureUserInRoleOptions(userId, "manager")
+              ? await ensureUserInRoleOptions(userId, "sales")
               : selectId;
-          setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
-        })();
+          setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
+          return;
+        }
+        if (fieldTarget === "technician_ids") {
+          const value =
+            Number.isFinite(userId) && userId > 0
+              ? await ensureUserInRoleOptions(userId, "technician")
+              : selectId;
+          const numericId = Number.parseInt(value, 10);
+          if (!Number.isFinite(numericId) || numericId <= 0) return;
+          const current = getValues("technician_ids") ?? [];
+          const next = current.includes(numericId) ? current : [...current, numericId];
+          setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
+          return;
+        }
+        const value =
+          Number.isFinite(userId) && userId > 0
+            ? await ensureUserInRoleOptions(userId, "manager")
+            : selectId;
+        setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
