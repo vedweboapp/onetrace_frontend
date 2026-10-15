@@ -11,7 +11,11 @@ import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { JOB_CATEGORY } from "@/features/jobs/constants/job-category";
 import type { Job } from "@/features/jobs/types/job.types";
-import { fetchQuotation, createJobFromServiceQuotation, updateQuotation } from "@/features/quotations/api/quotation.api";
+import {
+  fetchQuotation,
+  createJobFromServiceQuotation,
+  updateQuotation,
+} from "@/features/quotations/api/quotation.api";
 import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
@@ -400,8 +404,9 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     };
   }, [detailForSite]);
 
+
   const fetchDetailWithVendors = React.useCallback(
-    (id: number) => fetchQuotation(id, { include: "vendors" }),
+    (id: number) => fetchQuotation(id, { include: ["vendors", "html"] }),
     [],
   );
 

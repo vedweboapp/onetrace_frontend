@@ -239,6 +239,9 @@ export interface TemplateKeyItem {
   Key: string;
   Type: string;
   Module: string;
+  Columns?: string[];
+  columns?: string[];
+  [key: string]: unknown;
 }
 
 /**
@@ -260,18 +263,16 @@ const HTML_ELEMENTS = new Set([
 ]);
 
 /**
- * Parses the TipTap HTML content and extracts all unique variable tags.
+ * Parses the TipTap HTML content and extracts all unique variable tags,
+ * as well as items/pins table blocks with their configured columns.
  *
- * Handles BOTH formats TipTap produces:
+ * Handles:
  *  - Raw tag inserted into text:  &lt;comment&gt;  (HTML-encoded in saved HTML)
  *  - Unencoded (edge cases):      <comment>
- *
- * Tag formats understood:
- *  - Primary field:  <field_name>          → Key: "field_name", Module: primaryModule, Type: "text"
- *  - Related field:  <module.field_name>   → Key: "field_name", Module: "module",      Type: "text"
+ *  - Items / Pins Table blocks:   <div data-pins-table="true" ...> → Key: "items_table", Type: "table", Module: "pins", Columns: [...]
  *
  * Returns an array matching the required request shape:
- * { Keys: [{ Key, Type, Module }] }
+ * { Keys: [{ Key, Type, Module, Columns }] }
  */
 export function extractTemplateKeys(
   htmlContent: string,
@@ -317,12 +318,223 @@ export function extractTemplateKeys(
     processMatch(match[1]);
   }
 
+  // 3. Match items table / pins table blocks:
+  //    <div data-pins-table="true" data-key="..." data-module="..." data-type="..." data-columns="...">
+  const PINS_TABLE_REGEX = /<div\b([^>]*\bdata-pins-table=["']?true["']?[^>]*)>/gi;
+  let tableMatch: RegExpExecArray | null;
+  while ((tableMatch = PINS_TABLE_REGEX.exec(htmlContent)) !== null) {
+    const attrsStr = tableMatch[1];
+
+    const keyMatch = attrsStr.match(/\bdata-key=["']([^"']*)["']/i);
+    const tableKey = keyMatch?.[1] || "items_table";
+
+    // Deduplicate if already extracted
+    const dedupeKey = `table:${tableKey.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    const typeMatch = attrsStr.match(/\bdata-type=["']([^"']*)["']/i);
+    const rawType = typeMatch?.[1];
+    const tableType = !rawType || rawType === "table" ? "item_table" : rawType;
+
+    const modMatch = attrsStr.match(/\bdata-module=["']([^"']*)["']/i);
+    const tableModule = modMatch?.[1] || "pins";
+
+    const colsMatch = attrsStr.match(/\bdata-columns=["']([^"']*)["']/i);
+    let columnsList: string[] = [];
+    if (colsMatch && colsMatch[1]) {
+      const rawCols = colsMatch[1];
+      if (rawCols.startsWith("[") && rawCols.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(rawCols);
+          if (Array.isArray(parsed)) columnsList = parsed;
+        } catch {
+          columnsList = rawCols.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+      } else {
+        columnsList = rawCols.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+    }
+
+    if (columnsList.length === 0) {
+      columnsList = ["snapshot", "location", "item_name", "variation", "quantity", "unit_price", "total_price"];
+    }
+
+    // Rule: Quantity and Price cannot be omitted
+    const colSet = new Set(columnsList);
+    colSet.add("quantity");
+    colSet.add("unit_price");
+    colSet.add("total_price");
+    columnsList = Array.from(colSet);
+
+    keys.push({
+      Key: tableKey,
+      Type: tableType,
+      Module: tableModule,
+      Columns: columnsList,
+      columns: columnsList,
+    });
+  }
+
+  // 4. Match signature blocks:
+  //    <div data-signature-block="true" data-image-key="..." data-label="...">
+  const SIGNATURE_BLOCK_REGEX = /<div\b([^>]*\bdata-signature-block=["']?true["']?[^>]*)>/gi;
+  let sigMatch: RegExpExecArray | null;
+  while ((sigMatch = SIGNATURE_BLOCK_REGEX.exec(htmlContent)) !== null) {
+    const attrsStr = sigMatch[1];
+
+    const imgKeyMatch = attrsStr.match(/\bdata-image-key=["']([^"']*)["']/i);
+    const imageKey = imgKeyMatch?.[1] || "";
+
+    const labelMatch = attrsStr.match(/\bdata-label=["']([^"'"]*)["']/i);
+    const label = labelMatch?.[1] || "Client Sign";
+
+    const dedupeKey = `signature:${imageKey.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    keys.push({
+      Key: imageKey || "signature",
+      Type: "signature",
+      Module: primaryModule,
+      label,
+    } as TemplateKeyItem);
+  }
+
   return keys;
 }
 
 
 /**
+ * Replaces preview divs of the items/pins table AND signature blocks in the HTML content with
+ * clean comments (<!-- items_table --> and <!-- signature:key -->) for sending in the payload.
+ */
+export function serializeContentWithTableComments(html: string): string {
+  if (!html) return html;
+
+  // 1. Serialize pins/items table blocks → <!-- items_table -->
+  let result = html.replace(
+    /<div\b[^>]*\bdata-pins-table=["']?true["']?[^>]*>(?:[\s\S]*?<\/div>|)/gi,
+    (match) => {
+      const keyMatch = match.match(/\bdata-key=["']([^"']*)["']/i);
+      const key = keyMatch?.[1] || "items_table";
+      return `<!-- ${key} -->`;
+    },
+  );
+
+  // 2. Serialize signature blocks → <!-- signature:imageKey:label -->
+  result = result.replace(
+    /<div\b[^>]*\bdata-signature-block=["']?true["']?[^>]*>(?:[\s\S]*?<\/div>|)/gi,
+    (match) => {
+      const imgKeyMatch = match.match(/\bdata-image-key=["']([^"']*)["']/i);
+      const labelMatch = match.match(/\bdata-label=["']([^"']*)["']/i);
+      const imageKey = imgKeyMatch?.[1] || "";
+      const label = labelMatch?.[1] || "Client Sign";
+      return `<!-- signature:${imageKey}:${encodeURIComponent(label)} -->`;
+    },
+  );
+
+  return result;
+}
+
+/**
+ * Detects items table signature comments or tags in the saved HTML content
+ * (e.g. <!-- items_table --> or <!-- item_table --> or <items_table>)
+ * and fetches the configuration from the keys array to dynamically render
+ * the preview table with the configured columns in the editor.
+ */
+export function hydrateTablesFromKeys(
+  html: string,
+  keys?: { Key?: string; Type?: string; Module?: string; Columns?: string[]; columns?: string[] }[],
+): string {
+  if (!html) return html;
+
+  const tableKeyItems = Array.isArray(keys)
+    ? keys.filter(
+        (k) =>
+          k.Type === "item_table" ||
+          k.Key === "items_table" ||
+          k.Key === "pins_table" ||
+          (k as any).type === "item_table",
+      )
+    : [];
+
+  const defaultTableKeyItem = tableKeyItems[0];
+
+  const SIGNATURE_REGEX =
+    /(?:<!--\s*(items?_table|pins(?:_table)?)\s*-->|&lt;\s*(items?_table|pins(?:_table)?)\s*&gt;|<\s*(items?_table|pins(?:_table)?)\s*>)/gi;
+
+  const replaceWithDiv = (sigKey: string) => {
+    const matchedKeyItem =
+      tableKeyItems.find(
+        (k) => k.Key?.toLowerCase() === sigKey.toLowerCase(),
+      ) || defaultTableKeyItem;
+
+    const rawCols =
+      matchedKeyItem?.Columns ||
+      matchedKeyItem?.columns ||
+      ["snapshot", "location", "item_name", "variation", "quantity", "unit_price", "total_price"];
+
+    const colSet = new Set(rawCols);
+    colSet.add("quantity");
+    colSet.add("unit_price");
+    colSet.add("total_price");
+    const cols = Array.from(colSet);
+
+    const key = matchedKeyItem?.Key || sigKey || "items_table";
+    const type = matchedKeyItem?.Type || "item_table";
+    const module = matchedKeyItem?.Module || "pins";
+
+    return `<div data-pins-table="true" data-key="${key}" data-type="${type}" data-module="${module}" data-columns="${cols.join(",")}" data-title="Pins List" data-include-total="true"></div>`;
+  };
+
+  // If already contains <div data-pins-table="true", synchronize columns from keys if present
+  if (/<div\b[^>]*\bdata-pins-table=["']?true["']?/i.test(html)) {
+    return html.replace(
+      /<div\b([^>]*\bdata-pins-table=["']?true["']?[^>]*)>/gi,
+      (match, attrsStr) => {
+        const keyMatch = attrsStr.match(/\bdata-key=["']([^"']*)["']/i);
+        const key = keyMatch?.[1] || "items_table";
+        const matchedKeyItem =
+          tableKeyItems.find(
+            (k) => k.Key?.toLowerCase() === key.toLowerCase(),
+          ) || defaultTableKeyItem;
+
+        if (matchedKeyItem && (matchedKeyItem.Columns || matchedKeyItem.columns)) {
+          const cols = matchedKeyItem.Columns || matchedKeyItem.columns;
+          return match.replace(
+            /\bdata-columns=["'][^"']*["']/i,
+            `data-columns="${cols!.join(",")}"`,
+          );
+        }
+        return match;
+      },
+    );
+  }
+
+  // Replace table signature comments -> preview divs
+  let result = html.replace(SIGNATURE_REGEX, (_full, g1, g2, g3) => {
+    const sigKey = g1 || g2 || g3 || "items_table";
+    return replaceWithDiv(sigKey);
+  });
+
+  // Replace signature block comments -> signature preview divs
+  // Pattern: <!-- signature:imageKey:encodedLabel -->
+  result = result.replace(
+    /<!--\s*signature:([^:\s]*):?([^-\s]*)\s*-->/gi,
+    (_full, imageKey, encodedLabel) => {
+      const label = encodedLabel ? decodeURIComponent(encodedLabel) : "Client Sign";
+      return `<div data-signature-block="true" data-image-key="${imageKey || ""}" data-label="${label}"></div>`;
+    },
+  );
+
+  return result;
+}
+
+
+/**
  * Builds the template save payload as a plain object including Keys extracted from content.
+ * Content is sent with a clean comment signature <!-- items_table --> instead of the preview div.
  */
 export function buildTemplateSaveObject(params: {
   name: string;
@@ -335,12 +547,16 @@ export function buildTemplateSaveObject(params: {
   const { name, content, moduleName = "quotations", ...rest } = params;
   const keys = extractTemplateKeys(content, moduleName);
 
+  // Send clean signature comment <!-- items_table --> instead of the preview div
+  const payloadContent = serializeContentWithTableComments(content);
+
   return {
     template_name: name,
-    content,
+    content: payloadContent,
     module_name: moduleName,
     ...rest,
     keys,
+    Keys: keys,
   };
 }
 
@@ -468,8 +684,9 @@ export function buildTemplateFormData(params: {
   // 3. Assemble FormData (Pure multipart with NO base64 strings)
   const fd = new FormData();
   fd.append("template_name", name);
-  // Send clean HTML content without base64 strings so the payload is lightweight and references binary files
-  fd.append("content", cleanHtml);
+  // Send clean HTML content without base64 strings and with signature comments instead of preview divs
+  const payloadHtml = serializeContentWithTableComments(cleanHtml);
+  fd.append("content", payloadHtml);
   fd.append("module_name", moduleName);
   fd.append("keys", JSON.stringify(keys));
 

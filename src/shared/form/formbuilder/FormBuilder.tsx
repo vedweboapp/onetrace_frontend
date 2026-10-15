@@ -1170,7 +1170,7 @@ export default function FormBuilderLayout({
     setDirty(true);
   };
 
-  const handleSave = async (isClose = false) => {
+  const handleSave = async (isClose = false, isPublish = false) => {
     if (!moduleName.trim()) {
       setModuleNameInvalid(true);
       return;
@@ -1494,6 +1494,11 @@ export default function FormBuilderLayout({
             rules: formatRulesPayload(rules),
           };
         }
+      }
+
+      // Mark as published when triggered from "Save and Publish"
+      if (isPublish) {
+        finalPayload.is_published = true;
       }
 
       if (
@@ -1919,7 +1924,7 @@ export default function FormBuilderLayout({
         </div>
 
         {/* Row 3 (mobile): 3 equal-width buttons — no overflow */}
-        <div className="grid grid-cols-3 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
+        <div className="grid grid-cols-4 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
           <Button
             variant="secondary"
             onClick={() => router.push(BackUrl)}
@@ -1934,6 +1939,14 @@ export default function FormBuilderLayout({
             className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
           >
             Save and Close
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => handleSave(false, true)}
+            disabled={!dirty || saving}
+            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
+          >
+            {saving ? "Publishing…" : "Save and Publish"}
           </Button>
           <Button
             onClick={() => handleSave(false)}

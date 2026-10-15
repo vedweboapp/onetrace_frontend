@@ -246,6 +246,8 @@ export type QuotationCreatePayload = {
   grand_total?: number | null;
   /** Quote workflow status: draft | sent | approved | rejected. */
   status?: string | null;
+  /** Template ID associated with this quotation. */
+  template?: number | null;
 };
 
 export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
@@ -393,6 +395,18 @@ export type QuotationDetail = QuotationListItem & {
   /** Vendor quotation submissions returned when fetched with ?include=vendors */
   vendors?: QuotationVendorSubmission[];
   vendors_quote_details?: QuotationVendorSubmission[];
+  /** Selected template id or nested object */
+  template?: number | { id: number; name?: string; template_name?: string } | null;
+  template_id?: string | number | null;
+  template_name?: string | null;
+  /** Rendered template HTML returned when fetched with ?include=html */
+  html?: string | null;
+  html_string?: string | null;
+  page_width?: string | null;
+  page_height?: string | null;
+  orientation?: string | null;
+  template_type?: string | null;
+  template_type_formatted?: string | null;
 };
 
 export type QuotationPagination = {

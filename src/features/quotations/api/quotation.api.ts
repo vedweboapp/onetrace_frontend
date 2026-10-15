@@ -83,20 +83,69 @@ export async function fetchAllQuotationIds(filters?: QuotationListFilters): Prom
 }
 
 export type FetchQuotationOptions = {
-  include?: string;
+  include?: string | string[];
 };
 
 export async function fetchQuotation(
   id: number,
   options?: FetchQuotationOptions,
 ): Promise<QuotationDetail> {
-  const params: Record<string, string> = {};
-  if (options?.include) params.include = options.include;
-  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), {
-    params: Object.keys(params).length > 0 ? params : undefined,
-  });
+  const searchParams = new URLSearchParams();
+  if (Array.isArray(options?.include)) {
+    options.include.forEach((inc) => searchParams.append("include", inc));
+  } else if (typeof options?.include === "string") {
+    if (options.include.includes("&")) {
+      const parts = options.include.split("&");
+      parts.forEach((p) => {
+        const [k, v] = p.split("=");
+        searchParams.append(k.replace(/^\?/, ""), v || "");
+      });
+    } else {
+      searchParams.append("include", options.include);
+    }
+  }
+
+  const qs = searchParams.toString();
+  const url = qs ? `${QUOTATION_PATHS.detail(id)}?${qs}` : QUOTATION_PATHS.detail(id);
+
+  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(url);
   assertApiSuccess(data);
   return data.data;
+}
+
+export type QuotationTemplateOption = {
+  id: number;
+  name: string;
+  [key: string]: unknown;
+};
+
+/**
+ * Fetches templates configured for the quotations module from `settings/templates/?module_name=quotations&dropdown=true`
+ */
+export async function fetchQuotationTemplatesDropdown(): Promise<QuotationTemplateOption[]> {
+  try {
+    const { data } = await api.get("settings/templates", {
+      params: {
+        module_name: "quotations",
+        dropdown: true,
+      },
+      skipErrorToast: true,
+    });
+    const items =
+      (data && typeof data === "object" && "data" in data && Array.isArray((data as any).data))
+        ? (data as any).data
+        : Array.isArray(data)
+        ? data
+        : [];
+    return items.map((item: any) => ({
+      id: Number(item.id),
+      name: item.name || item.template_name || `Template #${item.id}`,
+      ...item,
+    }));
+  } catch (err) {
+    console.warn("Failed to load quotation templates dropdown:", err);
+    return [];
+  }
 }
 
 export async function createQuotation(body: QuotationCreatePayload): Promise<QuotationDetail> {
