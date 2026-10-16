@@ -1167,9 +1167,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     if (existing && isQuotationFormDraftBundle(existing)) {
       formValuesRestoredRef.current = true;
       skipPresetFromUrlRef.current = true;
-      reset(existing.values, { keepDefaultValues: false });
+      // Always merge quick-create `?select=` so section restore cannot wipe the new client/site.
+      const mergedValues = mergeQuickCreateSelectIntoValues(existing.values);
+      reset(mergedValues, { keepDefaultValues: false });
       const bundle = {
-        values: existing.values,
+        values: mergedValues,
         quoteDraft: restored,
         formTab: "pricing" as const,
       };
@@ -1179,7 +1181,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     }
     clearTakenQuotationSectionScopeDraft();
     setFormTab("pricing");
-  }, [workingDraftKey, draftReturnTo, pathname, reset]);
+  }, [workingDraftKey, draftReturnTo, pathname, reset, mergeQuickCreateSelectIntoValues]);
 
   React.useEffect(() => {
     // Drop stale taken cache after apply so a later section round-trip can consume again.
@@ -1206,7 +1208,14 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     persistFormDraft,
     onReloadOptions: async () => {
       const values = getValues();
-      const reloadCustomerId = parseFormIdField(values.customer);
+      const selectIdFromUrl = searchParams.get(QUICK_CREATE_SELECT_PARAM);
+      const selectTargetFromUrl = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+      const selectedCustomerId =
+        values.customer?.trim() ||
+        (selectTargetFromUrl === "client" && selectIdFromUrl ? selectIdFromUrl : "") ||
+        "";
+      const reloadCustomerId =
+        parseFormIdField(selectedCustomerId) ?? parseFormIdField(values.customer);
       const reloadProjectId = parseFormIdField(values.project);
       invalidateUsersByRoleCache();
       const [{ items: clients }, byRole, tagsRes] = await Promise.all([
@@ -1216,11 +1225,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
       ]);
       setClientOptions((prev) => {
         const incoming = clientsToSelectOptions(clients);
-        const selectedId = values.customer?.trim() ?? "";
-        if (!selectedId) return incoming;
-        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
-        const kept = prev.find((opt) => opt.value === selectedId);
-        return kept ? [kept, ...incoming] : incoming;
+        if (!selectedCustomerId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedCustomerId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedCustomerId);
+        return kept ? [kept, ...incoming] : [{ value: selectedCustomerId, label: `#${selectedCustomerId}` }, ...incoming];
       });
       setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
       setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
@@ -1279,6 +1287,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         const previousCustomer = getValues("customer")?.trim() ?? "";
         // Select immediately so the field is not left empty if option fetch is slow.
         setValue("customer", selectId, { shouldDirty: true, shouldValidate: true });
+        setClientOptions((prev) => {
+          if (prev.some((opt) => opt.value === selectId)) return prev;
+          return [...prev, { value: selectId, label: `#${selectId}` }];
+        });
         if (previousCustomer && previousCustomer !== selectId) {
           setValue("project", "", { shouldDirty: true, shouldValidate: true });
           setValue("sites", [], { shouldDirty: true, shouldValidate: true });
@@ -1286,6 +1298,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           setValue("additional_customer_contacts", [], { shouldDirty: true });
           setValue("site_contact", "", { shouldDirty: true });
         }
+        // Persist selection into working draft immediately so remounts keep the client.
+        writeQuotationFormValuesDraft(workingDraftKey, {
+          ...getFormDraft(),
+          values: { ...getValues(), customer: selectId },
+          formTab: "pricing" as const,
+        });
         const clientIdNum = Number.parseInt(selectId, 10);
         if (Number.isFinite(clientIdNum) && clientIdNum > 0) {
           await ensureClientInOptions(clientIdNum);

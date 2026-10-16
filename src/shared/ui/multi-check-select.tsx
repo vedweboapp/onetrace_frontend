@@ -132,8 +132,8 @@ export function MultiCheckSelect({
     for (const raw of values) {
       const id = raw.trim();
       if (!id || byValue.has(id)) continue;
-      const label = fallbackLabels?.[id]?.trim();
-      if (label) byValue.set(id, { value: id, label });
+      const label = fallbackLabels?.[id]?.trim() || `#${id}`;
+      byValue.set(id, { value: id, label });
     }
     return Array.from(byValue.values());
   }, [options, values, fallbackLabels]);
@@ -147,7 +147,7 @@ export function MultiCheckSelect({
           if (fromList) return fromList;
           const fb = fallbackLabels?.[id]?.trim();
           if (fb) return { value: id, label: fb };
-          return { value: id, label: "\u2026" };
+          return { value: id, label: `#${id}` };
         })
         .filter((o): o is { value: string; label: string } => o != null),
     [values, resolvedOptions, options, fallbackLabels],

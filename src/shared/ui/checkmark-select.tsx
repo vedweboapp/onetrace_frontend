@@ -255,8 +255,7 @@ export function CheckmarkSelect({
   const resolvedOptions = React.useMemo(() => {
     const id = safeValue.trim();
     if (!id || valueInOptions) return options;
-    const label = fallbackLabel?.trim();
-    if (!label) return options;
+    const label = fallbackLabel?.trim() || `#${id}`;
     return [{ value: id, label }, ...options];
   }, [options, safeValue, fallbackLabel, valueInOptions]);
 

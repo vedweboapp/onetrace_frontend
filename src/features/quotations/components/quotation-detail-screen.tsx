@@ -21,7 +21,8 @@ import { QuotationDetailBody } from "@/features/quotations/components/quotation-
 import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import { QuotationJobsTab } from "@/features/quotations/components/quotation-jobs-tab";
 import { QuotationJobsTableTab } from "@/features/quotations/components/quotation-jobs-table-tab";
-import { QuotationLocationsTab } from "@/features/quotations/components/quotation-locations-tab";
+import { QuotationAttachmentsTab } from "@/features/quotations/components/quotation-attachments-tab";
+import { QuotationFormsTab } from "@/features/quotations/components/quotation-forms-tab";
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
 import { QuotationCreateJobModal } from "@/features/quotations/components/quotation-create-job-modal";
@@ -67,7 +68,8 @@ type QuotationDetailTabId =
   | "jobs"
   | "jobsheets"
   | "schedule"
-  | "location"
+  | "forms"
+  | "attachments"
   | "docs"
   | "approvals"
   | "timeline";
@@ -77,7 +79,8 @@ function parseQuotationDetailTab(raw: string | null): QuotationDetailTabId {
   if (raw === "jobs") return "jobs";
   if (raw === "jobsheets" || raw === "job-sheets") return "jobsheets";
   if (raw === "schedule" || raw === "scheduling") return "schedule";
-  if (raw === "location" || raw === "locations") return "location";
+  if (raw === "forms" || raw === "form") return "forms";
+  if (raw === "attachments" || raw === "attachment") return "attachments";
   if (raw === "docs") return "docs";
   if (raw === "approvals") return "approvals";
   if (raw === "timeline") return "timeline";
@@ -123,7 +126,6 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const isProjectQuote = detailForSite
     ? resolveQuotationQuoteCategory(detailForSite) === QUOTE_CATEGORY.project
     : parseQuoteCategoryParam(searchParams.get("quote_category")) === QUOTE_CATEGORY.project;
-  const projectId = detailForSite ? getQuotationProjectId(detailForSite.project) : null;
   const jobCategory = isProjectQuote ? JOB_CATEGORY.project : JOB_CATEGORY.service;
 
   /** Jobs / Job sheets / Schedule (and project docs+approvals) only after a linked job exists. */
@@ -135,16 +137,15 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
       { id: "vendors", label: t("formTabs.vendorQuotations") },
+      { id: "attachments", label: t("relatedTabs.attachments") },
     ];
-    if (isProjectQuote) {
-      tabs.push({ id: "location", label: t("relatedTabs.location") });
-    }
     if (hasJobs) {
       if (isProjectQuote) {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
       } else {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
+        tabs.push({ id: "forms", label: t("relatedTabs.forms") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
       }
     }
@@ -414,11 +415,10 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       getTitle={(detail) => detail.quote_name}
       onDetailChange={setDetailForSite}
       wrapSurface={
-        (activeTab !== "schedule" && activeTab !== "location") ||
-        (activeTab === "schedule" && relatedJobs.length === 0)
+        activeTab !== "schedule" || relatedJobs.length === 0
       }
       className={
-        (activeTab === "schedule" && relatedJobs.length > 0) || activeTab === "location"
+        activeTab === "schedule" && relatedJobs.length > 0
           ? "dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
@@ -527,6 +527,24 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           );
         }
 
+        if (activeTab === "forms" && !isProjectQuote) {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-forms"
+              aria-labelledby="quotation-detail-tab-trigger-forms"
+              className={entityDetailTabPanelClassName}
+            >
+              <QuotationFormsTab
+                jobs={relatedJobs}
+                loading={jobsLoading}
+                loadError={jobsLoadError}
+                onRetry={() => setJobsRefreshNonce((n) => n + 1)}
+              />
+            </div>
+          );
+        }
+
         if (activeTab === "schedule") {
           return (
             <div
@@ -544,15 +562,20 @@ export function QuotationDetailScreen({ quotationId }: Props) {
           );
         }
 
-        if (activeTab === "location" && projectId != null) {
+        if (activeTab === "attachments") {
           return (
             <div
               role="tabpanel"
-              id="quotation-detail-tab-location"
-              aria-labelledby="quotation-detail-tab-trigger-location"
-              className="flex min-h-0 w-full flex-1 flex-col"
+              id="quotation-detail-tab-attachments"
+              aria-labelledby="quotation-detail-tab-trigger-attachments"
+              className={entityDetailTabPanelClassName}
             >
-              <QuotationLocationsTab projectId={projectId} quotationId={quotationId} />
+              <QuotationAttachmentsTab
+                detail={detail}
+                onSaved={async () => {
+                  await retry();
+                }}
+              />
             </div>
           );
         }

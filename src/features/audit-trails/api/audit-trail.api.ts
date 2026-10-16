@@ -20,6 +20,11 @@ export type AuditTrailListFilters = {
   /** Required for record timelines; optional for Settings “all logs” view. */
   module?: string;
   object_id?: number;
+  /**
+   * Some modules (e.g. `sitemodel`) also scope by mass-action id.
+   * Sent as a single id or comma-separated list.
+   */
+  mass_action_ids?: number | number[] | string;
   search?: string;
   action?: string;
   actor?: string | number;
@@ -29,6 +34,21 @@ export type AuditTrailListFilters = {
   page_size?: number;
   dropdown?: boolean;
 };
+
+function normalizeMassActionIds(
+  value: AuditTrailListFilters["mass_action_ids"],
+): string | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    return value > 0 ? String(value) : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  const ids = value.filter((id) => Number.isFinite(id) && id > 0);
+  return ids.length > 0 ? ids.join(",") : null;
+}
 
 export async function fetchAuditTrailsPage(
   page = 1,
@@ -44,6 +64,8 @@ export async function fetchAuditTrailsPage(
   if (filters.object_id != null && filters.object_id > 0) {
     params.object_id = filters.object_id;
   }
+  const massActionIds = normalizeMassActionIds(filters.mass_action_ids);
+  if (massActionIds) params.mass_action_ids = massActionIds;
   const search = filters.search?.trim();
   if (search) params.search = search;
   const action = filters.action?.trim();

@@ -30,6 +30,8 @@ import { cn } from "@/core/utils/http.util";
 
 type Props = {
   detail: Job;
+  /** When opening a submission, return here instead of the job Forms tab. */
+  backHref?: string;
 };
 
 function resolveFormIdsForSubmission(detail: Job, row: WorkerFormSubmissionTableRow) {
@@ -65,7 +67,7 @@ function resolveFormIdsForSubmission(detail: Job, row: WorkerFormSubmissionTable
   return null;
 }
 
-export function JobFormsTab({ detail }: Props) {
+export function JobFormsTab({ detail, backHref }: Props) {
   const t = useTranslations("Dashboard.jobs");
   const router = useRouter();
   const dateFmt = useDashboardDateFormat();
@@ -108,7 +110,7 @@ export function JobFormsTab({ detail }: Props) {
       const resolved = resolveFormIdsForSubmission(detail, row);
       const formName =
         row.project_form_name.trim() || t("forms.untitledForm");
-      const back = `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
+      const back = backHref?.trim() || `${routes.dashboard.jobs}/${detail.id}?tab=forms`;
       const common = `submission_id=${row.id}&name=${encodeURIComponent(formName)}&back=${encodeURIComponent(back)}&for_qa=true`;
 
       if (resolved && resolved.formId > 0) {

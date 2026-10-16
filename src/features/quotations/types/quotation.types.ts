@@ -221,6 +221,22 @@ export type QuotationSiteSnapshot = {
   site_contact?: number | null;
 };
 
+/** File attached to a quotation (`attachments` on read/write). */
+export type QuotationAttachment = {
+  id?: number;
+  /** Absolute or relative media URL from the API. */
+  file?: string | null;
+  file_name?: string | null;
+  file_size?: number | null;
+  content_type_value?: string | null;
+  /** Legacy aliases */
+  attachment?: string | null;
+  file_url?: string | null;
+  url?: string | null;
+  created_at?: string | null;
+  modified_at?: string | null;
+};
+
 export type QuotationCreatePayload = {
   customer: number;
   sites: number[];
@@ -246,6 +262,8 @@ export type QuotationCreatePayload = {
   grand_total?: number | null;
   /** Quote workflow status: draft | sent | approved | rejected. */
   status?: string | null;
+  /** Existing attachment ids / delete markers when updating via JSON (prefer multipart). */
+  attachments?: Array<{ id: number; is_deleted?: boolean }> | null;
 };
 
 export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
@@ -382,6 +400,8 @@ export type QuotationDetail = QuotationListItem & {
   site_snapshots?: QuotationSiteSnapshot[];
   comment: string | null;
   sites?: Array<{ id: number; site_name: string }>;
+  /** Files attached to this quotation. */
+  attachments?: QuotationAttachment[] | null;
   /** Client acceptance signature (URL or data URL) after approve. */
   signature?: string | null;
   signature_url?: string | null;
