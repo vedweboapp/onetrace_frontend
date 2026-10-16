@@ -197,9 +197,12 @@ export function buildImportFields(
   }));
 }
 
-/** Prefer explicit segments when mass-export path differs from CRUD import path. */
+/**
+ * Prefer explicit segments when mass-export path differs from CRUD import path.
+ * Composite items share the item import endpoint (`item/import/`), same as mass-actions.
+ */
 const IMPORT_API_SEGMENT_OVERRIDE: Partial<Record<MassActionResourceKey, string>> = {
-  compositeItems: "composite-item",
+  compositeItems: "item",
 };
 
 export function buildModuleImportConfig(
