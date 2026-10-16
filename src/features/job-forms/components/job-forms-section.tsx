@@ -13,7 +13,10 @@ import {
 import { routes } from "@/shared/config/routes";
 import { toastError, toastApiError } from "@/shared/feedback/app-toast";
 import { cn } from "@/core/utils/http.util";
-import { saveJobFormsToSessionStorage } from "@/features/job-forms/utils/job-form-navigation.util";
+import {
+  buildJobFormFillUrl,
+  saveJobFormsToSessionStorage,
+} from "@/features/job-forms/utils/job-form-navigation.util";
 
 type Props = {
   jobId: number;
@@ -61,26 +64,14 @@ export function JobFormsSection({
 
   if (forms.length === 0) return null;
 
-  function buildFormHref(form: JobFormRef, label: string): string {
-    const submitted = isSubmittedForm(form);
-    const hrefBase = `${routes.dashboard.jobFormFill(jobId, form.project_form_id, form.id)}&name=${encodeURIComponent(label)}&back=${encodeURIComponent(jobDetailHref)}`;
-    const submissionId =
-      typeof form.submitted_form_id === "number" && form.submitted_form_id > 0
-        ? form.submitted_form_id
-        : null;
-    const dynamicFormId =
-      form.dynamic_form_id != null && String(form.dynamic_form_id).trim() !== ""
-        ? String(form.dynamic_form_id)
-        : null;
-    const dynamicFormIdQuery = dynamicFormId ? `&dynamic_form_id=${encodeURIComponent(dynamicFormId)}` : "";
-    const submissionQuery = submitted && submissionId ? `&submission_id=${submissionId}` : "";
-    return `${hrefBase}${submissionQuery}${dynamicFormIdQuery}`;
+  function buildFormHref(form: JobFormRef): string {
+    return buildJobFormFillUrl(jobId, form, jobDetailHref);
   }
 
   function openForm(form: JobFormRef) {
     const submitted = isSubmittedForm(form);
     const label = form.name?.trim() || `#${form.project_form_id}`;
-    const href = buildFormHref(form, label);
+    const href = buildFormHref(form);
 
     if (submitted || !hasChecklists || checklistsComplete) {
       router.push(href);

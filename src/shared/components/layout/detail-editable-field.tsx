@@ -54,7 +54,7 @@ export const detailInlineEditorClassName = cn(
 export const detailTextareaBoxClassName = cn(
   "field-control",
   detailInlineEditorClassName,
-  "min-h-[100px] resize-y overflow-y-auto py-2.5 leading-5 font-normal [field-sizing:fixed]",
+  "min-h-[100px] resize-y overflow-y-auto px-3 py-2.5 leading-5 font-normal [field-sizing:fixed]",
 );
 
 const detailInlineActionBtnClassName = cn(

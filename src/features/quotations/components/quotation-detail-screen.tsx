@@ -122,12 +122,12 @@ export function QuotationDetailScreen({ quotationId }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedTab = parseQuotationDetailTab(searchParams.get("tab"));
-
+   
   const [relatedJobs, setRelatedJobs] = React.useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = React.useState(false);
   const [jobsLoadError, setJobsLoadError] = React.useState<string | null>(null);
   const [jobsRefreshNonce, setJobsRefreshNonce] = React.useState(0);
-
+ 
   const isProjectQuote = detailForSite
     ? resolveQuotationQuoteCategory(detailForSite) === QUOTE_CATEGORY.project
     : parseQuoteCategoryParam(searchParams.get("quote_category")) === QUOTE_CATEGORY.project;
@@ -138,6 +138,15 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     relatedJobs.length > 0 ||
     (detailForSite != null && quotationHasLinkedJob(detailForSite, quotationId));
 
+  /** Deep-link / form-return to Job|Forms|Schedule — keep until jobs finish loading. */
+  const wantsJobRelatedTab =
+    requestedTab === "jobs" ||
+    requestedTab === "forms" ||
+    requestedTab === "schedule" ||
+    requestedTab === "jobsheets";
+  const jobsResolved = detailForSite != null && !jobsLoading;
+  const showJobTabs = hasJobs || (wantsJobRelatedTab && !jobsResolved);
+
   const detailTabs = React.useMemo<AppTabItem[]>(() => {
     // Default service order: Details → Attachments → Vendor quotations → Job → Schedule → Forms → Timeline
     const tabs: AppTabItem[] = [
@@ -145,7 +154,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
       { id: "attachments", label: t("relatedTabs.attachments") },
       { id: "vendors", label: t("formTabs.vendorQuotations") },
     ];
-    if (hasJobs) {
+    if (showJobTabs) {
       if (isProjectQuote) {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobsPlural") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
@@ -157,10 +166,14 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     }
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [hasJobs, isProjectQuote, t, tAudit]);
+  }, [showJobTabs, isProjectQuote, t, tAudit]);
 
   const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
-  const activeTab: QuotationDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "details";
+  const activeTab: QuotationDetailTabId = allowedTabIds.has(requestedTab)
+    ? requestedTab
+    : wantsJobRelatedTab && !jobsResolved
+      ? requestedTab
+      : "details";
 
   function handleTabChange(tab: string) {
     const next = parseQuotationDetailTab(tab);
@@ -174,8 +187,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
   React.useEffect(() => {
     if (requestedTab === activeTab) return;
+    // Don't rewrite ?tab=jobs|forms|schedule down to Details while jobs are still loading
+    // or while a linked job exists (form submit/back must keep Forms/Job tab).
+    if (wantsJobRelatedTab && (!jobsResolved || hasJobs)) return;
     handleTabChange(activeTab);
-  }, [activeTab, requestedTab]);
+  }, [activeTab, requestedTab, wantsJobRelatedTab, jobsResolved, hasJobs]);
 
   /** Keep header/sidebar quote category in sync when opening detail without `?quote_category=`. */
   React.useEffect(() => {
