@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -14,7 +15,11 @@ import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TransformableImageExtension } from "./transformable-image-extension";
+import { PinsTableExtension } from "./pins-table-extension";
+import { SignatureExtension } from "./signature-extension";
+import { TemplateVariablePillExtension } from "./template-variable-pill-extension";
 import { ImageUploaderModal } from "./image-uploader-modal";
+import { PinsListModal } from "./pins-list-modal";
 import { TemplateVariablesSidebar } from "./variables-sidebar";
 import {
   Bold,
@@ -42,6 +47,10 @@ import {
   ChevronDown,
   Tag,
   Table as TableIcon,
+  TableProperties,
+  Trash2,
+  Columns2,
+  PanelLeft,
 } from "lucide-react";
 
 // ── Table Grid Picker ──────────────────────────────────────────────────────────
@@ -131,10 +140,214 @@ const HEADING_OPTIONS = [
   { label: "Heading 3", value: "h3" },
 ];
 
+function TableFloatingActions({ editor }: { editor: Editor | null }) {
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const update = () => {
+      if (!editor.isActive("table")) {
+        setCoords(null);
+        return;
+      }
+      try {
+        const { state, view } = editor;
+        const { from } = state.selection;
+        const resolved = view.domAtPos(from);
+        const node = resolved.node instanceof HTMLElement ? resolved.node : resolved.node.parentElement;
+        const table = node?.closest("table");
+        if (!table || table.classList.contains("borderless-table") || table.getAttribute("data-borderless") === "true") {
+          setCoords(null);
+          return;
+        }
+
+        const editorContainer = view.dom.closest(".template-doc-editor");
+        if (!editorContainer) {
+          setCoords(null);
+          return;
+        }
+
+        const tableRect = table.getBoundingClientRect();
+        const containerRect = editorContainer.getBoundingClientRect();
+
+        setCoords({
+          top: Math.max(8, tableRect.top - containerRect.top - 36),
+          right: Math.max(12, containerRect.right - tableRect.right),
+        });
+      } catch {
+        setCoords(null);
+      }
+    };
+
+    editor.on("selectionUpdate", update);
+    editor.on("transaction", update);
+    editor.on("focus", update);
+
+    return () => {
+      editor.off("selectionUpdate", update);
+      editor.off("transaction", update);
+      editor.off("focus", update);
+    };
+  }, [editor]);
+
+  if (!coords || !editor || !editor.isActive("table")) return null;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: coords.top,
+        right: coords.right,
+        zIndex: 40,
+      }}
+      className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-xl rounded-md px-2 py-1 select-none pointer-events-auto text-xs"
+      onMouseDown={(e) => {
+        // Prevent editor from losing focus before executing command
+        e.preventDefault();
+      }}
+    >
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-1 flex items-center gap-1">
+        <TableIcon size={12} className="text-slate-500" /> Table
+      </span>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().deleteTable().run()}
+        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition-colors cursor-pointer"
+        title="Delete Table"
+      >
+        <Trash2 size={12} />
+        <span>Delete Table</span>
+      </button>
+      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().addRowAfter().run()}
+        className="px-1.5 py-1 rounded text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+        title="Add Row Below"
+      >
+        + Row
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().deleteRow().run()}
+        className="px-1.5 py-1 rounded text-[11px] font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+        title="Delete Current Row"
+      >
+        - Row
+      </button>
+      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().addColumnAfter().run()}
+        className="px-1.5 py-1 rounded text-[11px] font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+        title="Add Column Right"
+      >
+        + Col
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().deleteColumn().run()}
+        className="px-1.5 py-1 rounded text-[11px] font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+        title="Delete Current Column"
+      >
+        - Col
+      </button>
+      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+      <button
+        type="button"
+        onClick={() => {
+          const isBorderless = Boolean(editor.getAttributes("table").borderless);
+          editor.chain().focus().updateAttributes("table", { borderless: !isBorderless }).run();
+        }}
+        className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+          editor.getAttributes("table").borderless
+            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 font-semibold"
+            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+        }`}
+        title="Toggle Table Borders (Clean / Bordered)"
+      >
+        {editor.getAttributes("table").borderless ? "Borders: Off (Clean)" : "Borders: On"}
+      </button>
+    </div>
+  );
+}
+
 const TemplateDocStyles = React.memo(function TemplateDocStyles() {
   return (
     <style>{`
-      .template-doc-editor .ProseMirror { outline: none; min-height: 600px; }
+      .template-doc-editor .ProseMirror {
+        outline: none;
+        min-height: 1050px;
+        padding: 48px 64px;
+      }
+
+      .template-doc-editor .ProseMirror p,
+      .template-doc-editor .ProseMirror h1,
+      .template-doc-editor .ProseMirror h2,
+      .template-doc-editor .ProseMirror h3,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+        white-space: pre-wrap;
+      }
+
+      /* Protect pins list preview table from vertical wrapping */
+      .template-doc-editor .ProseMirror .pins-preview-table,
+      .template-doc-editor .ProseMirror .pins-preview-table * {
+        word-break: normal !important;
+      }
+      .template-doc-editor .ProseMirror .pins-preview-table th,
+      .template-doc-editor .ProseMirror .pins-preview-table td {
+        white-space: nowrap !important;
+      }
+
+      /* ── Template variable pills (truncates with ... and expands on click) ── */
+      .template-doc-editor .ProseMirror .template-var-pill {
+        display: inline-block;
+        max-width: 175px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: -2px;
+        background-color: #f1f5f9;
+        color: #1e40af;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 0 5px;
+        margin: 0 1.5px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.85em;
+        line-height: 1.35;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: all;
+        transition: max-width 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .template-doc-editor .ProseMirror .template-var-pill:hover {
+        background-color: #e2e8f0;
+        border-color: #94a3b8;
+      }
+      .template-doc-editor .ProseMirror .template-var-pill.is-expanded {
+        max-width: 1000px;
+        white-space: normal;
+        background-color: #eff6ff;
+        border-color: #93c5fd;
+        color: #1d4ed8;
+      }
+      .dark .template-doc-editor .ProseMirror .template-var-pill {
+        background-color: #1e293b;
+        color: #60a5fa;
+        border-color: #334155;
+      }
+      .dark .template-doc-editor .ProseMirror .template-var-pill:hover {
+        background-color: #334155;
+      }
+      .dark .template-doc-editor .ProseMirror .template-var-pill.is-expanded {
+        background-color: #1e3a5f;
+        border-color: #3b82f6;
+        color: #93c5fd;
+      }
+
       .template-doc-editor .ProseMirror p.is-editor-empty:first-child::before {
         color: #94a3b8;
         content: attr(data-placeholder);
@@ -178,15 +391,15 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         outline: 2px solid #3b82f6;
         outline-offset: 2px;
       }
-      .template-doc-editor .ProseMirror table {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) {
         border-collapse: collapse;
         width: 100%;
         margin: 0.75rem 0;
         table-layout: fixed;
         overflow: hidden;
       }
-      .template-doc-editor .ProseMirror table td,
-      .template-doc-editor .ProseMirror table th {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
         border: 1px solid #cbd5e1;
         padding: 6px 10px;
         min-width: 60px;
@@ -194,20 +407,56 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         position: relative;
         box-sizing: border-box;
       }
-      .template-doc-editor .ProseMirror table th {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
         background: #f1f5f9;
         font-weight: 600;
         font-size: 0.8em;
         text-align: left;
         color: #475569;
       }
-      .dark .template-doc-editor .ProseMirror table td,
-      .dark .template-doc-editor .ProseMirror table th {
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
         border-color: #334155;
       }
-      .dark .template-doc-editor .ProseMirror table th {
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
         background: #1e293b;
         color: #94a3b8;
+      }
+      /* Clean / Borderless side-by-side layout tables:
+         Columns and outer boxes are completely invisible by default.
+         A center separator line appears ONLY when actively typing or focused inside. */
+      .template-doc-editor .ProseMirror table.borderless-table,
+      .template-doc-editor .ProseMirror table[data-borderless="true"],
+      .template-doc-editor .ProseMirror table:has(td.borderless-cell) {
+        margin: 0.5rem 0 !important;
+        border: none !important;
+      }
+      .template-doc-editor .ProseMirror table.borderless-table td,
+      .template-doc-editor .ProseMirror table.borderless-table th,
+      .template-doc-editor .ProseMirror table[data-borderless="true"] td,
+      .template-doc-editor .ProseMirror table[data-borderless="true"] th,
+      .template-doc-editor .ProseMirror td.borderless-cell,
+      .template-doc-editor .ProseMirror td[data-borderless="true"],
+      .template-doc-editor .ProseMirror table:has(td.borderless-cell) td {
+        border: none !important;
+        outline: none !important;
+        padding: 4px 10px !important;
+        background: transparent !important;
+      }
+      /* Center separator only visible when actively typing/focused inside */
+      .template-doc-editor .ProseMirror table.borderless-table:focus-within td:not(:last-child),
+      .template-doc-editor .ProseMirror table[data-borderless="true"]:focus-within td:not(:last-child),
+      .template-doc-editor .ProseMirror table:has(td.borderless-cell):focus-within td:not(:last-child),
+      .template-doc-editor .ProseMirror tr:focus-within > td.borderless-cell:not(:last-child),
+      .template-doc-editor .ProseMirror tr:has(td.borderless-cell):focus-within > td:not(:last-child) {
+        border-right: 1px dashed #cbd5e1 !important;
+      }
+      .dark .template-doc-editor .ProseMirror table.borderless-table:focus-within td:not(:last-child),
+      .dark .template-doc-editor .ProseMirror table[data-borderless="true"]:focus-within td:not(:last-child),
+      .dark .template-doc-editor .ProseMirror table:has(td.borderless-cell):focus-within td:not(:last-child),
+      .dark .template-doc-editor .ProseMirror tr:focus-within > td.borderless-cell:not(:last-child),
+      .dark .template-doc-editor .ProseMirror tr:has(td.borderless-cell):focus-within > td:not(:last-child) {
+        border-right: 1px dashed #475569 !important;
       }
       .template-doc-editor .ProseMirror table .selectedCell::after {
         background: rgba(59,130,246,0.12);
@@ -244,6 +493,7 @@ interface TemplateEditorRibbonProps {
   variablesSidebarCollapsed: boolean;
   onToggleVariablesSidebar: () => void;
   onOpenImageModal: () => void;
+  onOpenPinsListModal?: () => void;
 }
 
 function TemplateEditorRibbon({
@@ -251,6 +501,7 @@ function TemplateEditorRibbon({
   variablesSidebarCollapsed,
   onToggleVariablesSidebar,
   onOpenImageModal,
+  onOpenPinsListModal,
 }: TemplateEditorRibbonProps) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tablePickerOpen, setTablePickerOpen] = useState(false);
@@ -319,6 +570,30 @@ function TemplateEditorRibbon({
     },
     [editor],
   );
+
+  const handleInsert2ColumnLayout = useCallback(() => {
+    if (!editor) return;
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        `<table data-borderless="true" class="borderless-table" style="width: 100%;"><tbody><tr><td class="borderless-cell" data-borderless="true" style="width: 50%; vertical-align: top;"><p>Left column text...</p></td><td class="borderless-cell" data-borderless="true" style="width: 50%; vertical-align: top;"><p>Right column text...</p></td></tr></tbody></table><p></p>`
+      )
+      .run();
+  }, [editor]);
+
+  const handleInsertImageSideText = useCallback(() => {
+    if (!editor) return;
+    const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100" viewBox="0 0 160 100"><rect width="100%" height="100%" fill="#f1f5f9" rx="6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="12" font-weight="600">Company Logo</text></svg>`;
+    const placeholderSvg = `data:image/svg+xml;utf8,${encodeURIComponent(svgData)}`;
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        `<table data-borderless="true" class="borderless-table" style="width: 100%;"><tbody><tr><td class="borderless-cell" data-borderless="true" style="width: 35%; vertical-align: top;"><p><img src="${placeholderSvg}" width="160" /></p></td><td class="borderless-cell" data-borderless="true" style="width: 65%; vertical-align: top; text-align: right;"><p><strong>Company Name</strong></p><p>Address line 1</p><p>Email: contact@example.com</p></td></tr></tbody></table><p></p>`
+      )
+      .run();
+  }, [editor]);
 
   const getHeadingLabel = () => {
     if (!editor) return "Normal text";
@@ -591,6 +866,22 @@ function TemplateEditorRibbon({
         <ImageIcon size={14} />
       </ToolbarButton>
 
+      {/* Side-by-Side: Image (Left) + Text (Right) */}
+      <ToolbarButton
+        onClick={handleInsertImageSideText}
+        title="Side-by-Side: Image (Left) + Text (Right)"
+      >
+        <PanelLeft size={14} className="text-indigo-600 dark:text-indigo-400" />
+      </ToolbarButton>
+
+      {/* 2-Column Side-by-Side Text */}
+      <ToolbarButton
+        onClick={handleInsert2ColumnLayout}
+        title="2-Column Side-by-Side Text"
+      >
+        <Columns2 size={14} className="text-indigo-600 dark:text-indigo-400" />
+      </ToolbarButton>
+
       {/* Table Inserter */}
       <div className="relative">
         <ToolbarButton
@@ -610,6 +901,17 @@ function TemplateEditorRibbon({
           </>
         )}
       </div>
+
+
+      {/* Pins List Table Button */}
+      {onOpenPinsListModal && (
+        <ToolbarButton
+          onClick={onOpenPinsListModal}
+          title="Insert Items Table / Pins List"
+        >
+          <TableProperties size={14} className="text-blue-600 dark:text-blue-400" />
+        </ToolbarButton>
+      )}
 
       <Divider />
 
@@ -635,6 +937,101 @@ interface TemplateEditorProps {
   moduleName?: string;
 }
 
+export function preserveSpacesInHtml(html: string): string {
+  if (!html) return html;
+  let out = html.replace(/>([^<]+)</g, (_fullMatch, textContent) => {
+    let res = textContent;
+    if (res.startsWith(" ")) {
+      res = "&nbsp;" + res.slice(1);
+    }
+    if (res.endsWith(" ")) {
+      res = res.slice(0, -1) + "&nbsp;";
+    }
+    res = res.replace(/ {2,}/g, (spaces: string) => {
+      let s = "";
+      for (let i = 0; i < spaces.length; i++) {
+        s += i % 2 === 1 ? "&nbsp;" : " ";
+      }
+      return s;
+    });
+    return `>${res}<`;
+  });
+
+  // Ensure all tables (including borderless side-by-side header tables) retain width: 100% inline style
+  // so external previews (like quotation preview modal) and backend PDF engines don't collapse columns
+  out = out.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
+    if (attrs.includes("style=")) {
+      return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
+        let updated = styleVal;
+        if (!/width\s*:/i.test(updated)) {
+          updated = `width: 100%; ${updated}`.trim();
+        }
+        return `style="${updated}"`;
+      });
+    } else {
+      return `<table${attrs} style="width: 100%;">`;
+    }
+  });
+
+  return out;
+}
+
+const CustomTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      borderless: {
+        default: false,
+        parseHTML: (element) =>
+          element.classList.contains("borderless-table") ||
+          element.getAttribute("data-borderless") === "true",
+        renderHTML: (attributes) => {
+          if (!attributes.borderless) return {};
+          return {
+            "data-borderless": "true",
+            class: "borderless-table",
+          };
+        },
+      },
+    };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const existingStyle = (HTMLAttributes?.style as string) || "";
+    let updatedStyle = existingStyle;
+    if (!existingStyle.includes("width:") && !existingStyle.includes("width :")) {
+      updatedStyle = existingStyle ? `width: 100%; ${existingStyle}` : "width: 100%;";
+    }
+    return [
+      "table",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: updatedStyle }),
+      ["tbody", 0],
+    ];
+  },
+});
+
+const CustomTableCell = TableCell.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      borderless: {
+        default: false,
+        parseHTML: (element) =>
+          element.classList.contains("borderless-cell") ||
+          element.getAttribute("data-borderless") === "true" ||
+          Boolean(element.closest("table")?.classList.contains("borderless-table")) ||
+          element.closest("table")?.getAttribute("data-borderless") === "true",
+        renderHTML: (attributes) => {
+          if (!attributes.borderless) return {};
+          return {
+            "data-borderless": "true",
+            class: "borderless-cell",
+          };
+        },
+      },
+    };
+  },
+});
+
 export default function TemplateDocEditor({
   value = "",
   onChange,
@@ -649,6 +1046,7 @@ export default function TemplateDocEditor({
   onChangeRef.current = onChange;
 
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [pinsModalOpen, setPinsModalOpen] = useState(false);
   const [variablesSidebarCollapsed, setVariablesSidebarCollapsed] = useState(false);
 
   const flushChange = useCallback((ed?: Editor | null) => {
@@ -658,7 +1056,8 @@ export default function TemplateDocEditor({
     }
     const target = ed || editor;
     if (target) {
-      onChangeRef.current?.(target.getHTML(), Array.from(uploadedFilesRef.current.values()));
+      const html = preserveSpacesInHtml(target.getHTML());
+      onChangeRef.current?.(html, Array.from(uploadedFilesRef.current.values()));
     }
   }, []);
 
@@ -678,14 +1077,20 @@ export default function TemplateDocEditor({
         linkOnPaste: true,
         HTMLAttributes: { class: "text-blue-600 underline cursor-pointer" },
       }),
-      Table.configure({ resizable: true }),
+      CustomTable.configure({ resizable: true }),
       TableRow,
       TableHeader,
-      TableCell,
+      CustomTableCell,
       TransformableImageExtension,
+      PinsTableExtension,
+      SignatureExtension,
+      TemplateVariablePillExtension,
       Placeholder.configure({ placeholder }),
     ],
     content: value,
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
     editable: !readOnly,
     autofocus: autoFocus,
     onUpdate: ({ editor: ed }) => {
@@ -694,7 +1099,8 @@ export default function TemplateDocEditor({
         clearTimeout(updateTimerRef.current);
       }
       updateTimerRef.current = setTimeout(() => {
-        onChangeRef.current?.(ed.getHTML(), Array.from(uploadedFilesRef.current.values()));
+        const html = preserveSpacesInHtml(ed.getHTML());
+        onChangeRef.current?.(html, Array.from(uploadedFilesRef.current.values()));
       }, 200);
     },
     editorProps: {
@@ -704,11 +1110,30 @@ export default function TemplateDocEditor({
             clearTimeout(updateTimerRef.current);
             updateTimerRef.current = null;
             if (editor) {
-              onChangeRef.current?.(editor.getHTML(), Array.from(uploadedFilesRef.current.values()));
+              const html = preserveSpacesInHtml(editor.getHTML());
+              onChangeRef.current?.(html, Array.from(uploadedFilesRef.current.values()));
             }
           }
           return false;
         },
+      },
+      handleDrop: (view, event) => {
+        const isSignature = event.dataTransfer?.getData("application/x-signature-block");
+        if (isSignature) {
+          event.preventDefault();
+          const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (coordinates) {
+            const node = view.state.schema.nodes.signature?.create({
+              imageKey: "",
+            });
+            if (node) {
+              const tr = view.state.tr.insert(coordinates.pos, node);
+              view.dispatch(tr);
+              return true;
+            }
+          }
+        }
+        return false;
       },
       attributes: {
         class:
@@ -723,7 +1148,11 @@ export default function TemplateDocEditor({
     if (editor && value !== undefined && value !== lastLoadedValueRef.current) {
       lastLoadedValueRef.current = value;
       if (value !== editor.getHTML()) {
-        editor.commands.setContent(value);
+        (editor.commands.setContent as (output: any, emitUpdate?: boolean, parseOptions?: any) => boolean)(
+          value,
+          false,
+          { preserveWhitespace: "full" },
+        );
       }
     }
   }, [editor, value]);
@@ -769,6 +1198,7 @@ export default function TemplateDocEditor({
           variablesSidebarCollapsed={variablesSidebarCollapsed}
           onToggleVariablesSidebar={() => setVariablesSidebarCollapsed((v) => !v)}
           onOpenImageModal={() => setImageModalOpen(true)}
+          onOpenPinsListModal={() => setPinsModalOpen(true)}
         />
       )}
 
@@ -779,18 +1209,16 @@ export default function TemplateDocEditor({
             editor={editor}
             collapsed={variablesSidebarCollapsed}
             onToggleCollapse={() => setVariablesSidebarCollapsed((v) => !v)}
+            onOpenPinsListModal={() => setPinsModalOpen(true)}
             moduleName={moduleName}
           />
         )}
 
         {/* === DOCUMENT CANVAS === */}
-        <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 min-h-0">
-          {/* A4-like page wrapper */}
-          <div className="max-w-4xl mx-auto my-8 px-4">
-            <div
-              className="template-doc-editor bg-white dark:bg-slate-900 shadow-lg rounded-sm border border-slate-200 dark:border-slate-700"
-              style={{ minHeight: "calc(297mm * 0.75)", padding: "48px 64px" }}
-            >
+        <div className="flex-1 overflow-y-auto bg-slate-200 dark:bg-slate-950 min-h-0">
+          <div className="flex justify-center px-8 py-10">
+            <div className="template-doc-editor relative w-[793px] min-h-[1122px] bg-white dark:bg-slate-900 shadow-lg border border-slate-300 dark:border-slate-800 rounded-sm">
+              <TableFloatingActions editor={editor} />
               <EditorContent editor={editor} />
             </div>
           </div>
@@ -802,6 +1230,13 @@ export default function TemplateDocEditor({
         open={imageModalOpen}
         onClose={() => setImageModalOpen(false)}
         onInsert={handleInsertImage}
+      />
+
+      {/* Pins List Configurator Modal */}
+      <PinsListModal
+        open={pinsModalOpen}
+        onClose={() => setPinsModalOpen(false)}
+        editor={editor}
       />
     </div>
   );

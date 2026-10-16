@@ -10,6 +10,7 @@ import {
   FolderKanban,
   Home,
   Layers,
+  LayoutTemplate,
   ListTodo,
   MapPinHouse,
   MonitorSmartphone,
@@ -355,7 +356,9 @@ export function DashboardHeader() {
                                                                                   ? tSettingsNav("auditLogs")
                                                                                     : projectFormsActive
                                                                                       ? tSettingsNav("projectForms")
-                                                                                      : tNav("home");
+                                                                                      : templatesActive
+                                                                                        ? tSettingsNav("templates")
+                                                                                        : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -457,6 +460,7 @@ export function DashboardHeader() {
             <TopNavLink href={kioskMachinesHref} label={tSettingsNav("kiosk")} icon={MonitorSmartphone} active={kioskMachinesActive} resolved={resolved} />
             <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
+            <TopNavLink href={templatesHref} label={tSettingsNav("templates")} icon={LayoutTemplate} active={templatesActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
             <TopNavLink href={usersHref} label={tSettingsNav("users")} icon={UserRound} active={usersActive} resolved={resolved} />
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />

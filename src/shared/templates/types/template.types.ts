@@ -20,8 +20,8 @@ export interface Template {
   updated_at: string;
   is_default?: boolean;
   thumbnail?: string; // preview snippet
-  Keys?: { Key: string; Type: string; Module: string }[];
-  keys?: { Key: string; Type: string; Module: string }[];
+  Keys?: { Key: string; Type: string; Module: string; Columns?: string[]; columns?: string[] }[];
+  keys?: { Key: string; Type: string; Module: string; Columns?: string[]; columns?: string[] }[];
   attachments?: TemplateAttachment[];
 }
 
