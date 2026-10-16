@@ -134,10 +134,11 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     (detailForSite != null && quotationHasLinkedJob(detailForSite, quotationId));
 
   const detailTabs = React.useMemo<AppTabItem[]>(() => {
+    // Default service order: Details → Attachments → Vendor quotations → Job → Schedule → Forms → Timeline
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
-      { id: "vendors", label: t("formTabs.vendorQuotations") },
       { id: "attachments", label: t("relatedTabs.attachments") },
+      { id: "vendors", label: t("formTabs.vendorQuotations") },
     ];
     if (hasJobs) {
       if (isProjectQuote) {
@@ -145,8 +146,8 @@ export function QuotationDetailScreen({ quotationId }: Props) {
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
       } else {
         tabs.push({ id: "jobs", label: t("relatedTabs.jobs") });
-        tabs.push({ id: "forms", label: t("relatedTabs.forms") });
         tabs.push({ id: "schedule", label: t("relatedTabs.schedule") });
+        tabs.push({ id: "forms", label: t("relatedTabs.forms") });
       }
     }
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
@@ -568,7 +569,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
               role="tabpanel"
               id="quotation-detail-tab-attachments"
               aria-labelledby="quotation-detail-tab-trigger-attachments"
-              className={entityDetailTabPanelClassName}
+              className={cn(entityDetailTabPanelClassName, "flex min-h-0 w-full flex-col")}
             >
               <QuotationAttachmentsTab
                 detail={detail}

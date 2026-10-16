@@ -353,7 +353,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const formValuesRestoredRef = React.useRef(false);
 
   const mergeQuickCreateSelectIntoValues = React.useCallback(
-    (values: QuotationFormValues): QuotationFormValues => {
+    (
+      values: QuotationFormValues,
+      fieldTargetOverride?: string | null,
+    ): QuotationFormValues => {
       const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
       const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
       if (!selectId || !/^\d+$/.test(selectId) || !isQuickCreateKind(selectTarget)) return values;
@@ -373,7 +376,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return next;
       }
       if (selectTarget === "contact") {
-        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
+        const fieldTarget =
+          fieldTargetOverride?.trim() ||
+          peekQuickCreateFieldTarget(draftReturnTo) ||
+          "primary_customer_contact";
         const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
         if (additionalMatch) {
           const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
@@ -389,7 +395,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return next;
       }
       if (selectTarget === "user") {
-        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        const fieldTarget =
+          fieldTargetOverride?.trim() ||
+          peekQuickCreateFieldTarget(draftReturnTo) ||
+          "project_manager";
         if (fieldTarget === "salesperson") {
           next.salesperson = selectId;
           return next;
@@ -440,8 +449,13 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         const row = await fetchQuotation(quotationId);
         if (!cancelled) {
           setExistingDetail(row);
-          // Keep Details values restored after Scope & pricing section navigation.
-          if (!formValuesRestoredRef.current) {
+          // Keep Details values restored after Scope & pricing / quick-create return.
+          // Never wipe an in-flight `?select=` apply with the server row.
+          const returningFromQuickCreate = Boolean(
+            searchParams.get(QUICK_CREATE_SELECT_PARAM) &&
+              searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+          );
+          if (!formValuesRestoredRef.current && !returningFromQuickCreate) {
             reset(mapQuotationDetailToFormDefaults(row));
           }
         }
@@ -454,7 +468,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, quotationId, reset, t]);
+  }, [isEdit, quotationId, reset, searchParams, t]);
 
   const customerIdStr = useWatch({ control, name: "customer" });
   const projectIdStr = useWatch({ control, name: "project" });
@@ -471,7 +485,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const clientQuickCreate = useQuickCreate({
     kind: "client",
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
 
   const projectQuickCreate = useQuickCreate({
@@ -479,7 +493,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     clientId: customerId,
     addDisabled: saving || !customerId,
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
 
   const siteQuickCreate = useQuickCreate({
@@ -487,7 +501,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     clientId: customerId,
     addDisabled: saving || !customerId,
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
 
   const contactQuickCreate = useQuickCreate({
@@ -496,7 +510,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     contactType: "client",
     addDisabled: saving || !customerId,
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
   const addPrimaryContact = React.useCallback(() => {
     storeQuickCreateFieldTarget(draftReturnTo, "primary_customer_contact");
@@ -507,21 +521,21 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     appRole: "sales",
     fieldTarget: "salesperson",
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
   const projectManagerQuickCreate = useQuickCreate({
     kind: "user",
     appRole: "manager",
     fieldTarget: "project_manager",
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
   const technicianQuickCreate = useQuickCreate({
     kind: "user",
     appRole: "technician",
     fieldTarget: "technician_ids",
     returnTo: draftReturnTo,
-    getFormDraft: !isEdit ? getFormDraft : undefined,
+    getFormDraft,
   });
   const openTagsSettings = React.useCallback(() => {
     router.push(routes.dashboard.settingsTags);
@@ -1230,9 +1244,51 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         const kept = prev.find((opt) => opt.value === selectedCustomerId);
         return kept ? [kept, ...incoming] : [{ value: selectedCustomerId, label: `#${selectedCustomerId}` }, ...incoming];
       });
-      setTechnicianOptions(userProfilesToSelectOptions(byRole.technician ?? []));
-      setSalesOptions(userProfilesToSelectOptions(byRole.sales ?? []));
-      setManagerOptions(userProfilesToSelectOptions(byRole.manager ?? []));
+      const mergeSelected = (
+        incoming: Option[],
+        selectedIds: string[],
+        prev: Option[],
+      ): Option[] => {
+        const merged = [...incoming];
+        for (const id of selectedIds) {
+          if (!id || merged.some((opt) => opt.value === id)) continue;
+          const kept = prev.find((opt) => opt.value === id);
+          if (kept) merged.push(kept);
+          else merged.push({ value: id, label: `#${id}` });
+        }
+        return merged;
+      };
+      const techSelected = (values.technician_ids ?? []).map(String);
+      const salesSelected = [values.salesperson?.trim() ?? ""].filter(Boolean);
+      const managerSelected = [values.project_manager?.trim() ?? ""].filter(Boolean);
+      if (
+        selectTargetFromUrl === "user" &&
+        selectIdFromUrl &&
+        /^\d+$/.test(selectIdFromUrl)
+      ) {
+        const fieldTarget =
+          peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        if (fieldTarget === "salesperson" && !salesSelected.includes(selectIdFromUrl)) {
+          salesSelected.push(selectIdFromUrl);
+        } else if (fieldTarget === "technician_ids" && !techSelected.includes(selectIdFromUrl)) {
+          techSelected.push(selectIdFromUrl);
+        } else if (
+          fieldTarget !== "salesperson" &&
+          fieldTarget !== "technician_ids" &&
+          !managerSelected.includes(selectIdFromUrl)
+        ) {
+          managerSelected.push(selectIdFromUrl);
+        }
+      }
+      setTechnicianOptions((prev) =>
+        mergeSelected(userProfilesToSelectOptions(byRole.technician ?? []), techSelected, prev),
+      );
+      setSalesOptions((prev) =>
+        mergeSelected(userProfilesToSelectOptions(byRole.sales ?? []), salesSelected, prev),
+      );
+      setManagerOptions((prev) =>
+        mergeSelected(userProfilesToSelectOptions(byRole.manager ?? []), managerSelected, prev),
+      );
       const toLabel = (row: Tag) => row.name ?? row.tag_name ?? `#${row.id}`;
       setTagOptions(tagsRes.items.map((row) => ({ value: String(row.id), label: toLabel(row) })));
       if (reloadCustomerId) {
@@ -1259,11 +1315,18 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
             const id = row.contact?.trim();
             if (id) selectedIds.add(id);
           }
+          if (
+            selectTargetFromUrl === "contact" &&
+            selectIdFromUrl &&
+            /^\d+$/.test(selectIdFromUrl)
+          ) {
+            selectedIds.add(selectIdFromUrl);
+          }
           const merged = [...incoming];
-          for (const opt of prev) {
-            if (!selectedIds.has(opt.value)) continue;
-            if (merged.some((row) => row.value === opt.value)) continue;
-            merged.push(opt);
+          for (const id of selectedIds) {
+            if (merged.some((row) => row.value === id)) continue;
+            const kept = prev.find((opt) => opt.value === id);
+            merged.push(kept ?? { value: id, label: `#${id}` });
           }
           return merged;
         });
@@ -1282,7 +1345,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         mergeSiteRowsPreservingSelected(rows);
       }
     },
-    onApplySelect: async ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId, fieldTarget: fieldTargetArg }) => {
+      // Block edit fetch / working-draft restores from wiping this apply.
+      formValuesRestoredRef.current = true;
+      skipPresetFromUrlRef.current = true;
+
       if (selectTarget === "client") {
         const previousCustomer = getValues("customer")?.trim() ?? "";
         // Select immediately so the field is not left empty if option fetch is slow.
@@ -1334,7 +1401,10 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return;
       }
       if (selectTarget === "contact") {
-        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "primary_customer_contact";
+        const fieldTarget =
+          fieldTargetArg?.trim() ||
+          peekQuickCreateFieldTarget(draftReturnTo) ||
+          "primary_customer_contact";
         const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
         if (additionalMatch) {
           const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
@@ -1356,35 +1426,36 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return;
       }
       if (selectTarget === "user") {
-        const fieldTarget = peekQuickCreateFieldTarget(draftReturnTo) ?? "project_manager";
+        const fieldTarget =
+          fieldTargetArg?.trim() ||
+          peekQuickCreateFieldTarget(draftReturnTo) ||
+          "project_manager";
         const userId = Number.parseInt(selectId, 10);
         if (fieldTarget === "salesperson") {
-          setValue("salesperson", selectId, { shouldDirty: true, shouldValidate: true });
-          if (Number.isFinite(userId) && userId > 0) {
-            const value = await ensureUserInRoleOptions(userId, "sales");
-            if (value !== selectId) {
-              setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
-            }
-          }
+          // Resolve option id before setValue so select value matches dropdown options.
+          const value =
+            Number.isFinite(userId) && userId > 0
+              ? await ensureUserInRoleOptions(userId, "sales")
+              : selectId;
+          setValue("salesperson", value, { shouldDirty: true, shouldValidate: true });
           return;
         }
         if (fieldTarget === "technician_ids") {
-          const numericId = Number.parseInt(selectId, 10);
-          if (Number.isFinite(numericId) && numericId > 0) {
+          if (Number.isFinite(userId) && userId > 0) {
+            const value = await ensureUserInRoleOptions(userId, "technician");
+            const resolvedId = Number.parseInt(value, 10);
+            const numericId = Number.isFinite(resolvedId) && resolvedId > 0 ? resolvedId : userId;
             const current = getValues("technician_ids") ?? [];
             const next = current.includes(numericId) ? current : [...current, numericId];
             setValue("technician_ids", next, { shouldDirty: true, shouldValidate: true });
-            await ensureUserInRoleOptions(userId, "technician");
           }
           return;
         }
-        setValue("project_manager", selectId, { shouldDirty: true, shouldValidate: true });
-        if (Number.isFinite(userId) && userId > 0) {
-          const value = await ensureUserInRoleOptions(userId, "manager");
-          if (value !== selectId) {
-            setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
-          }
-        }
+        const value =
+          Number.isFinite(userId) && userId > 0
+            ? await ensureUserInRoleOptions(userId, "manager")
+            : selectId;
+        setValue("project_manager", value, { shouldDirty: true, shouldValidate: true });
       }
     },
   });
