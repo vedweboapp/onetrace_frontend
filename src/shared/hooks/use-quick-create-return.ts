@@ -11,7 +11,6 @@ import {
 } from "@/shared/utils/quick-create-navigation.util";
 import {
   clearQuickCreateFieldTarget,
-  clearQuickCreateFormDraft,
   loadQuickCreateFormDraft,
 } from "@/shared/utils/quick-create-form-draft.util";
 
@@ -71,38 +70,47 @@ export function useQuickCreateReturn({
   const selectTargetRaw = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
   const selectTarget = isQuickCreateKind(selectTargetRaw) ? selectTargetRaw : null;
   const hasSelect = Boolean(selectId && /^\d+$/.test(selectId) && selectTarget);
+  const applyKey = hasSelect && selectId && selectTarget ? `${pathname}|${selectTarget}|${selectId}` : null;
 
+  // Restore draft + apply selection in layout so the field is selected before paint.
   React.useLayoutEffect(() => {
     const restore = restoreFormDraftRef.current;
-    if (!restore) return;
-    const draft =
-      loadQuickCreateFormDraft(returnToForDraft) ??
-      (returnToForDraft !== returnToFromUrl ? loadQuickCreateFormDraft(returnToFromUrl) : null);
-    if (draft == null) return;
-    restore(draft);
+    if (restore) {
+      const draft =
+        loadQuickCreateFormDraft(returnToForDraft) ??
+        (returnToForDraft !== returnToFromUrl ? loadQuickCreateFormDraft(returnToFromUrl) : null);
+      if (draft != null) restore(draft);
+    }
+    if (hasSelect && selectId && selectTarget) {
+      // Sync apply (setValue) must happen here — do not wait for async option reload.
+      void Promise.resolve(onApplySelectRef.current({ selectTarget, selectId }));
+    }
   }, [returnToForDraft, returnToFromUrl, hasSelect, selectId, selectTarget]);
 
   React.useEffect(() => {
-    if (!hasSelect || !selectId || !selectTarget) return;
+    if (!hasSelect || !selectId || !selectTarget || !applyKey) return;
 
     let cancelled = false;
 
     void (async () => {
       try {
-        await onReloadOptionsRef.current?.();
-        if (cancelled) return;
+        // Apply again before reload (covers Strict Mode remount / late draft restore).
         await Promise.resolve(onApplySelectRef.current({ selectTarget, selectId }));
-        if (cancelled) return;
+        await onReloadOptionsRef.current?.();
+        // Re-apply after reload so option refreshes cannot leave the field empty.
+        await Promise.resolve(onApplySelectRef.current({ selectTarget, selectId }));
+
+        // Persist selection into the draft BEFORE stripping URL. Do not clear the draft
+        // here — React Strict Mode remounts must be able to restore the selected value.
         persistFormDraftRef.current?.();
-        clearQuickCreateFormDraft(returnToForDraft);
-        if (returnToForDraft !== returnToFromUrl) {
-          clearQuickCreateFormDraft(returnToFromUrl);
-        }
         clearQuickCreateFieldTarget(returnToForDraft);
         clearQuickCreateFieldTarget(returnToFromUrl);
 
+        // Only skip URL cleanup when this effect instance was superseded.
         if (cancelled) return;
         const params = new URLSearchParams(searchParamsRef.current.toString());
+        // Guard: URL may already have been cleaned by a parallel Strict Mode run.
+        if (!params.get(QUICK_CREATE_SELECT_PARAM)) return;
         params.delete(QUICK_CREATE_SELECT_PARAM);
         params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
         const qs = params.toString();
@@ -115,5 +123,5 @@ export function useQuickCreateReturn({
     return () => {
       cancelled = true;
     };
-  }, [hasSelect, selectId, selectTarget, pathname, router, returnToForDraft, returnToFromUrl]);
+  }, [hasSelect, selectId, selectTarget, applyKey, pathname, router, returnToForDraft, returnToFromUrl]);
 }

@@ -10,7 +10,7 @@ export const AUDIT_TRAIL_MODULES = {
   project: "project",
   jobSchedule: "jobschedule",
   workerTimeOff: "workertimeoff",
-  site: "site",
+  site: "sitemodel",
   dispatch: "dispatch",
   invoice: "invoice",
   purchaseOrder: "purchaseorder",

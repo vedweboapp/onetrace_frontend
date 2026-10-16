@@ -124,6 +124,32 @@ export async function updateQuotation(id: number, body: QuotationUpdatePayload):
   return data.data;
 }
 
+export type QuotationAttachmentWriteRef =
+  | { id: number; is_deleted: true }
+  | { file: File };
+
+/**
+ * Patch quotation attachments via multipart FormData.
+ * - New files → repeated `attachments`
+ * - Removals → repeated `deleted_attachment_ids`
+ */
+export async function updateQuotationAttachments(
+  id: number,
+  refs: QuotationAttachmentWriteRef[],
+): Promise<QuotationDetail> {
+  const fd = new FormData();
+  for (const ref of refs) {
+    if ("file" in ref && ref.file instanceof File) {
+      fd.append("attachments", ref.file, ref.file.name);
+    } else if ("id" in ref && ref.is_deleted === true) {
+      fd.append("deleted_attachment_ids", String(ref.id));
+    }
+  }
+  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), fd);
+  assertApiSuccess(data);
+  return data.data;
+}
+
 /** Loads selectable levels for a project when composing a quotation. */
 export async function fetchProjectLevelsForQuotation(projectId: number): Promise<QuotationLevelRef[]> {
   try {
