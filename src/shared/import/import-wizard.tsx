@@ -321,22 +321,19 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
 
   const footer =
     step === "upload" ? (
-      <div className="flex w-full items-center justify-between gap-3">
-        <p className="text-xs text-slate-500 dark:text-slate-400">{t("oneFileHint")}</p>
-        <div className="flex items-center gap-2">
-          <AppButton type="button" variant="secondary" size="sm" onClick={handleClose} disabled={parsing}>
-            {tActions("cancel")}
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={!parsed || parsing}
-            onClick={() => setStep("map")}
-          >
-            {t("next")}
-          </AppButton>
-        </div>
+      <div className="flex w-full items-center justify-end gap-2">
+        <AppButton type="button" variant="secondary" size="sm" onClick={handleClose} disabled={parsing}>
+          {tActions("cancel")}
+        </AppButton>
+        <AppButton
+          type="button"
+          variant="primary"
+          size="sm"
+          disabled={!parsed || parsing}
+          onClick={() => setStep("map")}
+        >
+          {t("next")}
+        </AppButton>
       </div>
     ) : step === "map" ? (
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -95,6 +95,7 @@ export const IMPORT_FIELD_SPECS: Partial<Record<MassActionResourceKey, FieldSpec
     { key: "quantity" },
     { key: "unit_type" },
     { key: "group" },
+    { key: "components" },
     { key: "installation_type" },
     { key: "installation_cost" },
     { key: "installation_cost_type" },
@@ -121,6 +122,7 @@ export const IMPORT_FIELD_SPECS: Partial<Record<MassActionResourceKey, FieldSpec
   groups: [
     { key: "name", required: true },
     { key: "description" },
+    { key: "items" },
     { key: "is_active" },
   ],
   quotations: [
