@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { usePathname } from "@/i18n/navigation";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import type { Job } from "@/features/jobs/types/job.types";
@@ -34,10 +36,20 @@ export function QuotationJobsTab({
 }: Props) {
   const t = useTranslations("Dashboard.quotations.relatedTabs");
   const dateFmt = useDashboardDateFormat();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const linked = jobs[0] ?? null;
   const [detail, setDetail] = React.useState<Job | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [detailError, setDetailError] = React.useState<string | null>(null);
+
+  /** Return to this quotation Job tab after opening a form from the embedded job body. */
+  const formsBackHref = React.useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "jobs");
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : `${pathname}?tab=jobs`;
+  }, [pathname, searchParams]);
 
   const reloadDetail = React.useCallback(async () => {
     if (!linked) {
@@ -97,6 +109,7 @@ export function QuotationJobsTab({
         <JobDetailBody
           detail={detail}
           dateFmt={dateFmt}
+          formsBackHref={formsBackHref}
           onOpenScheduling={onOpenSchedule}
           onSaved={() => {
             onJobUpdated?.();

@@ -22,8 +22,8 @@ type Props = {
 };
 
 /**
- * Service quotation Forms tab — same worker submissions list as the linked service job.
- * Loads a full job detail so form id resolution matches JobFormsTab on job detail.
+ * Service quotation Forms tab — same assigned forms + status as the linked service job.
+ * Opens forms via project-forms metadata / submit APIs (JobFormFillScreen).
  */
 export function QuotationFormsTab({ jobs, loading, loadError, onRetry }: Props) {
   const t = useTranslations("Dashboard.quotations.relatedTabs");
@@ -95,7 +95,13 @@ export function QuotationFormsTab({ jobs, loading, loadError, onRetry }: Props) 
         />
       }
     >
-      {detail ? <JobFormsTab detail={detail} backHref={backHref} /> : null}
+      {detail ? (
+        <JobFormsTab
+          detail={detail}
+          backHref={backHref}
+          onJobUpdated={() => void reloadDetail()}
+        />
+      ) : null}
     </DetailTabListShell>
   );
 }

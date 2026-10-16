@@ -3226,7 +3226,7 @@
         "attachments": "Adjuntos",
         "forms": "Formularios",
         "formsEmptyTitle": "Aún no hay formularios",
-        "formsEmptyDescription": "Los envíos de formularios del trabajador del trabajo vinculado a esta cotización aparecerán aquí cuando estén disponibles.",
+        "formsEmptyDescription": "Los formularios asignados al trabajo vinculado a esta cotización aparecerán aquí con estado enviado o no enviado.",
         "formsLoadError": "No se pudieron cargar los formularios de esta cotización. Inténtalo de nuevo.",
         "jobsheets": "Hoja de trabajo",
         "jobsheetsPlural": "Hojas de trabajo",
@@ -4676,7 +4676,8 @@
         "returnsEmpty": "No se han realizado solicitudes de devolución para este trabajo.",
         "returnsLoadError": "Error al cargar las devoluciones.",
         "formsTitle": "Formularios",
-        "formsEmpty": "Aún no hay envíos de formularios de trabajadores para este trabajo.",
+        "formsSubmissionsTitle": "Envíos",
+        "formsEmpty": "Aún no hay formularios asignados a este trabajo.",
         "formsLoadError": "No se pudieron cargar los envíos de formularios. Inténtalo de nuevo.",
         "formsTable": {
           "id": "ID",

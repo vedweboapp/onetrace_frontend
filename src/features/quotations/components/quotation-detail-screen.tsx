@@ -108,7 +108,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     "projects",
     "tags",
   ]);
-
+ 
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [projectNames, setProjectNames] = React.useState<Record<number, string>>({});
   const [siteNames, setSiteNames] = React.useState<Record<number, string>>({});

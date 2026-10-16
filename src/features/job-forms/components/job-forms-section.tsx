@@ -22,6 +22,8 @@ type Props = {
   checklistMarked?: boolean;
   backHref?: string;
   onChecklistsUpdated?: () => void;
+  /** Hide the section heading when the parent already provides a panel title. */
+  hideTitle?: boolean;
 };
 
 function isSubmittedForm(form: JobFormRef): boolean {
@@ -36,6 +38,7 @@ export function JobFormsSection({
   checklistMarked = false,
   backHref,
   onChecklistsUpdated,
+  hideTitle = false,
 }: Props) {
   const t = useTranslations("Dashboard.jobs.forms");
   const router = useRouter();
@@ -108,10 +111,12 @@ export function JobFormsSection({
 
   return (
     <>
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {t("sectionTitle")}
-        </p>
+      <div className={hideTitle ? undefined : "mt-4"}>
+        {hideTitle ? null : (
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("sectionTitle")}
+          </p>
+        )}
         <ul className="flex flex-wrap gap-2">
           {forms.map((form) => {
             const submitted = isSubmittedForm(form);

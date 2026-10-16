@@ -14,8 +14,7 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
-import { CustomizableAppTabs } from "@/shared/ui";
+import { AppTabs } from "@/shared/ui";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import api from "@/core/api/axios";
@@ -410,7 +409,6 @@ export default function FormBuilderLayout({
   projectTypeId,
 }: FormBuilderLayoutProps) {
   const t = useTranslations("Dashboard.settingsFormBuilder");
-  const tabsStorageKey = useTabOrderStorageKey("formBuilder");
   const {
     formSchema,
     createForm,
@@ -1915,45 +1913,29 @@ export default function FormBuilderLayout({
 
         {/* Row 2 (mobile): tabs centred, Row 2 (desktop): centred flex-1 */}
         <div className="flex justify-center w-full lg:w-auto lg:flex-1 min-w-0">
-          <CustomizableAppTabs
+          <AppTabs
             tabs={tabs}
             value={activeTab}
             onValueChange={(val) => setActiveTab(val as "form" | "preview" | "rules")}
-            storageKey={tabsStorageKey}
           />
         </div>
 
-        {/* Row 3 (mobile): 3 equal-width buttons — no overflow */}
-        <div className="grid grid-cols-4 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => router.push(BackUrl)}
-            className="justify-center text-xs sm:text-sm px-2 h-9"
-          >
-            Close
-          </Button>
+        {/* Row 3: Save and Close + Save and Publish only */}
+        <div className="grid grid-cols-2 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
           <Button
             variant="secondary"
             onClick={() => handleSave(true)}
             disabled={!dirty || saving}
-            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
+            className="justify-center text-[10px] sm:text-xs lg:text-sm px-2 h-9 truncate"
           >
             Save and Close
           </Button>
           <Button
-            variant="secondary"
             onClick={() => handleSave(false, true)}
             disabled={!dirty || saving}
-            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
+            className="justify-center text-[10px] sm:text-xs lg:text-sm px-2 h-9 truncate"
           >
             {saving ? "Publishing…" : "Save and Publish"}
-          </Button>
-          <Button
-            onClick={() => handleSave(false)}
-            disabled={!dirty || saving}
-            className="justify-center text-xs sm:text-sm px-2 h-9"
-          >
-            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
