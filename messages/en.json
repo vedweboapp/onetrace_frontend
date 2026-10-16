@@ -3237,7 +3237,7 @@
         "attachments": "Attachments",
         "forms": "Forms",
         "formsEmptyTitle": "No forms yet",
-        "formsEmptyDescription": "Worker form submissions for the job linked to this quotation will show up here once available.",
+        "formsEmptyDescription": "Forms assigned to the job linked to this quotation will show up here with submitted or not submitted status.",
         "formsLoadError": "Could not load forms for this quotation. Try again.",
         "jobsheets": "Job Sheet",
         "jobsheetsPlural": "Job Sheets",
@@ -4691,7 +4691,8 @@
         "returnsEmpty": "No return requests have been made for this job.",
         "returnsLoadError": "Failed to load returns.",
         "formsTitle": "Forms",
-        "formsEmpty": "No worker form submissions for this job yet.",
+        "formsSubmissionsTitle": "Submissions",
+        "formsEmpty": "No forms are assigned to this job yet.",
         "formsLoadError": "Could not load form submissions. Try again.",
         "formsTable": {
           "id": "ID",
