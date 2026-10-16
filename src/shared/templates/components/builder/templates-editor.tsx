@@ -11,8 +11,9 @@ import type { Template } from "../../types/template.types";
 import {
   buildTemplateSavePayload,
   buildTemplateSaveObject,
+  hydrateTablesFromKeys,
 } from "../../api/template-variables.api";
-import TemplateDocEditor from "./editor";
+import TemplateDocEditor, { preserveSpacesInHtml } from "./editor";
 import { AppButton } from "@/shared/ui";
 
 interface TemplatesEditorProps {
@@ -27,24 +28,20 @@ interface TemplatesEditorProps {
   moduleName?: string;
 }
 
-/**
- * Replaces bare filename `src` attributes in the HTML content with the full
- * backend URL from the template's `attachments` array.
- *
- * The backend stores content like:
- *   <img src="Screenshot from 2026-07-20 17-43-12.png" data-filename="...">
- * and returns attachments with:
- *   { file_name: "Screenshot from 2026-07-20 17-43-12.png", file: "http://...full-url.png" }
- *
- * This function resolves those references so images render correctly in the editor.
- */
 function hydrateContentWithAttachments(
   content: string,
   attachments: Template["attachments"],
+  keys?: Template["keys"] | Template["Keys"],
 ): string {
-  if (!content || !attachments?.length) return content;
+  if (!content) return content;
 
-  // Build a lookup: file_name → full file URL
+  // 1. Dynamic rendering system: Detect items table signature (e.g. <!-- items_table -->)
+  // and fetch the configured columns from the keys array to render the table preview
+  let hydrated = preserveSpacesInHtml(hydrateTablesFromKeys(content, keys));
+
+  if (!attachments?.length) return hydrated;
+
+  // 2. Build a lookup: file_name → full file URL
   const urlByName = new Map<string, string>();
   for (const att of attachments) {
     if (att.file_name && att.file) {
@@ -53,11 +50,10 @@ function hydrateContentWithAttachments(
       urlByName.set(att.file_name.replace(/\s+/g, "_"), att.file);
     }
   }
-  if (urlByName.size === 0) return content;
+  if (urlByName.size === 0) return hydrated;
 
   // Replace src="<bare-filename>" with src="<full-url>" when the filename is known.
-  return content.replace(/(<img[^>]*?\ssrc=)(["'])([^"']+)\2/gi, (match, prefix, quote, src) => {
-    // Skip if already a full URL (http/https/data:)
+  return hydrated.replace(/(<img[^>]*?\ssrc=)(["'])([^"']+)\2/gi, (match, prefix, quote, src) => {
     if (/^https?:\/\/|^data:/i.test(src)) return match;
 
     const resolved =
@@ -71,25 +67,28 @@ function hydrateContentWithAttachments(
 }
 
 /**
- * Returns the IDs of attachments that are no longer referenced in the current
- * HTML content. An attachment is considered "removed" when neither its full
- * file URL nor its file_name appears anywhere in the content string.
+ * Returns the IDs of attachments that were actually present in the initial content
+ * but were subsequently removed by the user from the editor content.
  *
- * These IDs must be sent as `delete_attachment_ids` in the save payload so the
- * backend can clean up the orphaned files.
+ * If the user did not delete anything, returns an empty array.
  */
 function findDeletedAttachmentIds(
-  content: string,
+  currentContent: string,
   originalAttachments: Template["attachments"],
+  initiallyPresentIds: Set<number>,
 ): number[] {
-  if (!originalAttachments?.length) return [];
+  if (!originalAttachments?.length || !initiallyPresentIds || initiallyPresentIds.size === 0) {
+    return [];
+  }
   const deletedIds: number[] = [];
   for (const att of originalAttachments) {
+    // Only evaluate attachments that were genuinely in the document when loaded!
+    if (!initiallyPresentIds.has(att.id)) continue;
+
     const stillReferenced =
-      (att.file && content.includes(att.file)) ||
-      (att.file_name && content.includes(att.file_name)) ||
-      // Also check underscored variant in case editor munged spaces
-      (att.file_name && content.includes(att.file_name.replace(/\s+/g, "_")));
+      (att.file && currentContent.includes(att.file)) ||
+      (att.file_name && currentContent.includes(att.file_name)) ||
+      (att.file_name && currentContent.includes(att.file_name.replace(/\s+/g, "_")));
     if (!stillReferenced) {
       deletedIds.push(att.id);
     }
@@ -109,11 +108,16 @@ export default function TemplatesEditor({
   const resolvedModuleName = template?.module || template?.module_name || moduleName;
   const [name, setName] = useState(template?.name || template?.template_name || "Untitled Template");
 
-  // Hydrate the initial content: replace bare filenames with full attachment URLs
+  // Hydrate the initial content: replace bare filenames with full attachment URLs and table signatures with preview divs
   const hydratedInitialContent = useMemo(
-    () => hydrateContentWithAttachments(template?.content ?? "", template?.attachments),
+    () =>
+      hydrateContentWithAttachments(
+        template?.content ?? "",
+        template?.attachments,
+        template?.keys || template?.Keys,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [template?.id, template?.content, template?.attachments],
+    [template?.id, template?.content, template?.attachments, template?.keys, template?.Keys],
   );
 
   const contentRef = useRef(hydratedInitialContent);
@@ -123,17 +127,38 @@ export default function TemplatesEditor({
   const [dirty, setDirty] = useState(false);
   const [editingName, setEditingName] = useState(false);
 
+  // Track which attachments were ACTUALLY present in the initial content when opened
+  const initialPresentAttachmentIdsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const present = new Set<number>();
+    if (template?.attachments?.length) {
+      const raw = template.content ?? "";
+      for (const att of template.attachments) {
+        const isInInitial =
+          (att.file && raw.includes(att.file)) ||
+          (att.file_name && raw.includes(att.file_name)) ||
+          (att.file_name && raw.includes(att.file_name.replace(/\s+/g, "_")));
+        if (isInInitial) {
+          present.add(att.id);
+        }
+      }
+    }
+    initialPresentAttachmentIdsRef.current = present;
+  }, [template?.id, template?.content, template?.attachments]);
+
   useEffect(() => {
     // Re-hydrate when the template is (re-)loaded after a save
     const hydrated = hydrateContentWithAttachments(
       template?.content ?? "",
       template?.attachments,
+      template?.keys || template?.Keys,
     );
     contentRef.current = hydrated;
 
     const tName = template?.name || template?.template_name;
     if (tName) setName(tName);
-  }, [template?.content, template?.name, template?.template_name, template?.attachments]);
+  }, [template?.content, template?.name, template?.template_name, template?.attachments, template?.keys, template?.Keys]);
 
   const handleContentChange = useCallback((html: string, newFiles?: File[]) => {
     contentRef.current = html;
@@ -146,53 +171,39 @@ export default function TemplatesEditor({
     }
   }, []);
 
+  /** Builds the shared save payload (FormData + raw object). */
+  const buildPayload = () => {
+    const templateData = {
+      name: name.trim(),
+      content: contentRef.current,
+      moduleName: resolvedModuleName,
+      files: filesRef.current,
+      ...(template?.category ? { category: template.category } : {}),
+      ...(template?.description ? { description: template.description } : {}),
+      ...(template?.id ? { id: template.id } : {}),
+    };
+
+    const payload = buildTemplateSavePayload(templateData);
+    const rawObject = buildTemplateSaveObject(templateData);
+
+    // Only detect removed attachments if they were genuinely in the initial content and removed by the user
+    const deletedAttachmentIds = findDeletedAttachmentIds(
+      contentRef.current,
+      template?.attachments,
+      initialPresentAttachmentIdsRef.current,
+    );
+    if (deletedAttachmentIds.length > 0) {
+      payload.append("delete_attachment_ids", JSON.stringify(deletedAttachmentIds));
+    }
+
+    return { payload, rawObject };
+  };
+
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const templateData = {
-        name: name.trim(),
-        content: contentRef.current,
-        moduleName: resolvedModuleName,
-        files: filesRef.current,
-        ...(template?.category ? { category: template.category } : {}),
-        ...(template?.description ? { description: template.description } : {}),
-        ...(template?.id ? { id: template.id } : {}),
-      };
-
-      const payload = buildTemplateSavePayload(templateData);
-      const rawObject = buildTemplateSaveObject(templateData);
-
-      // Detect which original attachments were removed from the content
-      // and list their IDs so the backend can delete the orphaned files.
-      const deletedAttachmentIds = findDeletedAttachmentIds(
-        contentRef.current,
-        template?.attachments,
-      );
-      if (deletedAttachmentIds.length > 0) {
-        payload.append("delete_attachment_ids", JSON.stringify(deletedAttachmentIds));
-      }
-
-      const attachedBinaryFiles = Array.from(payload.entries())
-        .filter(([, v]) => typeof v !== "string" && v instanceof File)
-        .map(([k, v]) => ({
-          key: k,
-          name: (v as File).name,
-          size: `${(v as File).size} bytes`,
-          type: (v as File).type,
-        }));
-
-      console.log("[Template Save Payload (FormData)]", {
-        fields: Object.fromEntries(
-          Array.from(payload.entries()).map(([k, v]) => [
-            k,
-            typeof v === "string" ? v : `(binary: ${(v as File).name})`,
-          ])
-        ),
-        binaryFiles: attachedBinaryFiles,
-      });
-      console.log("[Template Save Payload (Object)]", rawObject);
-
+      const { payload, rawObject } = buildPayload();
       await onSave?.(name.trim(), contentRef.current, payload, rawObject);
       dirtyRef.current = false;
       setDirty(false);

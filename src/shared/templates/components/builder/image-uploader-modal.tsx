@@ -239,7 +239,7 @@ export function ImageUploaderModal({
                   <X className="size-3.5" />
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-750 dark:bg-slate-850">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={fileDataUrl}
@@ -301,7 +301,7 @@ export function ImageUploaderModal({
                 <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1.5">
                   Preview:
                 </div>
-                <div className="relative flex max-h-40 items-center justify-center overflow-hidden rounded bg-white p-2 dark:bg-slate-850">
+                <div className="relative flex max-h-40 items-center justify-center overflow-hidden rounded bg-white p-2 dark:bg-slate-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl.trim()}

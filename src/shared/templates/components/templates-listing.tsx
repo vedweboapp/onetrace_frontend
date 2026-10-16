@@ -210,7 +210,6 @@ function TemplateCard({
   const categoryColor =
     CATEGORY_COLORS[template.category ?? "custom"] ?? CATEGORY_COLORS.custom;
 
-  // Generate a mini text preview from HTML content
   const textPreview = template.content
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
@@ -222,10 +221,59 @@ function TemplateCard({
       className="group relative flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 cursor-pointer"
       onClick={() => onEdit(template)}
     >
+      {/* ── Three-dot menu — overlaid on top-right corner of the whole card ── */}
+      <div
+        ref={menuRef}
+        className="absolute top-2 right-2 z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          title="More options"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((v) => !v);
+          }}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-all duration-150"
+        >
+          <MoreVertical size={14} />
+        </button>
+
+        {menuOpen && (
+          <div className="absolute right-0 top-8 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onEdit(template);
+              }}
+            >
+              <Pencil size={13} className="text-slate-500" />
+              Edit template
+            </button>
+            <div className="mx-3 h-px bg-slate-100 dark:bg-slate-700" />
+            <button
+              type="button"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onDelete(template);
+              }}
+            >
+              <Trash2 size={13} />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Document thumbnail */}
-      <div className="relative h-44 bg-gradient-to-b from-slate-50 to-white dark:from-slate-850 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 flex flex-col items-center justify-start p-4 overflow-hidden">
+      <div className="relative h-44 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 border-b border-slate-100 dark:border-slate-800 flex flex-col items-center justify-start p-4 overflow-hidden">
         {/* A4-like mini page */}
-        <div className="w-full max-w-[140px] h-full bg-white dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-750 rounded-sm p-2 text-[7px] leading-[1.4] text-slate-600 dark:text-slate-400 overflow-hidden select-none">
+        <div className="w-full max-w-[140px] h-full bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 rounded-sm p-2 text-[7px] leading-[1.4] text-slate-600 dark:text-slate-400 overflow-hidden select-none">
           <div className="font-bold text-[8px] text-slate-800 dark:text-slate-200 mb-1 truncate">
             {template.name}
           </div>
@@ -242,7 +290,7 @@ function TemplateCard({
           </div>
         )}
 
-        {/* Hover overlay with open button */}
+        {/* Hover overlay */}
         <div className="absolute inset-0 bg-slate-900/10 dark:bg-white/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
           <span className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium px-3 py-1.5 rounded-full shadow-md">
             Open Template
@@ -252,51 +300,9 @@ function TemplateCard({
 
       {/* Card footer */}
       <div className="flex flex-col gap-1.5 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight line-clamp-1">
-            {template.name}
-          </p>
-
-          {/* Actions menu */}
-          <div className="relative shrink-0" ref={menuRef}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen((v) => !v);
-              }}
-              className="p-1 rounded opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all"
-            >
-              <MoreVertical size={14} />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-6 w-36 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onEdit(template);
-                  }}
-                >
-                  <Pencil size={12} /> Edit template
-                </button>
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onDelete(template);
-                  }}
-                >
-                  <Trash2 size={12} /> Delete
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight line-clamp-1">
+          {template.name}
+        </p>
 
         {template.description && (
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
@@ -314,6 +320,27 @@ function TemplateCard({
             <Clock size={10} />
             {formattedDate}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Skeleton card (shown while API is loading) ─────────────────────────────
+function TemplateCardSkeleton() {
+  return (
+    <div className="flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs animate-pulse">
+      {/* Thumbnail area */}
+      <div className="h-44 bg-slate-100 dark:bg-slate-800" />
+
+      {/* Footer area */}
+      <div className="flex flex-col gap-2.5 p-3">
+        <div className="h-3.5 w-3/4 rounded-full bg-slate-200 dark:bg-slate-700" />
+        <div className="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800" />
+        <div className="h-2.5 w-2/3 rounded-full bg-slate-100 dark:bg-slate-800" />
+        <div className="flex items-center justify-between mt-1">
+          <div className="h-4 w-16 rounded-full bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
         </div>
       </div>
     </div>
@@ -476,7 +503,12 @@ export default function TemplatesListing() {
           {/* "Create" card always first */}
           <NewTemplateCard onClick={handleCreate} />
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            // Skeleton cards while API request is in-flight
+            Array.from({ length: 7 }).map((_, i) => (
+              <TemplateCardSkeleton key={i} />
+            ))
+          ) : filtered.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
               <FileText size={40} strokeWidth={1.5} />
               <p className="text-sm">No templates match your search.</p>
