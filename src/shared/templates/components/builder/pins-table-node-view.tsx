@@ -119,8 +119,7 @@ export function PinsTableNodeView({
   const colSet = new Set(parsedCols);
   REQUIRED_COLUMN_IDS.forEach((id) => colSet.add(id));
   const columns = Array.from(colSet);
-  const includeTotal: boolean =
-    node.attrs.includeTotal !== undefined ? Boolean(node.attrs.includeTotal) : true;
+  const includeTotal = false;
 
   const activeColDefs = PIN_COLUMNS.filter((c) => columns.includes(c.id));
 
@@ -263,35 +262,6 @@ export function PinsTableNodeView({
             </table>
           </div>
         </div>
-
-        {/* ── Totals Card & Section Total Banner (Bottom Right) ── */}
-        {includeTotal && (
-          <div className="mt-4 flex flex-col items-end gap-2.5">
-            <div className="w-72 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden text-xs shadow-2xs">
-              <div className="flex justify-between px-3.5 py-2 text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                <span>Sub-Total ex VAT</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  Kč 300,000
-                </span>
-              </div>
-              <div className="flex justify-between px-3.5 py-2 text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                <span>VAT (20%)</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  Kč 60,000
-                </span>
-              </div>
-              <div className="flex justify-between px-3.5 py-2.5 bg-slate-100/80 dark:bg-slate-800/80 font-bold text-slate-900 dark:text-white">
-                <span>Total inc VAT</span>
-                <span>Kč 360,000</span>
-              </div>
-            </div>
-
-            {/* Dark Navy Section Total Button/Pill */}
-            <div className="inline-flex items-center justify-center px-4 py-2.5 rounded-md bg-[#2b394b] text-white text-xs font-bold uppercase tracking-wider shadow-xs">
-              SECTION TOTAL INC VAT Kč 360,000
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Edit Configuration Modal ── */}

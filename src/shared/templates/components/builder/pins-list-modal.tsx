@@ -181,7 +181,6 @@ export function PinsListModal({
 
   const [includeHeading, setIncludeHeading] = useState(true);
   const [headingText, setHeadingText] = useState("Pins List");
-  const [includeTotalRow, setIncludeTotalRow] = useState(false);
   const [rowCount, setRowCount] = useState<number>(2);
 
   React.useEffect(() => {
@@ -199,11 +198,8 @@ export function PinsListModal({
         setHeadingText(initialTitle);
         setIncludeHeading(Boolean(initialTitle.trim()));
       }
-      if (initialIncludeTotal !== undefined) {
-        setIncludeTotalRow(initialIncludeTotal);
-      }
     }
-  }, [open, initialColumns, initialTitle, initialIncludeTotal, isEditing]);
+  }, [open, initialColumns, initialTitle, isEditing]);
 
   const toggleColumn = (id: string) => {
     // Quantity and Price are required by rule and cannot be unchecked
@@ -238,7 +234,6 @@ export function PinsListModal({
     setSelectedColIds(defaultSet);
     setIncludeHeading(true);
     setHeadingText("Pins List");
-    setIncludeTotalRow(false);
     setRowCount(2);
   };
 
@@ -255,7 +250,7 @@ export function PinsListModal({
 
     const cols = Array.from(selectedColIds);
     const title = includeHeading ? headingText.trim() : "";
-    const total = includeTotalRow;
+    const total = false;
 
     if (onSave) {
       onSave({ columns: cols, title, includeTotal: total });
@@ -430,31 +425,18 @@ export function PinsListModal({
               />
             </div>
 
-            {/* Total row toggle */}
-            <div className="flex items-center justify-between sm:justify-end gap-3">
-              <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={includeTotalRow}
-                  onChange={(e) => setIncludeTotalRow(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
-                />
-                <span>Include Grand Total Row</span>
-              </label>
-
-              {/* Sample Rows */}
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                <span>Rows:</span>
-                <select
-                  value={rowCount}
-                  onChange={(e) => setRowCount(Number(e.target.value))}
-                  className="px-2 py-0.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                </select>
-              </div>
+            {/* Sample Rows */}
+            <div className="flex items-center justify-end gap-1.5 text-slate-500 dark:text-slate-400">
+              <span>Rows:</span>
+              <select
+                value={rowCount}
+                onChange={(e) => setRowCount(Number(e.target.value))}
+                className="px-2 py-0.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+              </select>
             </div>
           </div>
         </div>
@@ -538,21 +520,6 @@ export function PinsListModal({
                       </tr>
                     ))}
                   </tbody>
-                  {includeTotalRow && activeColumns.length > 1 && (
-                    <tfoot>
-                      <tr className="bg-slate-100/80 dark:bg-slate-800/80 font-bold text-slate-900 dark:text-slate-100 border-t-2 border-slate-200 dark:border-slate-700">
-                        <td
-                          colSpan={activeColumns.length - 1}
-                          className="px-3 py-2 text-right text-xs"
-                        >
-                          Total inc VAT:
-                        </td>
-                        <td className="px-3 py-2 text-right text-xs font-bold text-blue-700 dark:text-blue-300">
-                          {hasPricing ? "Kč 360,000" : "2 items"}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
                 </table>
               </div>
             )}

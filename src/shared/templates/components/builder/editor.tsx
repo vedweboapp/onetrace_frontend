@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -938,7 +939,7 @@ interface TemplateEditorProps {
 
 export function preserveSpacesInHtml(html: string): string {
   if (!html) return html;
-  return html.replace(/>([^<]+)</g, (_fullMatch, textContent) => {
+  let out = html.replace(/>([^<]+)</g, (_fullMatch, textContent) => {
     let res = textContent;
     if (res.startsWith(" ")) {
       res = "&nbsp;" + res.slice(1);
@@ -955,6 +956,24 @@ export function preserveSpacesInHtml(html: string): string {
     });
     return `>${res}<`;
   });
+
+  // Ensure all tables (including borderless side-by-side header tables) retain width: 100% inline style
+  // so external previews (like quotation preview modal) and backend PDF engines don't collapse columns
+  out = out.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
+    if (attrs.includes("style=")) {
+      return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
+        let updated = styleVal;
+        if (!/width\s*:/i.test(updated)) {
+          updated = `width: 100%; ${updated}`.trim();
+        }
+        return `style="${updated}"`;
+      });
+    } else {
+      return `<table${attrs} style="width: 100%;">`;
+    }
+  });
+
+  return out;
 }
 
 const CustomTable = Table.extend({
@@ -975,6 +994,18 @@ const CustomTable = Table.extend({
         },
       },
     };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const existingStyle = (HTMLAttributes?.style as string) || "";
+    let updatedStyle = existingStyle;
+    if (!existingStyle.includes("width:") && !existingStyle.includes("width :")) {
+      updatedStyle = existingStyle ? `width: 100%; ${existingStyle}` : "width: 100%;";
+    }
+    return [
+      "table",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: updatedStyle }),
+      ["tbody", 0],
+    ];
   },
 });
 
@@ -1093,7 +1124,6 @@ export default function TemplateDocEditor({
           const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
           if (coordinates) {
             const node = view.state.schema.nodes.signature?.create({
-              label: "Client Sign",
               imageKey: "",
             });
             if (node) {

@@ -197,7 +197,8 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
     (editor.chain().focus() as any)
       .insertSignature({
         imageKey: "",
-        label: "Client Sign",
+        width: "320px",
+        alignment: "left",
       })
       .run();
   };
@@ -592,7 +593,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                 Signature
               </p>
               <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                Drag into the document to place a signature card. You can configure the label and signature image key directly on the placed block.
+                Drag into the document to place a signature block. Configure the signature image key directly on the placed block.
               </div>
 
               {/* Draggable Component Card */}
@@ -602,7 +603,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                   e.dataTransfer.setData("application/x-signature-block", "true");
                   e.dataTransfer.setData(
                     "text/html",
-                    '<div data-signature-block="true" data-label="Client Sign" data-image-key=""></div>',
+                    '<div data-signature-block="true" data-image-key="" data-width="320px" data-alignment="left"></div>',
                   );
                   e.dataTransfer.effectAllowed = "copy";
                 }}

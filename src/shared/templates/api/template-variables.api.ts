@@ -283,42 +283,47 @@ export function extractTemplateKeys(
   const seen = new Set<string>();
   const keys: TemplateKeyItem[] = [];
 
-  const processMatch = (raw: string) => {
-    const lower = raw.toLowerCase();
-    // Skip known HTML element names
-    if (HTML_ELEMENTS.has(lower)) return;
-    // Skip if already processed
-    if (seen.has(lower)) return;
-    seen.add(lower);
+  // 1. Match signature blocks first:
+  //    <div data-signature-block="true" data-image-key="..." data-label="...">
+  //    or <div data-signature-block="true" ...><img src="<key>" ... /></div>
+  const SIGNATURE_BLOCK_REGEX =
+    /<div\b([^>]*\bdata-signature-block=["']?true["']?[^>]*)>(?:([\s\S]*?)<\/div\s*>|)/gi;
+  let sigMatch: RegExpExecArray | null;
+  while ((sigMatch = SIGNATURE_BLOCK_REGEX.exec(htmlContent)) !== null) {
+    const attrsStr = sigMatch[1];
+    const innerHtml = sigMatch[2] || "";
 
-    if (lower.includes(".")) {
-      // Related field: <module.field>
-      const dotIdx = lower.indexOf(".");
-      const mod = lower.slice(0, dotIdx);
-      const field = lower.slice(dotIdx + 1);
-      keys.push({ Key: field, Type: "text", Module: mod });
-    } else {
-      // Primary field: <field>
-      keys.push({ Key: lower, Type: "text", Module: primaryModule });
+    const imgKeyMatch = attrsStr.match(/\bdata-image-key=["']([^"']*)["']/i);
+    const innerSrcMatch = innerHtml.match(/<img\b[^>]*\bsrc=["'](?:&lt;|<)?([^"'>]+?)(?:&gt;|>)?["']/i);
+    const rawKey = imgKeyMatch?.[1] || innerSrcMatch?.[1] || "";
+    const cleanKey = rawKey.replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim();
+
+    const dedupeKey = `signature:${cleanKey.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    let mod = primaryModule;
+    let field = cleanKey || "signature";
+    if (cleanKey.includes(".")) {
+      const parts = cleanKey.split(".");
+      mod = parts[0];
+      field = parts.slice(1).join(".");
     }
-  };
 
-  // 1. Match HTML-encoded tags: &lt;comment&gt; or &lt;sections.deleted_at&gt;
-  //    This is what TipTap produces when the variable is inserted as plain text
-  const ENCODED_REGEX = /&lt;([a-z_][a-z0-9_.]*(?:\.[a-z_][a-z0-9_]*)?)&gt;/gi;
-  let match: RegExpExecArray | null;
-  while ((match = ENCODED_REGEX.exec(htmlContent)) !== null) {
-    processMatch(match[1]);
+    if (cleanKey) {
+      seen.add(cleanKey.toLowerCase());
+      seen.add(field.toLowerCase());
+      seen.add(`&lt;${cleanKey.toLowerCase()}&gt;`);
+    }
+
+    keys.push({
+      Key: field,
+      Type: "signature",
+      Module: mod,
+    } as TemplateKeyItem);
   }
 
-  // 2. Match raw unencoded tags: <comment> or <sections.deleted_at>
-  //    (edge case — e.g. if content is pre-processed or set programmatically)
-  const RAW_REGEX = /<([a-z_][a-z0-9_.]*(?:\.[a-z_][a-z0-9_]*)?)>/gi;
-  while ((match = RAW_REGEX.exec(htmlContent)) !== null) {
-    processMatch(match[1]);
-  }
-
-  // 3. Match items table / pins table blocks:
+  // 2. Match items table / pins table blocks:
   //    <div data-pins-table="true" data-key="..." data-module="..." data-type="..." data-columns="...">
   const PINS_TABLE_REGEX = /<div\b([^>]*\bdata-pins-table=["']?true["']?[^>]*)>/gi;
   let tableMatch: RegExpExecArray | null;
@@ -376,29 +381,37 @@ export function extractTemplateKeys(
     });
   }
 
-  // 4. Match signature blocks:
-  //    <div data-signature-block="true" data-image-key="..." data-label="...">
-  const SIGNATURE_BLOCK_REGEX = /<div\b([^>]*\bdata-signature-block=["']?true["']?[^>]*)>/gi;
-  let sigMatch: RegExpExecArray | null;
-  while ((sigMatch = SIGNATURE_BLOCK_REGEX.exec(htmlContent)) !== null) {
-    const attrsStr = sigMatch[1];
+  const processMatch = (raw: string) => {
+    const lower = raw.toLowerCase();
+    // Skip known HTML element names
+    if (HTML_ELEMENTS.has(lower)) return;
+    // Skip if already processed
+    if (seen.has(lower)) return;
+    seen.add(lower);
 
-    const imgKeyMatch = attrsStr.match(/\bdata-image-key=["']([^"']*)["']/i);
-    const imageKey = imgKeyMatch?.[1] || "";
+    if (lower.includes(".")) {
+      // Related field: <module.field>
+      const dotIdx = lower.indexOf(".");
+      const mod = lower.slice(0, dotIdx);
+      const field = lower.slice(dotIdx + 1);
+      keys.push({ Key: field, Type: "text", Module: mod });
+    } else {
+      // Primary field: <field>
+      keys.push({ Key: lower, Type: "text", Module: primaryModule });
+    }
+  };
 
-    const labelMatch = attrsStr.match(/\bdata-label=["']([^"'"]*)["']/i);
-    const label = labelMatch?.[1] || "Client Sign";
+  // 3. Match HTML-encoded tags: &lt;comment&gt; or &lt;sections.deleted_at&gt;
+  const ENCODED_REGEX = /&lt;([a-z_][a-z0-9_.]*(?:\.[a-z_][a-z0-9_]*)?)&gt;/gi;
+  let match: RegExpExecArray | null;
+  while ((match = ENCODED_REGEX.exec(htmlContent)) !== null) {
+    processMatch(match[1]);
+  }
 
-    const dedupeKey = `signature:${imageKey.toLowerCase()}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-
-    keys.push({
-      Key: imageKey || "signature",
-      Type: "signature",
-      Module: primaryModule,
-      label,
-    } as TemplateKeyItem);
+  // 4. Match raw unencoded tags: <comment> or <sections.deleted_at>
+  const RAW_REGEX = /<([a-z_][a-z0-9_.]*(?:\.[a-z_][a-z0-9_]*)?)>/gi;
+  while ((match = RAW_REGEX.exec(htmlContent)) !== null) {
+    processMatch(match[1]);
   }
 
   return keys;
@@ -406,8 +419,10 @@ export function extractTemplateKeys(
 
 
 /**
- * Replaces preview divs of the items/pins table AND signature blocks in the HTML content with
- * clean comments (<!-- items_table --> and <!-- signature:key -->) for sending in the payload.
+ * Replaces preview divs of the items/pins table in the HTML content with
+ * clean comments (<!-- items_table -->). Signature blocks are preserved as styled divs
+ * with the key name in the image src (<key>) so the backend can fill in the real signature,
+ * omitting any editor configuration UI.
  */
 export function serializeContentWithTableComments(html: string): string {
   if (!html) return html;
@@ -422,15 +437,42 @@ export function serializeContentWithTableComments(html: string): string {
     },
   );
 
-  // 2. Serialize signature blocks → <!-- signature:imageKey:label -->
+  // 2. Format signature blocks: Do NOT send comment!
+  // Send the clean signature div with the key name in the image src (<key>),
+  // without any configuration UI or toolbar divs.
   result = result.replace(
-    /<div\b[^>]*\bdata-signature-block=["']?true["']?[^>]*>(?:[\s\S]*?<\/div>|)/gi,
-    (match) => {
-      const imgKeyMatch = match.match(/\bdata-image-key=["']([^"']*)["']/i);
-      const labelMatch = match.match(/\bdata-label=["']([^"']*)["']/i);
-      const imageKey = imgKeyMatch?.[1] || "";
-      const label = labelMatch?.[1] || "Client Sign";
-      return `<!-- signature:${imageKey}:${encodeURIComponent(label)} -->`;
+    /<div\b([^>]*\bdata-signature-block=["']?true["']?[^>]*)>(?:([\s\S]*?)<\/div\s*>|)/gi,
+    (match, attrsStr, innerContent) => {
+      const imgKeyMatch = attrsStr.match(/\bdata-image-key=["']([^"']*)["']/i);
+      const innerSrcMatch = (innerContent || "").match(/<img\b[^>]*\bsrc=["'](?:&lt;|<)?([^"'>]+?)(?:&gt;|>)?["']/i);
+      const rawKey = imgKeyMatch?.[1] || innerSrcMatch?.[1] || "";
+      const cleanKey = rawKey.replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim() || "signature";
+
+      const widthMatch = attrsStr.match(/\bdata-width=["']([^"']*)["']/i);
+      const width = widthMatch?.[1] || "320px";
+
+      const alignMatch = attrsStr.match(/\bdata-alignment=["']([^"']*)["']/i);
+      const alignment = alignMatch?.[1] || "left";
+
+      const rotateMatch = attrsStr.match(/\bdata-rotate=["']([^"']*)["']/i);
+      const rotate = Number(rotateMatch?.[1]) || 0;
+
+      const flipMatch = attrsStr.match(/\bdata-flip-h=["']([^"']*)["']/i);
+      const flipH = flipMatch?.[1] === "true";
+
+      const alignMargin =
+        alignment === "center"
+          ? "margin: 16px auto;"
+          : alignment === "right"
+          ? "margin: 16px 0 16px auto;"
+          : "margin: 16px 0;";
+
+      const transformStyle =
+        rotate || flipH
+          ? `transform: rotate(${rotate}deg) scaleX(${flipH ? -1 : 1}); transform-origin: center center;`
+          : "";
+
+      return `<div data-signature-block="true" data-image-key="${cleanKey}" data-width="${width}" data-alignment="${alignment}" data-rotate="${rotate}" data-flip-h="${flipH}" class="signature-block" style="width: ${width}; max-width: 100%; ${alignMargin} box-sizing: border-box; page-break-inside: avoid;"><div class="signature-preview-container" style="border: 2px dashed #cbd5e1; border-radius: 8px; background-color: #f8fafc; padding: 14px; min-height: 100px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;"><img src="<${cleanKey}>" alt="signature" class="signature-image" style="max-width: 100%; height: auto; max-height: 120px; object-fit: contain; display: block; margin: 0 auto; ${transformStyle}" /></div></div>`;
     },
   );
 
@@ -518,13 +560,13 @@ export function hydrateTablesFromKeys(
     return replaceWithDiv(sigKey);
   });
 
-  // Replace signature block comments -> signature preview divs
+  // Replace legacy signature block comments -> signature preview divs
   // Pattern: <!-- signature:imageKey:encodedLabel -->
   result = result.replace(
     /<!--\s*signature:([^:\s]*):?([^-\s]*)\s*-->/gi,
-    (_full, imageKey, encodedLabel) => {
-      const label = encodedLabel ? decodeURIComponent(encodedLabel) : "Client Sign";
-      return `<div data-signature-block="true" data-image-key="${imageKey || ""}" data-label="${label}"></div>`;
+    (_full, imageKey) => {
+      const cleanKey = (imageKey || "signature").replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim();
+      return `<div data-signature-block="true" data-image-key="${cleanKey}" data-width="320px" data-alignment="left"><div class="signature-preview-container" style="border: 2px dashed #cbd5e1; border-radius: 8px; background-color: #f8fafc; padding: 14px; min-height: 100px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;"><img src="<${cleanKey}>" alt="signature" class="signature-image" style="max-width: 100%; height: auto; max-height: 120px; object-fit: contain; display: block; margin: 0 auto;" /></div></div>`;
     },
   );
 

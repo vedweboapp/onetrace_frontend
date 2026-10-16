@@ -163,17 +163,10 @@ export function QuotationSendClientModal({
 
   const fullHtmlDocument = React.useMemo(() => {
     if (!html) return "";
-    if (html.includes("<html") || html.includes("<!DOCTYPE")) {
-      return html;
-    }
     const width = pageWidth || "8.27in";
     const minHeight = pageHeight || "11.69in";
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
+
+    const sharedStyles = `
     *, *::before, *::after { box-sizing: border-box; }
     html, body {
       margin: 0;
@@ -193,6 +186,10 @@ export function QuotationSendClientModal({
       padding: 40px;
       line-height: 1.5;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
     table.pcs-itemtable {
       width: 100%;
       border-collapse: collapse;
@@ -211,20 +208,64 @@ export function QuotationSendClientModal({
       padding: 8px;
       border: 1px solid #ddd;
     }
-    table.borderless-table, table[data-borderless="true"] {
+    table.borderless-table,
+    table[data-borderless="true"],
+    table:has(td.borderless-cell),
+    table:has(td[data-borderless="true"]) {
+      width: 100% !important;
+      border-collapse: collapse !important;
       border: none !important;
+      margin: 0.5rem 0 !important;
     }
-    table.borderless-table td, table[data-borderless="true"] td,
-    table.borderless-table th, table[data-borderless="true"] th {
+    table.borderless-table td,
+    table.borderless-table th,
+    table[data-borderless="true"] td,
+    table[data-borderless="true"] th,
+    td.borderless-cell,
+    td[data-borderless="true"] {
       border: none !important;
       outline: none !important;
+      padding: 4px 10px !important;
+      vertical-align: top !important;
     }
     p { margin: 0 0 0.5em 0; }
+    img { max-width: 100%; height: auto; }
+    `;
+
+    // Ensure all tables (including borderless header tables) expand to 100% width
+    let processedHtml = html.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
+      if (attrs.includes("style=")) {
+        return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
+          let updated = styleVal;
+          if (!/width\s*:/i.test(updated)) {
+            updated = `width: 100%; ${updated}`.trim();
+          }
+          return `style="${updated}"`;
+        });
+      } else {
+        return `<table${attrs} style="width: 100%;">`;
+      }
+    });
+
+    if (processedHtml.includes("<html") || processedHtml.includes("<!DOCTYPE")) {
+      if (processedHtml.includes("</head>")) {
+        return processedHtml.replace("</head>", `<style>${sharedStyles}</style></head>`);
+      }
+      return `<style>${sharedStyles}</style>${processedHtml}`;
+    }
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+${sharedStyles}
   </style>
 </head>
 <body>
   <div class="page-sheet">
-    ${html}
+    ${processedHtml}
   </div>
 </body>
 </html>`;
