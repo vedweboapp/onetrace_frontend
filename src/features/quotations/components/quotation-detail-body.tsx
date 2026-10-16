@@ -513,7 +513,7 @@ export function QuotationDetailBody({
           multiline
           textareaBox
           editAriaLabel={tActions("edit")}
-          empty={t("detail.noDescription")}
+          empty="—"
           onSave={(next) => patchField({ description: next || null })}
         />
       </DetailMetricsGrid>

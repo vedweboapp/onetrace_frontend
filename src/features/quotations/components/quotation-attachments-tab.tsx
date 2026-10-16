@@ -139,7 +139,6 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
             iconName="quotations"
             title={t("emptyTitle")}
             description={t("emptyDescription")}
-            action={addFilesButton}
           />
         }
       >

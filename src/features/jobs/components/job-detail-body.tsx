@@ -62,6 +62,7 @@ import {
   extractTrimmedPinsFromJob,
   fetchAndBuildJobTrimmedPins,
 } from "@/features/projects/utils/pin-preview-navigation.util";
+import { saveJobFormBackHref } from "@/features/job-forms/utils/job-form-navigation.util";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -757,13 +758,21 @@ export function JobDetailBody({
         (matchedSubmission && matchedSubmission.id > 0 ? matchedSubmission.id : null);
       const isSubmitted = meta.submitted || Boolean(matchedSubmission);
 
-      const baseHref = `${routes.dashboard.jobFormFill(detail.id, meta.projectFormId, meta.jobFormId)}&name=${encodeURIComponent(
-        meta.label,
-      )}&back=${encodeURIComponent(resolvedFormsBackHref)}&job_pin_id=${targetPinId}`;
+      saveJobFormBackHref(detail.id, resolvedFormsBackHref);
+      const params = new URLSearchParams();
+      params.set("formId", String(meta.projectFormId));
+      params.set("job_form_id", String(meta.jobFormId));
+      params.set("name", meta.label);
+      params.set("back", resolvedFormsBackHref);
+      params.set("job_pin_id", String(targetPinId));
+      if (isSubmitted && effectiveSubmissionId) {
+        params.set("submission_id", String(effectiveSubmissionId));
+      }
+      const href = `${routes.dashboard.jobs}/${detail.id}/form?${params.toString()}`;
 
       return {
         label: meta.label,
-        href: isSubmitted && effectiveSubmissionId ? `${baseHref}&submission_id=${effectiveSubmissionId}` : baseHref,
+        href,
         projectFormId: meta.projectFormId,
         jobFormId: meta.jobFormId,
         submissionId: effectiveSubmissionId,
