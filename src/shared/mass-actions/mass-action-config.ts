@@ -14,14 +14,15 @@ export type MassActionResourceKey =
   | "projects"
   | "invoices"
   | "purchaseOrders"
+  | "purchaseReceives"
   | "qrCodes";
 
 const RESOURCE_META: Record<MassActionResourceKey, { idsKey: string; apiSegment: string }> = {
   jobs: { idsKey: "job_ids", apiSegment: "jobs" },
   clients: { idsKey: "client_ids", apiSegment: "clients" },
   vendors: { idsKey: "vendor_ids", apiSegment: "vendors" },
-  contacts: { idsKey: "contact_ids", apiSegment: "contacts" },
-  sites: { idsKey: "site_ids", apiSegment: "sites" },
+  contacts: { idsKey: "contact_ids", apiSegment: "contact" },
+  sites: { idsKey: "site_ids", apiSegment: "site" },
   quotations: { idsKey: "quotation_ids", apiSegment: "quotations" },
   groups: { idsKey: "group_ids", apiSegment: "group" },
   materialRequests: { idsKey: "material_request_ids", apiSegment: "material-requests" },
@@ -30,6 +31,7 @@ const RESOURCE_META: Record<MassActionResourceKey, { idsKey: string; apiSegment:
   projects: { idsKey: "project_ids", apiSegment: "project" },
   invoices: { idsKey: "invoice_ids", apiSegment: "invoice" },
   purchaseOrders: { idsKey: "purchase_order_ids", apiSegment: "purchase-orders" },
+  purchaseReceives: { idsKey: "purchase_receive_ids", apiSegment: "purchasereceives" },
   qrCodes: { idsKey: "qr_code_ids", apiSegment: "qr-codes" },
 };
 

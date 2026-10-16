@@ -8,7 +8,8 @@ export function ensureCheckmarkOption(
 ): CheckmarkSelectOption[] {
   const id = value.trim();
   if (!id || options.some((opt) => opt.value === id)) return options;
-  const label = fallbackLabel?.trim() || `#${id}`;
+  const label = fallbackLabel?.trim();
+  if (!label) return options;
   return [{ value: id, label }, ...options];
 }
 
@@ -22,8 +23,8 @@ export function ensureMultiCheckOptions(
   for (const raw of values) {
     const id = raw.trim();
     if (!id || byValue.has(id)) continue;
-    const label = fallbackLabels?.[id]?.trim() || `#${id}`;
-    byValue.set(id, { value: id, label });
+    const label = fallbackLabels?.[id]?.trim();
+    if (label) byValue.set(id, { value: id, label });
   }
   return Array.from(byValue.values());
 }

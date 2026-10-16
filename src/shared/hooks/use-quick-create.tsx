@@ -6,8 +6,14 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { ContactType } from "@/features/contacts/types/contact.types";
 import type { QuickCreateKind } from "@/shared/types/quick-create.types";
-import { buildQuickCreateNavigateHref } from "@/shared/utils/quick-create-navigation.util";
-import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  buildQuickCreateNavigateHref,
+  type QuickCreateAppRole,
+} from "@/shared/utils/quick-create-navigation.util";
+import {
+  saveQuickCreateFormDraft,
+  storeQuickCreateFieldTarget,
+} from "@/shared/utils/quick-create-form-draft.util";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 
 export type UseQuickCreateArgs = {
@@ -17,6 +23,12 @@ export type UseQuickCreateArgs = {
   /** Required for vendor-scoped contact quick create. */
   vendorId?: number;
   contactType?: ContactType;
+  /** Prefill item create with goods/service. */
+  itemType?: "goods" | "service";
+  /** Prefill user create role. */
+  appRole?: QuickCreateAppRole;
+  /** Persist which parent field should receive the created id on return. */
+  fieldTarget?: string;
   /** When true, the + control is hidden. */
   addDisabled?: boolean;
   /** Override return URL (defaults to current page with query string). */
@@ -30,6 +42,9 @@ export function useQuickCreate({
   clientId,
   vendorId,
   contactType,
+  itemType,
+  appRole,
+  fieldTarget,
   addDisabled = false,
   returnTo: returnToProp,
   getFormDraft,
@@ -59,14 +74,31 @@ export function useQuickCreate({
     if (getFormDraft) {
       saveQuickCreateFormDraft(returnTo, getFormDraft());
     }
+    if (fieldTarget?.trim()) {
+      storeQuickCreateFieldTarget(returnTo, fieldTarget.trim());
+    }
     const href = buildQuickCreateNavigateHref(kind, {
       returnTo,
       clientId: clientId && clientId > 0 ? clientId : undefined,
       vendorId: vendorId && vendorId > 0 ? vendorId : undefined,
       contactType,
+      itemType,
+      appRole,
     });
     router.push(href);
-  }, [canAdd, kind, returnTo, clientId, vendorId, contactType, router, getFormDraft]);
+  }, [
+    canAdd,
+    kind,
+    returnTo,
+    clientId,
+    vendorId,
+    contactType,
+    itemType,
+    appRole,
+    fieldTarget,
+    router,
+    getFormDraft,
+  ]);
 
   return {
     canAdd,

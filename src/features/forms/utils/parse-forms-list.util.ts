@@ -15,6 +15,7 @@ function normalizeRow(raw: Record<string, unknown>): FormListItem | null {
     id: numId,
     name,
     is_active: typeof raw.is_active === "boolean" ? raw.is_active : undefined,
+    is_published: typeof raw.is_published === "boolean" ? raw.is_published : undefined,
     project_type: (raw.project_type as FormListItem["project_type"]) ?? null,
     created_by: (raw.created_by as FormListItem["created_by"]) ?? null,
     modified_by: (raw.modified_by as FormListItem["modified_by"]) ?? null,

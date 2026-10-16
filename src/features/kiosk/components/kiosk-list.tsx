@@ -6,6 +6,7 @@ import { Plus, Edit2, Trash2, LayoutList } from "lucide-react";
 import {
   AppButton,
   DashboardEmptyState,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   ListPageSearchField,
 } from "@/shared/ui";
@@ -142,16 +143,7 @@ export const KioskList = () => {
             <span>Loading kiosks...</span>
           </div>
         ) : loadError ? (
-          <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
-            <button
-              type="button"
-              onClick={loadKiosks}
-              className="mt-1 text-xs text-[color:var(--dash-accent,#0f766e)] underline"
-            >
-              Retry
-            </button>
-          </div>
+          <DashboardLoadErrorState message={loadError} onRetry={() => void loadKiosks()} />
         ) : items.length === 0 ? (
           <DashboardEmptyState
             iconName="kioskForms"

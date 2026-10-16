@@ -1,4 +1,5 @@
 export const PAYMENT_MODE_PATHS = {
-  list: "paymentsmodes/",
-  detail: (id: number) => `paymentsmodes/${id}/`,
+  list: "paymentmodes/",
+  detail: (id: number) => `paymentmodes/${id}/`,
 } as const;
+

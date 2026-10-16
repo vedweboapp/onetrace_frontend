@@ -2,6 +2,8 @@ export { AppModal } from "./app-modal";
 export type { AppModalProps, AppModalSize } from "./app-modal";
 export { AppTabs } from "./app-tabs";
 export type { AppTabItem, AppTabsProps } from "./app-tabs";
+export { CustomizableAppTabs } from "./customizable-app-tabs";
+export type { CustomizableAppTabsLabels, CustomizableAppTabsProps } from "./customizable-app-tabs";
 export { ConfirmDialog } from "./confirm-dialog";
 export type { ConfirmDialogProps } from "./confirm-dialog";
 export {
@@ -116,6 +118,7 @@ export { DataTableRowActionsMenu } from "./data-table-row-actions-menu";
 export type { DataTableRowMenuItem } from "./data-table-row-actions-menu";
 export { TableIconActionButton, TableRowActions } from "./table-icon-actions";
 export { DashboardEmptyState, type DashboardEmptyStateIconName } from "./dashboard-empty-state";
+export { DashboardLoadErrorState } from "./dashboard-load-error-state";
 export {
   ListPageEmptyStates,
   listPageSurfaceShellClassName,

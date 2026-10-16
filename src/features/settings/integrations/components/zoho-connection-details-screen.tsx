@@ -20,7 +20,8 @@ import type {
 } from "@/features/settings/integrations/types/integration.types";
 import { routes } from "@/shared/config/routes";
 import { toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs, SurfaceShell } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, SurfaceShell } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { DetailCollapsibleSection } from "@/shared/components/layout/detail-collapsible-section";
@@ -49,6 +50,7 @@ export function ZohoConnectionDetailsScreen() {
   const tResources = useTranslations("Dashboard.integrations.zohoResources");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("zohoConnection");
 
   const tabParam = searchParams.get("tab")?.toLowerCase();
   const oauthParams = readZohoOAuthCallbackParams(searchParams);
@@ -179,7 +181,7 @@ export function ZohoConnectionDetailsScreen() {
         backAriaLabel={t("backToIntegrations")}
       />
 
-      <AppTabs
+      <CustomizableAppTabs
         tabs={tabs.map((tab) => ({ id: tab.key, label: tab.label }))}
         value={activeTab}
         onValueChange={(tabId) => {
@@ -188,6 +190,7 @@ export function ZohoConnectionDetailsScreen() {
             scroll: false,
           });
         }}
+        storageKey={tabsStorageKey}
         ariaLabel="Zoho connection tabs"
         panelIdPrefix="zoho-connection-tab"
       />

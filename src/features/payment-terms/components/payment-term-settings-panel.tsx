@@ -35,6 +35,7 @@ import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { routes } from "@/shared/config/routes";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   AppModal,
@@ -56,7 +57,7 @@ import {
 } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
-const TYPE_OPTIONS = ["standard"] as const;
+const TYPE_OPTIONS = ["standard", "custom"] as const;
 
 function paymentTermUserLabel(user: PaymentTerm["created_by"]): string {
   if (!user) return "—";
@@ -124,7 +125,6 @@ export function PaymentTermSettingsPanel() {
   const [discountDueDays, setDiscountDueDays] = React.useState("");
   const [termType, setTermType] = React.useState<string>("standard");
   const [isDefault, setIsDefault] = React.useState(false);
-  const [isSystemTerms, setIsSystemTerms] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{
     payment_term_label?: string;
@@ -182,7 +182,6 @@ export function PaymentTermSettingsPanel() {
     );
     setTermType(row.type?.trim() || "standard");
     setIsDefault(Boolean(row.is_default));
-    setIsSystemTerms(Boolean(row.is_system_terms));
     setErrors({});
     setFormOpen(true);
   }, []);
@@ -196,7 +195,6 @@ export function PaymentTermSettingsPanel() {
     setDiscountDueDays("");
     setTermType("standard");
     setIsDefault(false);
-    setIsSystemTerms(false);
     setErrors({});
     setFormOpen(true);
   }
@@ -242,7 +240,6 @@ export function PaymentTermSettingsPanel() {
       payment_terms_discount_due_days: parseOptionalInt(discountDueDays),
       type: termType || "standard",
       is_default: isDefault,
-      is_system_terms: isSystemTerms,
     };
     setSaving(true);
     try {
@@ -257,9 +254,30 @@ export function PaymentTermSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
-      reportLocalFormSubmitApiError(error, (fieldErrors) => {
-        setErrors((prev) => ({ ...prev, ...fieldErrors }));
-      });
+      reportLocalFormSubmitApiError(
+        error,
+        (fieldErrors) => {
+          setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        },
+        undefined,
+        {
+          fieldMap: {
+            Payment_Label: "payment_term_label",
+            payment_label: "payment_term_label",
+            Payment_Term_Label: "payment_term_label",
+            payment_term_label: "payment_term_label",
+            label: "payment_term_label",
+            payment_term_days: "payment_term_days",
+            Payment_Term_Days: "payment_term_days",
+            payment_terms_discount_percentage: "payment_terms_discount_percentage",
+          },
+          knownFormKeys: [
+            "payment_term_label",
+            "payment_term_days",
+            "payment_terms_discount_percentage",
+          ],
+        },
+      );
     } finally {
       setSaving(false);
     }
@@ -288,7 +306,11 @@ export function PaymentTermSettingsPanel() {
           {yesNo(row.is_default, t("yes"), t("no"))}
         </span>
       )),
-      c.text("type", t("table.type"), (row) => row.type || "—"),
+      c.text("type", t("table.type"), (row) => {
+        const raw = (row.type || "").trim().toLowerCase();
+        if (raw === "standard" || raw === "custom") return t(`typeOptions.${raw}`);
+        return row.type || "—";
+      }),
       c.text("discount", t("table.discount"), (row) => `${formatPaymentTermDiscount(row)}%`),
       c.custom(
         "created",
@@ -309,7 +331,7 @@ export function PaymentTermSettingsPanel() {
     ];
   }, [t, dateFmt]);
 
-  const canDeleteDetail = detailRow && !detailRow.is_system_generated && !detailRow.is_system_terms;
+  const canDeleteDetail = detailRow && !detailRow.is_system_generated;
 
   return (
     <div className={listPageRootClassName()}>
@@ -335,7 +357,10 @@ export function PaymentTermSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -359,7 +384,6 @@ export function PaymentTermSettingsPanel() {
               iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />
@@ -472,7 +496,13 @@ export function PaymentTermSettingsPanel() {
               </SettingsDetailTextValue>
             </SettingsDetailRow>
             <SettingsDetailRow label={t("table.type")}>
-              <SettingsDetailTextValue>{detailRow.type || "—"}</SettingsDetailTextValue>
+              <SettingsDetailTextValue>
+                {(() => {
+                  const raw = (detailRow.type || "").trim().toLowerCase();
+                  if (raw === "standard" || raw === "custom") return t(`typeOptions.${raw}`);
+                  return detailRow.type || "—";
+                })()}
+              </SettingsDetailTextValue>
             </SettingsDetailRow>
             <SettingsDetailRow label={t("table.status")}>
               <SettingsDetailTextValue>{detailRow.status || "—"}</SettingsDetailTextValue>
@@ -619,7 +649,7 @@ export function PaymentTermSettingsPanel() {
             >
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
-                  {opt}
+                  {t(`typeOptions.${opt}`)}
                 </option>
               ))}
             </select>
@@ -633,16 +663,6 @@ export function PaymentTermSettingsPanel() {
               className="h-4 w-4 rounded border-slate-300"
             />
             {t("modal.isDefault")}
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-            <input
-              type="checkbox"
-              checked={isSystemTerms}
-              onChange={(e) => setIsSystemTerms(e.target.checked)}
-              disabled={saving || Boolean(editing?.is_system_generated)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            {t("modal.isSystemTerms")}
           </label>
         </div>
       </AppModal>

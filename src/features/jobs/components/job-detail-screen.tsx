@@ -30,7 +30,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { cn } from "@/core/utils/http.util";
@@ -65,12 +66,14 @@ export function JobDetailScreen({ jobId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("jobDetail");
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
   const tabFromUrl = searchParams.get("tab");
   const showFormsTab = isServiceJobDetail(detailForNav, searchParams.get("job_category"));
-  const activeTab: JobDetailTabId =
+
+  const requestedTab: JobDetailTabId =
     isJobDetailTabId(tabFromUrl) && (tabFromUrl !== "forms" || showFormsTab)
       ? tabFromUrl
       : "overview";
@@ -90,6 +93,9 @@ export function JobDetailScreen({ jobId }: Props) {
     return tabs;
   }, [showFormsTab, t, tAudit]);
 
+  const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
+  const activeTab: JobDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "overview";
+
   function handleTabChange(tab: string) {
     if (!isJobDetailTabId(tab)) return;
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -98,6 +104,11 @@ export function JobDetailScreen({ jobId }: Props) {
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
+
+  React.useEffect(() => {
+    if (requestedTab === activeTab) return;
+    handleTabChange(activeTab);
+  }, [activeTab, requestedTab]);
 
   /** Keep header/sidebar job category in sync when opening detail without `?job_category=`. */
   React.useEffect(() => {
@@ -137,7 +148,7 @@ export function JobDetailScreen({ jobId }: Props) {
       wrapSurface={activeTab !== "scheduling"}
       className={
         activeTab === "scheduling"
-          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          ? "dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
       labels={{
@@ -146,10 +157,11 @@ export function JobDetailScreen({ jobId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={handleTabChange}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="job-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -227,7 +239,7 @@ function JobDetailTabPanel({
               activeTab === "dispatch" ||
               activeTab === "returns" ||
               activeTab === "forms"
-              ? "flex min-h-0 flex-1 flex-col"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : entityDetailTabPanelClassName,
           )}
         >

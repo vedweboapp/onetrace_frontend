@@ -11,6 +11,7 @@ import {
 } from "@/features/dispatches/api/dispatch.api";
 import type { DispatchReturnType } from "@/features/dispatches/types/dispatch.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { cn } from "@/core/utils/http.util";
 import { toastSuccess, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -50,6 +51,7 @@ export function ReturnToStockCreateScreen({
   initialWorkerId = null,
   initialMaterialRequestId = null,
 }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.dispatches");
   const tQuick = useTranslations("Dashboard.quickCreate");
   const router = useRouter();
@@ -92,7 +94,7 @@ export function ReturnToStockCreateScreen({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   async function loadMaterials() {
     const worker = Number.parseInt(workerId, 10);

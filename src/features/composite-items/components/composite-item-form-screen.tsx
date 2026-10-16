@@ -11,9 +11,13 @@ import {
   updateCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
 import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
+import { InstallationTypeFormModal } from "@/features/installation-types/components/installation-type-form-modal";
+import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { getInstallationTypeId } from "@/features/items/utils/item-installation-type.util";
 import { formatInstallationTypeLabel } from "@/features/installation-types/utils/installation-type-display.util";
 import { fetchUnitTypesPage } from "@/features/unit-types/api/unit-type.api";
+import { UnitTypeFormModal } from "@/features/unit-types/components/unit-type-form-modal";
+import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import { formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { getUnitTypeId, resolveDefaultUnitTypeSelectValue } from "@/features/items/utils/item-unit-type.util";
 import {
@@ -26,7 +30,7 @@ import {
   resolveItemAttachmentLabel,
   resolveItemAttachmentUrl,
 } from "@/features/items/utils/item-attachment-display.util";
-import { fetchItemsPage } from "@/features/items/api/item.api";
+import { fetchItem, fetchItemsPage } from "@/features/items/api/item.api";
 import { cn } from "@/core/utils/http.util";
 import type {
   DimensionUnit,
@@ -39,7 +43,7 @@ import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
-import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
@@ -189,15 +193,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const isEdit = mode === "edit";
   const pendingItemRowRef = React.useRef<string | null>(null);
 
-  const unitTypeQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsUnitTypes,
-    addLabel: tQuick("add.unitType"),
-  });
-  const installationTypeQuickAdd = useSettingsQuickAdd({
-    href: routes.dashboard.settingsInstallationTypes,
-    addLabel: tQuick("add.installationType"),
-  });
-
   const nameId = React.useId();
   const skuId = React.useId();
   const unitId = React.useId();
@@ -242,6 +237,8 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [unitType, setUnitType] = React.useState("");
   const [unitTypeOptions, setUnitTypeOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [unitTypesError, setUnitTypesError] = React.useState<string | null>(null);
+  const [unitTypeModalOpen, setUnitTypeModalOpen] = React.useState(false);
+  const [installationTypeModalOpen, setInstallationTypeModalOpen] = React.useState(false);
   const [installationCost, setInstallationCost] = React.useState("");
   const [installationCostType, setInstallationCostType] = React.useState<InstallationCostType>("fixed_amount");
   const [installationHours, setInstallationHours] = React.useState("");
@@ -263,6 +260,35 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [componentsTouched, setComponentsTouched] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
+
+  const openUnitTypeModal = React.useCallback(() => setUnitTypeModalOpen(true), []);
+  const openInstallationTypeModal = React.useCallback(() => setInstallationTypeModalOpen(true), []);
+  const unitTypeAddLabel = tQuick("add.unitType");
+  const installationTypeAddLabel = tQuick("add.installationType");
+
+  const handleUnitTypeCreated = React.useCallback((row: UnitType) => {
+    const next = { value: String(row.id), label: formatUnitTypeShortLabel(row) };
+    setUnitTypeOptions((prev) => {
+      if (prev.some((opt) => opt.value === next.value)) {
+        return prev.map((opt) => (opt.value === next.value ? next : opt));
+      }
+      return [...prev, next];
+    });
+    setUnitType(next.value);
+    setUnitTypesError(null);
+  }, []);
+
+  const handleInstallationTypeCreated = React.useCallback((row: InstallationType) => {
+    const next = { value: String(row.id), label: formatInstallationTypeLabel(row) };
+    setInstallationTypeOptions((prev) => {
+      if (prev.some((opt) => opt.value === next.value)) {
+        return prev.map((opt) => (opt.value === next.value ? next : opt));
+      }
+      return [...prev, next];
+    });
+    setInstallationType(next.value);
+    setInstallationTypesError(null);
+  }, []);
 
   const nameInvalid = nameTouched && name.trim().length === 0;
   const skuInvalid = skuTouched && sku.trim().length === 0;
@@ -347,11 +373,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     if (typeof saved.qty === "string") setQty(saved.qty);
     if (typeof saved.cost === "string") {
       setCost(saved.cost);
-      costManualRef.current = true;
+      // Keep auto-calc enabled so CP/SP refresh after quick-creating a component item.
     }
     if (typeof saved.sell === "string") {
       setSell(saved.sell);
-      sellManualRef.current = true;
     }
     if (typeof saved.installationType === "string") setInstallationType(saved.installationType);
     if (typeof saved.unitType === "string") setUnitType(saved.unitType);
@@ -399,6 +424,24 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
       setItemsError(tModal("itemsLoadError"));
     }
   }, [tModal]);
+
+  /** Ensure a newly created / selected component item is in options with price fields. */
+  const ensureItemInOptions = React.useCallback(async (id: number) => {
+    try {
+      const item = await fetchItem(id);
+      setItemOptions((prev) => {
+        const idx = prev.findIndex((row) => row.id === item.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...item };
+          return next;
+        }
+        return [item, ...prev];
+      });
+    } catch {
+      // Keep existing options; select still works with fallback label.
+    }
+  }, []);
 
   const itemQuickCreate = useQuickCreate({
     kind: "item",
@@ -543,6 +586,13 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         });
       }
       pendingItemRowRef.current = null;
+      // Re-enable auto CP/SP from component prices after quick-create return.
+      costManualRef.current = false;
+      sellManualRef.current = false;
+      const selectedId = toNumberOrNull(selectId);
+      if (selectedId != null) {
+        void ensureItemInOptions(selectedId);
+      }
     },
   });
 
@@ -1014,9 +1064,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   clearable
                   className="w-full"
                   onChange={setUnitType}
-                  onAdd={unitTypeQuickAdd.onAdd}
-                  addAriaLabel={unitTypeQuickAdd.addAriaLabel}
-                  addLabel={unitTypeQuickAdd.addLabel}
+                  onAdd={openUnitTypeModal}
+                  addAriaLabel={unitTypeAddLabel}
+                  addLabel={unitTypeAddLabel}
                 />
                 {unitTypesError ? (
                   <p className="mt-1.5 text-sm text-amber-700 dark:text-amber-300">{unitTypesError}</p>
@@ -1049,9 +1099,9 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                   searchable
                   clearable
                   className="w-full"
-                  onAdd={installationTypeQuickAdd.onAdd}
-                  addAriaLabel={installationTypeQuickAdd.addAriaLabel}
-                  addLabel={installationTypeQuickAdd.addLabel}
+                  onAdd={openInstallationTypeModal}
+                  addAriaLabel={installationTypeAddLabel}
+                  addLabel={installationTypeAddLabel}
                 />
               </FieldGroup>
               <FieldGroup label={tModal("installationCost")} htmlFor="composite-installation-cost">
@@ -1269,6 +1319,17 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <UnitTypeFormModal
+        open={unitTypeModalOpen}
+        onClose={() => setUnitTypeModalOpen(false)}
+        onSaved={handleUnitTypeCreated}
+      />
+      <InstallationTypeFormModal
+        open={installationTypeModalOpen}
+        onClose={() => setInstallationTypeModalOpen(false)}
+        onSaved={handleInstallationTypeCreated}
+      />
     </div>
   );
 }

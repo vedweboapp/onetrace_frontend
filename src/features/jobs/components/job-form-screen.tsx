@@ -7,7 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchClientsPage } from "@/features/clients/api/client.api";
+import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
+import { clientToSelectOption, clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
@@ -36,13 +37,14 @@ import { formatMoneyDisplay, parseMoneyValue } from "@/features/invoices/utils/i
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import { fetchProject, fetchProjectsPage } from "@/features/projects/api/project.api";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { buildEntityDetailHrefAfterSave, buildPathWithStoredBack, mergeUrlQueryParam, pathWithoutQueryAndHash, sanitizeJobsBackHref } from "@/shared/utils/detail-from-list.util";
@@ -53,6 +55,7 @@ import {
   QUICK_CREATE_SELECT_TARGET_PARAM,
   hrefAfterEntityCreate,
 } from "@/shared/utils/quick-create-navigation.util";
+import { saveQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -76,6 +79,16 @@ type Props = {
 type Option = { value: string; label: string };
 
 export function JobFormScreen({ mode, jobId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "clients",
+    "projects",
+    "sites",
+    "forms",
+    "groups",
+    "items",
+    "checklistTypes",
+    "jobStatuses",
+  ]);
   const t = useTranslations("Dashboard.jobs");
   const tItems = useTranslations("Dashboard.items");
   const tGroups = useTranslations("Dashboard.groups");
@@ -220,24 +233,115 @@ export function JobFormScreen({ mode, jobId }: Props) {
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
 
+  const draftReturnTo = React.useMemo(() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [pathname, searchParams]);
+
   const openFormsSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsProjectForms);
-  }, [router]);
+    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+    router.push(buildPathWithStoredBack(routes.dashboard.settingsProjectForms, draftReturnTo));
+  }, [router, isEdit, draftReturnTo, getFormDraft]);
   const openJobStatusSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsJobStatus);
-  }, [router]);
+    if (!isEdit) saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+    router.push(buildPathWithStoredBack(routes.dashboard.settingsJobStatus, draftReturnTo));
+  }, [router, isEdit, draftReturnTo, getFormDraft]);
 
   const reloadClients = React.useCallback(async () => {
     try {
       const { items } = await fetchClientsPage(1, 20, { is_active: true, dropdown: true }, { silent: true });
-      setClientOptions(items.map((c) => ({ value: String(c.id), label: c.name })));
+      setClientOptions((prev) => {
+        const incoming = clientsToSelectOptions(items);
+        const selectedId = getValues("client")?.trim() ?? "";
+        if (!selectedId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedId);
+        return kept ? [kept, ...incoming] : incoming;
+      });
     } catch {
-      setClientOptions([]);
+      if (!(getValues("client")?.trim())) setClientOptions([]);
+    }
+  }, [getValues]);
+
+  const ensureClientInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setClientOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
+    try {
+      const client = await fetchClient(id, { silent: true });
+      const next = clientToSelectOption(client);
+      setClientOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const ensureSiteInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setSiteOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
+    try {
+      const site = await fetchSite(id);
+      const next = {
+        value: String(site.id),
+        label: site.site_name?.trim() || `#${site.id}`,
+      };
+      setSiteOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
+    }
+  }, []);
+
+  const ensureProjectInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setProjectOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `Project #${id}` }];
+    });
+    try {
+      const project = await fetchProject(id);
+      const next = { value: String(project.id), label: project.name?.trim() || `Project #${project.id}` };
+      setProjectOptions((prev) => {
+        const idx = prev.findIndex((opt) => opt.value === next.value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [next, ...prev];
+      });
+      return next.value;
+    } catch {
+      return value;
     }
   }, []);
 
 
+  const checklistFetchSeq = React.useRef(0);
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
+    const seq = ++checklistFetchSeq.current;
     if (isProjectJob && !projectTypeId) {
       setChecklistOptions([]);
       if (!isEdit) {
@@ -251,32 +355,46 @@ export function JobFormScreen({ mode, jobId }: Props) {
       const response = await fetchChecklistTypesPage(1, 20, { is_active: true,
         project_type: isProjectJob ? projectTypeId ?? undefined : undefined,
         search: searchTerm || undefined, dropdown: true });
+      if (seq !== checklistFetchSeq.current) return;
+      const next = response.items.map((item) => ({
+        value: String(item.id),
+        label: item.title ?? `Checklist #${item.id}`,
+      }));
       setChecklistOptions((prev) => {
-        const byValue = new Map(isProjectJob ? [] : prev.map((opt) => [opt.value, opt]));
-        for (const item of response.items) {
-          byValue.set(String(item.id), {
-            value: String(item.id),
-            label: item.title ?? `Checklist #${item.id}`,
-          });
-        }
-        return Array.from(byValue.values());
+        if (isProjectJob) return next;
+        const selected = new Set(
+          (getValues("checklists") ?? []).map((id) => id.trim()).filter(Boolean),
+        );
+        const kept = prev.filter((opt) => selected.has(opt.value) && !next.some((row) => row.value === opt.value));
+        return [...kept, ...next];
       });
     } catch {
       // Keep existing options
     } finally {
-      setChecklistLoading(false);
+      if (seq === checklistFetchSeq.current) setChecklistLoading(false);
     }
-  }, [isEdit, isProjectJob, projectTypeId, setValue]);
+  }, [isEdit, isProjectJob, projectTypeId, setValue, getValues]);
+
+  const checklistTypeRef = React.useRef(projectTypeId);
+  React.useEffect(() => {
+    if (checklistTypeRef.current === projectTypeId) return;
+    checklistTypeRef.current = projectTypeId;
+    if (!isProjectJob) return;
+    checklistFetchSeq.current += 1;
+    setChecklistOptions([]);
+  }, [projectTypeId, isProjectJob]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       void fetchChecklistOptions(checklistSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [checklistSearch, fetchChecklistOptions]);
+  }, [checklistSearch, fetchChecklistOptions, catalogEpoch]);
 
 
+  const projectFetchSeq = React.useRef(0);
   const reloadProjects = React.useCallback(async (searchTerm?: string) => {
+    const seq = ++projectFetchSeq.current;
     if (!clientId || clientId <= 0) {
       setProjectOptions([]);
       return;
@@ -284,52 +402,88 @@ export function JobFormScreen({ mode, jobId }: Props) {
     try {
       const { items } = await fetchProjectsPage(1, 20, { client: clientId,
         search: searchTerm || undefined, dropdown: true });
+      if (seq !== projectFetchSeq.current) return;
+      const next = items.map((p) => ({ value: String(p.id), label: p.name }));
       setProjectOptions((prev) => {
-        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
-        for (const p of items) {
-          byValue.set(String(p.id), { value: String(p.id), label: p.name });
+        const selectedId = getValues("project")?.trim() ?? "";
+        if (selectedId && !next.some((opt) => opt.value === selectedId)) {
+          const kept = prev.find((opt) => opt.value === selectedId);
+          if (kept) return [kept, ...next];
         }
-        return Array.from(byValue.values());
+        return next;
       });
     } catch {
-      // Keep existing options
+      // Ignore a stale response from the previous client.
     }
-  }, [clientId]);
+  }, [clientId, getValues]);
 
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       void reloadProjects(projectSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [projectSearch, reloadProjects]);
+  }, [projectSearch, reloadProjects, catalogEpoch]);
 
+  const siteFetchSeq = React.useRef(0);
   const reloadSites = React.useCallback(async () => {
+    const seq = ++siteFetchSeq.current;
     if (!clientId || clientId <= 0) {
       setSiteOptions([]);
       return;
     }
     try {
       const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
-      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+      if (seq !== siteFetchSeq.current) return;
+      const incoming = items.map((s) => ({
+        value: String(s.id),
+        label: s.site_name?.trim() || `#${s.id}`,
+      }));
+      setSiteOptions((prev) => {
+        const selectedId = getValues("site")?.trim() ?? "";
+        if (!selectedId) return incoming;
+        if (incoming.some((opt) => opt.value === selectedId)) return incoming;
+        const kept = prev.find((opt) => opt.value === selectedId);
+        return kept ? [kept, ...incoming] : incoming;
+      });
     } catch {
-      setSiteOptions([]);
+      // Keep current options so quick-created site chips survive a failed reload.
+      if (seq === siteFetchSeq.current && !(getValues("site")?.trim())) {
+        setSiteOptions([]);
+      }
     }
-  }, [clientId]);
+  }, [clientId, getValues]);
+
+  const siteClientRef = React.useRef(clientId);
+  React.useEffect(() => {
+    if (siteClientRef.current === clientId) return;
+    siteClientRef.current = clientId;
+    if (isProjectJob) return;
+    siteFetchSeq.current += 1;
+    if (!getValues("site")?.trim()) setSiteOptions([]);
+  }, [clientId, isProjectJob, getValues]);
 
   React.useEffect(() => {
     if (isProjectJob) return;
     void reloadSites();
-  }, [clientId, reloadSites, isProjectJob]);
+  }, [clientId, reloadSites, isProjectJob, catalogEpoch]);
 
   const reloadForms = React.useCallback(async (searchTerm?: string) => {
     if (isProjectJob) return;
     try {
       setFormsLoading(true);
-      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true }, { silent: true });
+      const { items } = await fetchFormsPage(1, 20, { search: searchTerm || undefined, dropdown: true, is_published: true }, { silent: true });
       setFormOptions((prev) => {
-        const byValue = new Map(prev.map((opt) => [opt.value, opt]));
+        const currentSelected = new Set(getValues("forms") ?? []);
+        const byValue = new Map<string, Option>();
+        for (const opt of prev) {
+          if (currentSelected.has(opt.value)) {
+            byValue.set(opt.value, opt);
+          }
+        }
         for (const f of items) {
-          byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          if (f.is_published !== false) {
+            byValue.set(String(f.id), { value: String(f.id), label: f.name });
+          }
         }
         return Array.from(byValue.values());
       });
@@ -338,7 +492,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
     } finally {
       setFormsLoading(false);
     }
-  }, [isProjectJob]);
+  }, [isProjectJob, getValues]);
 
   React.useEffect(() => {
     if (isProjectJob) return;
@@ -346,7 +500,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       void reloadForms(formSearch);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [formSearch, reloadForms, isProjectJob]);
+  }, [formSearch, reloadForms, isProjectJob, catalogEpoch]);
 
   const reloadGroupsAndItems = React.useCallback(async () => {
     try {
@@ -377,7 +531,14 @@ export function JobFormScreen({ mode, jobId }: Props) {
   }, []);
 
   useQuickCreateReturn({
+    draftReturnTo,
     restoreFormDraft,
+    persistFormDraft: !isEdit
+      ? () => {
+          const returnTo = draftReturnTo;
+          if (returnTo) saveQuickCreateFormDraft(returnTo, getFormDraft());
+        }
+      : undefined,
     onReloadOptions: async () => {
       await reloadClients();
       await reloadProjects();
@@ -385,31 +546,57 @@ export function JobFormScreen({ mode, jobId }: Props) {
       await reloadForms(formSearch);
       await reloadGroupsAndItems();
     },
-    onApplySelect: ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
+        const previousClient = getValues("client")?.trim() ?? "";
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("project", "", { shouldDirty: true });
-        setValue("site", "", { shouldDirty: true });
+        if (previousClient && previousClient !== selectId) {
+          setValue("project", "", { shouldDirty: true });
+          setValue("site", "", { shouldDirty: true });
+        }
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureClientInOptions(id);
         return;
       }
       if (selectTarget === "project") {
+        const previousProject = getValues("project")?.trim() ?? "";
         setValue("project", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("site", "", { shouldDirty: true });
+        if (previousProject && previousProject !== selectId) {
+          setValue("site", "", { shouldDirty: true });
+        }
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureProjectInOptions(id);
         return;
       }
       if (selectTarget === "site") {
         setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+        const id = Number.parseInt(selectId, 10);
+        if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
         return;
       }
       if (selectTarget === "group") {
         setValue("job_meta_items.0.group", selectId, { shouldDirty: true, shouldValidate: true });
-        void fetchGroup(Number.parseInt(selectId, 10))
-          .then((g) => {
-            setValue("job_meta_items.0.group_name", g.name?.trim() ?? "", { shouldDirty: true });
-          })
-          .catch(() => {
-            setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
-          });
+        setGroupOptions((prev) => ensureCheckmarkOption(prev, selectId, `Group #${selectId}`));
+        try {
+          const g = await fetchGroup(Number.parseInt(selectId, 10));
+          const label = g.name?.trim() || `Group #${g.id}`;
+          setGroupOptions((prev) => ensureCheckmarkOption(prev, String(g.id), label));
+          setValue("job_meta_items.0.group_name", label, { shouldDirty: true });
+        } catch {
+          setValue("job_meta_items.0.group_name", "", { shouldDirty: true });
+        }
+        return;
+      }
+      if (selectTarget === "item") {
+        setItemOptions((prev) => ensureCheckmarkOption(prev, selectId, `Item #${selectId}`));
+        const rows = getValues("job_meta_items") ?? [];
+        const emptyIdx = rows.findIndex((row) => !(row.item ?? "").trim());
+        const targetIdx = emptyIdx >= 0 ? emptyIdx : 0;
+        setValue(`job_meta_items.${targetIdx}.item`, selectId, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        await reloadGroupsAndItems();
       }
     },
   });
@@ -423,7 +610,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
         ]);
         if (!cancelled) {
           setJobStatusOptions(statuses.items.map((s) => ({ value: String(s.id), label: s.status_name })));
-          if (!isEdit) {
+          if (!isEdit && !getValues("job_status")?.trim()) {
             const defaultStatusId = resolveDefaultJobStatusId(statuses.items);
             if (defaultStatusId != null) {
               setValue("job_status", String(defaultStatusId), { shouldDirty: false });
@@ -439,12 +626,20 @@ export function JobFormScreen({ mode, jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, setValue]);
+  }, [isEdit, setValue, getValues, catalogEpoch]);
 
   React.useEffect(() => {
     void reloadClients();
     void reloadGroupsAndItems();
-  }, [reloadClients, reloadGroupsAndItems]);
+  }, [reloadClients, reloadGroupsAndItems, catalogEpoch]);
+
+  const projectClientRef = React.useRef(selectedClient);
+  React.useEffect(() => {
+    if (projectClientRef.current === selectedClient) return;
+    projectClientRef.current = selectedClient;
+    projectFetchSeq.current += 1;
+    if (!getValues("project")?.trim()) setProjectOptions([]);
+  }, [selectedClient, getValues]);
 
   React.useEffect(() => {
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
@@ -452,7 +647,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return;
     }
     void reloadProjects();
-  }, [selectedClient, reloadProjects]);
+  }, [selectedClient, reloadProjects, catalogEpoch]);
 
   React.useEffect(() => {
     if (!selectedProject || !/^\d+$/.test(selectedProject)) {

@@ -306,7 +306,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           </div>
         ) : (
           <form id="group-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
-            <FormFieldRow cols="2" from="md" labelTop>
+            <FormFieldRow cols="2" from="md">
               <FieldGroup label={tModal("name")} htmlFor={nameId} required>
                 <input
                   id={nameId}

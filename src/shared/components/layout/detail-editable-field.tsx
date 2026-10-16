@@ -38,7 +38,7 @@ export const detailFieldLabelClassName = cn(
 
 /** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
+  "detail-value-surface flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
   "text-[length:var(--dash-body-size,0.875rem)] font-normal leading-normal text-slate-700",
   "dark:text-slate-300",
 );
@@ -132,7 +132,10 @@ export function DetailEditableField({
 }) {
   const tLocked = useTranslations("Dashboard.common.lockedField");
   const fieldId = React.useId();
-  const hasValue = children != null && children !== "";
+  const hasChildren = children != null && children !== "";
+  const trimmedValue = typeof value === "string" ? value.trim() : "";
+  const hasValue = hasChildren || trimmedValue.length > 0;
+  const displayNode = hasChildren ? children : trimmedValue || empty;
   const readOnly = disabled || locked;
   const canInline =
     !readOnly &&
@@ -663,7 +666,7 @@ export function DetailEditableField({
                 multiline && "whitespace-pre-wrap",
               )}
             >
-              {hasValue ? children : empty}
+              {hasValue ? displayNode : empty}
             </div>
             {locked ? (
               <span

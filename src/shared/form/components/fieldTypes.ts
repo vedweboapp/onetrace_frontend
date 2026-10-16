@@ -27,6 +27,7 @@ import {
   LucideIcon,
   PenTool,
   Video,
+  QrCode,
 } from "lucide-react";
 import { currencyList } from "./currency-list";
 
@@ -859,7 +860,23 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       // { type: "tooltip-panel", label: "Show Tooltip", key: "show_tooltip" },
     ],
 
-  }
+  },
+  qr_scanner: {
+    label: "QR Scanner",
+    icon: QrCode,
+    defaultConfig: () => ({
+      type: "qr_scanner",
+      label: "QR Code",
+      name: "",
+      required: false,
+      placeholder: "No QR code scanned yet",
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
+      { type: "text", label: "Placeholder", key: "placeholder" },
+      { type: "checkbox", label: "Required", key: "required" },
+    ],
+  },
 };
 
 // No aliases or backward compatibility mappings needed for new development

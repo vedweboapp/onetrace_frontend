@@ -1,6 +1,8 @@
 export const PROJECT_PATHS = {
   list: "project/",
   detail: (id: number) => `project/${id}/`,
+  /** GET /project/{id}/approved-vendor-quotations/ — vendors with approved quotes for PO */
+  approvedVendorQuotations: (id: number | string) => `project/${id}/approved-vendor-quotations/`,
   /** GET /project/{id}/jobs/ */
   jobs: (id: number | string) => `project/${id}/jobs/`,
   /** GET /{projectId}/project-forms/ */

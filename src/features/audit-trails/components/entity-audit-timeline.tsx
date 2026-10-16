@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchAuditTrails } from "@/features/audit-trails/api/audit-trail.api";
+import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import type { AuditTrailEntry } from "@/features/audit-trails/types/audit-trail.types";
 import {
   auditTrailActionLabel,
@@ -23,12 +24,34 @@ import { AppButton } from "@/shared/ui";
 type Props = {
   module: string;
   objectId: number;
+  /**
+   * Optional mass-action scope. When omitted, `sitemodel` timelines
+   * automatically send `mass_action_ids` equal to `objectId`.
+   */
+  massActionIds?: number | number[] | string;
   dateFmt: Intl.DateTimeFormat;
   /** Optional panel title override. */
   title?: string;
 };
 
-export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props) {
+function resolveMassActionIds(
+  module: string,
+  objectId: number,
+  massActionIds?: number | number[] | string,
+): number | number[] | string | undefined {
+  if (massActionIds != null) return massActionIds;
+  // Site timelines require both object_id and mass_action_ids (same site id).
+  if (module === AUDIT_TRAIL_MODULES.site && objectId > 0) return objectId;
+  return undefined;
+}
+
+export function EntityAuditTimeline({
+  module,
+  objectId,
+  massActionIds,
+  dateFmt,
+  title,
+}: Props) {
   const t = useTranslations("Dashboard.auditTrails");
   const [entries, setEntries] = React.useState<AuditTrailEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -41,7 +64,12 @@ export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props)
       setLoading(true);
       setError(null);
       try {
-        const rows = await fetchAuditTrails({ module, object_id: objectId });
+        const resolvedMassActionIds = resolveMassActionIds(module, objectId, massActionIds);
+        const rows = await fetchAuditTrails({
+          module,
+          object_id: objectId,
+          ...(resolvedMassActionIds != null ? { mass_action_ids: resolvedMassActionIds } : {}),
+        });
         if (cancelled) return;
         setEntries(sortAuditTrailsByDateDesc(rows));
       } catch {
@@ -53,7 +81,7 @@ export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props)
     return () => {
       cancelled = true;
     };
-  }, [module, objectId, t]);
+  }, [module, objectId, massActionIds, t]);
 
   return (
     <DetailPagePadding>

@@ -572,21 +572,36 @@ export function DrawingPinPreviewModal({
     ? (itemsList.find(i => i.id === activeItemId) ?? pinEditData.item_detail ?? pin.item_detail)
     : pin.item_detail;
   const activeInstallationType: string = (() => {
-    const instType = activeItemDetail?.installation_type;
-    if (instType && typeof instType === "object") {
-      return instType.id != null ? String(instType.id) : "";
+    const rawInstType =
+      (activeItemDetail as any)?.installation_type ??
+      (activeItemDetail as any)?.installation_type_id ??
+      (pin as any).installation_type ??
+      (pin as any).installation_type_id ??
+      (pinEditData as any)?.installation_type ??
+      (pinEditData as any)?.installation_type_id;
+
+    if (!rawInstType) return "";
+    if (typeof rawInstType === "object") {
+      return rawInstType.id != null ? String(rawInstType.id) : "";
     }
-    return instType != null ? String(instType) : "";
+    return String(rawInstType);
   })();
 
-  // Filter forms by the pin's item installation_type (mirrors editor screen logic)
+  // Filter forms by the pin's item installation_type - ONLY forms with same installation type
   const availableForms = activeInstallationType
-    ? formsList.filter(form => {
-        const formType = (form as any)?.installation_type?.id ?? (form as any)?.installation_type_id;
-        if (formType == null) return false;
-        return String(formType) === activeInstallationType;
+    ? formsList.filter((form) => {
+        const rawFormType =
+          form?.installation_type ?? (form as any)?.installation_type_id;
+        if (!rawFormType) return false;
+        const formTypeId =
+          typeof rawFormType === "object"
+            ? rawFormType.id != null
+              ? String(rawFormType.id)
+              : ""
+            : String(rawFormType);
+        return formTypeId === activeInstallationType;
       })
-    : formsList;
+    : [];
   const selectedProjectFormId =
     (isEditing && pinEditData
       ? resolvePinProjectFormId(pinEditData) ??
@@ -610,9 +625,12 @@ export function DrawingPinPreviewModal({
   }
   const selectedAvailableForm = formsForSelect.find((f) => f.id === selectedProjectFormId);
   const readonlyFormLabel =
+    (selectedAvailableForm as any)?.form_name ??
     selectedAvailableForm?.name ??
     formSummary?.label ??
-    (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null);
+    (pin.project_form && typeof pin.project_form === "object"
+      ? (pin.project_form as any).form_name ?? pin.project_form.name
+      : null);
 
   const mapScrollClass = embedded
     ? "relative min-h-[50vh] h-full w-full overflow-hidden p-6 md:p-8 cursor-grab select-none flex-1"
@@ -1204,7 +1222,7 @@ export function DrawingPinPreviewModal({
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Form</span>
                 </div>
                 <div className="flex-1 flex justify-end">
-                  {formsForSelect.length > 0 || selectedProjectFormId != null ? (
+                  {formsForSelect.length > 0 ? (
                     isEditing && pinEditData ? (
                       <select
                         value={String(selectedProjectFormId ?? "")}
@@ -1217,14 +1235,14 @@ export function DrawingPinPreviewModal({
                         <option value="">Select Form</option>
                         {formsForSelect.map((opt) => (
                           <option key={opt.id} value={opt.id}>
-                            {opt.name}
+                            {(opt as any).form_name || opt.name}
                           </option>
                         ))}
                       </select>
                     ) : (
                       <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
                         <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {readonlyFormLabel || "-"}
+                          {readonlyFormLabel || "Select Form"}
                         </span>
                         {formSummary?.projectFormId ? (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1238,27 +1256,33 @@ export function DrawingPinPreviewModal({
                         ) : null}
                       </div>
                     )
-                  ) : readonlyFormLabel ? (
-                    <div className="flex max-w-[200px] flex-wrap justify-end gap-1.5 text-right">
+                  ) : activeInstallationType ? (
+                    isEditing ? (
+                      <select
+                        disabled
+                        className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                      >
+                        <option value="">No matching forms</option>
+                      </select>
+                    ) : readonlyFormLabel ? (
                       <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {readonlyFormLabel}
                       </span>
-                      {formSummary?.projectFormId ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          #{formSummary.projectFormId}
-                        </span>
-                      ) : null}
-                      {formSummary?.submitted ? (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Submitted
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : activeInstallationType ? (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
-                      {t("noFormWithInstallationType")}
-                    </span>
-                  ) : null}
+                    ) : (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[180px]">
+                        {t("noFormWithInstallationType")}
+                      </span>
+                    )
+                  ) : isEditing ? (
+                    <select
+                      disabled
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                    >
+                      <option value="">Select Form</option>
+                    </select>
+                  ) : (
+                    <span className="text-sm text-slate-400">Select Form</span>
+                  )}
                 </div>
               </div>
               ) : null}

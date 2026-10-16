@@ -20,6 +20,7 @@ const RESERVED_PUBLIC_QR_ORG_IDS = new Set([
   "projects",
   "public",
   "purchase-orders",
+  "purchase-receives",
   "qr-codes",
   "quotations",
   "reset-password",

@@ -27,7 +27,7 @@ export function GroupLinkedItemsCell({ items, compositeById, maxItems, moreLabel
     <ul className="min-w-0 space-y-1.5 text-sm">
       {shown.map((entry, index) => {
         const composite = compositeById.get(entry.item);
-        const stats = groupLinkedItemStatsLine(composite);
+        const stats = groupLinkedItemStatsLine(composite, entry);
         return (
           <li key={`${entry.item}-${entry.id ?? index}`} className="min-w-0 leading-snug">
             <span className="font-medium text-slate-800 dark:text-slate-200">

@@ -63,12 +63,12 @@ export const detailTabFillViewportClassName = cn(
 /**
  * Detail-tab empty / loading / error when the entity detail page is
  * content-height (not a flex fill page).
- * Avoid `100dvh` mins — they stack under the header and create a page scrollbar
- * + empty strip when the sidebar collapses.
+ * Tall enough to fill typical remaining viewport under header + tabs,
+ * without forcing a second nested scrollbar.
  */
 export const detailTabStandaloneFillClassName = cn(
   "flex w-full flex-col justify-center",
-  "min-h-[12rem] sm:min-h-[16rem]",
+  "min-h-[calc(100dvh-13.5rem)] sm:min-h-[calc(100dvh-14.5rem)]",
 );
 
 /** Centered empty / loading / error content inside a fill tab or list shell. */

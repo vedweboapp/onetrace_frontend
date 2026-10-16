@@ -1,22 +1,25 @@
 "use client";
 
 import * as React from "react";
+import type { DropdownCatalogKind } from "@/shared/catalog/dropdown-catalog-bus";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 
 export type DeferredListOption = { value: string; label: string };
 
 export function useDeferredListOptions(
   load: () => Promise<DeferredListOption[]>,
   enabled: boolean,
+  reloadKey = 0,
+  catalogKinds: readonly DropdownCatalogKind[] = [],
 ): { options: DeferredListOption[]; loading: boolean } {
+  const catalogEpoch = useDropdownCatalogEpoch(catalogKinds);
   const [options, setOptions] = React.useState<DeferredListOption[]>([]);
   const [loading, setLoading] = React.useState(false);
   const loadRef = React.useRef(load);
   loadRef.current = load;
-  const startedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!enabled || startedRef.current) return;
-    startedRef.current = true;
+    if (!enabled) return;
     let cancelled = false;
     setLoading(true);
     void loadRef
@@ -33,7 +36,7 @@ export function useDeferredListOptions(
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, reloadKey, catalogEpoch]);
 
   return { options, loading };
 }

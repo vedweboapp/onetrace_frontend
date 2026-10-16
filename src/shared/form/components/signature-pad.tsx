@@ -14,6 +14,7 @@ export interface SignaturePadProps {
   readOnly?: boolean;
   placeholder?: string;
   height?: number;
+  appearance?: "theme" | "light";
 }
 
 const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
@@ -27,6 +28,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
       readOnly = false,
       placeholder = "Sign here...",
       height = 200,
+      appearance = "theme",
     },
     ref,
   ) => {
@@ -109,7 +111,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
         {label && (
           <div className="flex items-center justify-between">
             {typeof label === "string" ? (
-              <label className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 tracking-normal">
+              <label className={`text-[13px] font-semibold text-gray-600 ${appearance === "light" ? "" : "dark:text-gray-300"} tracking-normal`}>
                 {label}
               </label>
             ) : (
@@ -124,8 +126,8 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
             <div
               className={`
                 w-full
-                border bg-gray-50 dark:bg-slate-900/50 flex flex-col items-center justify-center relative select-none overflow-hidden
-                ${errors ? "border-red-500" : "border-gray-200 dark:border-slate-700  rounded-[8px] hover:border-dashed hover:border-[color:var(--dash-accent)] "}
+                border bg-gray-50 ${appearance === "light" ? "" : "dark:bg-slate-900/50"} flex flex-col items-center justify-center relative select-none overflow-hidden
+                ${errors ? "border-red-500" : `border-gray-200 ${appearance === "light" ? "" : "dark:border-slate-700"} rounded-[8px] hover:border-dashed hover:border-[color:var(--dash-accent)]`}
               `}
               style={{ height }}
             >
@@ -150,17 +152,17 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
             /* Active Drawing Canvas */
             <div
               className={`
-                w-full rounded-[8px] border bg-white hover:border-[color:var(--dash-accent)] dark:bg-slate-900 relative overflow-hidden transition-all duration-200
-                ${readOnly ? "bg-gray-50 border-gray-100 cursor-not-allowed" : "border-dashed border-gray-300 dark:border-slate-700"}
+                w-full rounded-[8px] border bg-white hover:border-[color:var(--dash-accent)] ${appearance === "light" ? "" : "dark:bg-slate-900"} relative overflow-hidden transition-all duration-200
+                ${readOnly ? `bg-gray-50 border-gray-100 cursor-not-allowed ${appearance === "light" ? "" : "dark:border-slate-700"}` : `border-dashed border-gray-300 ${appearance === "light" ? "" : "dark:border-slate-700"}`}
                 ${errors ? "border-red-500 ring-1 ring-red-500" : ""}
               `}
               style={{ height }}
             >
               {isEmpty && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 pointer-events-none select-none z-0">
+                <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center text-gray-400 ${appearance === "light" ? "" : "dark:text-gray-500"} pointer-events-none select-none`}>
                   <PenTool
                     size={20}
-                    className="mb-1 text-gray-300 dark:text-gray-600 animate-pulse"
+                    className={`mb-1 text-gray-300 ${appearance === "light" ? "" : "dark:text-gray-600"} animate-pulse`}
                   />
                   <span className="text-xs font-medium">{placeholder}</span>
                 </div>
@@ -169,7 +171,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
               <SignatureCanvas
                 ref={sigPadRef}
                 canvasProps={{
-                  className: `w-full h-full z-10 relative cursor-crosshair ${readOnly ? "pointer-events-none" : ""
+                  className: `w-full h-full z-10 relative cursor-crosshair ${readOnly ? `pointer-events-none bg-gray-50 ${appearance === "light" ? "" : "dark:bg-slate-800"}` : `bg-white ${appearance === "light" ? "" : "dark:bg-slate-900"}`
                     }`,
                 }}
                 onEnd={handleDrawEnd}

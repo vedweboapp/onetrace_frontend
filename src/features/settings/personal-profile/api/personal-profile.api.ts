@@ -3,8 +3,9 @@ import { PersonalProfilePaths } from "./personal-profile.path";
 import { ApiEnvelope, assertApiSuccess } from "@/core/types/api.types";
 
 export async function fetchPersonalProfile(id: string) {
-    const { data } = await api.get(PersonalProfilePaths.fetchProfile(id));
-    // assertApiSuccess(data);
+    const { data } = await api.get(PersonalProfilePaths.fetchProfile(id), {
+        skipErrorToast: true,
+    });
     return data;
 }
 

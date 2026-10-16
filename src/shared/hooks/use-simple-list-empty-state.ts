@@ -12,7 +12,7 @@ type Args = {
 
 /**
  * Onboarding vs filtered empty states for lists without active/inactive record filtering.
- * Hides list header chrome when the dataset is truly empty (no filters applied).
+ * Header chrome (search, Import, Add) stays visible so empty pages keep the same actions.
  */
 export function useSimpleListEmptyState({ loading, loadError, itemsLength, hasActiveFilters }: Args) {
   const emptyStateKind: ListEmptyStateKind = React.useMemo(() => {
@@ -21,7 +21,7 @@ export function useSimpleListEmptyState({ loading, loadError, itemsLength, hasAc
     return "onboarding";
   }, [loading, loadError, itemsLength, hasActiveFilters]);
 
-  const hideListChrome = emptyStateKind === "onboarding";
+  const hideListChrome = false;
   const filtersActive = hasActiveFilters;
 
   return {
