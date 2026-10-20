@@ -41,6 +41,8 @@ interface TemplateVariablesSidebarProps {
   onToggleCollapse: () => void;
   moduleName?: string;
   onOpenPinsListModal?: () => void;
+  /** Called whenever the variable list for the active module is loaded/reloaded */
+  onVariablesLoaded?: (variables: VariableItem[]) => void;
 }
 
 export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSidebar({
@@ -48,6 +50,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   collapsed,
   onToggleCollapse,
   onOpenPinsListModal,
+  onVariablesLoaded,
 }: TemplateVariablesSidebarProps) {
   // Options & variables in the sidebar are independent of the template's module.
   // The user can freely toggle between "quotations" and "orders" to browse and insert variables.
@@ -76,6 +79,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
       setLoadError(null);
       const data = await fetchModuleVariables(targetModule);
       setModuleData(data);
+      onVariablesLoaded?.(data.allVariables);
     } catch (err: any) {
       console.warn(`Could not load variables for ${targetModule}:`, err);
       const msg =
@@ -640,6 +644,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
         open={pinsModalOpen}
         onClose={() => setPinsModalOpen(false)}
         editor={editor}
+        variables={moduleData.allVariables}
       />
     </aside>
   );

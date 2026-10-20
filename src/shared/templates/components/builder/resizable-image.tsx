@@ -102,7 +102,7 @@ export function ResizableImageView({
 
   // Handle Resize Drag
   const startResize = useCallback(
-    (direction: "se" | "sw" | "ne" | "nw" | "e" | "w", e: React.PointerEvent) => {
+    (direction: "se" | "sw" | "ne" | "nw" | "e" | "w" | "n" | "s", e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -110,18 +110,27 @@ export function ResizableImageView({
       if (!img) return;
 
       const startX = e.clientX;
+      const startY = e.clientY;
       const startWidth = img.getBoundingClientRect().width;
-      const aspectRatio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+      const startHeight = img.getBoundingClientRect().height;
+      const aspectRatio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : (startWidth / (startHeight || 1));
       const parentWidth = containerRef.current?.parentElement?.clientWidth || 800;
 
       setIsResizing(true);
-      setCurrentDimensions({ w: Math.round(startWidth), h: Math.round(startWidth / aspectRatio) });
+      setCurrentDimensions({ w: Math.round(startWidth), h: Math.round(startHeight) });
 
       const onPointerMove = (moveEvent: PointerEvent) => {
         const deltaX = moveEvent.clientX - startX;
+        const deltaY = moveEvent.clientY - startY;
         let newWidth = startWidth;
 
-        if (direction === "se" || direction === "ne" || direction === "e") {
+        if (direction === "s") {
+          const newH = Math.max(40, startHeight + deltaY);
+          newWidth = Math.round(newH * aspectRatio);
+        } else if (direction === "n") {
+          const newH = Math.max(40, startHeight - deltaY);
+          newWidth = Math.round(newH * aspectRatio);
+        } else if (direction === "se" || direction === "ne" || direction === "e") {
           newWidth = startWidth + deltaX;
         } else if (direction === "sw" || direction === "nw" || direction === "w") {
           newWidth = startWidth - deltaX;
@@ -393,12 +402,26 @@ export function ResizableImageView({
             {/* Middle-Right */}
             <div
               onPointerDown={(e) => startResize("e", e)}
+              title="Drag to resize width (right)"
               className="absolute top-1/2 -right-1.5 -translate-y-1/2 z-20 h-4 w-2 rounded-xs border border-blue-600 bg-white shadow-xs cursor-ew-resize hover:scale-125 transition-transform"
             />
             {/* Middle-Left */}
             <div
               onPointerDown={(e) => startResize("w", e)}
+              title="Drag to resize width (left)"
               className="absolute top-1/2 -left-1.5 -translate-y-1/2 z-20 h-4 w-2 rounded-xs border border-blue-600 bg-white shadow-xs cursor-ew-resize hover:scale-125 transition-transform"
+            />
+            {/* Middle-Top */}
+            <div
+              onPointerDown={(e) => startResize("n", e)}
+              title="Drag to resize height (top)"
+              className="absolute -top-1.5 left-1/2 -translate-x-1/2 z-20 h-2 w-4 rounded-xs border border-blue-600 bg-white shadow-xs cursor-ns-resize hover:scale-125 transition-transform"
+            />
+            {/* Middle-Bottom */}
+            <div
+              onPointerDown={(e) => startResize("s", e)}
+              title="Drag to resize height (bottom)"
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 h-2 w-4 rounded-xs border border-blue-600 bg-white shadow-xs cursor-ns-resize hover:scale-125 transition-transform"
             />
           </>
         )}

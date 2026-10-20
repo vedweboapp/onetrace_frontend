@@ -29,7 +29,7 @@ import {
   SECTION_RULE_TARGET_PREFIX,
 } from "./form-rules.types";
 import type { RuleFieldOption } from "./rule-field-select";
-import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
+import { Edit2, Monitor, Smartphone, Trash2, ChevronDown, X, Save, Check, Globe } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
 interface Field {
@@ -985,6 +985,37 @@ export default function FormBuilderLayout({
   const [showAdvancedRuleModal, setShowAdvancedRuleModal] = useState<boolean>(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [closeMenuOpen, setCloseMenuOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const closeMenuRef = useRef<HTMLDivElement>(null);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!closeMenuOpen && !saveMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | PointerEvent) => {
+      const target = e.target as Node;
+      if (closeMenuRef.current && !closeMenuRef.current.contains(target)) {
+        setCloseMenuOpen(false);
+      }
+      if (saveMenuRef.current && !saveMenuRef.current.contains(target)) {
+        setSaveMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCloseMenuOpen(false);
+        setSaveMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenuOpen, saveMenuOpen]);
+
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
 
@@ -1179,6 +1210,7 @@ export default function FormBuilderLayout({
 
     try {
       setSaving(true);
+      if (isPublish) setPublishing(true);
       const isNew = !formSchema || formSchema.length === 0;
       let savedFormId: string | number | undefined = undefined;
 
@@ -1643,6 +1675,7 @@ export default function FormBuilderLayout({
       toastApiError(err);
     } finally {
       setSaving(false);
+      setPublishing(false);
     }
   };
 
@@ -1923,38 +1956,131 @@ export default function FormBuilderLayout({
           />
         </div>
 
-        {/* Row 3 (mobile): 3 equal-width buttons — no overflow */}
-        <div className="grid grid-cols-4 gap-1.5 w-full lg:w-auto lg:flex lg:gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => router.push(BackUrl)}
-            className="justify-center text-xs sm:text-sm px-2 h-9"
-          >
-            Close
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleSave(true)}
-            disabled={!dirty || saving}
-            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
-          >
-            Save and Close
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleSave(false, true)}
-            disabled={!dirty || saving}
-            className="justify-center text-[10px] sm:text-xs lg:text-sm px-1 h-9 truncate"
-          >
-            {saving ? "Publishing…" : "Save and Publish"}
-          </Button>
-          <Button
-            onClick={() => handleSave(false)}
-            disabled={!dirty || saving}
-            className="justify-center text-xs sm:text-sm px-2 h-9"
-          >
-            {saving ? "Saving…" : "Save"}
-          </Button>
+        {/* Row 3: Close Dropdown & Save Dropdown */}
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center lg:gap-2">
+          {/* Close Dropdown */}
+          <div ref={closeMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs w-full lg:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() => router.push(BackUrl)}
+              className="flex-1 lg:flex-none justify-center rounded-r-none border-r-0 px-3 h-9 text-xs sm:text-sm font-medium"
+            >
+              Close
+            </Button>
+            <button
+              type="button"
+              aria-label="More close options"
+              aria-expanded={closeMenuOpen}
+              onClick={() => {
+                setCloseMenuOpen((v) => !v);
+                setSaveMenuOpen(false);
+              }}
+              className={cn(
+                "flex items-center justify-center px-2.5 h-9 rounded-r-md border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 cursor-pointer",
+                "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                closeMenuOpen && "bg-slate-100 dark:bg-slate-800",
+              )}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform duration-150", closeMenuOpen && "rotate-180")} />
+            </button>
+
+            {closeMenuOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-48 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCloseMenuOpen(false);
+                    router.push(BackUrl);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+                >
+                  <X className="size-3.5 text-slate-400" />
+                  <span>Close</span>
+                </button>
+                <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setCloseMenuOpen(false);
+                    handleSave(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Check className="size-3.5 text-blue-500" />
+                  <span>Save and Close</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Save Dropdown */}
+          <div ref={saveMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs w-full lg:w-auto">
+            <Button
+              onClick={() => handleSave(false)}
+              disabled={!dirty || saving}
+              className="flex-1 lg:flex-none justify-center rounded-r-none border-r border-r-white/20 px-3.5 h-9 text-xs sm:text-sm font-medium"
+            >
+              {publishing ? "Publishing…" : saving ? "Saving…" : "Save"}
+            </Button>
+            <button
+              type="button"
+              aria-label="More save options"
+              aria-expanded={saveMenuOpen}
+              disabled={saving}
+              onClick={() => {
+                setSaveMenuOpen((v) => !v);
+                setCloseMenuOpen(false);
+              }}
+              className={cn(
+                "flex items-center justify-center px-2.5 h-9 rounded-r-md transition cursor-pointer",
+                "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
+                "hover:brightness-110 active:brightness-95",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                saveMenuOpen && "brightness-95",
+              )}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform duration-150", saveMenuOpen && "rotate-180")} />
+            </button>
+
+            {saveMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setSaveMenuOpen(false);
+                    handleSave(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Save className="size-3.5 text-slate-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold">Save</div>
+                    <div className="text-[10px] text-slate-400">Save changes and stay here</div>
+                  </div>
+                </button>
+                <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setSaveMenuOpen(false);
+                    handleSave(false, true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Globe className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-emerald-700 dark:text-emerald-400">Save and Publish</div>
+                    <div className="text-[10px] text-slate-400">Publish form for immediate use</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

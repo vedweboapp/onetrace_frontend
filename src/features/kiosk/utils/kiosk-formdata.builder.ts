@@ -144,6 +144,10 @@ export function buildKioskFormData(config: KioskConfig): FormData {
   // 1. Append the schema JSON string under key "JSONString"
   fd.append("JSONString", JSON.stringify(jsonSchema));
 
+  if (config.is_published !== undefined) {
+    fd.append("is_published", String(Boolean(config.is_published)));
+  }
+
   // 2. Append all binary image files
   const questions = config.questions || [];
 
