@@ -60,7 +60,7 @@ export function QuotationSendClientModal({
       try {
         const [templatesList, quoteDetail] = await Promise.all([
           fetchQuotationTemplatesDropdown(),
-          fetchQuotation(quotationId, { include: ["vendors", "html"] }),
+          fetchQuotation(quotationId, { include: ["html"] }),
         ]);
 
         if (cancelled) return;
@@ -89,7 +89,7 @@ export function QuotationSendClientModal({
           try {
             await updateQuotation(quotationId, { template: firstTid });
             const refreshed = await fetchQuotation(quotationId, {
-              include: ["vendors", "html"],
+              include: ["html"],
             });
             if (!cancelled) {
               setHtml(refreshed.html_string || refreshed.html || null);
@@ -130,7 +130,7 @@ export function QuotationSendClientModal({
     try {
       await updateQuotation(quotationId, { template: newTemplateId });
       const refreshed = await fetchQuotation(quotationId, {
-        include: ["vendors", "html"],
+        include: ["html"],
       });
       setHtml(refreshed.html_string || refreshed.html || null);
       if (refreshed.page_width) setPageWidth(refreshed.page_width);

@@ -312,9 +312,9 @@ function TemplateCard({
         )}
 
         <div className="flex items-center justify-between mt-1">
-          {template.category && (
+          {(template.module_name || template.module) && (
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryColor} capitalize`}>
-              {template.category}
+              {template.module_name || template.module}
             </span>
           )}
           <div className="flex items-center gap-1 text-[10px] text-slate-400 ml-auto">
