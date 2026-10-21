@@ -737,10 +737,17 @@ html[data-font-size] .text-\[12px\],
   order: 1 !important;
 }
 
-/* Flush value text under the label (forms have no inset label/value mismatch). */
-.dash-appearance-scope[data-form-label="top"] .detail-field .detail-value-surface {
+/* Flush single-line value text under the label (forms have no inset mismatch).
+ * Bordered description textareas keep their own padding via .detail-textarea-box. */
+.dash-appearance-scope[data-form-label="top"] .detail-field .detail-value-surface:not(textarea):not(.detail-textarea-box) {
   padding-left: 0;
   padding-right: 0;
+}
+
+/* Description / notes boxes always keep inner padding (view + edit). */
+.dash-appearance-scope .detail-field textarea.detail-textarea-box,
+.dash-appearance-scope .detail-field .detail-textarea-box {
+  padding: 0.75rem 0.875rem !important;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {

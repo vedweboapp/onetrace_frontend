@@ -854,12 +854,12 @@ export function JobDetailBody({
               </div>
             </DetailMetricCard>
             <DetailEditableField
+              span="full"
               label={t("fields.description")}
               value={detail.description ?? ""}
               kind="text"
               multiline
               textareaBox
-              span="full"
               editAriaLabel={tActions("edit")}
               empty=""
               onSave={(next) => patchField({ description: next })}
