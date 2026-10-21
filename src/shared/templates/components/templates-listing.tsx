@@ -199,8 +199,9 @@ function TemplateCard({
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const formattedDate = template.updated_at
-    ? new Date(template.updated_at).toLocaleDateString(undefined, {
+  const rawDate = template.created_at || template.updated_at;
+  const formattedDate = rawDate
+    ? new Date(rawDate).toLocaleDateString(undefined, {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -379,7 +380,8 @@ export default function TemplatesListing() {
       ? moduleParam
       : "all";
 
-  const [search, setSearch] = useState("");
+  const initialSearch = searchParams.get("search") ?? "";
+  const [search, setSearch] = useState(initialSearch);
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>(initialCategory);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -402,37 +404,80 @@ export default function TemplatesListing() {
     [pathname, router, searchParams],
   );
 
-  // Sync URL → tab when browser back/forward changes searchParams
+  const handleSearchCommit = useCallback(
+    (nextSearch: string) => {
+      const trimmed = nextSearch.trim();
+      setSearch(trimmed);
+      const params = new URLSearchParams(searchParams.toString());
+      if (trimmed) {
+        params.set("search", trimmed);
+      } else {
+        params.delete("search");
+      }
+      const query = params.toString();
+      router.replace(`${pathname}${query ? `?${query}` : ""}` as never);
+    },
+    [pathname, router, searchParams],
+  );
+
+  // Sync URL → tab and search when browser back/forward changes searchParams
   useEffect(() => {
     const param = searchParams.get("module") as TemplateCategory | null;
     const resolved: TemplateCategory =
       param && (VALID_MODULES as string[]).includes(param) ? param : "all";
     setActiveCategory(resolved);
+
+    const searchP = searchParams.get("search") ?? "";
+    setSearch((prev) => (prev !== searchP ? searchP : prev));
   }, [searchParams]);
 
-  const loadTemplates = useCallback(async () => {
+  const loadTemplates = useCallback(async (query?: string) => {
+    setLoading(true);
     try {
-      const data = await getTemplates();
+      const q = query !== undefined ? query : search;
+      const data = await getTemplates({
+        search: q.trim() || undefined,
+      });
       setTemplates(data);
+    } catch (err) {
+      console.error("Failed to load templates:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [search]);
 
   useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+    let cancelled = false;
+    setLoading(true);
+
+    getTemplates({
+      search: search.trim() || undefined,
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setTemplates(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load templates:", err);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search]);
 
   const filtered = templates.filter((t) => {
     // Match against either module or category field
     const moduleOrCat = (t.module ?? t.category ?? "").toLowerCase();
     const matchesCategory =
       activeCategory === "all" || moduleOrCat === activeCategory.toLowerCase();
-    const matchesSearch =
-      !search ||
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      (t.description ?? "").toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory;
   });
 
   const handleEdit = (t: Template) => {
@@ -475,7 +520,7 @@ export default function TemplatesListing() {
       <div className="flex shrink-0 items-center justify-between gap-3">
         <ListPageSearchField
           value={search}
-          onCommit={(v) => setSearch(v || "")}
+          onCommit={handleSearchCommit}
           className="sm:max-w-sm"
           placeholder="Search templates…"
         />

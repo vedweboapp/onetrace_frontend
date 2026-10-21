@@ -9,6 +9,7 @@ export interface GetKiosksParams {
   search?: string;
   page?: number;
   page_size?: number;
+  is_published?: boolean;
 }
 
 export interface GetKiosksResponse {
@@ -192,6 +193,17 @@ export async function updateKiosk(
   });
   return res.data;
 } 
+
+export async function patchKiosk(
+  id: string | number,
+  payload: FormData | Partial<KioskConfig> | Record<string, any>,
+): Promise<any> {
+  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
+  const res = await api.patch(`/service-forms/${id}/`, payload, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+  });
+  return res.data?.data ?? res.data;
+}
 
 export async function deleteKiosk(id: string | number): Promise<any> {
   const res = await api.delete(`/service-forms/${id}/`);

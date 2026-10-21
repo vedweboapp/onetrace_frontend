@@ -324,7 +324,7 @@ export function extractTemplateKeys(
   }
 
   // 2. Match items table / pins table blocks:
-  //    <div data-pins-table="true" data-key="..." data-module="..." data-type="..." data-columns="...">
+  //    <div data-pins-table="true" data-key="..." data-module="..." data-type="..." data-columns="..." data-aggregate-columns="...">
   const PINS_TABLE_REGEX = /<div\b([^>]*\bdata-pins-table=["']?true["']?[^>]*)>/gi;
   let tableMatch: RegExpExecArray | null;
   while ((tableMatch = PINS_TABLE_REGEX.exec(htmlContent)) !== null) {
@@ -372,13 +372,110 @@ export function extractTemplateKeys(
     colSet.add("total_price");
     columnsList = Array.from(colSet);
 
+    // Parse aggregate_columns (subtotal / VAT / total rows)
+    const aggColsAttrMatch = attrsStr.match(/\bdata-aggregate-columns=["']([^"']*)["']/i);
+    let aggregateColumnsList: Array<{ label: string; variable: string }> = [];
+    if (aggColsAttrMatch && aggColsAttrMatch[1]) {
+      try {
+        const decoded = aggColsAttrMatch[1].replace(/&quot;/g, '"');
+        const parsed = JSON.parse(decoded);
+        if (Array.isArray(parsed)) aggregateColumnsList = parsed;
+      } catch {
+        aggregateColumnsList = [];
+      }
+    }
+
+    const aggFormatted = aggregateColumnsList.map((agg) => {
+      const rawVar = (agg as any).variable || (agg as any).Key || (agg as any).key || "";
+      const label = (agg as any).label || (agg as any).Label || "";
+      let mod = (agg as any).Module || (agg as any).module || tableModule;
+      let field = rawVar;
+      if (rawVar.includes(".")) {
+        const dotIdx = rawVar.indexOf(".");
+        mod = rawVar.slice(0, dotIdx);
+        field = rawVar.slice(dotIdx + 1);
+      }
+      return {
+        Key: field,
+        Type: "text",
+        Module: mod,
+        label: label,
+      };
+    });
+
     keys.push({
       Key: tableKey,
       Type: tableType,
       Module: tableModule,
       Columns: columnsList,
-      columns: columnsList,
+      aggregate_columns: aggFormatted,
     });
+  }
+
+  // 3. Match dynamic image variable blocks or comments:
+  //    <!--Image key="key" width="..." scale="..." ... --> or <div data-image-variable="true" ...>
+  const IMAGE_BLOCK_REGEX =
+    /(?:<!--\s*Image\b([^>]*?)\s*(?:-->|--1>)|<div\b([^>]*\bdata-image-variable=["']?true["']?[^>]*)>)/gi;
+  let imgMatch: RegExpExecArray | null;
+  while ((imgMatch = IMAGE_BLOCK_REGEX.exec(htmlContent)) !== null) {
+    const rawAttrs = imgMatch[1] || imgMatch[2] || "";
+    const keyMatch =
+      rawAttrs.match(/\b(?:key|data-key|data-image-key)=["']([^"']+)["']/i);
+    const rawKey = keyMatch?.[1] || "";
+    const cleanKey = rawKey.replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim();
+    if (!cleanKey) continue;
+
+    const dedupeKey = `image:${cleanKey.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    const widthMatch = rawAttrs.match(/\b(?:width|data-width)=["']([^"']+)["']/i);
+    const width = widthMatch?.[1] || "360px";
+
+    const heightMatch = rawAttrs.match(/\b(?:height|data-height)=["']([^"']+)["']/i);
+    const height = heightMatch?.[1] || "auto";
+
+    const scaleMatch = rawAttrs.match(/\b(?:scale|data-scale)=["']([^"']+)["']/i);
+    const scale = scaleMatch?.[1] ? Number(scaleMatch[1]) : 1;
+
+    const alignMatch = rawAttrs.match(/\b(?:alignment|data-alignment)=["']([^"']+)["']/i);
+    const alignment = alignMatch?.[1] || "left";
+
+    const rotateMatch = rawAttrs.match(/\b(?:rotate|data-rotate)=["']([^"']+)["']/i);
+    const rotate = Number(rotateMatch?.[1]) || 0;
+
+    const flipMatch = rawAttrs.match(/\b(?:flipH|data-flip-h)=["']([^"']+)["']/i);
+    const flipH = flipMatch?.[1] === "true";
+
+    let mod = primaryModule;
+    let field = cleanKey;
+    if (cleanKey.includes(".")) {
+      const parts = cleanKey.split(".");
+      mod = parts[0];
+      field = parts.slice(1).join(".");
+    }
+
+    seen.add(cleanKey.toLowerCase());
+    seen.add(field.toLowerCase());
+    seen.add(`&lt;${cleanKey.toLowerCase()}&gt;`);
+
+    keys.push({
+      Key: field,
+      Type: "image",
+      Module: mod,
+      Width: width,
+      width: width,
+      Height: height,
+      height: height,
+      Scale: scale,
+      scale: scale,
+      Alignment: alignment,
+      alignment: alignment,
+      Rotate: rotate,
+      rotate: rotate,
+      FlipH: flipH,
+      flipH: flipH,
+    } as TemplateKeyItem);
   }
 
   const processMatch = (raw: string) => {
@@ -476,6 +573,44 @@ export function serializeContentWithTableComments(html: string): string {
     },
   );
 
+  // 3. Serialize dynamic image variable blocks → <!--Image key="key" width="..." scale="..." alignment="..." rotate="..." flipH="..." -->
+  result = result.replace(
+    /<div\b([^>]*\bdata-image-variable=["']?true["']?[^>]*)>(?:[\s\S]*?<\/div\s*>|)/gi,
+    (match, attrsStr) => {
+      const src = attrsStr || match;
+      const keyMatch = src.match(/\bdata-key=["']([^"']*)["']/i);
+      const key = keyMatch?.[1] || "image_key";
+
+      const widthMatch = src.match(/\bdata-width=["']([^"']*)["']/i);
+      const width = widthMatch?.[1] || "360px";
+
+      const heightMatch = src.match(/\bdata-height=["']([^"']*)["']/i);
+      const height = heightMatch?.[1] || "auto";
+
+      const scaleMatch = src.match(/\bdata-scale=["']([^"']*)["']/i);
+      const scale = scaleMatch?.[1] ? Number(scaleMatch[1]) : 1;
+
+      const alignMatch = src.match(/\bdata-alignment=["']([^"']*)["']/i);
+      const alignment = alignMatch?.[1] || "left";
+
+      const rotateMatch = src.match(/\bdata-rotate=["']([^"']*)["']/i);
+      const rotate = Number(rotateMatch?.[1]) || 0;
+
+      const flipMatch = src.match(/\bdata-flip-h=["']([^"']*)["']/i);
+      const flipH = flipMatch?.[1] === "true";
+
+      const parts = [`key="${key}"`];
+      if (width) parts.push(`width="${width}"`);
+      if (height && height !== "auto") parts.push(`height="${height}"`);
+      if (scale !== undefined && !isNaN(scale)) parts.push(`scale="${scale}"`);
+      if (alignment) parts.push(`alignment="${alignment}"`);
+      if (rotate) parts.push(`rotate="${rotate}"`);
+      if (flipH) parts.push(`flipH="true"`);
+
+      return `<!--Image ${parts.join(" ")} -->`;
+    },
+  );
+
   return result;
 }
 
@@ -527,7 +662,13 @@ export function hydrateTablesFromKeys(
     const type = matchedKeyItem?.Type || "item_table";
     const module = matchedKeyItem?.Module || "pins";
 
-    return `<div data-pins-table="true" data-key="${key}" data-type="${type}" data-module="${module}" data-columns="${cols.join(",")}" data-title="Pins List" data-include-total="true"></div>`;
+    const aggCols = (matchedKeyItem as any)?.aggregate_columns;
+    const aggAttr =
+      Array.isArray(aggCols) && aggCols.length > 0
+        ? ` data-aggregate-columns='${JSON.stringify(aggCols)}'`
+        : "";
+
+    return `<div data-pins-table="true" data-key="${key}" data-type="${type}" data-module="${module}" data-columns="${cols.join(",")}" data-title="Pins List" data-include-total="true"${aggAttr}></div>`;
   };
 
   // If already contains <div data-pins-table="true", synchronize columns from keys if present
@@ -542,12 +683,27 @@ export function hydrateTablesFromKeys(
             (k) => k.Key?.toLowerCase() === key.toLowerCase(),
           ) || defaultTableKeyItem;
 
-        if (matchedKeyItem && (matchedKeyItem.Columns || matchedKeyItem.columns)) {
+        if (matchedKeyItem) {
+          let updated = match;
           const cols = matchedKeyItem.Columns || matchedKeyItem.columns;
-          return match.replace(
-            /\bdata-columns=["'][^"']*["']/i,
-            `data-columns="${cols!.join(",")}"`,
-          );
+          if (cols && cols.length > 0) {
+            updated = updated.replace(
+              /\bdata-columns=["'][^"']*["']/i,
+              `data-columns="${cols.join(",")}"`,
+            );
+          }
+          const aggCols = (matchedKeyItem as any)?.aggregate_columns;
+          if (Array.isArray(aggCols) && aggCols.length > 0) {
+            if (/\bdata-aggregate-columns=["'][^"']*["']/i.test(updated)) {
+              updated = updated.replace(
+                /\bdata-aggregate-columns=["'][^"']*["']/i,
+                `data-aggregate-columns='${JSON.stringify(aggCols)}'`,
+              );
+            } else {
+              updated = updated.replace(/>$/, ` data-aggregate-columns='${JSON.stringify(aggCols)}'>`);
+            }
+          }
+          return updated;
         }
         return match;
       },
@@ -567,6 +723,35 @@ export function hydrateTablesFromKeys(
     (_full, imageKey) => {
       const cleanKey = (imageKey || "signature").replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim();
       return `<div data-signature-block="true" data-image-key="${cleanKey}" data-width="320px" data-alignment="left"><div class="signature-preview-container" style="border: 2px dashed #cbd5e1; border-radius: 8px; background-color: #f8fafc; padding: 14px; min-height: 100px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;"><img src="<${cleanKey}>" alt="signature" class="signature-image" style="max-width: 100%; height: auto; max-height: 120px; object-fit: contain; display: block; margin: 0 auto;" /></div></div>`;
+    },
+  );
+
+  // Replace dynamic image comments <!--Image ... --> -> dynamic image preview divs
+  result = result.replace(
+    /<!--\s*Image\b([^>]*?)\s*(?:-->|--1>)/gi,
+    (_full, attrsStr) => {
+      const keyMatch = attrsStr.match(/\bkey=["']([^"']*)["']/i);
+      const key = keyMatch?.[1] || "image_key";
+
+      const widthMatch = attrsStr.match(/\bwidth=["']([^"']*)["']/i);
+      const width = widthMatch?.[1] || "360px";
+
+      const heightMatch = attrsStr.match(/\bheight=["']([^"']*)["']/i);
+      const height = heightMatch?.[1] || "auto";
+
+      const scaleMatch = attrsStr.match(/\bscale=["']([^"']*)["']/i);
+      const scale = scaleMatch?.[1] || "1";
+
+      const alignMatch = attrsStr.match(/\balignment=["']([^"']*)["']/i);
+      const alignment = alignMatch?.[1] || "left";
+
+      const rotateMatch = attrsStr.match(/\brotate=["']([^"']*)["']/i);
+      const rotate = rotateMatch?.[1] || "0";
+
+      const flipMatch = attrsStr.match(/\bflipH=["']([^"']*)["']/i);
+      const flipH = flipMatch?.[1] === "true";
+
+      return `<div data-image-variable="true" data-key="${key}" data-width="${width}" data-height="${height}" data-scale="${scale}" data-alignment="${alignment}" data-rotate="${rotate}" data-flip-h="${flipH}"></div>`;
     },
   );
 

@@ -112,6 +112,7 @@ export interface KioskConfig {
   questions: KioskQuestion[];
   submitting?: KioskSubmitConfig;
   is_active?: boolean;
+  is_published?: boolean;
   created_at?: string;
   modified_at?: string;
   created_by?: { id: number; username?: string; email?: string } | null;
@@ -125,6 +126,7 @@ export interface KioskListItem {
   api_name: string;
   description?: string | null;
   is_active?: boolean;
+  is_published?: boolean;
   questions?: any[] | null;
   created_at?: string;
   modified_at?: string;
@@ -136,6 +138,7 @@ export const DEFAULT_KIOSK_CONFIG: KioskConfig = {
   name: "New Kiosk",
   api_name: "new_kiosk",
   description: "",
+  is_published: false,
   questions: [],
   submitting: {
     heading: "Complete",

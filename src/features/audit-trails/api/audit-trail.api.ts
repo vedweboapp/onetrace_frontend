@@ -20,10 +20,7 @@ export type AuditTrailListFilters = {
   /** Required for record timelines; optional for Settings “all logs” view. */
   module?: string;
   object_id?: number;
-  /**
-   * Some modules (e.g. `sitemodel`) also scope by mass-action id.
-   * Sent as a single id or comma-separated list.
-   */
+  /** Optional mass-action scope (single id or comma-separated list). */
   mass_action_ids?: number | number[] | string;
   search?: string;
   action?: string;
