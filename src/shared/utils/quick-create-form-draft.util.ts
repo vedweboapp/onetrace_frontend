@@ -19,7 +19,12 @@ export function buildQuickCreateDraftKey(returnTo: string): string {
   const params = new URLSearchParams(qs);
   params.delete(QUICK_CREATE_SELECT_PARAM);
   params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
-  const cleanQs = params.toString();
+  // Sort keys so `?a=1&tab=pricing` and `?tab=pricing&a=1` share one storage slot.
+  const sorted = new URLSearchParams();
+  for (const key of [...params.keys()].sort()) {
+    for (const value of params.getAll(key)) sorted.append(key, value);
+  }
+  const cleanQs = sorted.toString();
   return `${STORAGE_PREFIX}${path}${cleanQs ? `?${cleanQs}` : ""}`;
 }
 
@@ -53,4 +58,44 @@ export function clearQuickCreateFormDraft(returnTo: string): void {
   } catch {
     // ignore
   }
+}
+
+const FIELD_TARGET_PREFIX = "onetrace:qc-field:";
+
+/** Which form field should receive the created entity after quick-create return. */
+export function storeQuickCreateFieldTarget(returnTo: string, field: string): void {
+  if (typeof sessionStorage === "undefined") return;
+  const trimmed = field.trim();
+  if (!trimmed) return;
+  try {
+    sessionStorage.setItem(`${FIELD_TARGET_PREFIX}${buildQuickCreateDraftKey(returnTo)}`, trimmed);
+  } catch {
+    // ignore
+  }
+}
+
+export function peekQuickCreateFieldTarget(returnTo: string): string | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const key = `${FIELD_TARGET_PREFIX}${buildQuickCreateDraftKey(returnTo)}`;
+    return sessionStorage.getItem(key)?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearQuickCreateFieldTarget(returnTo: string): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.removeItem(`${FIELD_TARGET_PREFIX}${buildQuickCreateDraftKey(returnTo)}`);
+  } catch {
+    // ignore
+  }
+}
+
+/** Read and clear which parent field should receive the created id. */
+export function takeQuickCreateFieldTarget(returnTo: string): string | null {
+  const value = peekQuickCreateFieldTarget(returnTo);
+  clearQuickCreateFieldTarget(returnTo);
+  return value;
 }

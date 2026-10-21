@@ -8,7 +8,7 @@ import { Controller, useWatch } from "react-hook-form";
 import { cn } from "@/core/utils/http.util";
 import { CheckmarkSelect } from "./checkmark-select";
 import { FieldErrorText, FieldGroup, surfaceInputClassName } from "./field-primitives";
-import { FormFieldRow, FormFieldSpanFull } from "./form-field-grid";
+import { FormFieldRow } from "./form-field-grid";
 
 export type CascadingLocationFieldsProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
@@ -23,7 +23,7 @@ export type CascadingLocationFieldsProps<TFieldValues extends FieldValues> = {
   leadingSlot?: React.ReactNode;
   /**
    * Last field (e.g. pincode). Paired when there is an open column;
-   * otherwise rendered full-width in a single column.
+   * otherwise left alone in one column (other half stays empty).
    */
   trailingSlot?: React.ReactNode;
   labels: {
@@ -285,10 +285,7 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
     </FieldGroup>
   ) : null;
 
-  /**
-   * Build ordered cells, then emit 2-col rows. A leftover last cell
-   * (typically pincode) spans the full row as a single column.
-   */
+  /** Build ordered cells, then emit 2-col rows (odd leftover stays half-width). */
   const cells: React.ReactNode[] = [];
   if (leadingSlot) cells.push(leadingSlot);
   cells.push(countryField);
@@ -300,11 +297,10 @@ export function CascadingLocationFields<TFieldValues extends FieldValues>({
   for (let i = 0; i < cells.length; i += 2) {
     const left = cells[i];
     const right = cells[i + 1];
-    const isLastOdd = right == null && i === cells.length - 1;
     rows.push(
       <FormFieldRow key={`loc-row-${i}`} cols="2" from="md" className={i > 0 ? "mt-4" : undefined}>
-        {isLastOdd ? <FormFieldSpanFull>{left}</FormFieldSpanFull> : left}
-        {!isLastOdd && right != null ? right : null}
+        {left}
+        {right != null ? right : null}
       </FormFieldRow>,
     );
   }

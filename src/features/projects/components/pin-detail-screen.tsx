@@ -36,8 +36,14 @@ import {
 } from "@/features/jobs/constants/job-category";
 import { jobFormEntries } from "@/features/jobs/utils/job-nested-fields.util";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
-import { fetchPinDetail } from "@/features/projects/api/drawing.api";
-import type { Drawing, DrawingPin, DrawingPlot } from "@/features/projects/types/drawing.types";
+import { fetchDrawingDetail, fetchPinDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
+import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
+import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
+import { fetchProjectFormsPage } from "@/features/projects/api/project.api";
+import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
+import type { PinStatus } from "@/features/pin-status/types/pin-status.types";
+import type { FormListItem } from "@/features/forms/types/form.types";
+import type { Drawing, DrawingPin, DrawingPlot, DrawingPinAttachment } from "@/features/projects/types/drawing.types";
 import {
   resolvePinFormMeta,
   resolvePinProjectFormId,
@@ -209,7 +215,16 @@ async function resolvePinFromPinApi(
         : (pinData as any).project_form?.id != null
           ? Number((pinData as any).project_form.id)
           : null) ??
-      (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null);
+      (typeof (pinData as any).form_id === "number" ? (pinData as any).form_id : null) ??
+      (typeof (pinData as any).form === "number" ? (pinData as any).form : null) ??
+      (typeof (pinData as any).formId === "number" ? (pinData as any).formId : null) ??
+      (typeof (foundPin as any)?.form_id === "number" ? (foundPin as any).form_id : null) ??
+      (typeof (foundPin as any)?.formId === "number" ? (foundPin as any).formId : null) ??
+      (typeof (foundPin as any)?.project_form === "number"
+        ? (foundPin as any).project_form
+        : (foundPin as any)?.project_form?.id != null
+          ? Number((foundPin as any).project_form.id)
+          : null);
     const pFormId = rawPFormId != null && Number(rawPFormId) > 0 ? Number(rawPFormId) : null;
 
     const formLabel =
@@ -261,7 +276,7 @@ async function resolvePinFromPinApi(
 
     return {
       pin: resolvedPin,
-      plots: foundPlot ? [foundPlot] : plots,
+      plots: plots && plots.length > 0 ? plots : (foundPlot ? [foundPlot] : []),
       drawingFile: ld?.drawing_file ?? "",
       drawingName: ld?.name ?? "",
       drawingId: ld?.id,
@@ -298,7 +313,7 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
   const [context, setContext] = React.useState<PinContext | null>(null);
   const [reloadToken, setReloadToken] = React.useState(0);
   const [jobCategoryForNav, setJobCategoryForNav] = React.useState<JobCategoryApi | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+
 
   const dateFmt = React.useMemo(
     () =>
@@ -1259,43 +1274,19 @@ export function PinDetailScreen({ pinId, jobId, projectId, drawingIdHint }: Prop
                 tQa={tQa}
                 formName={resolvedFormName}
                 snapshotState={snapshotState}
-                onPreviewClick={() => setIsEditModalOpen(true)}
+                onPreviewClick={() => {}}
                 effectiveJobId={effectiveJobId}
                 qaPinId={qaPinId}
                 onQaSuccess={handleQaSuccess}
                 isFormSubmitted={isFormSubmitted}
+                onPinUpdated={() => setReloadToken((n) => n + 1)}
               />
             </div>
           </div>
         )}
       </DetailPagePadding>
 
-      {/* Drawing Pin Preview / Edit Modal Dialog */}
-      {context && isEditModalOpen ? (
-        <DrawingPinPreviewModal
-          open={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          pin={context.pin}
-          plots={context.plots}
-          drawingFile={context.drawingFile}
-          drawingName={context.drawingName}
-          projectId={context.projectId}
-          drawingId={context.drawingId}
-          formSummary={
-            formMeta
-              ? {
-                label: formMeta.label,
-                projectFormId: formMeta.projectFormId,
-                submitted: hasSubmission || formMeta.submitted,
-              }
-              : null
-          }
-          onSaveSuccess={() => {
-            setIsEditModalOpen(false);
-            setReloadToken((n) => n + 1);
-          }}
-        />
-      ) : null}
+
     </>
   );
 }
@@ -1320,9 +1311,7 @@ function DrawingPinThumbnail({
 
   return (
     <div
-      onClick={onClick}
-      className="relative group cursor-pointer h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center select-none"
-      title="Click to view full drawing"
+      className="relative h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center select-none"
     >
       {/* Real Drawing Background - Focused thumbnail using snapshot */}
       {snapshotState?.status === "ready" && snapshotState.snapshot ? (
@@ -1379,13 +1368,7 @@ function DrawingPinThumbnail({
         }}
       />
 
-      {/* Hover overlay hint */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-slate-900/90 px-3 py-1.5 rounded-lg shadow-lg border border-slate-700">
-          <Maximize2 className="h-3.5 w-3.5" />
-          Click to open full drawing
-        </span>
-      </div>
+
 
       {/* Level / Drawing Tag in top-left */}
       <div className="absolute top-2 left-2 z-10">
@@ -1395,15 +1378,55 @@ function DrawingPinThumbnail({
         </span>
       </div>
 
-      {/* Open Preview Button in top-right */}
-      <div className="absolute top-2 right-2 z-10">
-        <span className="inline-flex items-center gap-1 rounded-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shadow-sm border border-blue-200/60 dark:border-blue-900/60">
-          <Maximize2 className="h-3 w-3" />
-          Preview
-        </span>
-      </div>
+
     </div>
   );
+}
+
+async function filesToPinAttachments(files: File[]): Promise<DrawingPinAttachment[]> {
+  if (!files.length) return [];
+  const now = Date.now();
+  const out: DrawingPinAttachment[] = [];
+  let i = 0;
+  for (const file of files) {
+    out.push({
+      id: -(now + i),
+      file_name: file.name,
+      content_type: file.type || null,
+      file: file as any,
+      url: URL.createObjectURL(file),
+    });
+    i++;
+  }
+  return out;
+}
+
+async function downloadPinAttachment(url: string | null | undefined, name: string) {
+  if (!url) return;
+  if (url.startsWith("blob:") || url.startsWith("data:")) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error("Failed to download file:", error);
+    window.open(url, "_blank");
+  }
 }
 
 function PinCard({
@@ -1421,6 +1444,7 @@ function PinCard({
   qaPinId,
   onQaSuccess,
   isFormSubmitted,
+  onPinUpdated,
 }: {
   context: PinContext;
   qaDecided: boolean;
@@ -1436,6 +1460,7 @@ function PinCard({
   qaPinId?: number;
   onQaSuccess?: (record?: QualityAssuranceRecord) => void;
   isFormSubmitted?: boolean;
+  onPinUpdated?: () => void;
 }) {
   const pin = context.pin;
   const locationText = pin.location || String(pin.id);
@@ -1458,6 +1483,231 @@ function PinCard({
     (pin.project_form && typeof pin.project_form === "object" ? pin.project_form.name : null) ||
     "-";
 
+  const effectiveProjectId = context.projectId;
+  const effectiveDrawingId = context.drawingId;
+
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [pinEditData, setPinEditData] = React.useState<DrawingPin | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const [itemsList, setItemsList] = React.useState<CompositeItem[]>([]);
+  const [statusesList, setStatusesList] = React.useState<PinStatus[]>([]);
+  const [formsList, setFormsList] = React.useState<FormListItem[]>([]);
+
+  React.useEffect(() => {
+    setIsEditing(false);
+    setPinEditData(null);
+  }, [pin.id]);
+
+  React.useEffect(() => {
+    if ((isEditing || itemsList.length === 0) && effectiveProjectId) {
+      Promise.allSettled([
+        fetchCompositeItemsPage(1, 100, { dropdown: true }),
+        fetchPinStatusesPage(1, 100, { dropdown: true }),
+        fetchProjectFormsPage(effectiveProjectId, 1, 100, { dropdown: true }),
+      ]).then(([itemsRes, statusesRes, formsRes]) => {
+        if (itemsRes.status === "fulfilled") setItemsList(itemsRes.value.items);
+        if (statusesRes.status === "fulfilled") setStatusesList(statusesRes.value.items);
+        if (formsRes.status === "fulfilled") setFormsList(formsRes.value.items);
+      });
+    }
+  }, [isEditing, effectiveProjectId, itemsList.length]);
+
+  const activeItemId = isEditing && pinEditData ? (pinEditData.item ?? pin.item) : pin.item;
+  const activeItemDetail = isEditing && pinEditData
+    ? (itemsList.find((i) => i.id === activeItemId) ?? pinEditData.item_detail ?? pin.item_detail)
+    : pin.item_detail;
+
+  const activeInstallationType: string = React.useMemo(() => {
+    const rawInstType =
+      (activeItemDetail as any)?.installation_type ??
+      (activeItemDetail as any)?.installation_type_id ??
+      (pin as any).installation_type ??
+      (pin as any).installation_type_id ??
+      (pinEditData as any)?.installation_type ??
+      (pinEditData as any)?.installation_type_id ??
+      "";
+    if (!rawInstType) return "";
+    if (typeof rawInstType === "object") {
+      return String(rawInstType.name ?? rawInstType.label ?? rawInstType.id ?? "").trim();
+    }
+    return String(rawInstType).trim();
+  }, [activeItemDetail, pin, pinEditData]);
+
+  const formsForSelect = React.useMemo(() => {
+    if (!activeInstallationType) return formsList;
+    const match = formsList.filter((f) => {
+      const fType =
+        (f as any).installation_type ??
+        (f as any).installation_type_id ??
+        (f as any).installation_type_detail?.name ??
+        "";
+      if (!fType) return false;
+      if (typeof fType === "object") {
+        const name = String(fType.name ?? fType.label ?? fType.id ?? "").trim();
+        return name.toLowerCase() === activeInstallationType.toLowerCase();
+      }
+      return String(fType).trim().toLowerCase() === activeInstallationType.toLowerCase();
+    });
+    return match.length > 0 ? match : formsList;
+  }, [formsList, activeInstallationType]);
+
+  const selectedProjectFormId = React.useMemo(() => {
+    if (isEditing && pinEditData) {
+      if (typeof pinEditData.formId === "number") return pinEditData.formId;
+      if (typeof pinEditData.project_form === "number") return pinEditData.project_form;
+      if (pinEditData.project_form && typeof pinEditData.project_form === "object") {
+        return (pinEditData.project_form as any).id ?? null;
+      }
+    }
+    return (
+      resolvePinProjectFormId(pin) ??
+      (typeof context.formMeta?.projectFormId === "number" && context.formMeta.projectFormId > 0
+        ? context.formMeta.projectFormId
+        : null)
+    );
+  }, [isEditing, pinEditData, pin, context.formMeta]);
+
+  async function handleSave() {
+    if (!pinEditData || !effectiveProjectId || !effectiveDrawingId || !pin) {
+      toastError("Cannot save: project or drawing information is missing");
+      return;
+    }
+    setSaving(true);
+    try {
+      let allPlots = context.plots ?? [];
+      try {
+        const freshDrawing = await fetchDrawingDetail(effectiveProjectId, effectiveDrawingId);
+        if (freshDrawing?.plots && freshDrawing.plots.length > 0) {
+          allPlots = freshDrawing.plots;
+        }
+      } catch (err) {
+        console.warn("Could not fetch fresh drawing detail, using context plots", err);
+      }
+
+      const ownerPlot =
+        allPlots.find((plot) => plot.pins?.some((p) => p.id === pin.id)) ?? allPlots[0];
+
+      const formData = new FormData();
+
+      const newAttachments = (pinEditData.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
+      const attachmentFileKey = "plots[0][pins][0][attachments]";
+      let attachFileIdx = 0;
+      newAttachments.forEach((att: any) => {
+        if (att.file) {
+          formData.append(`${attachmentFileKey}[${attachFileIdx}]`, att.file);
+          attachFileIdx++;
+        }
+      });
+
+      const pinPayload = {
+        id: pin.id,
+        x_coordinate: pin.x_coordinate,
+        y_coordinate: pin.y_coordinate,
+        status: pinEditData.status ?? pin.status ?? undefined,
+        group: pin.group ?? null,
+        item: pinEditData.item ?? pin.item ?? null,
+        project_form:
+          pinEditData.formId ??
+          (typeof pinEditData.project_form === "number" ? pinEditData.project_form : null) ??
+          null,
+        quantity:
+          pinEditData.quantity === ("" as any) ||
+          pinEditData.quantity == null ||
+          isNaN(Number(pinEditData.quantity))
+            ? (pin.quantity ?? 1)
+            : Number(pinEditData.quantity),
+        variation: pinEditData.variation ?? pin.variation ?? false,
+        location: pin.location,
+        description: pinEditData.description ?? pin.description ?? undefined,
+        attachments: newAttachments
+          .filter((att: any) => !att.file)
+          .map((att: any) => ({ id: att.id })),
+      };
+
+      const ownerPlotPayload = ownerPlot
+        ? {
+            id: ownerPlot.id,
+            name: ownerPlot.name,
+            coordinates: ownerPlot.coordinates,
+            plot_border: ownerPlot.plot_border,
+            plot_bg: ownerPlot.plot_bg,
+            pins: [
+              pinPayload,
+              ...(ownerPlot.pins ?? [])
+                .filter((p) => p.id !== pin.id)
+                .map((p) => ({
+                  id: p.id,
+                  x_coordinate: p.x_coordinate,
+                  y_coordinate: p.y_coordinate,
+                  status: p.status ?? undefined,
+                  group: p.group ?? null,
+                  item: p.item ?? null,
+                  project_form:
+                    p.formId ??
+                    (typeof p.project_form === "number" ? p.project_form : null) ??
+                    null,
+                  quantity: p.quantity ?? 1,
+                  variation: p.variation ?? false,
+                  location: p.location,
+                  description: p.description ?? undefined,
+                  attachments: (p.attachments ?? [])
+                    .filter((att: any) => !att.file)
+                    .map((att: any) => ({ id: att.id })),
+                })),
+            ],
+          }
+        : { pins: [pinPayload] };
+
+      const otherPlotStubs = (allPlots ?? [])
+        .filter((plot) => plot.id !== ownerPlot?.id && !plot.pins?.some((p) => p.id === pin.id))
+        .map((plot) => ({
+          id: plot.id,
+          name: plot.name,
+          coordinates: plot.coordinates,
+          plot_border: plot.plot_border,
+          plot_bg: plot.plot_bg,
+          pins: (plot.pins ?? []).map((p) => ({
+            id: p.id,
+            x_coordinate: p.x_coordinate,
+            y_coordinate: p.y_coordinate,
+            status: p.status ?? undefined,
+            group: p.group ?? null,
+            item: p.item ?? null,
+            project_form:
+              p.formId ??
+              (typeof p.project_form === "number" ? p.project_form : null) ??
+              null,
+            quantity: p.quantity ?? 1,
+            variation: p.variation ?? false,
+            location: p.location,
+            description: p.description ?? undefined,
+            attachments: (p.attachments ?? [])
+              .filter((att: any) => !att.file)
+              .map((att: any) => ({ id: att.id })),
+          })),
+        }));
+
+      const payload = {
+        name: context.drawingName,
+        plots: [ownerPlotPayload, ...otherPlotStubs],
+      };
+
+      formData.append("payload", JSON.stringify(payload));
+
+      await updateDrawingPlots(effectiveProjectId, effectiveDrawingId, formData);
+
+      toastSuccess("Pin details saved successfully");
+      setIsEditing(false);
+      onPinUpdated?.();
+    } catch (err) {
+      console.error(err);
+      toastError("Failed to save pin details");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="flex flex-col rounded-xl lg:rounded-none lg:rounded-bl-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden lg:border-r-0 lg:border-t-0">
       {/* 1. Top Section: Pin Preview with Focused Drawing Snapshot */}
@@ -1470,17 +1720,75 @@ function PinCard({
         onClick={onPreviewClick}
       />
 
-      {/* 2. Title Section: Location & Product Name */}
-      <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-slate-100 dark:border-slate-800/80">
-        <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
-          Location #{locationText}
-        </h2>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
-          {productName}
-        </p>
+      {/* 2. Title Section: Location & Product Name + Edit/Cancel/Save actions */}
+      <div className="flex items-start justify-between px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-slate-100 dark:border-slate-800/80 gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+            Location #{locationText}
+          </h2>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+            {isEditing && pinEditData
+              ? (itemsList.find((i) => i.id === pinEditData.item)?.name ?? productName)
+              : productName}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {effectiveProjectId && effectiveDrawingId ? (
+            isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setPinEditData(null);
+                  }}
+                  disabled={saving}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={saving}
+                  className="px-3.5 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-all shadow-md shadow-blue-100 dark:shadow-none flex items-center gap-1"
+                >
+                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Save
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const normalizedFormId =
+                    resolvePinProjectFormId(pin) ??
+                    (typeof context.formMeta?.projectFormId === "number" &&
+                    context.formMeta.projectFormId > 0
+                      ? context.formMeta.projectFormId
+                      : null);
+                  setPinEditData({
+                    ...pin,
+                    formId: normalizedFormId,
+                    project_form: normalizedFormId,
+                  });
+                  setIsEditing(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </button>
+            )
+          ) : null}
+        </div>
       </div>
 
-      {/* 3. Details list (Original UI style with compact padding) */}
+      {/* 3. Details list (Original UI style with compact padding & inline edit inputs) */}
       <div className="p-3.5 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto min-h-0 flex-1">
         <div>
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
@@ -1488,25 +1796,146 @@ function PinCard({
           </h3>
           <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
             {/* 1. Product Name */}
-            <DetailRowItem icon={Package} label="Product Name" value={productName} />
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <Package className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Product Name</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {isEditing && pinEditData ? (
+                  <select
+                    value={String(pinEditData.item ?? pin.item ?? "")}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPinEditData((prev) => (prev ? { ...prev, item: parseInt(val, 10) || undefined } : null));
+                    }}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
+                  >
+                    <option value="">Select Product</option>
+                    {itemsList.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 text-right truncate" title={productName}>
+                    {productName}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Product Attachments if present on item */}
+            {(() => {
+              const attachments = (activeItemDetail as any)?.attachments;
+              return attachments && attachments.length > 0 ? (
+                <div className="py-2.5 border-b border-slate-100 dark:border-slate-800/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Paperclip className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Product Attachments</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {attachments.map((att: any, idx: number) => {
+                      const url =
+                        att.file_url ??
+                        att.url ??
+                        (typeof att.attachment === "string" ? att.attachment : null) ??
+                        (typeof att.file === "string" ? att.file : null);
+                      const name = att.file_name ?? att.name ?? (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                      const fileType = name.split(".").pop()?.toUpperCase() || "FILE";
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg"
+                        >
+                          <div className="flex flex-col min-w-0">
+                            <p className="text-xs truncate font-semibold text-red-900 dark:text-red-200" title={name}>
+                              {name}
+                            </p>
+                            <p className="text-[10px] text-red-700 dark:text-red-300">{fileType}</p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!url}
+                            className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline disabled:text-slate-400 disabled:cursor-not-allowed dark:text-red-400 dark:hover:text-red-300 transition-colors bg-transparent border-none p-0 flex items-center gap-0.5 cursor-pointer flex-shrink-0"
+                            onClick={() => downloadPinAttachment(url, name)}
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null;
+            })()}
 
             {/* 2. Quantity */}
-            <DetailRowItem icon={Hash} label="Quantity" value={pin.quantity ?? 1} />
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <Hash className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Quantity</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {isEditing && pinEditData ? (
+                  <input
+                    type="number"
+                    min={1}
+                    value={
+                      pinEditData.quantity !== undefined
+                        ? pinEditData.quantity
+                        : (pin.quantity ?? 1)
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPinEditData((prev) =>
+                        prev ? { ...prev, quantity: val === "" ? ("" as any) : parseInt(val, 10) } : null,
+                      );
+                    }}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-right text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 w-20 text-slate-900 dark:text-slate-100"
+                  />
+                ) : (
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 text-right">
+                    {pin.quantity ?? 1}
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* 3. Status */}
-            <DetailRowItem
-              icon={Activity}
-              label="Status"
-              value={
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold"
-                  style={{ backgroundColor: statusColor, color: statusTextColor }}
-                >
-                  <CheckCircle2 className="h-3 w-3" />
-                  {statusName}
-                </div>
-              }
-            />
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <Activity className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Status</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {isEditing && pinEditData ? (
+                  <select
+                    value={String(pinEditData.status ?? pin.status ?? "")}
+                    onChange={(e) => {
+                      const s = statusesList.find((st) => String(st.id) === e.target.value);
+                      if (s) setPinEditData((prev) => (prev ? { ...prev, status: s.id } : null));
+                    }}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
+                  >
+                    {statusesList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.status_name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold"
+                    style={{ backgroundColor: statusColor, color: statusTextColor }}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    {statusName}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* 4. Location */}
             <DetailRowItem icon={MapPin} label="Location" value={locationText} />
@@ -1518,56 +1947,273 @@ function PinCard({
             <DetailRowItem icon={Layers} label="Level" value={levelName} />
 
             {/* 7. Description */}
-            <DetailRowItem icon={FileText} label="Description" value={pin.description || "-"} />
+            <div className="flex items-start justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Description</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {isEditing && pinEditData ? (
+                  <textarea
+                    rows={3}
+                    value={String(pinEditData.description ?? pin.description ?? "")}
+                    onChange={(e) =>
+                      setPinEditData((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                    }
+                    className="w-full max-w-[200px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                  />
+                ) : (
+                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap text-right">
+                    {pin.description || "-"}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* 8. Attachments */}
-            {pin.attachments && pin.attachments.length > 0 ? (
-              <div className="py-2 border-b border-slate-100 dark:border-slate-800/50">
-                <div className="flex items-center gap-2 mb-1.5">
+            <div className="py-2 border-b border-slate-100 dark:border-slate-800/50">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <Paperclip className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Attachments</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-5">
-                  {pin.attachments.map((att, idx) => {
-                    const url = att.file_url ?? att.url ?? (typeof att.file === "string" ? att.file : null);
-                    const name = att.file_name ?? att.name ?? `Attachment #${att.id || idx + 1}`;
-                    return (
-                      <a
-                        key={idx}
-                        href={url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100"
-                      >
-                        <span className="truncate" title={name}>{name}</span>
-                        <Download className="h-3 w-3 text-slate-400 shrink-0" />
-                      </a>
-                    );
-                  })}
-                </div>
+                {isEditing ? (
+                  <div className="w-1/2 flex justify-end">
+                    <input
+                      type="file"
+                      multiple
+                      className="block w-full text-xs text-slate-700 dark:text-slate-200"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        if (!files.length) return;
+                        void (async () => {
+                          const draftAttachments = await filesToPinAttachments(files);
+                          setPinEditData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  attachments: [
+                                    ...(prev.attachments ?? pin.attachments ?? []),
+                                    ...draftAttachments,
+                                  ],
+                                }
+                              : null,
+                          );
+                        })();
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+
+              <div className="mt-2 space-y-1.5">
+                {(() => {
+                  const attachments =
+                    (isEditing && pinEditData ? pinEditData.attachments : pin.attachments) ?? [];
+                  if (!attachments.length) {
+                    return isEditing ? null : <p className="text-xs text-slate-400 text-right">-</p>;
+                  }
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {attachments.map((att: any, idx: number) => {
+                        const url =
+                          att.url ??
+                          att.file_url ??
+                          (typeof att.attachment === "string" ? att.attachment : null) ??
+                          (typeof att.file === "string" ? att.file : null) ??
+                          att.data_url ??
+                          att.file_data ??
+                          (att.file && typeof att.file !== "string"
+                            ? URL.createObjectURL(att.file as any)
+                            : null);
+                        const name =
+                          att.file_name ??
+                          att.name ??
+                          (att.id != null ? `Attachment #${att.id}` : `Attachment ${idx + 1}`);
+                        const fileType = name.split(".").pop()?.toUpperCase() || "FILE";
+
+                        return (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex flex-col gap-1 px-2.5 py-1.5 border rounded-lg",
+                              isEditing
+                                ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50"
+                                : "bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700",
+                            )}
+                          >
+                            <div className="flex flex-col min-w-0">
+                              <p
+                                className={cn(
+                                  "text-xs truncate font-semibold",
+                                  isEditing
+                                    ? "text-blue-900 dark:text-blue-200"
+                                    : "text-slate-700 dark:text-slate-200",
+                                )}
+                                title={name}
+                              >
+                                {name}
+                              </p>
+                              <p
+                                className={cn(
+                                  "text-[10px]",
+                                  isEditing
+                                    ? "text-blue-700 dark:text-blue-300"
+                                    : "text-slate-600 dark:text-slate-400",
+                                )}
+                              >
+                                {fileType}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 w-full mt-0.5">
+                              {isEditing ? (
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                  onClick={() => {
+                                    setPinEditData((prev) => {
+                                      if (!prev) return null;
+                                      const curr = (prev.attachments ?? pin.attachments ?? []) as DrawingPinAttachment[];
+                                      return { ...prev, attachments: curr.filter((_, i) => i !== idx) };
+                                    });
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                              {url ? (
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "text-[10px] font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer flex items-center gap-0.5",
+                                    isEditing
+                                      ? "text-blue-600 hover:text-blue-700"
+                                      : "text-slate-600 hover:text-slate-700 ml-auto",
+                                  )}
+                                  onClick={() => downloadPinAttachment(url, name)}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
 
             {/* 9. Form */}
-            <DetailRowItem icon={FileCheck} label="Form" value={formLabel} />
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <FileCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Form</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {formsForSelect.length > 0 ? (
+                  isEditing && pinEditData ? (
+                    <select
+                      value={String(selectedProjectFormId ?? "")}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setPinEditData((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                formId: value ? Number(value) : null,
+                                project_form: value ? Number(value) : null,
+                              }
+                            : null,
+                        );
+                      }}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-900 dark:text-slate-100"
+                    >
+                      <option value="">Select Form</option>
+                      {formsForSelect.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {(opt as any).form_name || opt.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 text-right truncate">
+                      {formLabel}
+                    </span>
+                  )
+                ) : activeInstallationType ? (
+                  isEditing ? (
+                    <select
+                      disabled
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                    >
+                      <option value="">No matching forms</option>
+                    </select>
+                  ) : (
+                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 text-right truncate">
+                      {formLabel}
+                    </span>
+                  )
+                ) : isEditing ? (
+                  <select
+                    disabled
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                  >
+                    <option value="">Select Form</option>
+                  </select>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 text-right truncate">
+                    {formLabel}
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* 10. Variation */}
-            <DetailRowItem
-              icon={ToggleLeft}
-              label="Variation"
-              value={
-                <span
-                  className={cn(
-                    "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                    pin.variation
-                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-                  )}
-                >
-                  {pin.variation ? "Yes" : "No"}
-                </span>
-              }
-            />
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/50 gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <ToggleLeft className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Variation</span>
+              </div>
+              <div className="flex-1 flex justify-end">
+                {isEditing ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!(pinEditData?.variation ?? pin.variation)}
+                    onClick={() => {
+                      setPinEditData((prev) => (prev ? { ...prev, variation: !prev.variation } : null));
+                    }}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer",
+                      (pinEditData?.variation ?? pin.variation)
+                        ? "bg-blue-600"
+                        : "bg-slate-200 dark:bg-slate-700",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform",
+                        (pinEditData?.variation ?? pin.variation) ? "translate-x-6" : "translate-x-1",
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                      pin.variation
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                    )}
+                  >
+                    {pin.variation ? "Yes" : "No"}
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* 11. QA Remarks */}
             <DetailRowItem
@@ -1575,6 +2221,27 @@ function PinCard({
               label="QA Remarks"
               value={pin.qa_remarks || pinQa?.remarks || "-"}
             />
+          </div>
+        </div>
+
+        {/* Location Coordinates (X Coordinate & Y Coordinate) */}
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Location
+          </h3>
+          <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-2.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-medium text-slate-400 uppercase">X Coordinate</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                {Number(pin.x_coordinate ?? 0).toFixed(2)}%
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-medium text-slate-400 uppercase">Y Coordinate</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                {Number(pin.y_coordinate ?? 0).toFixed(2)}%
+              </p>
+            </div>
           </div>
         </div>
 

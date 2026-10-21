@@ -23,12 +23,20 @@ import { AppButton } from "@/shared/ui";
 type Props = {
   module: string;
   objectId: number;
+  /** Optional mass-action scope — only sent when explicitly provided. */
+  massActionIds?: number | number[] | string;
   dateFmt: Intl.DateTimeFormat;
   /** Optional panel title override. */
   title?: string;
 };
 
-export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props) {
+export function EntityAuditTimeline({
+  module,
+  objectId,
+  massActionIds,
+  dateFmt,
+  title,
+}: Props) {
   const t = useTranslations("Dashboard.auditTrails");
   const [entries, setEntries] = React.useState<AuditTrailEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -41,7 +49,11 @@ export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props)
       setLoading(true);
       setError(null);
       try {
-        const rows = await fetchAuditTrails({ module, object_id: objectId });
+        const rows = await fetchAuditTrails({
+          module,
+          object_id: objectId,
+          ...(massActionIds != null ? { mass_action_ids: massActionIds } : {}),
+        });
         if (cancelled) return;
         setEntries(sortAuditTrailsByDateDesc(rows));
       } catch {
@@ -53,7 +65,7 @@ export function EntityAuditTimeline({ module, objectId, dateFmt, title }: Props)
     return () => {
       cancelled = true;
     };
-  }, [module, objectId, t]);
+  }, [module, objectId, massActionIds, t]);
 
   return (
     <DetailPagePadding>

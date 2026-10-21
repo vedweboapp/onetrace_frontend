@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { logoutRequest } from "@/features/auth/api/auth.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { routes } from "@/shared/config/routes";
 import { clearAllDrawingGeometry, clearAllPinFocus } from "@/features/projects/utils/pin-geometry.util";
+import { clearSessionCatalogCaches } from "@/shared/catalog/clear-session-catalog-caches";
+import { routes } from "@/shared/config/routes";
 
 export function useLogout() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export function useLogout() {
     } finally {
       clearAllPinFocus();
       clearAllDrawingGeometry();
+      clearSessionCatalogCaches();
       clearAuth();
       setIsLoggingOut(false);
       router.replace(routes.auth.login);

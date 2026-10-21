@@ -245,9 +245,9 @@ export function DetailPanelCard({
 
     return (
       <section className={cn("bg-transparent", className)}>
-        {title ? (
+        {title || headerRight || badge ? (
           <div className={detailFlatSectionHeaderClassName}>
-            <h2 className={detailFlatSectionTitleClassName}>{title}</h2>
+            {title ? <h2 className={detailFlatSectionTitleClassName}>{title}</h2> : <span />}
             {headerRight || badge ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                 {badge}

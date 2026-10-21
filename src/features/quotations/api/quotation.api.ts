@@ -83,20 +83,69 @@ export async function fetchAllQuotationIds(filters?: QuotationListFilters): Prom
 }
 
 export type FetchQuotationOptions = {
-  include?: string;
+  include?: string | string[];
 };
 
 export async function fetchQuotation(
   id: number,
   options?: FetchQuotationOptions,
 ): Promise<QuotationDetail> {
-  const params: Record<string, string> = {};
-  if (options?.include) params.include = options.include;
-  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), {
-    params: Object.keys(params).length > 0 ? params : undefined,
-  });
+  const searchParams = new URLSearchParams();
+  if (Array.isArray(options?.include)) {
+    options.include.forEach((inc) => searchParams.append("include", inc));
+  } else if (typeof options?.include === "string") {
+    if (options.include.includes("&")) {
+      const parts = options.include.split("&");
+      parts.forEach((p) => {
+        const [k, v] = p.split("=");
+        searchParams.append(k.replace(/^\?/, ""), v || "");
+      });
+    } else {
+      searchParams.append("include", options.include);
+    }
+  }
+
+  const qs = searchParams.toString();
+  const url = qs ? `${QUOTATION_PATHS.detail(id)}?${qs}` : QUOTATION_PATHS.detail(id);
+
+  const { data } = await api.get<ApiEnvelope<QuotationDetail>>(url);
   assertApiSuccess(data);
   return data.data;
+}
+
+export type QuotationTemplateOption = {
+  id: number;
+  name: string;
+  [key: string]: unknown;
+};
+
+/**
+ * Fetches templates configured for the quotations module from `settings/templates/?module_name=quotations&dropdown=true`
+ */
+export async function fetchQuotationTemplatesDropdown(): Promise<QuotationTemplateOption[]> {
+  try {
+    const { data } = await api.get("settings/templates", {
+      params: {
+        module_name: "quotations",
+        dropdown: true,
+      },
+      skipErrorToast: true,
+    });
+    const items =
+      (data && typeof data === "object" && "data" in data && Array.isArray((data as any).data))
+        ? (data as any).data
+        : Array.isArray(data)
+        ? data
+        : [];
+    return items.map((item: any) => ({
+      id: Number(item.id),
+      name: item.name || item.template_name || `Template #${item.id}`,
+      ...item,
+    }));
+  } catch (err) {
+    console.warn("Failed to load quotation templates dropdown:", err);
+    return [];
+  }
 }
 
 export async function createQuotation(body: QuotationCreatePayload): Promise<QuotationDetail> {
@@ -120,6 +169,32 @@ export async function createQuotationFromProject(projectId: number): Promise<Quo
 export async function updateQuotation(id: number, body: QuotationUpdatePayload): Promise<QuotationDetail> {
   const payload = normalizeQuotationWriteBody(body);
   const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), payload);
+  assertApiSuccess(data);
+  return data.data;
+}
+
+export type QuotationAttachmentWriteRef =
+  | { id: number; is_deleted: true }
+  | { file: File };
+
+/**
+ * Patch quotation attachments via multipart FormData.
+ * - New files → repeated `attachments`
+ * - Removals → repeated `deleted_attachment_ids`
+ */
+export async function updateQuotationAttachments(
+  id: number,
+  refs: QuotationAttachmentWriteRef[],
+): Promise<QuotationDetail> {
+  const fd = new FormData();
+  for (const ref of refs) {
+    if ("file" in ref && ref.file instanceof File) {
+      fd.append("attachments", ref.file, ref.file.name);
+    } else if ("id" in ref && ref.is_deleted === true) {
+      fd.append("deleted_attachment_ids", String(ref.id));
+    }
+  }
+  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), fd);
   assertApiSuccess(data);
   return data.data;
 }
@@ -323,9 +398,20 @@ function parseJobCreateResponse(data: ApiEnvelope<Job> | JobListResponse): Job {
   return (data as ApiEnvelope<Job>).data;
 }
 
+export type CreateJobFromServiceQuotationPayload = {
+  forms?: number[];
+  checklists?: number[];
+};
+
 /** POST `quotations/:id/create-job/` — creates a service job from an approved quotation. */
-export async function createJobFromServiceQuotation(quotationId: number): Promise<Job> {
-  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(QUOTATION_PATHS.createJob(quotationId));
+export async function createJobFromServiceQuotation(
+  quotationId: number,
+  payload?: CreateJobFromServiceQuotationPayload,
+): Promise<Job> {
+  const { data } = await api.post<ApiEnvelope<Job> | JobListResponse>(
+    QUOTATION_PATHS.createJob(quotationId),
+    payload ?? {},
+  );
   return parseJobCreateResponse(data);
 }
 
@@ -348,3 +434,107 @@ export async function createPurchaseOrderFromQuotation(
   const { data } = await api.post<ApiEnvelope<any>>(QUOTATION_PATHS.createPurchaseOrder(quotationId), payload);
   return data;
 }
+
+export type UpdateQuotationItemsStatusPayload = {
+  quotation_vendor_id: number;
+  item_ids: number[];
+  status: "approved" | "rejected";
+};
+
+export async function updateQuotationItemsStatus(
+  quotationId: number,
+  payload: UpdateQuotationItemsStatusPayload,
+): Promise<ApiEnvelope<unknown>> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(
+    QUOTATION_PATHS.updateItemStatus(quotationId),
+    payload,
+  );
+  assertApiSuccess(data);
+  return data;
+}
+
+export function parseVendorsList(input: any): any[] {
+  if (!input) return [];
+  let val = input;
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(val)) {
+    const valid = val.filter(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        (item.vendor != null || item.vendor_items != null || item.items != null || item.id != null),
+    );
+    if (valid.length > 0) return valid;
+    return val;
+  }
+  if (typeof val === "object") {
+    const directArray =
+      (Array.isArray(val.vendors) && val.vendors) ||
+      (Array.isArray(val.vendors_quote_details) && val.vendors_quote_details) ||
+      (Array.isArray(val.vendor_quotations) && val.vendor_quotations) ||
+      (Array.isArray(val.vendor_submissions) && val.vendor_submissions) ||
+      (Array.isArray(val.quotation_vendors) && val.quotation_vendors) ||
+      (Array.isArray(val.vendor_quotes) && val.vendor_quotes) ||
+      (Array.isArray(val.vendor_responses) && val.vendor_responses) ||
+      (Array.isArray(val.vendors_data) && val.vendors_data) ||
+      (Array.isArray(val.data) && val.data) ||
+      (Array.isArray(val.results) && val.results);
+
+    if (directArray) {
+      return parseVendorsList(directArray);
+    }
+
+    const candidate =
+      val.vendors ??
+      val.vendors_quote_details ??
+      val.vendor_quotations ??
+      val.vendor_submissions ??
+      val.quotation_vendors ??
+      val.vendor_quotes ??
+      val.vendor_responses ??
+      val.vendors_data ??
+      val.data;
+
+    if (candidate && candidate !== val) {
+      return parseVendorsList(candidate);
+    }
+  }
+  return [];
+}
+
+export async function fetchQuotationVendors(quotationId: number): Promise<any[]> {
+  const endpoints = [
+    { url: QUOTATION_PATHS.detail(quotationId), params: { include: "vendors" } },
+    { url: `quotations/${quotationId}/vendor-quotations/`, params: undefined },
+    { url: `quotations/${quotationId}/vendors/`, params: undefined },
+    { url: `vendor-quotations/`, params: { quotation: quotationId } },
+    { url: `quotation-vendors/`, params: { quotation: quotationId } },
+    { url: `vendor-quotations/`, params: { quotation_id: quotationId } },
+    { url: `quotation-vendors/`, params: { quotation_id: quotationId } },
+    { url: QUOTATION_PATHS.detail(quotationId), params: undefined },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await api.get(ep.url, {
+        params: ep.params,
+        skipErrorToast: true,
+      });
+      const list = parseVendorsList(res.data);
+      if (list.length > 0) {
+        return list;
+      }
+    } catch {
+      /* continue */
+    }
+  }
+
+  return [];
+}
+

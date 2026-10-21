@@ -33,8 +33,20 @@ export type JobListFilters = {
   /** Filter jobs belonging to a client (when supported by API). */
   client?: number;
   job_category?: string;
-
   job_type?: string;
+  /**
+   * List/card payload shape — `GET jobs/?view=list`.
+   * Use for table and card UI so the API returns the slim list fields.
+   */
+  view?: "list";
+  /**
+   * Jobs linked to a quotation — `GET jobs/?quotations=<id>`.
+   * Service quotes usually return one job; project quotes may return several.
+   */
+  quotations?: number;
+  /** Alias for `quotations`. */
+  quote?: number;
+  project?: number;
   dropdown?: boolean;
 };
 
@@ -65,9 +77,24 @@ export async function fetchJobsPage(
   if (filters?.job_category) {
     params.job_category = filters.job_category;
   }
+  if (filters?.view) {
+    params.view = filters.view;
+  }
 
   if (filters?.job_type) {
     params.job_type = filters.job_type;
+  }
+  const quotationId =
+    typeof filters?.quotations === "number" && Number.isFinite(filters.quotations) && filters.quotations > 0
+      ? filters.quotations
+      : typeof filters?.quote === "number" && Number.isFinite(filters.quote) && filters.quote > 0
+        ? filters.quote
+        : null;
+  if (quotationId != null) {
+    params.quotations = quotationId;
+  }
+  if (typeof filters?.project === "number" && Number.isFinite(filters.project) && filters.project > 0) {
+    params.project = filters.project;
   }
   applyDropdownListParam(params, filters?.dropdown);
 

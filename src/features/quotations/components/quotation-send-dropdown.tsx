@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { Building2, UserCheck } from "lucide-react";
-import { sendQuotation } from "@/features/quotations/api/quotation.api";
 import { QuotationSendVendorsModal } from "@/features/quotations/components/quotation-send-vendors-modal";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { QuotationSendClientModal } from "@/features/quotations/components/quotation-send-client-modal";
 import { DetailActionMenuDropdown } from "@/shared/ui/detail-action-menu-dropdown";
 
 type Props = {
@@ -15,6 +14,7 @@ type Props = {
 
 export function QuotationSendDropdown({ quotationId, quoteName, onSent }: Props) {
   const [vendorsModalOpen, setVendorsModalOpen] = React.useState(false);
+  const [clientModalOpen, setClientModalOpen] = React.useState(false);
 
   const items = React.useMemo(
     () => [
@@ -22,14 +22,8 @@ export function QuotationSendDropdown({ quotationId, quoteName, onSent }: Props)
         id: "client",
         label: "Send to Client",
         icon: UserCheck,
-        onSelect: async () => {
-          try {
-            await sendQuotation(quotationId, { notification_send_to: "client" });
-            toastSuccess("Quotation sent to client successfully");
-            onSent?.();
-          } catch (error) {
-            toastApiError(error, "Failed to send quotation to client");
-          }
+        onSelect: () => {
+          setClientModalOpen(true);
         },
       },
       {
@@ -41,7 +35,7 @@ export function QuotationSendDropdown({ quotationId, quoteName, onSent }: Props)
         },
       },
     ],
-    [quotationId, onSent],
+    [],
   );
 
   return (
@@ -52,6 +46,13 @@ export function QuotationSendDropdown({ quotationId, quoteName, onSent }: Props)
         menuAriaLabel="Send quotation menu"
         loadingLabel="Sending..."
         items={items}
+      />
+      <QuotationSendClientModal
+        open={clientModalOpen}
+        quotationId={quotationId}
+        quoteName={quoteName}
+        onClose={() => setClientModalOpen(false)}
+        onSuccess={onSent}
       />
       <QuotationSendVendorsModal
         open={vendorsModalOpen}

@@ -28,6 +28,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   CheckmarkSelect,
   DataTablePaginationBar,
   ListPageEmptyStates,
@@ -52,6 +53,7 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 
 export function MaterialRequestsPanel() {
   const t = useTranslations("Dashboard.materialRequests");
@@ -110,7 +112,7 @@ export function MaterialRequestsPanel() {
     return loadTechnicianOptions();
   }, []);
 
-  const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions);
+  const { options: workerOptions } = useDeferredListOptions(loadWorkerOptions, fetchWorkerOptions, 0, ["users"]);
 
   const commitSearch = React.useCallback(
     (q: string) => {
@@ -298,6 +300,15 @@ export function MaterialRequestsPanel() {
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
+          action={
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="materialRequests"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+            </ListPageActionGroup>
+          }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -361,7 +372,10 @@ export function MaterialRequestsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

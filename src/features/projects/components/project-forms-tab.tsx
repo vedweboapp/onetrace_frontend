@@ -14,7 +14,6 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
   detailTabEmptyClassName,
-  detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabToolbarClassName,
@@ -25,6 +24,7 @@ import {
   AppButton,
   AppModal,
   CheckmarkSelect,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   ListPageCard,
@@ -129,10 +129,11 @@ export function ProjectFormsTab() {
           pageSize,
           {
             is_active: activeFilter === "true",
+            is_published: true,
           }
         );
         if (!cancelled) {
-          setItems(rows);
+          setItems(rows.filter((row) => row.is_published !== false));
           setPagination(p);
         }
       } catch (err) {
@@ -167,7 +168,12 @@ export function ProjectFormsTab() {
           }
           return;
         }
-        const { items: forms } = await fetchFormsPage(1, 20, { project_type: projectTypeId, dropdown: true }, { silent: true });
+        const { items: forms } = await fetchFormsPage(
+          1,
+          20,
+          { project_type: projectTypeId, dropdown: true, is_published: true },
+          { silent: true },
+        );
         if (!cancelled) {
           const assignedIds = Array.isArray(project.form_ids)
             ? project.form_ids
@@ -177,7 +183,11 @@ export function ProjectFormsTab() {
                 .filter((id): id is number => Number.isFinite(id) && id > 0)
               : [];
           setSelectedFormIds(assignedIds.map(String));
-          setAssignFormOptions(forms.map((form) => ({ value: String(form.id), label: form.name })));
+          setAssignFormOptions(
+            forms
+              .filter((form) => form.is_published !== false)
+              .map((form) => ({ value: String(form.id), label: form.name })),
+          );
         }
       } catch (error) {
         if (!cancelled) setAssignError(t("assignLoadError"));
@@ -332,7 +342,10 @@ export function ProjectFormsTab() {
 
       <SurfaceShell className="rounded-none border-0">
         {loadError ? (
-          <p className={detailTabErrorClassName}>{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : loading ? (
           viewMode === "list" ? (
             <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">

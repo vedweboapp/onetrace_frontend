@@ -62,6 +62,7 @@ import {
   extractTrimmedPinsFromJob,
   fetchAndBuildJobTrimmedPins,
 } from "@/features/projects/utils/pin-preview-navigation.util";
+import { saveJobFormBackHref } from "@/features/job-forms/utils/job-form-navigation.util";
 
 type JobDrawingPlot = Omit<DrawingPlot, "coordinates"> & {
   coordinates?: number[][];
@@ -546,6 +547,7 @@ export function JobDetailBody({
   onChecklistsUpdated,
   onSaved,
   onOpenScheduling,
+  formsBackHref,
 }: {
   detail: Job;
   dateFmt: Intl.DateTimeFormat;
@@ -553,6 +555,11 @@ export function JobDetailBody({
   /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
   onOpenScheduling?: () => void;
+  /**
+   * Where form fill / pin form screens should return.
+   * Defaults to this job’s detail page; quotation Job tab passes the quote URL.
+   */
+  formsBackHref?: string;
 }) {
   const t = useTranslations("Dashboard.jobs");
   const tMeta = useTranslations("Dashboard.common.detail");
@@ -566,6 +573,8 @@ export function JobDetailBody({
   const [gateSaving, setGateSaving] = React.useState(false);
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
   const [pendingFormLabel, setPendingFormLabel] = React.useState("");
+  const resolvedFormsBackHref =
+    formsBackHref?.trim() || `${routes.dashboard.jobs}/${detail.id}`;
 
   const [pinStatuses, setPinStatuses] = React.useState<WorkflowColourStatus[]>([]);
   const [jobStatuses, setJobStatuses] = React.useState<WorkflowColourStatus[]>([]);
@@ -749,20 +758,28 @@ export function JobDetailBody({
         (matchedSubmission && matchedSubmission.id > 0 ? matchedSubmission.id : null);
       const isSubmitted = meta.submitted || Boolean(matchedSubmission);
 
-      const baseHref = `${routes.dashboard.jobFormFill(detail.id, meta.projectFormId, meta.jobFormId)}&name=${encodeURIComponent(
-        meta.label,
-      )}&back=${encodeURIComponent(`${routes.dashboard.jobs}/${detail.id}`)}&job_pin_id=${targetPinId}`;
+      saveJobFormBackHref(detail.id, resolvedFormsBackHref);
+      const params = new URLSearchParams();
+      params.set("formId", String(meta.projectFormId));
+      params.set("job_form_id", String(meta.jobFormId));
+      params.set("name", meta.label);
+      params.set("back", resolvedFormsBackHref);
+      params.set("job_pin_id", String(targetPinId));
+      if (isSubmitted && effectiveSubmissionId) {
+        params.set("submission_id", String(effectiveSubmissionId));
+      }
+      const href = `${routes.dashboard.jobs}/${detail.id}/form?${params.toString()}`;
 
       return {
         label: meta.label,
-        href: isSubmitted && effectiveSubmissionId ? `${baseHref}&submission_id=${effectiveSubmissionId}` : baseHref,
+        href,
         projectFormId: meta.projectFormId,
         jobFormId: meta.jobFormId,
         submissionId: effectiveSubmissionId,
         submitted: isSubmitted,
       };
     },
-    [detail.id, formEntries, submittedForms],
+    [detail.id, formEntries, submittedForms, resolvedFormsBackHref],
   );
 
   const assignedWorkers = React.useMemo(() => getJobAssignedWorkerRows(detail), [detail]);
@@ -844,7 +861,7 @@ export function JobDetailBody({
               textareaBox
               span="full"
               editAriaLabel={tActions("edit")}
-              empty="—"
+              empty=""
               onSave={(next) => patchField({ description: next })}
             />
           </DetailMetricsGrid>
@@ -902,7 +919,7 @@ export function JobDetailBody({
             forms={formEntries}
             checklists={checklistEntries}
             checklistMarked={checklistMarked}
-            backHref={`${routes.dashboard.jobs}/${detail.id}`}
+            backHref={resolvedFormsBackHref}
             onChecklistsUpdated={onChecklistsUpdated}
           />
         </DetailPanelCard>
@@ -1002,13 +1019,12 @@ export function JobDetailBody({
                               if (trimmed.length > 0) {
                                 savePinsToSessionStorage(detail.id, trimmed);
                               }
-                              const backHref = `${routes.dashboard.jobs}/${detail.id}`;
                               const baseRoute =
                                 projectId != null
                                   ? routes.dashboard.projectPinDetail(projectId, pin.id)
                                   : routes.dashboard.jobPinDetail(detail.id, pin.id);
 
-                              const params = new URLSearchParams({ back: backHref });
+                              const params = new URLSearchParams({ back: resolvedFormsBackHref });
                               if (level?.id != null) {
                                 params.set("drawingId", String(level.id));
                               }

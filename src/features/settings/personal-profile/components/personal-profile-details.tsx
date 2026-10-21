@@ -12,7 +12,9 @@ import type { PersonalProfileResponse } from "../types/types";
 import PersonalProfileHeader from "./personal-profile-header";
 import PersonalProfileForm, { PersonalProfileFormHandle } from "./personal-profile-form";
 import { AppearancePanel, type AppearancePanelHandle } from "./appearance-panel";
+import { DashboardLoadErrorState } from "@/shared/ui";
 import { hydrateAppearanceFromProfile } from "../utils/hydrate-appearance-from-profile";
+import { resolveAppearancePreferencesFromSettings } from "../utils/appearance-preferences.util";
 
 const PROFILE_TABS = [
   { id: "profile", label: "PERSONAL PROFILE" },
@@ -52,7 +54,10 @@ const PersonalProfileDetails = () => {
           : (data as PersonalProfileResponse);
       setProfile(resolved);
 
-      const hydrated = hydrateAppearanceFromProfile(resolved?.appearance_settings?.preferences);
+      const preferences = resolveAppearancePreferencesFromSettings(
+        resolved?.appearance_settings,
+      );
+      const hydrated = hydrateAppearanceFromProfile(preferences);
       if (hydrated.themeMode) {
         setTheme(hydrated.themeMode);
       }
@@ -143,7 +148,10 @@ const PersonalProfileDetails = () => {
               isSaving={isSaving}
               setIsSaving={setIsSaving}
               onSaved={() => setIsEditing(false)}
-              initialErrorMessage={profile?.appearance_settings?.preferences?.error_message}
+              initialErrorMessage={
+                resolveAppearancePreferencesFromSettings(profile?.appearance_settings)
+                  ?.error_message
+              }
             />
           )
         ) : isLoading ? (
@@ -151,7 +159,7 @@ const PersonalProfileDetails = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
           </div>
         ) : error ? (
-          <p className="text-sm font-medium text-red-500">{error}</p>
+          <DashboardLoadErrorState message={error} onRetry={() => void loadProfile()} />
         ) : (
           <PersonalProfileForm
             ref={formRef}

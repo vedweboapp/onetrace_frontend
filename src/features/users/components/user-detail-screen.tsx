@@ -38,7 +38,8 @@ import {
   buildPathWithStoredBack,
 } from "@/shared/utils/detail-from-list.util";
 import { entityAddressTypeOptions, sortEntityAddressesForDisplay } from "@/shared/form/entity-address-form.util";
-import { AppButton, AppTabs, EditButton, SurfaceShell, type AppTabItem, type CheckmarkSelectOption } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, EditButton, SurfaceShell, type AppTabItem, type CheckmarkSelectOption } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { parseOrgMoneyInput } from "@/shared/money/format-money.util";
 import { getOrgCurrencySettings } from "@/shared/money/org-currency.store";
@@ -87,6 +88,7 @@ export function UserDetailScreen({ userId }: { userId: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeBack = useEntityDetailBack("settings/users", routes.dashboard.settingsUsers);
+  const tabsStorageKey = useTabOrderStorageKey("userDetail");
   const tabFromUrl = searchParams.get("tab");
   const activeTab: UserDetailTabId = isUserDetailTabId(tabFromUrl) ? tabFromUrl : "overview";
 
@@ -281,10 +283,11 @@ export function UserDetailScreen({ userId }: { userId: number }) {
           !loading && !error && detail ? <EditButton onClick={goEdit} /> : null
         }
         extension={
-          <AppTabs
+          <CustomizableAppTabs
             tabs={detailTabs}
             value={activeTab}
             onValueChange={handleTabChange}
+            storageKey={tabsStorageKey}
             ariaLabel={t("detail.tabsAria")}
             panelIdPrefix="user-detail-tab"
             className="-mx-1 px-1 sm:-mx-0 sm:px-0"

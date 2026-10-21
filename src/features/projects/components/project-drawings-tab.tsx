@@ -1,13 +1,12 @@
 "use client";
 
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-
 import * as React from "react";
-import { ArrowUpRight, Check, Layers, MapPinned, Pencil, User, X } from "lucide-react";
+import { ArrowUpRight, Check, Layers, MapPinned, Pencil, Plus, Trash2, User, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchDrawingsPage, updateDrawingName } from "@/features/projects/api/drawing.api";
+import { fetchDrawingsPage, updateDrawingName, cloneDrawing } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
@@ -17,7 +16,6 @@ import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
-  detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabStandaloneFillClassName,
@@ -26,10 +24,14 @@ import {
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
+  AppButton,
+  AppModal,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   ListPageEmptyStates,
   ListViewModeToggle,
   surfaceInputClassName,
+  surfaceSelectClassName,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -69,6 +71,7 @@ function useDeferredMount(): boolean {
   }, []);
   return ready;
 }
+
 
 function shortFileTypeLabel(mime: string | undefined): string {
   const m = mime?.trim() || "";
@@ -433,7 +436,13 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploadSession, setUploadSession] = React.useState(0);
-
+  const [cloneOpen, setCloneOpen] = React.useState(false);
+  const [cloneDrawings, setCloneDrawings] = React.useState<Drawing[]>([]);
+  const [cloneLoading, setCloneLoading] = React.useState(false);
+  const [sourceDrawingId, setSourceDrawingId] = React.useState("");
+  const [cloneTakeOffNames, setCloneTakeOffNames] = React.useState<string[]>([""]);
+  const [cloneSubmitting, setCloneSubmitting] = React.useState(false);
+  const [showChoice, setShowChocie] = React.useState(false);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   React.useEffect(() => {
@@ -465,6 +474,25 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     };
   }, [projectId, page, pageSize, refreshNonce, t]);
 
+  React.useEffect(() => {
+    if (!cloneOpen) return;
+    let cancelled = false;
+    setCloneLoading(true);
+    void fetchDrawingsPage(projectId, 1, 100, undefined, { dropdown: true })
+      .then(({ items: drawings }) => {
+        if (!cancelled) setCloneDrawings(drawings);
+      })
+      .catch((error) => {
+        if (!cancelled) toastApiError(error, t("loadError"));
+      })
+      .finally(() => {
+        if (!cancelled) setCloneLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneOpen, projectId, t]);
+
   const suggestedOrder = React.useMemo(() => {
     if (items.length === 0) return 1;
     return Math.max(...items.map((i) => i.order)) + 1;
@@ -477,6 +505,79 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   function handleCreated() {
     setRefreshNonce((n) => n + 1);
     setPage(1);
+  }
+
+  function openUpload() {
+    setShowChocie(false);
+    setUploadSession((session) => session + 1);
+    setUploadOpen(true);
+  }
+
+  function handleCloseClone() {
+    if (cloneSubmitting) return;
+    setCloneOpen(false);
+    setSourceDrawingId("");
+    setCloneTakeOffNames([""]);
+  }
+
+  function handleSourceDrawingChange(nextId: string) {
+    setSourceDrawingId(nextId);
+    if (nextId) {
+      const selected = cloneDrawings.find((d) => String(d.id) === nextId);
+      const baseName = selected?.name?.trim() || "";
+      setCloneTakeOffNames([baseName ? `${baseName} (1)` : ""]);
+    } else {
+      setCloneTakeOffNames([""]);
+    }
+  }
+
+  function handleAddNameRow() {
+    setCloneTakeOffNames((prev) => {
+      const selected = cloneDrawings.find((d) => String(d.id) === sourceDrawingId);
+      const baseName = selected?.name?.trim() || "";
+      const nextIndex = prev.length + 1;
+      return [...prev, baseName ? `${baseName} (${nextIndex})` : ""];
+    });
+  }
+
+  function handleRemoveNameRow(index: number) {
+    setCloneTakeOffNames((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function handleNameChange(index: number, value: string) {
+    setCloneTakeOffNames((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }
+
+  async function handleCloneSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const validNames = cloneTakeOffNames.map((n) => n.trim()).filter(Boolean);
+    if (!sourceDrawingId || validNames.length === 0 || cloneSubmitting) return;
+
+    setCloneSubmitting(true);
+    try {
+      await cloneDrawing(projectId, {
+        drawing_id: Number(sourceDrawingId),
+        names: validNames,
+      });
+      toastSuccess(
+        validNames.length > 1
+          ? `${validNames.length} drawings cloned successfully`
+          : "Drawing cloned successfully",
+      );
+      handleCloseClone();
+      handleCreated();
+    } catch (error) {
+      toastApiError(error, "Could not clone drawing. Try again.");
+    } finally {
+      setCloneSubmitting(false);
+    }
   }
 
   const handleRenamed = React.useCallback((next: Drawing) => {
@@ -497,10 +598,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           action: (
             <AddButton
               type="button"
-              onClick={() => {
-                setUploadSession((s) => s + 1);
-                setUploadOpen(true);
-              }}
+              onClick={openUpload}
             />
           ),
         }}
@@ -568,14 +666,45 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
-        <AddButton
+        <div className="relative ml-auto shrink-0">
+        <AppButton
+          onClick={() => setShowChocie(true)}
+        >
+          Add
+        </AppButton>
+        {
+          showChoice && (
+            <div className="absolute right-0 top-full z-30 mt-1 flex w-24 flex-col rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={openUpload}
+                className="w-full rounded px-2 py-1.5 text-right text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChocie(false);
+                  setCloneOpen(true);
+                }}
+                className="w-full rounded px-2 py-1.5 text-right text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Clone
+              </button>
+            </div>
+          )
+        }
+        </div>
+        
+        {/* <AddButton
           type="button"
           className="shrink-0"
           onClick={() => {
             setUploadSession((s) => s + 1);
             setUploadOpen(true);
           }}
-        />
+        /> */}
       </div>
 
       <div className={cn(detailTabFilterBarClassName, "sm:justify-end")}>
@@ -583,7 +712,10 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       </div>
 
       {loadError ? (
-        <p className={detailTabErrorClassName}>{loadError}</p>
+        <DashboardLoadErrorState
+          message={loadError}
+          onRetry={() => setRefreshNonce((n) => n + 1)}
+        />
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
@@ -673,6 +805,114 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         suggestedOrder={suggestedOrder}
         onCreated={handleCreated}
       />
+      <AppModal
+        open={cloneOpen}
+        onClose={handleCloseClone}
+        title="Clone Drawing"
+        size="md"
+      >
+        <form onSubmit={handleCloneSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="clone-source-drawing"
+              className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Select drawing
+            </label>
+            <select
+              id="clone-source-drawing"
+              value={sourceDrawingId}
+              onChange={(event) => handleSourceDrawingChange(event.target.value)}
+              disabled={cloneLoading || cloneSubmitting || cloneDrawings.length === 0}
+              className={surfaceSelectClassName}
+            >
+              <option value="">
+                {cloneLoading
+                  ? "Loading drawings..."
+                  : cloneDrawings.length > 0
+                    ? "Choose a drawing"
+                    : "No drawings available"}
+              </option>
+              {cloneDrawings.map((drawing) => (
+                <option key={drawing.id} value={String(drawing.id)}>
+                  {drawing.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {sourceDrawingId ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Take off names
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddNameRow}
+                  disabled={cloneSubmitting}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 disabled:opacity-50"
+                >
+                  <Plus className="size-3.5" />
+                  Add another level
+                </button>
+              </div>
+
+              <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                {cloneTakeOffNames.map((nameVal, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nameVal}
+                      onChange={(event) => handleNameChange(index, event.target.value)}
+                      placeholder={`Level ${index + 1} name`}
+                      disabled={cloneSubmitting}
+                      className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+                      autoFocus={index === 0}
+                      required
+                    />
+                    {cloneTakeOffNames.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNameRow(index)}
+                        disabled={cloneSubmitting}
+                        title="Remove level"
+                        className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <AppButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCloseClone}
+              disabled={cloneSubmitting}
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={
+                cloneSubmitting ||
+                !sourceDrawingId ||
+                cloneTakeOffNames.every((n) => !n.trim())
+              }
+            >
+              {cloneSubmitting ? "Cloning..." : "Clone"}
+            </AppButton>
+          </div>
+        </form>
+      </AppModal>
     </div>
   );
 }

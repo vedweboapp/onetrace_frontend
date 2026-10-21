@@ -35,6 +35,7 @@ export {
   buildMaterialRequestMassUpdateFields,
   buildProjectMassUpdateFields,
   buildPurchaseOrderMassUpdateFields,
+  buildPurchaseReceiveMassUpdateFields,
   buildQrCodeMassUpdateFields,
   buildQuotationMassUpdateFields,
   buildSiteMassUpdateFields,

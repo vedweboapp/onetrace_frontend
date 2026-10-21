@@ -6,6 +6,7 @@ import { AUTH_OTP_PURPOSE, loginRequest, requestLoginOtp, verifyLoginOtp } from 
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { routes } from "@/shared/config/routes";
 import type { LoginFormValues } from "@/features/auth/schemas/login-schema";
+import { clearSessionCatalogCaches } from "@/shared/catalog/clear-session-catalog-caches";
 
 export function useLogin() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function useLogin() {
     setIsSubmitting(true);
     try {
       const data = await loginRequest(values);
+      clearSessionCatalogCaches();
       setSession({
         accessToken: data.access,
         user: data.user,
@@ -44,6 +46,7 @@ export function useLogin() {
     setIsOtpVerifying(true);
     try {
       const data = await verifyLoginOtp({ email, otp });
+      clearSessionCatalogCaches();
       setSession({
         accessToken: data.access,
         user: data.user,
