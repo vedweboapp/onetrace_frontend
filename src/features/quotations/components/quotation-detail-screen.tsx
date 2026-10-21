@@ -408,7 +408,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
 
   const fetchDetailWithVendors = React.useCallback(
-    (id: number) => fetchQuotation(id, { include: ["vendors", "html"] }),
+    (id: number) => fetchQuotation(id, { include: ["vendors"] }),
     [],
   );
 

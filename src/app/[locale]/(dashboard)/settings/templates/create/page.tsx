@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import TemplatesEditor from "@/shared/templates/components/builder/templates-editor";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import { createTemplate } from "@/shared/templates/api/template.api";
@@ -13,6 +14,7 @@ export default function CreateTemplatePage({
   searchParams: Promise<{ module?: string }>;
 }) {
   const resolvedParams = use(searchParams);
+  const router = useRouter();
   const moduleName =
     resolvedParams.module && VALID_MODULES.includes(resolvedParams.module)
       ? resolvedParams.module
@@ -23,7 +25,7 @@ export default function CreateTemplatePage({
       const fd = payload ?? new FormData();
       const saved = await createTemplate(fd);
       toastSuccess(`Template "${saved.name}" saved successfully!`);
-      // Stay on the editor — do not navigate away
+      router.push(`/settings/templates/${saved.id}/edit`);
     } catch (err) {
       console.error("Failed to create template:", err);
       toastError("Failed to save template. Please try again.");
