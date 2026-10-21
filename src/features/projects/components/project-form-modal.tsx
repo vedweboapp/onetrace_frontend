@@ -42,6 +42,7 @@ import {
   MultiCheckSelect,
   SurfaceDateInput,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 
 const FORM_DOM_ID = "project-upsert-form";
@@ -562,8 +563,8 @@ export function ProjectFormModal({
               aria-invalid={errors.description ? true : undefined}
               aria-describedby={errors.description ? "project-desc-err" : undefined}
               className={cn(
-                surfaceInputClassName,
-                "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                surfaceTextareaClassName,
+                "min-h-[100px] overflow-y-auto [field-sizing:fixed]",
                 errors.description && "border-red-500 dark:border-red-500",
               )}
               maxLength={FIELD_MAX_LENGTH.DESCRIPTION}

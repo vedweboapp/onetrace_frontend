@@ -18,6 +18,10 @@ import { AppTabs } from "@/shared/ui";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import api from "@/core/api/axios";
+import {
+  buildQuickCreateReturnHref,
+  isProjectFormQuickCreateParentBack,
+} from "@/shared/utils/quick-create-navigation.util";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
@@ -1629,8 +1633,22 @@ export default function FormBuilderLayout({
       setDirty(false);
       setDeletedRuleIds([]);
 
+      const createdFormIdNum =
+        typeof savedFormId === "number"
+          ? savedFormId
+          : typeof savedFormId === "string" && /^\d+$/.test(savedFormId)
+            ? Number.parseInt(savedFormId, 10)
+            : null;
+      const returnToParentWithForm =
+        purpose === "create_project_form" &&
+        createdFormIdNum != null &&
+        createdFormIdNum > 0 &&
+        isProjectFormQuickCreateParentBack(BackUrl) &&
+        (isClose || isPublish);
+
       const targetFormId = savedFormId || resolvedLayoutId;
-      if (targetFormId && !isClose) {
+      // Skip hydrate when leaving back to the parent entity form with the new form selected.
+      if (targetFormId && !isClose && !returnToParentWithForm) {
         const nextPurpose =
           purpose === "create_project_form" ? "edit_project_form" : purpose;
         await fetchAndHydrateSchema(targetFormId, nextPurpose);
@@ -1651,7 +1669,9 @@ export default function FormBuilderLayout({
 
       toastSuccess(successMessage);
 
-      if (purpose === "create_project_form" && savedFormId && !isClose) {
+      if (returnToParentWithForm && createdFormIdNum != null) {
+        router.push(buildQuickCreateReturnHref(BackUrl, createdFormIdNum, "form"));
+      } else if (purpose === "create_project_form" && savedFormId && !isClose) {
         router.push(
           `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${savedFormId}`,
         );

@@ -342,6 +342,7 @@ export function ProjectDetailBody({
               </DetailMultiValue>
             </DetailEditableField>
             <DetailEditableField
+              span="full"
               label={t("fields.description")}
               value={detail.description ?? ""}
               kind="text"

@@ -64,6 +64,7 @@ import {
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
 import { resolveDefaultProjectStatusId } from "@/features/project-status/utils/project-default-status.util";
@@ -238,6 +239,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         } else if (selectTarget === "user") {
           const managers = values.manager_ids ?? [];
           values.manager_ids = managers.includes(selectId) ? managers : [...managers, selectId];
+        } else if (selectTarget === "form") {
+          const forms = values.form_ids ?? [];
+          values.form_ids = forms.includes(selectId) ? forms : [...forms, selectId];
         }
       }
 
@@ -505,6 +509,38 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
   }, [isEdit, searchParams, setValue]);
 
+  const reloadForms = React.useCallback(async () => {
+    const projectType = getValues("project_type");
+    if (!projectType || !/^\d+$/.test(projectType)) {
+      setFormOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchFormsPage(
+        1,
+        20,
+        { project_type: projectType, dropdown: true, is_published: true },
+        { silent: true },
+      );
+      const next = items
+        .filter((f) => f.is_published !== false)
+        .map((f) => ({ value: String(f.id), label: f.name }));
+      // Keep any selected ids that are not in the page yet (e.g. just quick-created).
+      const selected = getValues("form_ids") ?? [];
+      setFormOptions((prev) => {
+        const merged = [...next];
+        for (const id of selected) {
+          if (merged.some((opt) => opt.value === id)) continue;
+          const prior = prev.find((opt) => opt.value === id);
+          merged.push(prior ?? { value: id, label: `#${id}` });
+        }
+        return merged;
+      });
+    } catch {
+      setFormOptions([]);
+    }
+  }, [getValues]);
+
   useQuickCreateReturn({
     draftReturnTo,
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
@@ -517,6 +553,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       await reloadClients();
       await reloadSites();
       await reloadManagers(managerSearchQuery);
+      await reloadForms();
     },
     onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
@@ -542,6 +579,16 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
             await ensureSiteInOptions(n);
           }
         }
+        return;
+      }
+      if (selectTarget === "form") {
+        const current = getValues("form_ids") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("form_ids", next, { shouldDirty: true, shouldValidate: true });
+        setFormOptions((prev) => {
+          if (prev.some((opt) => opt.value === selectId)) return prev;
+          return [...prev, { value: selectId, label: `#${selectId}` }];
+        });
         return;
       }
       if (selectTarget === "user") {
@@ -610,32 +657,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     // Update the ref after processing
     previousProjectTypeRef.current = selectedProjectType;
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchFormsPage(
-          1,
-          20,
-          { project_type: selectedProjectType, dropdown: true, is_published: true },
-          { silent: true },
-        );
-        if (!cancelled) {
-          setFormOptions(
-            items
-              .filter((f) => f.is_published !== false)
-              .map((f) => ({ value: String(f.id), label: f.name })),
-          );
-        }
-      } catch {
-        if (!cancelled) {
-          setFormOptions([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectType, setValue, getValues, catalogEpoch]);
+    void reloadForms();
+  }, [selectedProjectType, setValue, getValues, catalogEpoch, reloadForms]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -949,8 +972,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     aria-invalid={errors.description ? true : undefined}
                     aria-describedby={errors.description ? "project-desc-err" : undefined}
                     className={cn(
-                      surfaceInputClassName,
-                      "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                      surfaceTextareaClassName,
+                      "min-h-[100px] overflow-y-auto [field-sizing:fixed]",
                       errors.description && "border-red-500 dark:border-red-500",
                     )}
                     {...register("description", rhfRegisterOptions("description"))}

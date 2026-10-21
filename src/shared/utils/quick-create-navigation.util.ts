@@ -83,6 +83,8 @@ export function getQuickCreateNewPath(kind: QuickCreateKind): string {
       return `${routes.dashboard.items}/new`;
     case "user":
       return `${routes.dashboard.settingsUsers}/new`;
+    case "form":
+      return routes.dashboard.settingsProjectForms;
     default:
       return routes.dashboard.root;
   }
@@ -127,6 +129,19 @@ export function buildQuickCreateReturnHref(back: string, createdId: number, sele
   let href = mergeUrlQueryParam(back, QUICK_CREATE_SELECT_PARAM, String(createdId));
   href = mergeUrlQueryParam(href, QUICK_CREATE_SELECT_TARGET_PARAM, selectTarget);
   return href;
+}
+
+/**
+ * True when FormBuilder was opened from another entity form (e.g. create project)
+ * rather than from Project Forms settings.
+ */
+export function isProjectFormQuickCreateParentBack(backUrl: string | null | undefined): boolean {
+  const raw = backUrl?.trim();
+  if (!raw) return false;
+  const back = pathWithoutQueryAndHash(raw);
+  const formsRoot = pathWithoutQueryAndHash(routes.dashboard.settingsProjectForms);
+  if (!back || back === formsRoot || back.startsWith(`${formsRoot}/`)) return false;
+  return Boolean(sanitizeInternalDashboardBack(raw));
 }
 
 /**

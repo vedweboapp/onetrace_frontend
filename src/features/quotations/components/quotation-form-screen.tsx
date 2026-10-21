@@ -84,6 +84,7 @@ import { getProjectClientId } from "@/features/projects/utils/project-client-id.
 import { fetchSite } from "@/features/sites/api/site.api";
 import type { Site } from "@/features/sites/types/site.types";
 import { fetchTagsPage } from "@/features/tags/api/tag.api";
+import { TagFormModal } from "@/features/tags/components/tag-form-modal";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { fetchUserProfile } from "@/features/users/api/user.api";
 import {
@@ -225,6 +226,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [tagOptions, setTagOptions] = React.useState<Option[]>([]);
+  const [tagModalOpen, setTagModalOpen] = React.useState(false);
   const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
   const [managerOptions, setManagerOptions] = React.useState<Option[]>([]);
   const [technicianOptions, setTechnicianOptions] = React.useState<Option[]>([]);
@@ -537,9 +539,30 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
     returnTo: draftReturnTo,
     getFormDraft,
   });
-  const openTagsSettings = React.useCallback(() => {
-    router.push(routes.dashboard.settingsTags);
-  }, [router]);
+  const openTagModal = React.useCallback(() => {
+    setTagModalOpen(true);
+  }, []);
+
+  const handleTagCreated = React.useCallback(
+    (row: Tag) => {
+      const next = {
+        value: String(row.id),
+        label: row.name?.trim() || row.tag_name?.trim() || `#${row.id}`,
+      };
+      setTagOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      const current = getValues("tag_ids") ?? [];
+      const id = row.id;
+      if (Number.isFinite(id) && id > 0 && !current.includes(id)) {
+        setValue("tag_ids", [...current, id], { shouldDirty: true, shouldValidate: true });
+      }
+    },
+    [getValues, setValue],
+  );
 
   const ensureClientInOptions = React.useCallback(async (clientIdValue: number) => {
     if (!Number.isFinite(clientIdValue) || clientIdValue <= 0) return String(clientIdValue);
@@ -1896,7 +1919,7 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       disabled={saving}
                       listLabel={t("fields.tags")}
                       placeholder={t("placeholders.tags")}
-                      onAdd={openTagsSettings}
+                      onAdd={openTagModal}
                       addAriaLabel="Add tag"
                       addLabel="Add new"
                     />
@@ -1988,6 +2011,12 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <TagFormModal
+        open={tagModalOpen}
+        onClose={() => setTagModalOpen(false)}
+        onSaved={handleTagCreated}
+      />
     </div>
   );
 }
