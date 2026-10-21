@@ -29,6 +29,7 @@ import { QuotationAttachmentsTab } from "@/features/quotations/components/quotat
 import { QuotationFormsTab } from "@/features/quotations/components/quotation-forms-tab";
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
+import { QuotationSendClientModal } from "@/features/quotations/components/quotation-send-client-modal";
 import { QuotationCreateJobModal } from "@/features/quotations/components/quotation-create-job-modal";
 import { QuotationVendorQuotationsTab } from "@/features/quotations/components/quotation-vendor-quotations-tab";
 import type { QuotationDetail } from "@/features/quotations/types/quotation.types";
@@ -424,7 +425,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
 
   const fetchDetailWithVendors = React.useCallback(
-    (id: number) => fetchQuotation(id, { include: ["vendors", "html"] }),
+    (id: number) => fetchQuotation(id, { include: ["vendors"] }),
     [],
   );
 
@@ -713,6 +714,7 @@ function QuotationDetailActions({
   const [createJobOpen, setCreateJobOpen] = React.useState(false);
   const [creatingJob, setCreatingJob] = React.useState(false);
   const [jobCreated, setJobCreated] = React.useState(() => quotationHasLinkedJob(detail, quotationId));
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (quotationHasLinkedJob(detail, quotationId)) {
@@ -757,10 +759,24 @@ function QuotationDetailActions({
           {t("detail.createJob")}
         </AppButton>
       ) : null}
+      <AppButton
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => setPreviewOpen(true)}
+      >
+        Preview Template
+      </AppButton>
       <QuotationSendDropdown
         quotationId={quotationId}
         quoteName={detail.quote_name}
         onSent={onStatusSaved}
+      />
+      <QuotationSendClientModal
+        open={previewOpen}
+        quotationId={quotationId}
+        quoteName={detail.quote_name}
+        onClose={() => setPreviewOpen(false)}
       />
       <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
       <EntityDetailEditButton
