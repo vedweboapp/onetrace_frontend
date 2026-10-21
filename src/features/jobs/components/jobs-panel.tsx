@@ -344,7 +344,8 @@ export function JobsPanel() {
         const { items: nextItems, pagination: p } = await fetchJobsPage(
           isMapView ? 1 : page,
           isMapView ? 10 : pageSize,
-          listFilters,
+          // Table + card (service & project): slim list payload via `view=list`.
+          isMapView ? listFilters : { ...listFilters, view: "list" },
         );
         if (!cancelled) {
           setItems(nextItems);

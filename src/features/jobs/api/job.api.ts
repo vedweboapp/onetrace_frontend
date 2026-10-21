@@ -35,6 +35,11 @@ export type JobListFilters = {
   job_category?: string;
   job_type?: string;
   /**
+   * List/card payload shape — `GET jobs/?view=list`.
+   * Use for table and card UI so the API returns the slim list fields.
+   */
+  view?: "list";
+  /**
    * Jobs linked to a quotation — `GET jobs/?quotations=<id>`.
    * Service quotes usually return one job; project quotes may return several.
    */
@@ -71,6 +76,9 @@ export async function fetchJobsPage(
   }
   if (filters?.job_category) {
     params.job_category = filters.job_category;
+  }
+  if (filters?.view) {
+    params.view = filters.view;
   }
 
   if (filters?.job_type) {

@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { fetchAuditTrails } from "@/features/audit-trails/api/audit-trail.api";
-import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import type { AuditTrailEntry } from "@/features/audit-trails/types/audit-trail.types";
 import {
   auditTrailActionLabel,
@@ -24,26 +23,12 @@ import { AppButton } from "@/shared/ui";
 type Props = {
   module: string;
   objectId: number;
-  /**
-   * Optional mass-action scope. When omitted, `sitemodel` timelines
-   * automatically send `mass_action_ids` equal to `objectId`.
-   */
+  /** Optional mass-action scope — only sent when explicitly provided. */
   massActionIds?: number | number[] | string;
   dateFmt: Intl.DateTimeFormat;
   /** Optional panel title override. */
   title?: string;
 };
-
-function resolveMassActionIds(
-  module: string,
-  objectId: number,
-  massActionIds?: number | number[] | string,
-): number | number[] | string | undefined {
-  if (massActionIds != null) return massActionIds;
-  // Site timelines require both object_id and mass_action_ids (same site id).
-  if (module === AUDIT_TRAIL_MODULES.site && objectId > 0) return objectId;
-  return undefined;
-}
 
 export function EntityAuditTimeline({
   module,
@@ -64,11 +49,10 @@ export function EntityAuditTimeline({
       setLoading(true);
       setError(null);
       try {
-        const resolvedMassActionIds = resolveMassActionIds(module, objectId, massActionIds);
         const rows = await fetchAuditTrails({
           module,
           object_id: objectId,
-          ...(resolvedMassActionIds != null ? { mass_action_ids: resolvedMassActionIds } : {}),
+          ...(massActionIds != null ? { mass_action_ids: massActionIds } : {}),
         });
         if (cancelled) return;
         setEntries(sortAuditTrailsByDateDesc(rows));
