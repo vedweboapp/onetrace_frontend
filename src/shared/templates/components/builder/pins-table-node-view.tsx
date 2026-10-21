@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { PIN_COLUMNS, REQUIRED_COLUMN_IDS, PinsListModal } from "./pins-list-modal";
+import type { AggregateColumn } from "./pins-table-extension";
 
 interface SampleRowData {
   pin_number: string;
@@ -105,6 +106,7 @@ export function PinsTableNodeView({
   updateAttributes,
   deleteNode,
   selected,
+  editor,
 }: NodeViewProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -121,12 +123,38 @@ export function PinsTableNodeView({
   const columns = Array.from(colSet);
   const includeTotal = false;
 
+  // Parse aggregate columns from node attrs
+  const rawAggCols = node.attrs.aggregateColumns;
+  const parsedAggList = Array.isArray(rawAggCols)
+    ? rawAggCols
+    : typeof rawAggCols === "string"
+      ? (() => {
+          try {
+            const p = JSON.parse(rawAggCols);
+            return Array.isArray(p) ? p : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+
+  const aggregateColumns: AggregateColumn[] = parsedAggList.map((item: any) => {
+    const key = item.Key || item.key || item.variable || "";
+    const mod = item.Module || item.module;
+    const fullVar = item.variable || (mod && !key.startsWith(`${mod}.`) ? `${mod}.${key}` : key);
+    return {
+      label: item.label || item.Label || "Sub-Total",
+      variable: fullVar || "pins.subtotal",
+    };
+  });
+
   const activeColDefs = PIN_COLUMNS.filter((c) => columns.includes(c.id));
 
   const handleSaveConfig = (newConfig: {
     columns: string[];
     title: string;
     includeTotal: boolean;
+    aggregateColumns: AggregateColumn[];
   }) => {
     const finalSet = new Set(newConfig.columns);
     REQUIRED_COLUMN_IDS.forEach((id) => finalSet.add(id));
@@ -134,6 +162,7 @@ export function PinsTableNodeView({
       columns: Array.from(finalSet),
       title: newConfig.title,
       includeTotal: newConfig.includeTotal,
+      aggregateColumns: newConfig.aggregateColumns,
     });
     setModalOpen(false);
   };
@@ -158,6 +187,11 @@ export function PinsTableNodeView({
             <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
               ({activeColDefs.length} columns)
             </span>
+            {aggregateColumns.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[10px] font-semibold">
+                Σ {aggregateColumns.length} totals
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -259,9 +293,63 @@ export function PinsTableNodeView({
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         </div>
+
+        {/* ── Aggregate / Totals Section ── */}
+        {aggregateColumns.length > 0 && (
+          <div className="flex justify-end mt-2">
+            <div className="w-64 sm:w-72">
+              {/* Totals Card */}
+              <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                {aggregateColumns.map((aggRow, idx) => {
+                  const labelLower = (aggRow.label || "").toLowerCase();
+                  const isSectionTotal =
+                    labelLower.includes("section total") ||
+                    labelLower.includes("grand total");
+                  const isTotal =
+                    !isSectionTotal &&
+                    (labelLower.includes("total") || idx === aggregateColumns.length - 1);
+
+                  if (isSectionTotal) {
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-[#2b394b] px-3 py-1.5 flex items-center justify-between text-white font-bold text-xs tracking-wide"
+                      >
+                        <span className="uppercase text-[11px] tracking-wider truncate pr-2">
+                          {aggRow.label}
+                        </span>
+                        <span className="font-mono text-xs whitespace-nowrap">
+                          {"<"}{aggRow.variable || "variable"}{">"}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex items-center justify-between px-3 py-1.5 transition-colors",
+                        isTotal
+                          ? "bg-[#eef2f6] dark:bg-slate-800 font-bold text-slate-900 dark:text-slate-100"
+                          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-medium"
+                      )}
+                    >
+                      <span className="truncate pr-2">{aggRow.label || "Sub-Total"}</span>
+                      <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {"<"}{aggRow.variable || "variable"}{">"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Edit Configuration Modal ── */}
@@ -272,6 +360,8 @@ export function PinsTableNodeView({
         initialColumns={columns}
         initialTitle={title}
         initialIncludeTotal={includeTotal}
+        initialAggregateColumns={aggregateColumns}
+        variables={(editor as any)?.templateVariables || []}
         onSave={handleSaveConfig}
         isEditing
       />

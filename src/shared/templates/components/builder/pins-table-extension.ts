@@ -2,6 +2,11 @@ import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { PinsTableNodeView } from "./pins-table-node-view";
 
+export interface AggregateColumn {
+  label: string;
+  variable: string;
+}
+
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     pinsTable: {
@@ -12,6 +17,7 @@ declare module "@tiptap/core" {
         key?: string;
         type?: string;
         module?: string;
+        aggregateColumns?: AggregateColumn[];
       }) => ReturnType;
     };
   }
@@ -41,7 +47,6 @@ export const PinsTableExtension = Node.create({
           if (!raw) {
             return ["pin_number", "snapshot", "location", "item_name", "quantity", "status"];
           }
-          // Support JSON format if present
           if (raw.startsWith("[") && raw.endsWith("]")) {
             try {
               const parsed = JSON.parse(raw);
@@ -50,7 +55,6 @@ export const PinsTableExtension = Node.create({
               // fall through to comma-separated
             }
           }
-          // Comma-separated format
           const list = raw
             .split(",")
             .map((s) => s.trim())
@@ -60,7 +64,11 @@ export const PinsTableExtension = Node.create({
             : ["pin_number", "snapshot", "location", "item_name", "quantity", "status"];
         },
         renderHTML: (attributes) => {
-          const cols = Array.isArray(attributes.columns) ? attributes.columns : [];
+          const cols = Array.isArray(attributes.columns)
+            ? attributes.columns
+            : typeof attributes.columns === "string"
+              ? attributes.columns.split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
           return {
             "data-columns": cols.join(","),
           };
@@ -92,6 +100,32 @@ export const PinsTableExtension = Node.create({
         parseHTML: (element) => element.getAttribute("data-include-total") === "true",
         renderHTML: (attributes) => ({
           "data-include-total": String(Boolean(attributes.includeTotal)),
+        }),
+      },
+      aggregateColumns: {
+        default: [] as AggregateColumn[],
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-aggregate-columns");
+          if (!raw) return [];
+          try {
+            const parsed = JSON.parse(raw);
+            return parsed.map((item: any) => {
+              const key = item.Key || item.key || item.variable || "";
+              const mod = item.Module || item.module;
+              const fullVar = item.variable || (mod && !key.startsWith(`${mod}.`) ? `${mod}.${key}` : key);
+              return {
+                label: item.label || item.Label || "Sub-Total",
+                variable: fullVar || "pins.subtotal",
+              };
+            });
+          } catch {
+            return [];
+          }
+        },
+        renderHTML: (attributes) => ({
+          "data-aggregate-columns": JSON.stringify(
+            Array.isArray(attributes.aggregateColumns) ? attributes.aggregateColumns : []
+          ),
         }),
       },
     };
@@ -132,7 +166,9 @@ export const PinsTableExtension = Node.create({
           const includeTotal = Boolean(options.includeTotal);
           const key = options.key || "items_table";
           const type = options.type || "item_table";
-          const module = options.module || "pins";
+          const aggregateColumns: AggregateColumn[] = Array.isArray(options.aggregateColumns)
+            ? options.aggregateColumns
+            : [];
 
           const node = nodeType.create({
             title,
@@ -141,13 +177,13 @@ export const PinsTableExtension = Node.create({
             key,
             type,
             module,
+            aggregateColumns,
           });
 
           if (dispatch) {
             const { selection } = state;
             const { $from } = selection;
 
-            // If inside an empty paragraph, replace it and add a new paragraph below for continued typing
             if ($from.parent.type.name === "paragraph" && $from.parent.content.size === 0) {
               const from = $from.before();
               const to = $from.after();
@@ -167,4 +203,3 @@ export const PinsTableExtension = Node.create({
     return ReactNodeViewRenderer(PinsTableNodeView);
   },
 });
-

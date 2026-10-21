@@ -189,3 +189,35 @@ export async function fetchPinDetail(pinId: number): Promise<PinDetailApiRespons
   return data as PinDetailApiResponse;
 }
 
+export async function cloneDrawing(
+  projectId: number,
+  body: {
+    drawing_id: number;
+    names?: string[];
+    name?: string | string[];
+  },
+): Promise<Drawing | Drawing[]> {
+  const namesArray: string[] = Array.isArray(body.names)
+    ? body.names
+    : Array.isArray(body.name)
+    ? body.name
+    : body.name
+    ? [body.name.trim()]
+    : [];
+
+  const { data } = await api.post<ApiEnvelope<Drawing | Drawing[]> | Drawing | Drawing[]>(
+    DRAWING_PATHS.clone(projectId),
+    {
+      drawing_id: body.drawing_id,
+      names: namesArray,
+    },
+  );
+  if (data && typeof data === "object" && "success" in data && "data" in data) {
+    const envelope = data as ApiEnvelope<Drawing | Drawing[]>;
+    assertApiSuccess(envelope);
+    return envelope.data;
+  }
+  return data as Drawing | Drawing[];
+}
+
+

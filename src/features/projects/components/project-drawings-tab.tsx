@@ -2,11 +2,11 @@
 
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import * as React from "react";
-import { ArrowUpRight, Check, Layers, MapPinned, Pencil, User, X } from "lucide-react";
+import { ArrowUpRight, Check, Layers, MapPinned, Pencil, Plus, Trash2, User, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchDrawingsPage, updateDrawingName } from "@/features/projects/api/drawing.api";
+import { fetchDrawingsPage, updateDrawingName, cloneDrawing } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
@@ -71,6 +71,7 @@ function useDeferredMount(): boolean {
   }, []);
   return ready;
 }
+
 
 function shortFileTypeLabel(mime: string | undefined): string {
   const m = mime?.trim() || "";
@@ -439,6 +440,8 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [cloneDrawings, setCloneDrawings] = React.useState<Drawing[]>([]);
   const [cloneLoading, setCloneLoading] = React.useState(false);
   const [sourceDrawingId, setSourceDrawingId] = React.useState("");
+  const [cloneTakeOffNames, setCloneTakeOffNames] = React.useState<string[]>([""]);
+  const [cloneSubmitting, setCloneSubmitting] = React.useState(false);
   const [showChoice, setShowChocie] = React.useState(false);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -508,6 +511,73 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setShowChocie(false);
     setUploadSession((session) => session + 1);
     setUploadOpen(true);
+  }
+
+  function handleCloseClone() {
+    if (cloneSubmitting) return;
+    setCloneOpen(false);
+    setSourceDrawingId("");
+    setCloneTakeOffNames([""]);
+  }
+
+  function handleSourceDrawingChange(nextId: string) {
+    setSourceDrawingId(nextId);
+    if (nextId) {
+      const selected = cloneDrawings.find((d) => String(d.id) === nextId);
+      const baseName = selected?.name?.trim() || "";
+      setCloneTakeOffNames([baseName ? `${baseName} (1)` : ""]);
+    } else {
+      setCloneTakeOffNames([""]);
+    }
+  }
+
+  function handleAddNameRow() {
+    setCloneTakeOffNames((prev) => {
+      const selected = cloneDrawings.find((d) => String(d.id) === sourceDrawingId);
+      const baseName = selected?.name?.trim() || "";
+      const nextIndex = prev.length + 1;
+      return [...prev, baseName ? `${baseName} (${nextIndex})` : ""];
+    });
+  }
+
+  function handleRemoveNameRow(index: number) {
+    setCloneTakeOffNames((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function handleNameChange(index: number, value: string) {
+    setCloneTakeOffNames((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }
+
+  async function handleCloneSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const validNames = cloneTakeOffNames.map((n) => n.trim()).filter(Boolean);
+    if (!sourceDrawingId || validNames.length === 0 || cloneSubmitting) return;
+
+    setCloneSubmitting(true);
+    try {
+      await cloneDrawing(projectId, {
+        drawing_id: Number(sourceDrawingId),
+        names: validNames,
+      });
+      toastSuccess(
+        validNames.length > 1
+          ? `${validNames.length} drawings cloned successfully`
+          : "Drawing cloned successfully",
+      );
+      handleCloseClone();
+      handleCreated();
+    } catch (error) {
+      toastApiError(error, "Could not clone drawing. Try again.");
+    } finally {
+      setCloneSubmitting(false);
+    }
   }
 
   const handleRenamed = React.useCallback((next: Drawing) => {
@@ -737,38 +807,111 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       />
       <AppModal
         open={cloneOpen}
-        onClose={() => setCloneOpen(false)}
+        onClose={handleCloseClone}
         title="Clone Drawing"
         size="md"
       >
-        <div>
-          <label
-            htmlFor="clone-source-drawing"
-            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Select drawing
-          </label>
-          <select
-            id="clone-source-drawing"
-            value={sourceDrawingId}
-            onChange={(event) => setSourceDrawingId(event.target.value)}
-            disabled={cloneLoading || cloneDrawings.length === 0}
-            className={surfaceSelectClassName}
-          >
-            <option value="">
-              {cloneLoading
-                ? "Loading drawings..."
-                : cloneDrawings.length > 0
-                  ? "Choose a drawing"
-                  : "No drawings available"}
-            </option>
-            {cloneDrawings.map((drawing) => (
-              <option key={drawing.id} value={String(drawing.id)}>
-                {drawing.name}
+        <form onSubmit={handleCloneSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="clone-source-drawing"
+              className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Select drawing
+            </label>
+            <select
+              id="clone-source-drawing"
+              value={sourceDrawingId}
+              onChange={(event) => handleSourceDrawingChange(event.target.value)}
+              disabled={cloneLoading || cloneSubmitting || cloneDrawings.length === 0}
+              className={surfaceSelectClassName}
+            >
+              <option value="">
+                {cloneLoading
+                  ? "Loading drawings..."
+                  : cloneDrawings.length > 0
+                    ? "Choose a drawing"
+                    : "No drawings available"}
               </option>
-            ))}
-          </select>
-        </div>
+              {cloneDrawings.map((drawing) => (
+                <option key={drawing.id} value={String(drawing.id)}>
+                  {drawing.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {sourceDrawingId ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Take off names
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddNameRow}
+                  disabled={cloneSubmitting}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 disabled:opacity-50"
+                >
+                  <Plus className="size-3.5" />
+                  Add another level
+                </button>
+              </div>
+
+              <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                {cloneTakeOffNames.map((nameVal, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nameVal}
+                      onChange={(event) => handleNameChange(index, event.target.value)}
+                      placeholder={`Level ${index + 1} name`}
+                      disabled={cloneSubmitting}
+                      className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+                      autoFocus={index === 0}
+                      required
+                    />
+                    {cloneTakeOffNames.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNameRow(index)}
+                        disabled={cloneSubmitting}
+                        title="Remove level"
+                        className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <AppButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCloseClone}
+              disabled={cloneSubmitting}
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={
+                cloneSubmitting ||
+                !sourceDrawingId ||
+                cloneTakeOffNames.every((n) => !n.trim())
+              }
+            >
+              {cloneSubmitting ? "Cloning..." : "Clone"}
+            </AppButton>
+          </div>
+        </form>
       </AppModal>
     </div>
   );

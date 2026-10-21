@@ -18,9 +18,14 @@ import { TransformableImageExtension } from "./transformable-image-extension";
 import { PinsTableExtension } from "./pins-table-extension";
 import { SignatureExtension } from "./signature-extension";
 import { TemplateVariablePillExtension } from "./template-variable-pill-extension";
+import { ImageVariableExtension } from "./image-variable-extension";
 import { ImageUploaderModal } from "./image-uploader-modal";
 import { PinsListModal } from "./pins-list-modal";
 import { TemplateVariablesSidebar } from "./variables-sidebar";
+import {
+  fetchModuleVariables,
+  type VariableItem,
+} from "../../api/template-variables.api";
 import {
   Bold,
   Italic,
@@ -1048,6 +1053,7 @@ export default function TemplateDocEditor({
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [pinsModalOpen, setPinsModalOpen] = useState(false);
   const [variablesSidebarCollapsed, setVariablesSidebarCollapsed] = useState(false);
+  const [templateVariables, setTemplateVariables] = useState<VariableItem[]>([]);
 
   const flushChange = useCallback((ed?: Editor | null) => {
     if (updateTimerRef.current) {
@@ -1084,6 +1090,7 @@ export default function TemplateDocEditor({
       TransformableImageExtension,
       PinsTableExtension,
       SignatureExtension,
+      ImageVariableExtension,
       TemplateVariablePillExtension,
       Placeholder.configure({ placeholder }),
     ],
@@ -1171,9 +1178,56 @@ export default function TemplateDocEditor({
     };
   }, []);
 
+  // Preload template variables on mount so Image modal has access to them immediately
+  useEffect(() => {
+    let active = true;
+    fetchModuleVariables(moduleName)
+      .then((data) => {
+        if (active && data.allVariables && data.allVariables.length > 0) {
+          setTemplateVariables(data.allVariables);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to preload variables in editor:", err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [moduleName]);
+
+  useEffect(() => {
+    if (editor && templateVariables && templateVariables.length > 0) {
+      (editor as any).templateVariables = templateVariables;
+    }
+  }, [editor, templateVariables]);
+
   const handleInsertImage = useCallback(
     (url: string, alt?: string, file?: File) => {
       if (!editor) return;
+
+      // Dynamic image variable marker: <!--Image key="key" --> or <!image key=...>
+      const varMatch =
+        url.match(/^<!--\s*Image\s+key=["']?([^"'>]+)["']?\s*(?:-->|--1>)?$/i) ||
+        url.match(/^<!image\s+key=([^>]+)>$/i);
+      if (varMatch) {
+        const key = varMatch[1].replace(/^[<]|>$|^&lt;|&gt;$/g, "").trim();
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: "imageVariable",
+            attrs: {
+              imageKey: key,
+              width: "360px",
+              alignment: "left",
+            },
+          })
+          .run();
+        flushChange(editor);
+        return;
+      }
+
+      // Regular file/URL image
       if (file) {
         uploadedFilesRef.current.set(url, file);
       }
@@ -1211,6 +1265,7 @@ export default function TemplateDocEditor({
             onToggleCollapse={() => setVariablesSidebarCollapsed((v) => !v)}
             onOpenPinsListModal={() => setPinsModalOpen(true)}
             moduleName={moduleName}
+            onVariablesLoaded={(vars) => setTemplateVariables(vars)}
           />
         )}
 
@@ -1230,6 +1285,7 @@ export default function TemplateDocEditor({
         open={imageModalOpen}
         onClose={() => setImageModalOpen(false)}
         onInsert={handleInsertImage}
+        variables={templateVariables}
       />
 
       {/* Pins List Configurator Modal */}
@@ -1237,6 +1293,7 @@ export default function TemplateDocEditor({
         open={pinsModalOpen}
         onClose={() => setPinsModalOpen(false)}
         editor={editor}
+        variables={templateVariables}
       />
     </div>
   );
