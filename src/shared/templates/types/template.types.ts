@@ -19,6 +19,7 @@ export interface Template {
   created_at: string;
   updated_at: string;
   is_default?: boolean;
+  is_global_header?: boolean; // true when the template has a global (copy-to-whole) header
   thumbnail?: string; // preview snippet
   Keys?: { Key: string; Type: string; Module: string; Columns?: string[]; columns?: string[] }[];
   keys?: { Key: string; Type: string; Module: string; Columns?: string[]; columns?: string[] }[];

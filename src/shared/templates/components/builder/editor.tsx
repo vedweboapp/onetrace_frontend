@@ -21,6 +21,7 @@ import { TemplateVariablePillExtension } from "./template-variable-pill-extensio
 import { ImageVariableExtension } from "./image-variable-extension";
 import { ContainerBoxExtension } from "./container-box-extension";
 import { DocumentHeaderExtension } from "./document-header-extension";
+import { PaginationPlus, PAGE_SIZES } from "tiptap-pagination-plus";
 import { ImageUploaderModal } from "./image-uploader-modal";
 import { PinsListModal } from "./pins-list-modal";
 import { HeaderModal } from "./header-modal";
@@ -69,6 +70,7 @@ import {
   Search,
   SquareDashed,
   PanelTop,
+  Printer,
 } from "lucide-react";
 
 // ── Table Grid Picker ──────────────────────────────────────────────────────────
@@ -1167,10 +1169,78 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
     <style>{`
       @import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&family=Carlito:wght@400;700&family=Comic+Neue:wght@400;700&family=Cousine:wght@400;700&family=EB+Garamond:wght@400;600&family=Fira+Code:wght@400;600&family=Gelasio:wght@400;600&family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:wght@400;700&family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Tinos:wght@400;700&display=swap");
 
+      .template-doc-editor {
+        width: 794px;
+      }
       .template-doc-editor .ProseMirror {
         outline: none;
-        min-height: 1050px;
-        padding: 48px 64px;
+      }
+      .template-doc-editor .ProseMirror.rm-with-pagination {
+        outline: none;
+        background-color: #ffffff;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+        border: 1px solid #cbd5e1;
+        box-sizing: border-box;
+        min-height: 1123px;
+      }
+      .dark .template-doc-editor .ProseMirror.rm-with-pagination {
+        background-color: #0f172a;
+        border-color: #1e293b;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      }
+      .template-doc-editor .rm-pagination-gap {
+        background-color: #e2e8f0 !important;
+        height: 28px !important;
+        border-top: 1px solid #cbd5e1 !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        position: relative;
+        width: calc(100% + 2px) !important;
+        left: -1px;
+      }
+      .dark .template-doc-editor .rm-pagination-gap {
+        background-color: #020617 !important;
+        border-color: #1e293b !important;
+      }
+      .template-doc-editor .rm-with-pagination .rm-page-header,
+      .template-doc-editor .rm-with-pagination .rm-page-footer {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        user-select: none;
+      }
+      @media print {
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        html, body {
+          background: #ffffff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .template-doc-editor {
+          width: 100% !important;
+        }
+        .template-doc-editor .ProseMirror.rm-with-pagination {
+          box-shadow: none !important;
+          border: none !important;
+          width: 100% !important;
+          min-height: unset !important;
+        }
+        .template-doc-editor .rm-pagination-gap {
+          display: none !important;
+          height: 0 !important;
+        }
+        .template-doc-editor .rm-with-pagination .rm-page-break {
+          page-break-after: always !important;
+          break-after: page !important;
+        }
+        .template-doc-editor .rm-with-pagination .rm-page-break:last-child {
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
       }
 
       .template-doc-editor .ProseMirror p,
@@ -1320,16 +1390,44 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         background: #1e293b;
         color: #94a3b8;
       }
-      /* Clean / Borderless side-by-side layout tables:
-         Columns and outer boxes are completely invisible by default.
-         A center separator line appears ONLY when actively typing or focused inside. */
-      .template-doc-editor .ProseMirror table.borderless-table,
-      .template-doc-editor .ProseMirror table[data-borderless="true"],
-      .template-doc-editor .ProseMirror table:has(td.borderless-cell) {
+      /* ── Borderless / Side-by-side column layout tables ─────────────────
+         PaginationPlus injects display:contents + display:table + display:grid
+         on ALL .rm-with-pagination tables, which completely breaks the side-by-side
+         column layout. Override those injected rules specifically for borderless tables
+         so they always render as a standard table with proper column widths. */
+
+      /* 1. Restore standard table display (override PaginationPlus display:contents) */
+      .template-doc-editor .ProseMirror.rm-with-pagination table.borderless-table,
+      .template-doc-editor .ProseMirror.rm-with-pagination table[data-borderless="true"],
+      .template-doc-editor .ProseMirror.rm-with-pagination table:has(td.borderless-cell) {
+        display: table !important;
+        table-layout: fixed !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
         margin: 0.25rem 0 !important;
         border: none !important;
         overflow: visible !important;
+        box-sizing: border-box !important;
       }
+
+      /* 2. Restore standard tbody display (override PaginationPlus display:table on tbody) */
+      .template-doc-editor .ProseMirror.rm-with-pagination table.borderless-table tbody,
+      .template-doc-editor .ProseMirror.rm-with-pagination table[data-borderless="true"] tbody,
+      .template-doc-editor .ProseMirror.rm-with-pagination table:has(td.borderless-cell) tbody {
+        display: table-row-group !important;
+        max-height: none !important;
+        overflow: visible !important;
+      }
+
+      /* 3. Restore standard tr display (override PaginationPlus display:grid on tr) */
+      .template-doc-editor .ProseMirror.rm-with-pagination table.borderless-table tr,
+      .template-doc-editor .ProseMirror.rm-with-pagination table[data-borderless="true"] tr,
+      .template-doc-editor .ProseMirror.rm-with-pagination table:has(td.borderless-cell) tr {
+        display: table-row !important;
+        min-width: unset !important;
+      }
+
+      /* 4. Restore td as standard table cell with proper width */
       .template-doc-editor .ProseMirror table.borderless-table td,
       .template-doc-editor .ProseMirror table.borderless-table th,
       .template-doc-editor .ProseMirror table[data-borderless="true"] td,
@@ -1337,11 +1435,17 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
       .template-doc-editor .ProseMirror td.borderless-cell,
       .template-doc-editor .ProseMirror td[data-borderless="true"],
       .template-doc-editor .ProseMirror table:has(td.borderless-cell) td {
+        display: table-cell !important;
+        position: relative !important;
         border: none !important;
         outline: none !important;
         padding: 2px 6px !important;
         background: transparent !important;
         overflow: visible !important;
+        word-break: normal !important;
+        box-sizing: border-box !important;
+        /* Column resize: width comes from inline style set by TipTap's resizable table */
+        min-width: 0;
       }
       /* Keep padding and margins minimal inside columns and boxes */
       .template-doc-editor .ProseMirror table.borderless-table td > p:first-child,
@@ -1408,7 +1512,9 @@ interface TemplateEditorRibbonProps {
   onToggleVariablesSidebar: () => void;
   onOpenImageModal: () => void;
   onOpenPinsListModal?: () => void;
+  /** Only shown when the doc does NOT yet have a global header */
   onOpenHeaderModal?: () => void;
+  hasGlobalHeader?: boolean;
 }
 
 function TemplateEditorRibbon({
@@ -1418,6 +1524,7 @@ function TemplateEditorRibbon({
   onOpenImageModal,
   onOpenPinsListModal,
   onOpenHeaderModal,
+  hasGlobalHeader = false,
 }: TemplateEditorRibbonProps) {
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [tablePickerOpen, setTablePickerOpen] = useState(false);
@@ -1840,8 +1947,8 @@ function TemplateEditorRibbon({
         </ToolbarButton>
       )}
 
-      {/* Document Header Button */}
-      {onOpenHeaderModal && (
+      {/* Document Header Button — hidden when a global header already exists */}
+      {onOpenHeaderModal && !hasGlobalHeader && (
         <ToolbarButton
           onClick={onOpenHeaderModal}
           title="Create Document Header (Letterhead & Title)"
@@ -1859,6 +1966,16 @@ function TemplateEditorRibbon({
         isActive={!variablesSidebarCollapsed}
       >
         <Tag size={14} />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Print / Download PDF */}
+      <ToolbarButton
+        onClick={() => window.print()}
+        title="Print / Save as PDF (A4)"
+      >
+        <Printer size={14} className="text-slate-600 dark:text-slate-400" />
       </ToolbarButton>
     </div>
   );
@@ -1987,6 +2104,19 @@ export default function TemplateDocEditor({
   const [headerModalOpen, setHeaderModalOpen] = useState(false);
   const [variablesSidebarCollapsed, setVariablesSidebarCollapsed] = useState(false);
   const [templateVariables, setTemplateVariables] = useState<VariableItem[]>([]);
+  /** True when the document already contains a global (copy-to-whole) header node. */
+  const [hasGlobalHeader, setHasGlobalHeader] = useState(false);
+
+  /** Re-checks whether a global header exists in the current doc. */
+  const syncGlobalHeaderState = useCallback((ed: Editor) => {
+    let found = false;
+    ed.state.doc.forEach((node) => {
+      if (node.type.name === "documentHeader" && (node.attrs.isGlobalHeader || node.attrs.copyToWhole)) {
+        found = true;
+      }
+    });
+    setHasGlobalHeader(found);
+  }, []);
 
   const flushChange = useCallback((ed?: Editor | null) => {
     if (updateTimerRef.current) {
@@ -2030,7 +2160,21 @@ export default function TemplateDocEditor({
       ImageVariableExtension,
       TemplateVariablePillExtension,
       Placeholder.configure({ placeholder }),
+      PaginationPlus.configure({
+        pageWidth: PAGE_SIZES.A4.pageWidth,
+        pageHeight: PAGE_SIZES.A4.pageHeight,
+        marginTop: 48,
+        marginBottom: 48,
+        marginLeft: 64,
+        marginRight: 64,
+        pageGap: 28,
+        pageGapBorderSize: 1,
+        pageGapBorderColor: "#cbd5e1",
+        pageBreakBackground: "#e2e8f0",
+        footerRight: "Page {page}",
+      }),
     ],
+    immediatelyRender: false,
     content: value,
     parseOptions: {
       preserveWhitespace: "full",
@@ -2046,6 +2190,8 @@ export default function TemplateDocEditor({
         const html = preserveSpacesInHtml(ed.getHTML());
         onChangeRef.current?.(html, Array.from(uploadedFilesRef.current.values()));
       }, 200);
+      // Keep global-header indicator in sync
+      syncGlobalHeaderState(ed);
     },
     editorProps: {
       handleDOMEvents: {
@@ -2101,6 +2247,7 @@ export default function TemplateDocEditor({
         const isHeader = event.dataTransfer?.getData("application/x-header-block");
         if (isHeader) {
           event.preventDefault();
+          if (!editor) return true;
           const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
           const pos = coordinates ? coordinates.pos : 0;
           editor
@@ -2144,6 +2291,11 @@ export default function TemplateDocEditor({
   useEffect(() => {
     if (editor) editor.setEditable(!readOnly);
   }, [editor, readOnly]);
+
+  // Sync hasGlobalHeader on initial mount and after external content loads
+  useEffect(() => {
+    if (editor) syncGlobalHeaderState(editor);
+  }, [editor, value, syncGlobalHeaderState]);
 
   // Cleanup pending timer on unmount
   useEffect(() => {
@@ -2230,6 +2382,7 @@ export default function TemplateDocEditor({
           onOpenImageModal={() => setImageModalOpen(true)}
           onOpenPinsListModal={() => setPinsModalOpen(true)}
           onOpenHeaderModal={() => setHeaderModalOpen(true)}
+          hasGlobalHeader={hasGlobalHeader}
         />
       )}
 
@@ -2250,7 +2403,7 @@ export default function TemplateDocEditor({
         {/* === DOCUMENT CANVAS === */}
         <div className="flex-1 overflow-y-auto bg-slate-200 dark:bg-slate-950 min-h-0">
           <div className="flex justify-center px-8 py-10">
-            <div className="template-doc-editor relative w-[793px] min-h-[1122px] bg-white dark:bg-slate-900 shadow-lg border border-slate-300 dark:border-slate-800 rounded-sm">
+            <div className="template-doc-editor relative w-[794px]">
               <TableFloatingActions editor={editor} />
               <EditorContent editor={editor} />
             </div>
@@ -2280,9 +2433,14 @@ export default function TemplateDocEditor({
         onClose={() => setHeaderModalOpen(false)}
         onInsertHeader={(attrs, atTop) => {
           if (!editor) return;
+          // When copyToWhole is enabled, also mark it as a global header
+          const resolvedAttrs: typeof attrs = {
+            ...attrs,
+            isGlobalHeader: attrs.copyToWhole ?? false,
+          };
           const content = {
             type: "documentHeader",
-            attrs,
+            attrs: resolvedAttrs,
             content: [{ type: "paragraph" }],
           };
           if (atTop) {
@@ -2302,6 +2460,8 @@ export default function TemplateDocEditor({
               .run();
           }
           flushChange(editor);
+          // Update the global header indicator immediately after insert
+          syncGlobalHeaderState(editor);
         }}
       />
     </div>

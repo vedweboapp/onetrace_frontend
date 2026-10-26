@@ -6,11 +6,11 @@ import { ArrowUpRight, Check, Layers, MapPinned, Pencil, Plus, Trash2, User, X }
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchDrawingsPage, updateDrawingName, cloneDrawing } from "@/features/projects/api/drawing.api";
+import { fetchDrawingsPage, updateDrawingName, cloneDrawing, fetchDrawingDetail } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
-import type { Drawing } from "@/features/projects/types/drawing.types";
+import type { Drawing, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
@@ -444,6 +444,12 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [cloneTakeOffFiles, setCloneTakeOffFiles] = React.useState<(File | null)[]>([null]);
   const [cloneSubmitting, setCloneSubmitting] = React.useState(false);
   const [showChoice, setShowChocie] = React.useState(false);
+  const [sourcePlots, setSourcePlots] = React.useState<DrawingPlot[]>([]);
+  const [loadingPlots, setLoadingPlots] = React.useState(false);
+  const [clonePlotMappings, setClonePlotMappings] = React.useState<Record<number, Record<number | string, string>>>({});
+  const [mapPlotsModalOpen, setMapPlotsModalOpen] = React.useState(false);
+  const [mappingTakeOffIndex, setMappingTakeOffIndex] = React.useState<number | null>(null);
+  const [tempPlotMapping, setTempPlotMapping] = React.useState<Record<number | string, string>>({});
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   React.useEffect(() => {
@@ -514,16 +520,43 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setUploadOpen(true);
   }
 
+  React.useEffect(() => {
+    if (!sourceDrawingId) {
+      setSourcePlots([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPlots(true);
+    void fetchDrawingDetail(projectId, Number(sourceDrawingId))
+      .then((detail) => {
+        if (!cancelled) setSourcePlots(detail.plots || []);
+      })
+      .catch(() => {
+        const found = cloneDrawings.find((d) => String(d.id) === sourceDrawingId);
+        if (!cancelled) setSourcePlots(found?.plots || []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPlots(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, sourceDrawingId, cloneDrawings]);
+
   function handleCloseClone() {
     if (cloneSubmitting) return;
     setCloneOpen(false);
     setSourceDrawingId("");
     setCloneTakeOffNames([""]);
     setCloneTakeOffFiles([null]);
+    setClonePlotMappings({});
+    setMappingTakeOffIndex(null);
+    setMapPlotsModalOpen(false);
   }
 
   function handleSourceDrawingChange(nextId: string) {
     setSourceDrawingId(nextId);
+    setClonePlotMappings({});
     if (nextId) {
       const selected = cloneDrawings.find((d) => String(d.id) === nextId);
       const baseName = selected?.name?.trim() || "";
@@ -552,6 +585,17 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       if (prev.length <= 1) return [null];
       return prev.filter((_, i) => i !== index);
     });
+    setClonePlotMappings((prev) => {
+      const next: Record<number, Record<number | string, string>> = {};
+      const keys = Object.keys(prev).map(Number).sort((a, b) => a - b);
+      let newIdx = 0;
+      for (const k of keys) {
+        if (k === index) continue;
+        next[newIdx] = prev[k];
+        newIdx++;
+      }
+      return next;
+    });
   }
 
   function handleNameChange(index: number, value: string) {
@@ -562,26 +606,58 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     });
   }
 
+  function handleOpenMapPlots(index: number) {
+    setMappingTakeOffIndex(index);
+    const existing = clonePlotMappings[index] || {};
+    const initial: Record<number | string, string> = {};
+    sourcePlots.forEach((p) => {
+      initial[p.id] = existing[p.id] !== undefined ? existing[p.id] : (p.name || "");
+    });
+    setTempPlotMapping(initial);
+    setMapPlotsModalOpen(true);
+  }
+
   async function handleCloneSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const validNames = cloneTakeOffNames.map((n) => n.trim()).filter(Boolean);
-    if (!sourceDrawingId || validNames.length === 0 || cloneSubmitting) return;
+    if (!sourceDrawingId || cloneSubmitting) return;
+
+    const take_offs = cloneTakeOffNames
+      .map((nameVal, index) => {
+        const trimmedName = nameVal.trim();
+        if (!trimmedName) return null;
+
+        const mappingsObj = clonePlotMappings[index] || {};
+        const plot_mappings: Array<{ id: string; name: string }> = sourcePlots.map((plot) => ({
+          id: String(plot.id),
+          name: mappingsObj[plot.id]?.trim() || plot.name || `Plot #${plot.id}`,
+        }));
+
+        return {
+          name: trimmedName,
+          plot_mappings,
+          file: cloneTakeOffFiles[index] ?? null,
+        };
+      })
+      .filter((item): item is { name: string; plot_mappings: Array<{ id: string; name: string }>; file: File | null } => item !== null);
+
+    if (take_offs.length === 0) return;
 
     setCloneSubmitting(true);
     try {
       await cloneDrawing(projectId, {
-        drawing_id: Number(sourceDrawingId),
-        names: validNames,
+        drawing_id: String(sourceDrawingId),
+        take_offs,
+        files: cloneTakeOffFiles,
       });
       toastSuccess(
-        validNames.length > 1
-          ? `${validNames.length} drawings cloned successfully`
-          : "Drawing cloned successfully",
+        take_offs.length > 1
+          ? `${take_offs.length} takeoffs cloned successfully`
+          : "Takeoff cloned successfully",
       );
       handleCloseClone();
       handleCreated();
     } catch (error) {
-      toastApiError(error, "Could not clone drawing. Try again.");
+      toastApiError(error, "Could not clone takeoff. Try again.");
     } finally {
       setCloneSubmitting(false);
     }
@@ -822,7 +898,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       <AppModal
         open={cloneOpen}
         onClose={handleCloseClone}
-        title="Clone Drawing"
+        title="Clone Takeoff"
         size="md"
       >
         <form onSubmit={handleCloneSubmit} className="space-y-4">
@@ -831,7 +907,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
               htmlFor="clone-source-drawing"
               className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
             >
-              Select drawing
+              Select takeoff
             </label>
             <select
               id="clone-source-drawing"
@@ -842,10 +918,10 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             >
               <option value="">
                 {cloneLoading
-                  ? "Loading drawings..."
+                  ? "Loading takeoffs..."
                   : cloneDrawings.length > 0
-                    ? "Choose a drawing"
-                    : "No drawings available"}
+                    ? "Choose a takeoff"
+                    : "No takeoffs available"}
               </option>
               {cloneDrawings.map((drawing) => (
                 <option key={drawing.id} value={String(drawing.id)}>
@@ -872,45 +948,73 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                 </button>
               </div>
 
-              <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
-                {cloneTakeOffNames.map((nameVal, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={nameVal}
-                      onChange={(event) => handleNameChange(index, event.target.value)}
-                      placeholder={`Level ${index + 1} name`}
-                      disabled={cloneSubmitting}
-                      className={cn(surfaceInputClassName, "min-w-0 flex-1")}
-                      autoFocus={index === 0}
-                      required
-                    />
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800">
-                      <span className="shrink-0 text-slate-400">📎</span>
-                      <span className="truncate">
-                        {cloneTakeOffFiles[index]?.name ?? "Attach file…"}
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        disabled={cloneSubmitting}
-                        className="sr-only"
-                        onChange={(event) => handleTakeOffFileChange(index, event.target.files?.[0])}
-                      />
-                    </label>
-                    {cloneTakeOffNames.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNameRow(index)}
-                        disabled={cloneSubmitting}
-                        title="Remove level"
-                        className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div className="max-h-60 space-y-2.5 overflow-y-auto pr-1">
+                {cloneTakeOffNames.map((nameVal, index) => {
+                  const hasFile = Boolean(cloneTakeOffFiles[index]);
+                  const mappedCount = Object.values(clonePlotMappings[index] || {}).filter((v) => Boolean(v?.trim())).length;
+                  return (
+                    <div
+                      key={index}
+                      className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-2.5 transition-colors dark:border-slate-800 dark:bg-slate-900/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={nameVal}
+                          onChange={(event) => handleNameChange(index, event.target.value)}
+                          placeholder={`Level ${index + 1} name`}
+                          disabled={cloneSubmitting}
+                          className={cn(surfaceInputClassName, "min-w-0 flex-1")}
+                          autoFocus={index === 0}
+                          required
+                        />
+                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800">
+                          <span className="shrink-0 text-slate-400">📎</span>
+                          <span className="truncate">
+                            {cloneTakeOffFiles[index]?.name ?? "Attach file…"}
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            disabled={cloneSubmitting}
+                            className="sr-only"
+                            onChange={(event) => handleTakeOffFileChange(index, event.target.files?.[0])}
+                          />
+                        </label>
+                        {cloneTakeOffNames.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNameRow(index)}
+                            disabled={cloneSubmitting}
+                            title="Remove level"
+                            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {hasFile ? (
+                        <div className="mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/80">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMapPlots(index)}
+                            disabled={cloneSubmitting}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                          >
+                            <Layers className="size-3.5" />
+                            Map plots
+                            {mappedCount > 0 && (
+                              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                                ({mappedCount} mapped)
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -939,6 +1043,98 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
             </AppButton>
           </div>
         </form>
+      </AppModal>
+
+      <AppModal
+        open={mapPlotsModalOpen}
+        onClose={() => setMapPlotsModalOpen(false)}
+        title="Map Plots"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Map plots from the selected takeoff to{" "}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              {mappingTakeOffIndex !== null
+                ? cloneTakeOffNames[mappingTakeOffIndex] || `Takeoff ${mappingTakeOffIndex + 1}`
+                : "this takeoff"}
+            </span>.
+          </p>
+
+          {loadingPlots ? (
+            <div className="py-8 text-center text-sm text-slate-500">
+              Loading plots...
+            </div>
+          ) : sourcePlots.length === 0 ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+              No plots found on the selected takeoff.
+            </div>
+          ) : (
+            <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3 px-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                <span>Source Plot</span>
+                <span>Mapped Plot Name</span>
+              </div>
+              {sourcePlots.map((plot) => (
+                <div
+                  key={plot.id}
+                  className="grid grid-cols-2 items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: plot.plot_border || "#10b981" }}
+                    />
+                    <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-200" title={plot.name}>
+                      {plot.name || `Plot #${plot.id}`}
+                    </span>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={tempPlotMapping[plot.id] ?? ""}
+                      onChange={(e) =>
+                        setTempPlotMapping((prev) => ({
+                          ...prev,
+                          [plot.id]: e.target.value,
+                        }))
+                      }
+                      placeholder={plot.name ? `e.g. ${plot.name}` : "New plot name"}
+                      className={cn(surfaceInputClassName, "w-full text-xs py-1.5")}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <AppButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setMapPlotsModalOpen(false)}
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (mappingTakeOffIndex !== null) {
+                  setClonePlotMappings((prev) => ({
+                    ...prev,
+                    [mappingTakeOffIndex]: tempPlotMapping,
+                  }));
+                }
+                setMapPlotsModalOpen(false);
+              }}
+            >
+              Done
+            </AppButton>
+          </div>
+        </div>
       </AppModal>
     </div>
   );

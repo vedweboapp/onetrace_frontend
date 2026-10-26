@@ -4,6 +4,8 @@ import { DocumentHeaderNodeView } from "./document-header-node-view";
 
 export interface DocumentHeaderAttributes {
   copyToWhole?: boolean;
+  /** When true the header is global (copy_whole_doc = true) and the header button should be hidden. */
+  isGlobalHeader?: boolean;
 }
 
 declare module "@tiptap/core" {
@@ -28,6 +30,12 @@ export const DocumentHeaderExtension = Node.create({
         default: false,
         parseHTML: (el) => el.getAttribute("data-copy-to-whole") === "true",
         renderHTML: (attrs) => ({ "data-copy-to-whole": attrs.copyToWhole ? "true" : "false" }),
+      },
+      isGlobalHeader: {
+        default: false,
+        parseHTML: (el) => el.getAttribute("data-is-global-header") === "true",
+        renderHTML: (attrs) =>
+          attrs.isGlobalHeader ? { "data-is-global-header": "true" } : {},
       },
     };
   },

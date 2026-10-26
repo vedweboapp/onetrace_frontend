@@ -189,28 +189,59 @@ export async function fetchPinDetail(pinId: number): Promise<PinDetailApiRespons
   return data as PinDetailApiResponse;
 }
 
+export type CloneTakeOffItem = {
+  name: string;
+  plot_mappings?: Array<{
+    id: string | number;
+    name: string;
+  }>;
+  file?: File | null;
+};
+
 export async function cloneDrawing(
   projectId: number,
   body: {
-    drawing_id: number;
+    drawing_id: number | string;
+    take_offs?: CloneTakeOffItem[];
+    files?: (File | null)[];
     names?: string[];
     name?: string | string[];
+    plot_mappings?: Record<number, Record<number | string, string>>;
   },
 ): Promise<Drawing | Drawing[]> {
-  const namesArray: string[] = Array.isArray(body.names)
-    ? body.names
-    : Array.isArray(body.name)
-    ? body.name
-    : body.name
-    ? [body.name.trim()]
-    : [];
+  const takeOffsArray: CloneTakeOffItem[] = body.take_offs
+    ? body.take_offs
+    : (Array.isArray(body.names)
+        ? body.names
+        : Array.isArray(body.name)
+        ? body.name
+        : body.name
+        ? [body.name.trim()]
+        : []
+      ).map((name) => ({
+        name,
+        plot_mappings: [],
+      }));
+
+  const takeOffsClean = takeOffsArray.map((t) => ({
+    name: t.name,
+    plot_mappings: t.plot_mappings ?? [],
+  }));
+
+  const fd = new FormData();
+  fd.append("drawing_id", String(body.drawing_id));
+  fd.append("take_offs", JSON.stringify(takeOffsClean));
+
+  takeOffsArray.forEach((t, index) => {
+    const file = t.file || (body.files && body.files[index]);
+    if (file) {
+      fd.append(`take_offs[${index}]drawing_file`, file, file.name);
+    }
+  });
 
   const { data } = await api.post<ApiEnvelope<Drawing | Drawing[]> | Drawing | Drawing[]>(
     DRAWING_PATHS.clone(projectId),
-    {
-      drawing_id: body.drawing_id,
-      names: namesArray,
-    },
+    fd,
   );
   if (data && typeof data === "object" && "success" in data && "data" in data) {
     const envelope = data as ApiEnvelope<Drawing | Drawing[]>;
