@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   PenLine,
   GripVertical,
+  PanelTop,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppButton } from "@/shared/ui";
@@ -41,6 +42,7 @@ interface TemplateVariablesSidebarProps {
   onToggleCollapse: () => void;
   moduleName?: string;
   onOpenPinsListModal?: () => void;
+  onOpenHeaderModal?: () => void;
   /** Called whenever the variable list for the active module is loaded/reloaded */
   onVariablesLoaded?: (variables: VariableItem[]) => void;
 }
@@ -50,6 +52,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   collapsed,
   onToggleCollapse,
   onOpenPinsListModal,
+  onOpenHeaderModal,
   onVariablesLoaded,
 }: TemplateVariablesSidebarProps) {
   // Options & variables in the sidebar are independent of the template's module.
@@ -206,6 +209,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
       })
       .run();
   };
+
 
   const TABS: { id: SidebarTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -502,39 +506,29 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                                     : "border-slate-200/90 bg-white hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-xs dark:border-slate-700/80 dark:bg-slate-800 dark:hover:border-blue-500/70 dark:hover:bg-slate-700/60",
                                 )}
                               >
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[11.5px] font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                                      {item.label}
-                                    </span>
-                                  </div>
-                                  {item.description && (
-                                    <p className="text-[9.5px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
-                                      {item.description}
-                                    </p>
-                                  )}
-                                </div>
+                                {/* Label — takes priority, never wraps */}
+                                <span className="shrink-0 text-[11.5px] font-medium text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 whitespace-nowrap">
+                                  {item.label}
+                                </span>
 
-                                {/* Badge Tag */}
-                                <div className="shrink-0 flex items-center gap-1">
-                                  <span
-                                    className={cn(
-                                      "font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded transition",
-                                      isInserted
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:border dark:border-slate-700/60 dark:group-hover:bg-blue-950/70 dark:group-hover:text-blue-300 dark:group-hover:border-blue-700/70",
-                                    )}
-                                  >
-                                    {isInserted ? (
-                                      <span className="flex items-center gap-0.5">
-                                        <Check size={10} />
-                                        Inserted
-                                      </span>
-                                    ) : (
-                                      item.tag
-                                    )}
-                                  </span>
-                                </div>
+                                {/* Badge Tag — fills remaining space, truncates with … */}
+                                <span
+                                  className={cn(
+                                    "min-w-0 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded transition truncate",
+                                    isInserted
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:border dark:border-slate-700/60 dark:group-hover:bg-blue-950/70 dark:group-hover:text-blue-300 dark:group-hover:border-blue-700/70",
+                                  )}
+                                >
+                                  {isInserted ? (
+                                    <span className="flex items-center justify-end gap-0.5">
+                                      <Check size={10} />
+                                      Inserted
+                                    </span>
+                                  ) : (
+                                    item.tag
+                                  )}
+                                </span>
                               </button>
                             );
                           })
@@ -635,6 +629,65 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                 </div>
               </div>
             </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-100 dark:border-slate-800" />
+
+            {/* ─── Document Header Section ─── */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-0.5">
+                Header
+              </p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Insert a professional document header with company branding, logo, document title, and metadata.
+              </div>
+
+              {/* Draggable Component Card */}
+              <div
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("application/x-header-block", "true");
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                onClick={() => {
+                  if (onOpenHeaderModal) {
+                    onOpenHeaderModal();
+                  } else if (editor) {
+                    (editor.chain().focus() as any)
+                      .insertDocumentHeader?.({
+                        height: "80px",
+                        hrThickness: "1px",
+                        hrColor: "#cbd5e1",
+                        copyToWhole: false,
+                      })
+                      .run();
+                  }
+                }}
+                className="w-full flex items-center justify-between gap-2.5 p-3 rounded-lg border border-slate-200/90 hover:border-blue-400/80 bg-white hover:bg-blue-50/40 dark:border-slate-800 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 transition shadow-2xs group cursor-grab active:cursor-grabbing select-none"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="size-8 rounded-lg bg-blue-600 dark:bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <PanelTop className="size-4" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <div className="text-xs font-semibold leading-tight truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 flex items-center gap-1.5">
+                      <span>Document Header</span>
+                      <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        Drag
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight truncate mt-0.5">
+                      Drag into document or click to choose style
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                  <GripVertical className="size-4" />
+                </div>
+              </div>
+            </div>
+
+
           </div>
         )}
       </div>

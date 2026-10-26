@@ -362,7 +362,8 @@ export function PinsListModal({
       open={open}
       onClose={onClose}
       title={isEditing ? "Edit Items Table Configuration" : "Insert Items Table / Pins List"}
-      size="xl"
+      size="2xl"
+      className="max-w-[700px] w-full"
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="text-xs text-slate-500 dark:text-slate-400">

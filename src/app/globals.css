@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "react-phone-number-input/style.css";
 
+
 /* Number fields: type to enter only — no spinner arrows. */
 input[type="number"] {
   -moz-appearance: textfield;

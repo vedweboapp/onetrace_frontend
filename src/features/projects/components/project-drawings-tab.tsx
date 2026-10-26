@@ -441,6 +441,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [cloneLoading, setCloneLoading] = React.useState(false);
   const [sourceDrawingId, setSourceDrawingId] = React.useState("");
   const [cloneTakeOffNames, setCloneTakeOffNames] = React.useState<string[]>([""]);
+  const [cloneTakeOffFiles, setCloneTakeOffFiles] = React.useState<(File | null)[]>([null]);
   const [cloneSubmitting, setCloneSubmitting] = React.useState(false);
   const [showChoice, setShowChocie] = React.useState(false);
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
@@ -493,7 +494,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     };
   }, [cloneOpen, projectId, t]);
 
-  const suggestedOrder = React.useMemo(() => {
+  const suggestedOrder = React.useMemo(() => {https://192.168.1.12:3002/settings/project-type-forms
     if (items.length === 0) return 1;
     return Math.max(...items.map((i) => i.order)) + 1;
   }, [items]);
@@ -518,6 +519,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setCloneOpen(false);
     setSourceDrawingId("");
     setCloneTakeOffNames([""]);
+    setCloneTakeOffFiles([null]);
   }
 
   function handleSourceDrawingChange(nextId: string) {
@@ -538,11 +540,16 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       const nextIndex = prev.length + 1;
       return [...prev, baseName ? `${baseName} (${nextIndex})` : ""];
     });
+    setCloneTakeOffFiles((prev) => [...prev, null]);
   }
 
   function handleRemoveNameRow(index: number) {
     setCloneTakeOffNames((prev) => {
       if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+    setCloneTakeOffFiles((prev) => {
+      if (prev.length <= 1) return [null];
       return prev.filter((_, i) => i !== index);
     });
   }
@@ -584,9 +591,16 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setItems((prev) => prev.map((row) => (row.id === next.id ? { ...row, ...next } : row)));
   }, []);
 
+  function handleTakeOffFileChange(index: number, file: File | undefined) {
+    setCloneTakeOffFiles((prev) => {
+      const next = [...prev];
+      next[index] = file ?? null;
+      return next;
+    });
+  }
+
   const pageRange = getListPageRange(pagination);
   const isEmpty = !loading && !loadError && items.length === 0;
-
   const emptyState = (
     <div className={detailTabStandaloneFillClassName}>
       <ListPageEmptyStates
@@ -854,7 +868,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                   className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 disabled:opacity-50"
                 >
                   <Plus className="size-3.5" />
-                  Add another level
+                  Add TakeOff
                 </button>
               </div>
 
@@ -871,6 +885,19 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
                       autoFocus={index === 0}
                       required
                     />
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800">
+                      <span className="shrink-0 text-slate-400">📎</span>
+                      <span className="truncate">
+                        {cloneTakeOffFiles[index]?.name ?? "Attach file…"}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        disabled={cloneSubmitting}
+                        className="sr-only"
+                        onChange={(event) => handleTakeOffFileChange(index, event.target.files?.[0])}
+                      />
+                    </label>
                     {cloneTakeOffNames.length > 1 && (
                       <button
                         type="button"
