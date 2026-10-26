@@ -1390,7 +1390,7 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         width: 3px;
       }
       .template-doc-editor .tableWrapper {
-        padding: 0.25rem 0;
+        padding: 0;
         overflow: visible !important;
       }
       .template-doc-editor .resize-cursor {

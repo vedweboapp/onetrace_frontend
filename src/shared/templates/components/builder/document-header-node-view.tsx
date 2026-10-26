@@ -11,7 +11,7 @@ export function DocumentHeaderNodeView({
   deleteNode,
 }: NodeViewProps) {
   const copyToWhole = node.attrs.copyToWhole || false;
-  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
   return (
     <NodeViewWrapper
@@ -21,19 +21,19 @@ export function DocumentHeaderNodeView({
         display: "block",
         width: "100%",
         paddingBottom: "2px",
-        marginBottom: "10px",
-        borderBottom: "1px solid #cbd5e1",
+        marginBottom: "2px",
+        borderBottom: "2px solid #cbd5e1",
         boxSizing: "border-box",
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => setIsActive(true)}
+      onBlur={() => setIsActive(false)}
     >
-      {/* Tiny toolbar — top-right corner, shows on hover */}
+      {/* Tiny toolbar — top-right corner, shows only when clicked/active */}
       <div
         contentEditable={false}
         className={cn(
           "absolute top-0 right-0 z-20 flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm px-1.5 py-0.5 transition-opacity duration-150 select-none",
-          isHovered ? "opacity-100" : "opacity-0 pointer-events-none",
+          isActive ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
         onMouseDown={(e) => e.preventDefault()}
       >
