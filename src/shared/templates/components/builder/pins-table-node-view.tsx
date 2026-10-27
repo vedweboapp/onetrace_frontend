@@ -14,7 +14,6 @@ import type { AggregateColumn } from "./pins-table-extension";
 interface SampleRowData {
   pin_number: string;
   pin_marker: number;
-  has_plan_notes?: boolean;
   snapshot: string;
   location: string;
   item_name: string;
@@ -32,8 +31,7 @@ interface SampleRowData {
 const SAMPLE_PREVIEW_ROWS: SampleRowData[] = [
   {
     pin_number: "#6",
-    pin_marker: 8,
-    has_plan_notes: false,
+    pin_marker: 6,
     snapshot: "Pin #6 Snapshot",
     location: "#6",
     item_name: "AC KIT",
@@ -50,7 +48,6 @@ const SAMPLE_PREVIEW_ROWS: SampleRowData[] = [
   {
     pin_number: "#7",
     pin_marker: 7,
-    has_plan_notes: true,
     snapshot: "Pin #7 Snapshot",
     location: "#7",
     item_name: "AC KIT",
@@ -68,10 +65,8 @@ const SAMPLE_PREVIEW_ROWS: SampleRowData[] = [
 
 function DrawingSnapshotThumbnail({
   pinMarker,
-  hasPlanNotes,
 }: {
   pinMarker: number;
-  hasPlanNotes?: boolean;
 }) {
   return (
     <div className="w-36 h-20 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 relative overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
@@ -81,15 +76,6 @@ function DrawingSnapshotThumbnail({
         <div className="border-b border-slate-200 dark:border-slate-700 w-full" />
         <div className="border-b border-slate-200 dark:border-slate-700 w-full" />
       </div>
-
-      {hasPlanNotes && (
-        <div className="absolute right-2 top-2 text-[8px] font-mono text-slate-600 dark:text-slate-400 leading-tight text-right pointer-events-none font-semibold">
-          <div>Kč 118</div>
-          <div>Kč 118</div>
-          <div className="mt-1">Kč 20,700</div>
-          <div>Kč 20,700</div>
-        </div>
-      )}
 
       {/* Circular green pin marker */}
       <div className="relative z-10 size-6 rounded-full border-2 border-emerald-500 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
@@ -251,7 +237,6 @@ export function PinsTableNodeView({
                           {col.id === "snapshot" ? (
                             <DrawingSnapshotThumbnail
                               pinMarker={row.pin_marker}
-                              hasPlanNotes={row.has_plan_notes}
                             />
                           ) : col.id === "location" ? (
                             <span className="font-medium text-slate-800 dark:text-slate-200">

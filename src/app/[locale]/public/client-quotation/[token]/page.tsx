@@ -14,10 +14,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function PublicQuotationTokenPage() {
+export default async function PublicQuotationTokenPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const resolved = await params;
   return (
     <Suspense fallback={null}>
-      <QuotationPinDetails />
+      <QuotationPinDetails initialToken={resolved?.token} />
     </Suspense>
   );
 }

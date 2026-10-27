@@ -116,8 +116,8 @@ export const ImageVariableExtension = Node.create({
       alignment === "center"
         ? "margin: 16px auto;"
         : alignment === "right"
-        ? "margin: 16px 0 16px auto;"
-        : "margin: 16px 0;";
+          ? "margin: 16px 0 16px auto;"
+          : "margin: 16px 0;";
 
     return [
       "div",
@@ -156,19 +156,19 @@ export const ImageVariableExtension = Node.create({
     return {
       insertImageVariable:
         (options) =>
-        ({ commands }) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs: {
-              imageKey: options.imageKey,
-              width: options.width || "360px",
-              scale: options.scale ?? 1,
-              alignment: options.alignment || "left",
-              rotate: options.rotate || 0,
-              flipH: Boolean(options.flipH),
-            },
-          });
-        },
+          ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                imageKey: options.imageKey,
+                width: options.width || "360px",
+                scale: options.scale ?? 1,
+                alignment: options.alignment || "left",
+                rotate: options.rotate || 0,
+                flipH: Boolean(options.flipH),
+              },
+            });
+          },
     };
   },
 

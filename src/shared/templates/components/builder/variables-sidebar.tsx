@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   PenLine,
   GripVertical,
+  PanelTop,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppButton } from "@/shared/ui";
@@ -41,6 +42,7 @@ interface TemplateVariablesSidebarProps {
   onToggleCollapse: () => void;
   moduleName?: string;
   onOpenPinsListModal?: () => void;
+  onOpenHeaderModal?: () => void;
   /** Called whenever the variable list for the active module is loaded/reloaded */
   onVariablesLoaded?: (variables: VariableItem[]) => void;
 }
@@ -50,6 +52,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   collapsed,
   onToggleCollapse,
   onOpenPinsListModal,
+  onOpenHeaderModal,
   onVariablesLoaded,
 }: TemplateVariablesSidebarProps) {
   // Options & variables in the sidebar are independent of the template's module.
@@ -206,6 +209,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
       })
       .run();
   };
+
 
   const TABS: { id: SidebarTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -502,39 +506,29 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                                     : "border-slate-200/90 bg-white hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-xs dark:border-slate-700/80 dark:bg-slate-800 dark:hover:border-blue-500/70 dark:hover:bg-slate-700/60",
                                 )}
                               >
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[11.5px] font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                                      {item.label}
-                                    </span>
-                                  </div>
-                                  {item.description && (
-                                    <p className="text-[9.5px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
-                                      {item.description}
-                                    </p>
-                                  )}
-                                </div>
+                                {/* Label — takes priority, never wraps */}
+                                <span className="shrink-0 text-[11.5px] font-medium text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 whitespace-nowrap">
+                                  {item.label}
+                                </span>
 
-                                {/* Badge Tag */}
-                                <div className="shrink-0 flex items-center gap-1">
-                                  <span
-                                    className={cn(
-                                      "font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded transition",
-                                      isInserted
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:border dark:border-slate-700/60 dark:group-hover:bg-blue-950/70 dark:group-hover:text-blue-300 dark:group-hover:border-blue-700/70",
-                                    )}
-                                  >
-                                    {isInserted ? (
-                                      <span className="flex items-center gap-0.5">
-                                        <Check size={10} />
-                                        Inserted
-                                      </span>
-                                    ) : (
-                                      item.tag
-                                    )}
-                                  </span>
-                                </div>
+                                {/* Badge Tag — fills remaining space, truncates with … */}
+                                <span
+                                  className={cn(
+                                    "min-w-0 font-mono text-[9.5px] font-medium px-1.5 py-0.5 rounded transition truncate",
+                                    isInserted
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:border dark:border-slate-700/60 dark:group-hover:bg-blue-950/70 dark:group-hover:text-blue-300 dark:group-hover:border-blue-700/70",
+                                  )}
+                                >
+                                  {isInserted ? (
+                                    <span className="flex items-center justify-end gap-0.5">
+                                      <Check size={10} />
+                                      Inserted
+                                    </span>
+                                  ) : (
+                                    item.tag
+                                  )}
+                                </span>
                               </button>
                             );
                           })
@@ -635,8 +629,11 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                 </div>
               </div>
             </div>
+
+
           </div>
         )}
+
       </div>
 
       {/* ── Pins List Configurator Modal ── */}
