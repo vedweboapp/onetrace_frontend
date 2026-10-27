@@ -1,3 +1,4 @@
+import axios from "axios";
 import { isApiBusinessError } from "@/core/errors/api-business-error";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 
@@ -21,17 +22,47 @@ function toPositiveId(raw: unknown): number | null {
   return null;
 }
 
+type DuplicateEnvelope = {
+  errorCode: string | null;
+  message: string;
+  data: unknown;
+};
+
+/**
+ * Prefer `ApiBusinessError` (2xx envelope failures). Fall back to Axios 4xx bodies —
+ * create duplicates usually arrive as HTTP 400 with `error_code` + `data` on `response.data`.
+ */
+function getDuplicateEnvelope(error: unknown): DuplicateEnvelope | null {
+  if (isApiBusinessError(error)) {
+    return {
+      errorCode: error.errorCode,
+      message: error.message?.trim() || "",
+      data: error.data,
+    };
+  }
+  if (!axios.isAxiosError(error)) return null;
+  const body = error.response?.data;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const raw = body as Record<string, unknown>;
+  return {
+    errorCode: typeof raw.error_code === "string" ? raw.error_code : null,
+    message: typeof raw.message === "string" ? raw.message.trim() : "",
+    data: raw.data,
+  };
+}
+
 /**
  * Parse a create-time `DUPLICATE_ENTRY` business error into a conflict payload.
  * Returns null when the error is not a usable duplicate-with-existing-row case.
  */
 export function parseDuplicateEntryConflict(error: unknown): DuplicateEntryConflict | null {
-  if (!isApiBusinessError(error)) return null;
-  if ((error.errorCode ?? "").trim().toUpperCase() !== DUPLICATE_ENTRY_ERROR_CODE) return null;
+  const envelope = getDuplicateEnvelope(error);
+  if (!envelope) return null;
+  if ((envelope.errorCode ?? "").trim().toUpperCase() !== DUPLICATE_ENTRY_ERROR_CODE) return null;
 
   const data =
-    error.data && typeof error.data === "object" && !Array.isArray(error.data)
-      ? (error.data as Record<string, unknown>)
+    envelope.data && typeof envelope.data === "object" && !Array.isArray(envelope.data)
+      ? (envelope.data as Record<string, unknown>)
       : null;
   if (!data) return null;
 
@@ -46,7 +77,7 @@ export function parseDuplicateEntryConflict(error: unknown): DuplicateEntryConfl
   return {
     existingId,
     fieldKeys,
-    message: error.message?.trim() || fieldMap[fieldKeys[0] ?? ""] || "Duplicate entry",
+    message: envelope.message || fieldMap[fieldKeys[0] ?? ""] || "Duplicate entry",
     data,
   };
 }

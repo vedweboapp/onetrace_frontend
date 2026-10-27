@@ -108,13 +108,11 @@ async function parseBlobError(blob: Blob): Promise<string | null> {
 }
 
 function skippedDownloadExt(format: ImportSkippedExportFormat): string {
-  if (format === "csv") return "csv";
-  if (format === "excel") return "xls";
-  return "xlsx";
+  return format;
 }
 
 /**
- * GET `{segment}/download-skipped/{taskId}/?export_format=csv|xlsx|excel`
+ * GET `{segment}/download-skipped/{taskId}/?export_format=csv|xlsx|zip|xls`
  * Downloads skipped rows from a completed import task.
  */
 export async function downloadModuleImportSkipped(

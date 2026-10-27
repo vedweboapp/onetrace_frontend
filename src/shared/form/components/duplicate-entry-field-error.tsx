@@ -36,8 +36,12 @@ export function DuplicateEntryFieldError({
             {" "}
             <button
               type="button"
-              className="font-semibold underline underline-offset-2 hover:text-red-700 dark:hover:text-red-300"
-              onClick={onViewExisting}
+              className="ml-1 inline font-semibold text-red-700 underline underline-offset-2 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onViewExisting();
+              }}
             >
               {t("viewExisting")}
             </button>

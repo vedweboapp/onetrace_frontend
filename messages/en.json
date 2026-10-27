@@ -305,7 +305,7 @@
         "retry": "Retry"
       },
       "duplicateEntry": {
-        "viewExisting": "View existing",
+        "viewExisting": "View",
         "title": "Record already exists",
         "description": "A matching record was found. Keep it as-is, or update it with the details you entered.",
         "keepExisting": "Keep existing",
@@ -404,7 +404,8 @@
         "formatLabel": "Format",
         "formatCsv": "CSV (.csv)",
         "formatXlsx": "Excel (.xlsx)",
-        "formatExcel": "Excel (.xls)",
+        "formatZip": "ZIP (.zip)",
+        "formatXls": "Excel (.xls)",
         "download": "Download skipped",
         "downloading": "Downloading…",
         "successToast": "Skipped data downloaded.",

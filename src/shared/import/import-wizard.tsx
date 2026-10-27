@@ -40,7 +40,23 @@ import type {
   ParsedImportFile,
 } from "./types";
 
-const SKIPPED_EXPORT_FORMATS: ImportSkippedExportFormat[] = ["csv", "xlsx", "excel"];
+const SKIPPED_EXPORT_FORMATS: ImportSkippedExportFormat[] = ["csv", "xlsx", "zip", "xls"];
+
+function skippedFormatLabel(
+  value: ImportSkippedExportFormat,
+  t: ReturnType<typeof useTranslations<"Dashboard.import">>,
+): string {
+  switch (value) {
+    case "csv":
+      return t("skippedDownload.formatCsv");
+    case "xlsx":
+      return t("skippedDownload.formatXlsx");
+    case "zip":
+      return t("skippedDownload.formatZip");
+    case "xls":
+      return t("skippedDownload.formatXls");
+  }
+}
 
 type Step = "upload" | "map" | "progress" | "result";
 
@@ -700,12 +716,7 @@ function ImportResultSummary({
     () =>
       SKIPPED_EXPORT_FORMATS.map((value) => ({
         value,
-        label:
-          value === "csv"
-            ? t("skippedDownload.formatCsv")
-            : value === "xlsx"
-              ? t("skippedDownload.formatXlsx")
-              : t("skippedDownload.formatExcel"),
+        label: skippedFormatLabel(value, t),
       })),
     [t],
   );
@@ -794,7 +805,7 @@ function ImportResultSummary({
             <CheckmarkSelect
               value={skippedFormat}
               onChange={(v) => {
-                if (v === "csv" || v === "xlsx" || v === "excel") setSkippedFormat(v);
+                if (v === "csv" || v === "xlsx" || v === "zip" || v === "xls") setSkippedFormat(v);
               }}
               options={skippedFormatOptions}
               listLabel={t("skippedDownload.formatLabel")}
