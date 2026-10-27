@@ -170,13 +170,15 @@ export const PinsTableExtension = Node.create({
             ? options.aggregateColumns
             : [];
 
+          const moduleValue = options.module || "pins";
+
           const node = nodeType.create({
             title,
             columns: cols,
             includeTotal,
             key,
             type,
-            module,
+            module: moduleValue,
             aggregateColumns,
           });
 

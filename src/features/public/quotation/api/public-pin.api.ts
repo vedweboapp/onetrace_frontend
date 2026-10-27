@@ -32,7 +32,11 @@ function parseString(value: unknown): string | null {
 }
 
 function unwrapApiData(raw: unknown): unknown {
-  if (isObject(raw) && typeof raw.success === "boolean" && raw.success === true && "data" in raw) {
+  if (
+    isObject(raw) &&
+    "data" in raw &&
+    (raw.success === true || (raw as any).status === "success" || !("success" in raw))
+  ) {
     return (raw as Record<string, unknown>).data;
   }
   return raw;
@@ -325,13 +329,33 @@ export async function fetchPublicPinDetails(pinId: number): Promise<QuotationSco
   };
 }
 
-export async function fetchPublicQuotationByToken(token: string): Promise<QuotationDetail> {
-  const response = await api.get<unknown>(`public/quotations/${token}/`);
+export async function fetchPublicQuotationByToken(
+  token: string,
+  options?: { include?: string | string[] }
+): Promise<QuotationDetail> {
+  const cleanToken = token.replace(/^\/+|\/+$/g, "").split("?")[0];
+  const includeParam = options?.include
+    ? Array.isArray(options.include)
+      ? options.include.join(",")
+      : options.include
+    : "html";
+
+  const response = await api.get<unknown>(`public/quotations/${cleanToken}/`, {
+    params: {
+      include: includeParam,
+    },
+  });
   const raw = response.data;
   const data = unwrapApiData(raw);
   if (isObject(raw) && isObject(data)) {
     if ("access_context" in raw && !("access_context" in data)) {
       (data as any).access_context = (raw as any).access_context;
+    }
+    if ("html_string" in raw && !("html_string" in data)) {
+      (data as any).html_string = (raw as any).html_string;
+    }
+    if ("html" in raw && !("html" in data)) {
+      (data as any).html = (raw as any).html;
     }
   }
   return data as QuotationDetail;

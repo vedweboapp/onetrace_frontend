@@ -362,7 +362,8 @@ export function PinsListModal({
       open={open}
       onClose={onClose}
       title={isEditing ? "Edit Items Table Configuration" : "Insert Items Table / Pins List"}
-      size="xl"
+      size="2xl"
+      className="max-w-[700px] w-full"
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -511,7 +512,8 @@ export function PinsListModal({
           </div>
         </div>
 
-        {/* ── Aggregate / Subtotal Columns Section ── */}
+
+        {/* ── Aggregate / Subtotal Columns Section (temporarily hidden) ──
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-3.5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
@@ -545,7 +547,6 @@ export function PinsListModal({
                   className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-1.5"
                 >
                   <div className="flex items-end gap-2 min-w-0">
-                    {/* Label input */}
                     <div className="w-1/3 min-w-0">
                       <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
                         Label
@@ -559,7 +560,6 @@ export function PinsListModal({
                       />
                     </div>
 
-                    {/* Variable picker */}
                     <div className="flex-1 min-w-0">
                       <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
                         Variable
@@ -605,7 +605,6 @@ export function PinsListModal({
                       </div>
                     </div>
 
-                    {/* Remove */}
                     <button
                       type="button"
                       onClick={() => removeAggregateRow(idx)}
@@ -623,6 +622,7 @@ export function PinsListModal({
             </div>
           )}
         </div>
+        ── End Aggregate / Subtotal Columns Section ── */}
 
         {/* ── Live Preview Section ── */}
         <div className="space-y-1.5">

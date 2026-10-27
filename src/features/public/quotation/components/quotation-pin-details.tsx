@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import {
@@ -946,6 +946,252 @@ function QuotationInfoPanel({
   );
 }
 
+/* ── Render HTML Template Document ─────────────────── */
+
+function prepareQuotationHtml(html: string): string {
+  if (!html) return "";
+  let processedHtml = html;
+
+  // 1. Convert colwidth on <td> and <th> tags to inline CSS widths
+  processedHtml = processedHtml.replace(/<(td|th)\b([^>]*)>/gi, (match, tag, attrs) => {
+    const colMatch = attrs.match(/\bcolwidth="([^"]+)"/i);
+    if (!colMatch) return match;
+    const totalWidth = colMatch[1]
+      .split(",")
+      .reduce((sum: number, v: string) => sum + (parseInt(v.trim(), 10) || 0), 0);
+    if (totalWidth <= 0) return match;
+
+    if (attrs.includes("style=")) {
+      return match.replace(/style="([^"]*)"/i, (_sMatch: string, styleVal: string) => {
+        let updated = styleVal;
+        if (!/width\s*:/i.test(updated)) {
+          updated = `width: ${totalWidth}px; ${updated}`.trim();
+        }
+        return `style="${updated}"`;
+      });
+    } else {
+      return `<${tag}${attrs} style="width: ${totalWidth}px;">`;
+    }
+  });
+
+  // 2. Ensure all tables expand to 100% width and fixed layout if borderless or column widths exist
+  processedHtml = processedHtml.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
+    const isBorderlessOrColWidth =
+      attrs.includes("borderless") ||
+      attrs.includes("colwidth") ||
+      processedHtml.includes("colwidth=");
+
+    if (attrs.includes("style=")) {
+      return match.replace(/style="([^"]*)"/i, (_sMatch: string, styleVal: string) => {
+        let updated = styleVal;
+        if (!/width\s*:/i.test(updated)) {
+          updated = `width: 100%; ${updated}`.trim();
+        }
+        if (isBorderlessOrColWidth && !/table-layout\s*:/i.test(updated)) {
+          updated = `table-layout: fixed; ${updated}`.trim();
+        }
+        return `style="${updated}"`;
+      });
+    } else {
+      const layoutStyle = isBorderlessOrColWidth
+        ? "width: 100%; table-layout: fixed;"
+        : "width: 100%;";
+      return `<table${attrs} style="${layoutStyle}">`;
+    }
+  });
+
+  // 3. Repair orphan </strong> tags left by backend variable-substitution
+  // A. Quoted terms ending in </strong>, e.g. "Red 5"</strong>
+  processedHtml = processedHtml.replace(/(["“][^"“”<]+?["”])<\/strong>/gi, (_m, term) => {
+    return `<strong style="font-weight: 700;">${term}</strong>`;
+  });
+
+  // B. Sentences ending in </strong>
+  processedHtml = processedHtml.replace(/(\.\s*)([A-Z][^<]*?\.)<\/strong>/g, (_m, dot, sentence) => {
+    return `${dot}<strong style="font-weight: 700;">${sentence}</strong>`;
+  });
+
+  // C. Whole element content ending in </strong> inside <p>, <span>, <li>, <td>, <th>
+  processedHtml = processedHtml.replace(/(<(?:p|span|li|td|th)\b[^>]*>)([^<]+?)<\/strong>/gi, (m, openTag, text) => {
+    if (text.includes("<strong")) return m;
+    return `${openTag}<strong style="font-weight: 700;">${text}</strong>`;
+  });
+
+  // D. Any remaining orphan </strong> preceded by plain text up to the nearest tag
+  processedHtml = processedHtml.replace(/([^>.]+)<\/strong>/gi, (m, text) => {
+    if (text.includes("<strong")) return m;
+    return `<strong style="font-weight: 700;">${text}</strong>`;
+  });
+
+  // 4. Repair orphan </li> / </ol> / </ul>
+  const openOl = (processedHtml.match(/<ol\b/gi) || []).length;
+  const closeOl = (processedHtml.match(/<\/ol>/gi) || []).length;
+  const openUl = (processedHtml.match(/<ul\b/gi) || []).length;
+  const closeUl = (processedHtml.match(/<\/ul>/gi) || []).length;
+
+  if (closeOl > openOl || closeUl > openUl) {
+    processedHtml = processedHtml.replace(/([\s\S]*?)<\/(ol|ul)>/gi, (match, beforeClose, listType) => {
+      if (!beforeClose.includes("</li>")) return match;
+
+      let splitIndex = 0;
+      const boundaryRe = /<\/(?:p|div|header|h[1-6]|table|blockquote)>(?!\s*<\/li>)/gi;
+      let bm: RegExpExecArray | null;
+      while ((bm = boundaryRe.exec(beforeClose)) !== null) {
+        splitIndex = bm.index + bm[0].length;
+      }
+
+      const beforeList = beforeClose.slice(0, splitIndex);
+      const listBody = beforeClose.slice(splitIndex);
+
+      const rawItems = listBody.split(/<\/li>/gi);
+      rawItems.pop();
+
+      const itemsHtml = rawItems
+        .map((item: string) => {
+          let clean = item.trim();
+          clean = clean.replace(/^<li\b[^>]*>/i, "").trim();
+          if (!clean) return "";
+          return `  <li style="margin-bottom: 0.35em;">${clean}</li>`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      const listStyle =
+        listType.toLowerCase() === "ol"
+          ? `style="margin: 0.75em 0; padding-left: 28px; list-style-type: decimal;"`
+          : `style="margin: 0.75em 0; padding-left: 28px; list-style-type: disc;"`;
+
+      return `${beforeList}\n<${listType} ${listStyle}>\n${itemsHtml}\n</${listType}>`;
+    });
+  }
+
+  // 5. Clean up any duplicated nested strong tags
+  processedHtml = processedHtml
+    .replace(/<strong[^>]*>\s*<strong[^>]*>/gi, '<strong style="font-weight: 700;">')
+    .replace(/<\/strong>\s*<\/strong>/gi, "</strong>");
+
+  return processedHtml;
+}
+
+function HtmlQuotationDocument({
+  html,
+  pageWidth,
+  pageHeight,
+}: {
+  html: string;
+  pageWidth?: string | null;
+  pageHeight?: string | null;
+}) {
+  const processedHtml = useMemo(() => prepareQuotationHtml(html), [html]);
+
+  return (
+    <div
+      className="quotation-rendered-html w-full bg-white shadow-xl border border-slate-200 p-8 sm:p-12 transition-all duration-200 overflow-x-auto"
+      style={{
+        maxWidth: pageWidth || "8.27in",
+        minHeight: pageHeight || "11.69in",
+        margin: "0 auto",
+      }}
+    >
+      <style>{`
+        .quotation-rendered-html {
+          box-sizing: border-box;
+          color: #0f172a;
+          line-height: 1.5;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+        .quotation-rendered-html *,
+        .quotation-rendered-html *::before,
+        .quotation-rendered-html *::after {
+          box-sizing: border-box;
+        }
+        .quotation-rendered-html table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .quotation-rendered-html table.pcs-itemtable {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          font-size: 12px;
+        }
+        .quotation-rendered-html table.pcs-itemtable th {
+          background-color: #3c3d3a;
+          color: #ffffff;
+          padding: 8px;
+          border: 1px solid #ddd;
+          font-weight: 600;
+          text-align: left;
+        }
+        .quotation-rendered-html table.pcs-itemtable td {
+          padding: 8px;
+          border: 1px solid #ddd;
+        }
+        .quotation-rendered-html table.borderless-table,
+        .quotation-rendered-html table[data-borderless="true"],
+        .quotation-rendered-html table:has(td.borderless-cell),
+        .quotation-rendered-html table:has(td[data-borderless="true"]),
+        .quotation-rendered-html table:has(td[colwidth]),
+        .quotation-rendered-html table:has(th[colwidth]) {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          border: none !important;
+          margin: 0.5rem 0 !important;
+          table-layout: fixed !important;
+        }
+        .quotation-rendered-html table.borderless-table td,
+        .quotation-rendered-html table.borderless-table th,
+        .quotation-rendered-html table[data-borderless="true"] td,
+        .quotation-rendered-html table[data-borderless="true"] th,
+        .quotation-rendered-html td.borderless-cell,
+        .quotation-rendered-html td[data-borderless="true"] {
+          border: none !important;
+          outline: none !important;
+          padding: 4px 10px !important;
+          vertical-align: middle !important;
+          box-sizing: border-box !important;
+        }
+        .quotation-rendered-html .container-box-block {
+          box-sizing: border-box !important;
+        }
+        .quotation-rendered-html strong,
+        .quotation-rendered-html b {
+          font-weight: 700 !important;
+        }
+        .quotation-rendered-html ol {
+          list-style-type: decimal !important;
+          margin: 0.75em 0 !important;
+          padding-left: 28px !important;
+        }
+        .quotation-rendered-html ul {
+          list-style-type: disc !important;
+          margin: 0.75em 0 !important;
+          padding-left: 28px !important;
+        }
+        .quotation-rendered-html li {
+          display: list-item !important;
+          margin-bottom: 0.35em !important;
+          line-height: 1.5 !important;
+        }
+        .quotation-rendered-html p {
+          margin: 0 0 0.5em 0;
+        }
+        .quotation-rendered-html img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+        }
+        .quotation-rendered-html td img,
+        .quotation-rendered-html th img {
+          display: block;
+        }
+      `}</style>
+      <div dangerouslySetInnerHTML={{ __html: processedHtml }} />
+    </div>
+  );
+}
+
 /* ── PDF column ──────────────────────────────────────── */
 
 function PdfColumn({
@@ -963,6 +1209,20 @@ function PdfColumn({
   snapProgress: { completed: number; total: number };
   onPinClick?: (pinId: number) => void;
 }) {
+  const htmlContent = detail.html_string || (detail as any).html;
+
+  if (htmlContent) {
+    return (
+      <div className="flex-1 min-w-0">
+        <HtmlQuotationDocument
+          html={htmlContent}
+          pageWidth={detail.page_width}
+          pageHeight={detail.page_height}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-w-0">
       {/* Progress bar while generating snapshots */}
@@ -991,12 +1251,12 @@ function PdfColumn({
 
 /* ── Main component ──────────────────────────────────── */
 
-export function QuotationPinDetails() {
+export function QuotationPinDetails({ initialToken }: { initialToken?: string } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
 
-  const rawRouteToken = params?.token ?? params?.id;
+  const rawRouteToken = initialToken ?? params?.token ?? params?.id;
   const routeToken = typeof rawRouteToken === "string" ? rawRouteToken : Array.isArray(rawRouteToken) ? rawRouteToken[0] : null;
 
   const token =
@@ -1036,8 +1296,16 @@ export function QuotationPinDetails() {
     [token, numericId],
   );
 
+  const fetchedTokenRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    // If quotation data is already available for this exact token, do not toggle loading state
+    if (fetchedTokenRef.current === token && (quotationDetail || pinPayload)) {
       setLoading(false);
       return;
     }
@@ -1049,61 +1317,67 @@ export function QuotationPinDetails() {
     // Primary: fetch using public quotation by token API (GET /public/quotations/:token/)
     fetchPublicQuotationByToken(token)
       .then((data) => {
-        if (!cancelled) {
-          setQuotationDetail(data);
-          setLoading(false);
-        }
+        if (cancelled) return;
+        fetchedTokenRef.current = token;
+        setQuotationDetail(data);
+        setLoading(false);
       })
       .catch((tokenErr) => {
         console.warn("[QuotationPinDetails] fetchPublicQuotationByToken failed, trying fallback:", tokenErr);
+        if (cancelled) return;
+
         if (isNumericToken) {
           fetchQuotation(numericId)
             .then((data) => {
-              if (!cancelled) {
-                setQuotationDetail(data);
-                setLoading(false);
-              }
+              if (cancelled) return;
+              fetchedTokenRef.current = token;
+              setQuotationDetail(data);
+              setLoading(false);
             })
             .catch(() => {
               fetchPublicPinDetails(numericId)
                 .then((data) => {
-                  if (!cancelled) {
-                    setPinPayload(data);
-                    if (data.quotationId) {
-                      fetchQuotation(data.quotationId)
-                        .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
-                        .catch(() => { });
-                    }
-                    setLoading(false);
+                  if (cancelled) return;
+                  fetchedTokenRef.current = token;
+                  setPinPayload(data);
+                  setLoading(false);
+                  if (data.quotationId) {
+                    fetchQuotation(data.quotationId)
+                      .then((qd) => {
+                        if (!cancelled) setQuotationDetail(qd);
+                      })
+                      .catch(() => {});
                   }
                 })
                 .catch(() => {
-                  if (!cancelled) {
-                    setError("Unable to load quotation details.");
-                    setLoading(false);
-                  }
+                  if (cancelled) return;
+                  setError("Unable to load quotation details.");
+                  setLoading(false);
                 });
             });
         } else {
           const stored = loadQuotationScopePinDetails(token);
           if (stored) {
+            fetchedTokenRef.current = token;
             setPinPayload(stored);
+            setLoading(false);
             if (stored.quotationId) {
               fetchQuotation(stored.quotationId)
-                .then((qd) => { if (!cancelled) setQuotationDetail(qd); })
-                .catch(() => { });
+                .then((qd) => {
+                  if (!cancelled) setQuotationDetail(qd);
+                })
+                .catch(() => {});
             }
-            setLoading(false);
           } else {
-            if (!cancelled) {
-              setError("This quotation link is invalid or has expired.");
-              setLoading(false);
-            }
+            setError("This quotation link is invalid or has expired.");
+            setLoading(false);
           }
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token, numericId, isNumericToken]);
 
   /* ── Construct effective QuotationDetail + Sections guaranteed ── */
@@ -1235,6 +1509,12 @@ export function QuotationPinDetails() {
       return;
     }
     const base = effectiveQuotationDetail.quote_sections ?? [];
+
+    if (effectiveQuotationDetail.html_string || (effectiveQuotationDetail as any).html) {
+      setEnrichedSections(base);
+      return;
+    }
+
     const projectId = resolveQuotationProjectId(effectiveQuotationDetail.project);
     let cancelled = false;
 
@@ -1257,9 +1537,11 @@ export function QuotationPinDetails() {
     };
   }, [effectiveQuotationDetail]);
 
+  const hasHtmlContent = Boolean(effectiveQuotationDetail?.html_string || (effectiveQuotationDetail as any)?.html);
+
   const pdfSections = useMemo(
-    () => enrichedSections ?? effectiveQuotationDetail?.quote_sections ?? [],
-    [enrichedSections, effectiveQuotationDetail?.quote_sections],
+    () => (hasHtmlContent ? effectiveQuotationDetail?.quote_sections ?? [] : (enrichedSections ?? effectiveQuotationDetail?.quote_sections ?? [])),
+    [hasHtmlContent, enrichedSections, effectiveQuotationDetail?.quote_sections],
   );
 
   /* ── Snapshot generation ── */
@@ -1268,7 +1550,14 @@ export function QuotationPinDetails() {
   const [pinSnapshots, setPinSnapshots] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!effectiveQuotationDetail || enrichedSections == null) return;
+    if (!effectiveQuotationDetail) return;
+
+    if (hasHtmlContent) {
+      setSnapStatus("success");
+      return;
+    }
+
+    if (enrichedSections == null) return;
 
     const tasks = extractPinSnapshotTasks(pdfSections);
     if (tasks.length === 0) {
@@ -1422,15 +1711,15 @@ export function QuotationPinDetails() {
 
   /* ── Render states ── */
 
-  if (!token) {
-    return <ErrorScreen message="No quotation token was provided in the URL." />;
-  }
-
-  if (loading) {
+  if (loading && !effectiveQuotationDetail) {
     return <LoadingScreen message="Loading quotation details…" />;
   }
 
-  if (error) {
+  if (!token && !effectiveQuotationDetail) {
+    return <ErrorScreen message="No quotation token was provided in the URL." />;
+  }
+
+  if (error && !effectiveQuotationDetail) {
     return <ErrorScreen message={error} />;
   }
 

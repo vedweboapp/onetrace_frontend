@@ -173,11 +173,20 @@ export default function TemplatesEditor({
 
   /** Builds the shared save payload (FormData + raw object). */
   const buildPayload = () => {
+    // Detect whether the document has a global header.
+    // A header is "global" when either:
+    //   • data-is-global-header="true"  (new format set by this editor)
+    //   • data-copy-to-whole="true"     (the copyToWhole toggle — old & new docs)
+    const isGlobalHeader =
+      /data-is-global-header=["']true["']/i.test(contentRef.current) ||
+      /data-copy-to-whole=["']true["']/i.test(contentRef.current);
+
     const templateData = {
       name: name.trim(),
       content: contentRef.current,
       moduleName: resolvedModuleName,
       files: filesRef.current,
+      is_global_header: isGlobalHeader,
       ...(template?.category ? { category: template.category } : {}),
       ...(template?.description ? { description: template.description } : {}),
       ...(template?.id ? { id: template.id } : {}),

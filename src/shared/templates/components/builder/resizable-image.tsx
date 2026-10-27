@@ -92,13 +92,37 @@ export function ResizableImageView({
   // anchor = the inner image wrapper div, used for toolbar positioning
   const imageWrapperRef = useRef<HTMLDivElement>(null);
 
-  const [width, setWidth] = useState<string | number>(initialWidth || "auto");
+  // null = not yet measured (new image); "auto" = measured but no width set (shouldn't happen after fix)
+  const [width, setWidth] = useState<string | number | null>(initialWidth || null);
   const [isResizing, setIsResizing] = useState(false);
   const [currentDimensions, setCurrentDimensions] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
-    setWidth(initialWidth || "auto");
+    // Only update from attrs if the node already has a saved width
+    if (initialWidth) setWidth(initialWidth);
   }, [initialWidth]);
+
+  // When the image loads for the first time (no saved width), cap it to 15% of container
+  const handleImageLoad = useCallback(() => {
+    // If a width was already explicitly saved on the node, do nothing
+    if (initialWidth) return;
+
+    const img = imgRef.current;
+    if (!img) return;
+
+    const naturalW = img.naturalWidth;
+    const containerW =
+      containerRef.current?.closest(".template-doc-editor")?.clientWidth ||
+      containerRef.current?.parentElement?.clientWidth ||
+      793; // A4 page width fallback
+
+    // Target: 15% of container width, but never larger than the image's natural pixel size
+    const target = Math.round(Math.min(naturalW, containerW * 0.15));
+    const finalW = `${Math.max(60, target)}px`;
+
+    setWidth(finalW);
+    updateAttributes({ width: finalW });
+  }, [initialWidth, updateAttributes]);
 
   // Handle Resize Drag
   const startResize = useCallback(
@@ -210,8 +234,8 @@ export function ResizableImageView({
           isSelected && "ring-2 ring-blue-500 ring-offset-2 rounded-sm shadow-md",
         )}
         style={{
-          width: typeof width === "number" ? `${width}px` : width,
-          maxWidth: "100%",
+          width: width === null ? "auto" : (typeof width === "number" ? `${width}px` : width),
+          maxWidth: width === null ? "15%" : "100%",
         }}
       >
         {/* Floating Transform Toolbar — rendered in a portal to escape table overflow */}
@@ -368,6 +392,7 @@ export function ResizableImageView({
           src={src}
           alt={alt || ""}
           title={title || ""}
+          onLoad={handleImageLoad}
           className="block w-full h-auto rounded-xs object-contain transition-transform"
           style={{
             transform: `rotate(${rotate || 0}deg) scaleX(${flipH ? -1 : 1})`,
