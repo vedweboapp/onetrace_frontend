@@ -2011,19 +2011,52 @@ export function preserveSpacesInHtml(html: string): string {
     return `>${res}<`;
   });
 
+  // Convert colwidth attributes on <td> and <th> tags to inline CSS widths
+  out = out.replace(/<(td|th)\b([^>]*)>/gi, (match, tag, attrs) => {
+    const colMatch = attrs.match(/\bcolwidth="([^"]+)"/i);
+    if (!colMatch) return match;
+    const totalWidth = colMatch[1]
+      .split(",")
+      .reduce((sum: number, v: string) => sum + (parseInt(v.trim(), 10) || 0), 0);
+    if (totalWidth <= 0) return match;
+
+    if (attrs.includes("style=")) {
+      return match.replace(/style="([^"]*)"/i, (_sMatch: string, styleVal: string) => {
+        let updated = styleVal;
+        if (!/width\s*:/i.test(updated)) {
+          updated = `width: ${totalWidth}px; ${updated}`.trim();
+        }
+        return `style="${updated}"`;
+      });
+    } else {
+      return `<${tag}${attrs} style="width: ${totalWidth}px;">`;
+    }
+  });
+
   // Ensure all tables (including borderless side-by-side header tables) retain width: 100% inline style
-  // so external previews (like quotation preview modal) and backend PDF engines don't collapse columns
+  // and table-layout: fixed when colwidth or borderless is present
   out = out.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
+    const isBorderlessOrColWidth =
+      attrs.includes("borderless") ||
+      attrs.includes("colwidth") ||
+      out.includes("colwidth=");
+
     if (attrs.includes("style=")) {
       return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
         let updated = styleVal;
         if (!/width\s*:/i.test(updated)) {
           updated = `width: 100%; ${updated}`.trim();
         }
+        if (isBorderlessOrColWidth && !/table-layout\s*:/i.test(updated)) {
+          updated = `table-layout: fixed; ${updated}`.trim();
+        }
         return `style="${updated}"`;
       });
     } else {
-      return `<table${attrs} style="width: 100%;">`;
+      const layout = isBorderlessOrColWidth
+        ? "width: 100%; table-layout: fixed;"
+        : "width: 100%;";
+      return `<table${attrs} style="${layout}">`;
     }
   });
 
@@ -2055,6 +2088,13 @@ const CustomTable = Table.extend({
     if (!existingStyle.includes("width:") && !existingStyle.includes("width :")) {
       updatedStyle = existingStyle ? `width: 100%; ${existingStyle}` : "width: 100%;";
     }
+    const isBorderless =
+      HTMLAttributes.borderless ||
+      (HTMLAttributes.class as string)?.includes("borderless-table") ||
+      HTMLAttributes["data-borderless"] === "true";
+    if (isBorderless && !updatedStyle.includes("table-layout:") && !updatedStyle.includes("table-layout :")) {
+      updatedStyle = `${updatedStyle} table-layout: fixed;`.trim();
+    }
     return [
       "table",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: updatedStyle }),
@@ -2083,6 +2123,47 @@ const CustomTableCell = TableCell.extend({
         },
       },
     };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const colwidth = HTMLAttributes.colwidth;
+    let style = (HTMLAttributes?.style as string) || "";
+    if (colwidth) {
+      const widthVals = Array.isArray(colwidth) ? colwidth : String(colwidth).split(",");
+      const totalWidth = widthVals.reduce(
+        (sum: number, v: string | number) => sum + (parseInt(String(v).trim(), 10) || 0),
+        0
+      );
+      if (totalWidth > 0 && !style.includes("width:") && !style.includes("width :")) {
+        style = style ? `width: ${totalWidth}px; ${style}` : `width: ${totalWidth}px;`;
+      }
+    }
+    return [
+      "td",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, style ? { style } : {}),
+      0,
+    ];
+  },
+});
+
+const CustomTableHeader = TableHeader.extend({
+  renderHTML({ HTMLAttributes }) {
+    const colwidth = HTMLAttributes.colwidth;
+    let style = (HTMLAttributes?.style as string) || "";
+    if (colwidth) {
+      const widthVals = Array.isArray(colwidth) ? colwidth : String(colwidth).split(",");
+      const totalWidth = widthVals.reduce(
+        (sum: number, v: string | number) => sum + (parseInt(String(v).trim(), 10) || 0),
+        0
+      );
+      if (totalWidth > 0 && !style.includes("width:") && !style.includes("width :")) {
+        style = style ? `width: ${totalWidth}px; ${style}` : `width: ${totalWidth}px;`;
+      }
+    }
+    return [
+      "th",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, style ? { style } : {}),
+      0,
+    ];
   },
 });
 
@@ -2150,7 +2231,7 @@ export default function TemplateDocEditor({
       }),
       CustomTable.configure({ resizable: true }),
       TableRow,
-      TableHeader,
+      CustomTableHeader,
       CustomTableCell,
       TransformableImageExtension,
       PinsTableExtension,
@@ -2278,11 +2359,16 @@ export default function TemplateDocEditor({
     if (editor && value !== undefined && value !== lastLoadedValueRef.current) {
       lastLoadedValueRef.current = value;
       if (value !== editor.getHTML()) {
-        (editor.commands.setContent as (output: any, emitUpdate?: boolean, parseOptions?: any) => boolean)(
-          value,
-          false,
-          { preserveWhitespace: "full" },
-        );
+        const timer = setTimeout(() => {
+          if (!editor.isDestroyed) {
+            (editor.commands.setContent as (output: any, emitUpdate?: boolean, parseOptions?: any) => boolean)(
+              value,
+              false,
+              { preserveWhitespace: "full" },
+            );
+          }
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [editor, value]);

@@ -88,3 +88,9 @@ export async function saveTemplate(
 export async function deleteTemplate(id: string): Promise<void> {
   await api.delete(`settings/templates/${id}`);
 }
+
+// ─── PATCH /settings/templates/:id — set is_primary ─────────────────────────
+export async function setPrimaryTemplate(id: string): Promise<Template> {
+  const { data } = await api.patch(`settings/templates/${id}/`, { is_primary: true });
+  return normalizeTemplate(unwrap<Template>(data));
+}

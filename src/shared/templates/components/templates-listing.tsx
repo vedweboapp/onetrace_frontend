@@ -11,9 +11,11 @@ import {
   MoreVertical,
   Clock,
   Star,
+  Crown,
   ShoppingCart,
   Receipt,
   Mail,
+  Loader2,
 } from "lucide-react";
 import type { Template, TemplateCategory } from "../types/template.types";
 import { routes } from "@/shared/config/routes";
@@ -24,7 +26,8 @@ import {
   ListPageSearchField,
   listPageRootClassName,
 } from "@/shared/ui";
-import { getTemplates, deleteTemplate } from "../api/template.api";
+import { getTemplates, deleteTemplate, setPrimaryTemplate } from "../api/template.api";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 
 // ─── Module options (for the create modal) ───────────────────────────────────
 const MODULE_OPTIONS = [
@@ -180,11 +183,14 @@ function TemplateCard({
   template,
   onEdit,
   onDelete,
+  onSetPrimary,
 }: {
   template: Template;
   onEdit: (t: Template) => void;
   onDelete: (t: Template) => void;
+  onSetPrimary: (t: Template) => Promise<void>;
 }) {
+  const [settingPrimary, setSettingPrimary] = React.useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -241,7 +247,8 @@ function TemplateCard({
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 top-8 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 top-8 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+            {/* Edit */}
             <button
               type="button"
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -254,6 +261,28 @@ function TemplateCard({
               <Pencil size={13} className="text-slate-500" />
               Edit template
             </button>
+
+            {/* Set as Primary */}
+            <div className="mx-3 h-px bg-slate-100 dark:bg-slate-700" />
+            <button
+              type="button"
+              disabled={settingPrimary || Boolean(template.is_primary)}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                setSettingPrimary(true);
+                await onSetPrimary(template);
+                setSettingPrimary(false);
+              }}
+            >
+              {settingPrimary
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Crown size={13} />}
+              {template.is_primary ? "Already Primary" : "Set as Primary"}
+            </button>
+
+            {/* Delete */}
             <div className="mx-3 h-px bg-slate-100 dark:bg-slate-700" />
             <button
               type="button"
@@ -284,7 +313,13 @@ function TemplateCard({
           <p className="line-clamp-6 break-words">{textPreview || "Empty template"}</p>
         </div>
 
-        {template.is_default && (
+        {template.is_primary && (
+          <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+            <Crown size={9} fill="currentColor" />
+            Primary
+          </div>
+        )}
+        {!template.is_primary && template.is_default && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
             <Star size={9} fill="currentColor" />
             Default
@@ -491,6 +526,16 @@ export default function TemplatesListing() {
     }
   };
 
+  const handleSetPrimary = async (t: Template) => {
+    try {
+      await setPrimaryTemplate(t.id);
+      toastSuccess(`"${t.name}" is now the primary template.`);
+      await loadTemplates();
+    } catch (err) {
+      toastApiError(err, "Failed to set primary template");
+    }
+  };
+
   const handleCreate = () => {
     if (activeCategory === "all") {
       // Show modal on listing page first — navigate only after module is chosen
@@ -565,6 +610,7 @@ export default function TemplatesListing() {
                 template={t}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onSetPrimary={handleSetPrimary}
               />
             ))
           )}

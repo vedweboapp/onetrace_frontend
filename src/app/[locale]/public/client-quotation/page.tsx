@@ -14,10 +14,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function PublicQuotationPage() {
+export default async function PublicQuotationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolved = await searchParams;
+  const token =
+    typeof resolved?.token === "string"
+      ? resolved.token
+      : typeof resolved?.id === "string"
+        ? resolved.id
+        : undefined;
+
   return (
     <Suspense fallback={null}>
-      <QuotationPinDetails />
+      <QuotationPinDetails initialToken={token} />
     </Suspense>
   );
 }
