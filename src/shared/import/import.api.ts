@@ -1,8 +1,14 @@
 import api from "@/core/api/axios";
+import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import {
+  filenameFromContentDisposition,
+  triggerBlobDownload,
+} from "@/shared/mass-actions/mass-action.util";
 import type {
   ImportColumnMapping,
+  ImportSkippedExportFormat,
   ModuleImportQueueResult,
   ModuleImportResult,
   ModuleImportStatusResult,
@@ -87,4 +93,54 @@ export function isImportStatusTerminal(state: string | undefined | null): boolea
 
 export function isImportStatusSuccess(state: string | undefined | null): boolean {
   return (state ?? "").trim().toUpperCase() === "SUCCESS";
+}
+
+async function parseBlobError(blob: Blob): Promise<string | null> {
+  try {
+    const text = await blob.text();
+    const parsed = JSON.parse(text) as { message?: string; success?: boolean };
+    if (parsed.success === false && typeof parsed.message === "string") return parsed.message;
+    if (typeof parsed.message === "string") return parsed.message;
+  } catch {
+    /* not json */
+  }
+  return null;
+}
+
+function skippedDownloadExt(format: ImportSkippedExportFormat): string {
+  if (format === "csv") return "csv";
+  if (format === "excel") return "xls";
+  return "xlsx";
+}
+
+/**
+ * GET `{segment}/download-skipped/{taskId}/?export_format=csv|xlsx|excel`
+ * Downloads skipped rows from a completed import task.
+ */
+export async function downloadModuleImportSkipped(
+  apiSegment: string,
+  taskId: string,
+  exportFormat: ImportSkippedExportFormat = "csv",
+): Promise<void> {
+  const segment = normalizeSegment(apiSegment);
+  const id = encodeURIComponent(taskId.trim());
+  if (!id) throw new ApiBusinessError("Missing import task id.");
+
+  const response = await api.get<Blob>(`${segment}/download-skipped/${id}/`, {
+    params: { export_format: exportFormat },
+    responseType: "blob",
+    skipErrorToast: true,
+  });
+
+  const blob = response.data;
+  const contentType = String(response.headers["content-type"] ?? "");
+  if (contentType.includes("application/json")) {
+    const message = await parseBlobError(blob);
+    throw new ApiBusinessError(message ?? "Download failed");
+  }
+
+  const disposition = response.headers["content-disposition"] as string | undefined;
+  const fallback = `${segment}-skipped.${skippedDownloadExt(exportFormat)}`;
+  const filename = filenameFromContentDisposition(disposition, fallback);
+  triggerBlobDownload(blob, filename);
 }

@@ -105,6 +105,7 @@ function rejectIfEnvelopeFailed(
       message?: unknown;
       error_code?: unknown;
       errors?: unknown;
+      data?: unknown;
     };
     const msg =
       typeof raw.message === "string" ? raw.message : "Request failed";
@@ -113,6 +114,7 @@ function rejectIfEnvelopeFailed(
     const businessError = new ApiBusinessError(msg, {
       errorCode: code,
       errors: raw.errors,
+      data: raw.data,
     });
     if (typeof window !== "undefined" && isInvalidAuthTokenError(businessError)) {
       forceSessionExpiredLogout();
