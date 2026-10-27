@@ -1,6 +1,7 @@
 export type {
   ImportColumnMapping,
   ImportFieldDef,
+  ImportSkippedExportFormat,
   ModuleImportConfig,
   ModuleImportQueueResult,
   ModuleImportResult,
@@ -8,6 +9,7 @@ export type {
   ParsedImportFile,
 } from "./types";
 export {
+  downloadModuleImportSkipped,
   fetchModuleImportStatus,
   isImportStatusSuccess,
   isImportStatusTerminal,

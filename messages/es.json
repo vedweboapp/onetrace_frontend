@@ -298,6 +298,16 @@
         "confirm": "Confirmar",
         "retry": "Reintentar"
       },
+      "duplicateEntry": {
+        "viewExisting": "Ver existente",
+        "title": "El registro ya existe",
+        "description": "Se encontró un registro coincidente. Puedes conservarlo o actualizarlo con los datos que introdujiste.",
+        "keepExisting": "Conservar existente",
+        "updateExisting": "Actualizar",
+        "fields": {
+          "id": "ID"
+        }
+      },
       "map": {
         "loading": "Buscando ubicación…",
         "noAddress": "Añade la dirección completa para ver el mapa.",
@@ -380,6 +390,18 @@
         "skipped": "Omitidos",
         "failed": "Fallidos",
         "notImported": "No importados"
+      },
+      "skippedDownload": {
+        "title": "{count, plural, one {# fila omitida} other {# filas omitidas}} disponibles para descargar",
+        "hint": "Descarga las filas omitidas para revisarlas y corregirlas antes de volver a importar.",
+        "formatLabel": "Formato",
+        "formatCsv": "CSV (.csv)",
+        "formatXlsx": "Excel (.xlsx)",
+        "formatExcel": "Excel (.xls)",
+        "download": "Descargar omitidos",
+        "downloading": "Descargando…",
+        "successToast": "Datos omitidos descargados.",
+        "errorToast": "No se pudieron descargar los datos omitidos."
       },
       "errors": {
         "tooLarge": "El archivo supera el límite de 10 MB.",

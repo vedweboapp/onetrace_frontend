@@ -304,6 +304,16 @@
         "confirm": "Confirm",
         "retry": "Retry"
       },
+      "duplicateEntry": {
+        "viewExisting": "View existing",
+        "title": "Record already exists",
+        "description": "A matching record was found. Keep it as-is, or update it with the details you entered.",
+        "keepExisting": "Keep existing",
+        "updateExisting": "Update",
+        "fields": {
+          "id": "ID"
+        }
+      },
       "map": {
         "loading": "Finding location…",
         "noAddress": "Add address fields to see this location on the map.",
@@ -387,6 +397,18 @@
         "skipped": "Skipped",
         "failed": "Failed",
         "notImported": "Not imported"
+      },
+      "skippedDownload": {
+        "title": "{count, plural, one {# skipped row} other {# skipped rows}} available to download",
+        "hint": "Download the skipped rows to review and fix them before re-importing.",
+        "formatLabel": "Format",
+        "formatCsv": "CSV (.csv)",
+        "formatXlsx": "Excel (.xlsx)",
+        "formatExcel": "Excel (.xls)",
+        "download": "Download skipped",
+        "downloading": "Downloading…",
+        "successToast": "Skipped data downloaded.",
+        "errorToast": "Could not download skipped data."
       },
       "errors": {
         "tooLarge": "File exceeds the 10 MB limit.",

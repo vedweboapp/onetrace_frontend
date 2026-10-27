@@ -8,8 +8,14 @@ import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
+import {
+  DuplicateEntryConflictModal,
+  DuplicateEntryFieldError,
+  getApiFieldErrorMap,
+  useDuplicateEntryConflict,
+} from "@/shared/form";
 import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
+import type { ItemCreatePayload } from "@/features/items/types/item.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
@@ -106,6 +112,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean; cost?: boolean; sell?: boolean }>({});
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
+  const pendingCreatePayloadRef = React.useRef<ItemCreatePayload | null>(null);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const isService = itemType === "service";
@@ -360,6 +367,30 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const costError = costInvalid ? tModal("costPriceError") : undefined;
   const sellError = sellInvalid ? tModal("sellingPriceError") : undefined;
 
+  const navigateAfterSave = React.useCallback(
+    (savedId: number, fromCreate: boolean) => {
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: savedId,
+          selectTarget: fromCreate ? searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) : null,
+          backHref: safeBack,
+          listPath: routes.dashboard.items,
+        }),
+      );
+    },
+    [router, safeBack, searchParams],
+  );
+
+  const duplicate = useDuplicateEntryConflict({
+    updatedToast: tModal("updatedToast"),
+    onUpdateExisting: async (existingId) => {
+      const payload = pendingCreatePayloadRef.current;
+      if (!payload) return;
+      const saved = await updateItem(existingId, payload);
+      navigateAfterSave(saved.id, true);
+    },
+  });
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ name: true, sku: true, cost: true, sell: true });
@@ -413,24 +444,21 @@ export function ItemFormScreen({ mode, itemId }: Props) {
             };
           })();
 
+      const createPayload: ItemCreatePayload = {
+        ...basePayload,
+        is_composite: false,
+        ...goodsExtras,
+      };
+      if (!isEdit) pendingCreatePayloadRef.current = createPayload;
       const saved =
         isEdit && itemId
           ? await updateItem(itemId, { ...basePayload, ...goodsExtras })
-          : await createItem({
-              ...basePayload,
-              is_composite: false,
-              ...goodsExtras,
-            });
+          : await createItem(createPayload);
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.items,
-        }),
-      );
+      duplicate.clear();
+      navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       const fieldErrors = getApiFieldErrorMap(error);
       if (fieldErrors.name || fieldErrors.sku) {
         setServerErrors({ name: fieldErrors.name, sku: fieldErrors.sku });
@@ -503,7 +531,14 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                   placeholder={tModal("namePlaceholder")}
                   className={cn(surfaceInputClassName, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                 />
-                <FieldErrorText>{nameError}</FieldErrorText>
+                {nameError ? (
+                  <DuplicateEntryFieldError
+                    message={nameError}
+                    fieldKey="name"
+                    conflict={duplicate.conflict}
+                    onViewExisting={duplicate.openModal}
+                  />
+                ) : null}
               </FieldGroup>
             </FormFieldRow>
 
@@ -525,7 +560,14 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                       placeholder={tModal("skuPlaceholder")}
                       className={cn(surfaceInputClassName, skuError && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
                     />
-                    <FieldErrorText>{skuError}</FieldErrorText>
+                    {skuError ? (
+                      <DuplicateEntryFieldError
+                        message={skuError}
+                        fieldKey="sku"
+                        conflict={duplicate.conflict}
+                        onViewExisting={duplicate.openModal}
+                      />
+                    ) : null}
                   </FieldGroup>
                   <FieldGroup label={tModal("quantity")} htmlFor={qtyId}>
                     <NumericInput id={qtyId} integer value={qty} onChange={setQty} disabled={submitting} />
@@ -687,6 +729,14 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         open={unitTypeModalOpen}
         onClose={() => setUnitTypeModalOpen(false)}
         onSaved={handleUnitTypeCreated}
+      />
+
+      <DuplicateEntryConflictModal
+        open={duplicate.modalOpen}
+        conflict={duplicate.conflict}
+        updating={duplicate.updating}
+        onKeepExisting={duplicate.keepExisting}
+        onUpdateExisting={() => void duplicate.updateExisting()}
       />
     </div>
   );

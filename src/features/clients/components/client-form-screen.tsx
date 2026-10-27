@@ -19,7 +19,12 @@ import { EntityAddressesFields } from "@/shared/components/form/entity-addresses
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import {
+  DuplicateEntryConflictModal,
+  DuplicateEntryFieldError,
+  reportFormSubmitApiError,
+  useDuplicateEntryConflict,
+} from "@/shared/form";
 import {
   hrefAfterEntityCreate,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -54,6 +59,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
+  const pendingCreateValuesRef = React.useRef<ClientFormValues | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -88,6 +94,30 @@ export function ClientFormScreen({ mode, clientId }: Props) {
 
   const phoneCountry = usePhoneCountryFromAddresses(control);
 
+  const navigateAfterSave = React.useCallback(
+    (savedId: number, fromCreate: boolean) => {
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: savedId,
+          selectTarget: fromCreate ? searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) : null,
+          backHref: safeBack,
+          listPath: routes.dashboard.clients,
+        }),
+      );
+    },
+    [router, safeBack, searchParams],
+  );
+
+  const duplicate = useDuplicateEntryConflict({
+    updatedToast: t("updatedToast"),
+    onUpdateExisting: async (existingId) => {
+      const values = pendingCreateValuesRef.current;
+      if (!values) return;
+      const saved = await updateClient(existingId, mapClientFormToPayload(values));
+      navigateAfterSave(saved.id, true);
+    },
+  });
+
   React.useEffect(() => {
     if (!isEdit || !clientId) return;
     let cancelled = false;
@@ -114,15 +144,13 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.clients,
-        }),
-      );
+      duplicate.clear();
+      navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
+      if (!isEdit) {
+        pendingCreateValuesRef.current = values;
+        duplicate.capture(error);
+      }
       reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
@@ -177,6 +205,17 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                 required
                 autoComplete="name"
                 error={errors.name?.message}
+                errorNode={
+                  errors.name?.message ? (
+                    <DuplicateEntryFieldError
+                      id="client-name-error"
+                      message={errors.name.message}
+                      fieldKey="name"
+                      conflict={duplicate.conflict}
+                      onViewExisting={duplicate.openModal}
+                    />
+                  ) : undefined
+                }
               />
               <SurfaceTextField
                 register={register}
@@ -187,6 +226,17 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                 required
                 autoComplete="email"
                 error={errors.email?.message}
+                errorNode={
+                  errors.email?.message ? (
+                    <DuplicateEntryFieldError
+                      id="client-email-error"
+                      message={errors.email.message}
+                      fieldKey="email"
+                      conflict={duplicate.conflict}
+                      onViewExisting={duplicate.openModal}
+                    />
+                  ) : undefined
+                }
               />
             </FormFieldRow>
 
@@ -235,6 +285,14 @@ export function ClientFormScreen({ mode, clientId }: Props) {
           </form>
         )}
       </SurfaceShell>
+
+      <DuplicateEntryConflictModal
+        open={duplicate.modalOpen}
+        conflict={duplicate.conflict}
+        updating={duplicate.updating}
+        onKeepExisting={duplicate.keepExisting}
+        onUpdateExisting={() => void duplicate.updateExisting()}
+      />
     </div>
   );
 }

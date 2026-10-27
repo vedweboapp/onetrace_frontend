@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   FileSpreadsheet,
   Loader2,
   RefreshCcw,
@@ -17,6 +18,7 @@ import { AppButton, AppModal, CheckmarkSelect } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 import { autoMapColumns } from "./auto-map.util";
 import {
+  downloadModuleImportSkipped,
   fetchModuleImportStatus,
   isImportStatusSuccess,
   isImportStatusTerminal,
@@ -31,11 +33,14 @@ import {
 } from "./parse-import-file.util";
 import type {
   ImportColumnMapping,
+  ImportSkippedExportFormat,
   ModuleImportConfig,
   ModuleImportResult,
   ModuleImportStatusResult,
   ParsedImportFile,
 } from "./types";
+
+const SKIPPED_EXPORT_FORMATS: ImportSkippedExportFormat[] = ["csv", "xlsx", "excel"];
 
 type Step = "upload" | "map" | "progress" | "result";
 
@@ -606,7 +611,11 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
       {step === "progress" ? <ImportProgressPanel progress={progress} /> : null}
 
       {step === "result" && result ? (
-        <ImportResultSummary result={result} failed={resultFailed} />
+        <ImportResultSummary
+          result={result}
+          failed={resultFailed}
+          apiSegment={config.apiSegment}
+        />
       ) : null}
     </AppModal>
   );
@@ -666,11 +675,15 @@ function ImportProgressPanel({ progress }: { progress: ModuleImportStatusResult 
 function ImportResultSummary({
   result,
   failed,
+  apiSegment,
 }: {
   result: ModuleImportResult;
   failed: boolean;
+  apiSegment: string;
 }) {
   const t = useTranslations("Dashboard.import");
+  const [skippedFormat, setSkippedFormat] = React.useState<ImportSkippedExportFormat>("csv");
+  const [downloadingSkipped, setDownloadingSkipped] = React.useState(false);
 
   const inserted = result.inserted_count ?? result.created_count ?? 0;
   const skipped = result.skipped_count ?? 0;
@@ -680,6 +693,22 @@ function ImportResultSummary({
   const total =
     result.total_records
     ?? inserted + skipped + updated + failedCount + notImported;
+  const taskId = result.task_id?.trim() || "";
+  const canDownloadSkipped = skipped > 0 && Boolean(taskId);
+
+  const skippedFormatOptions = React.useMemo(
+    () =>
+      SKIPPED_EXPORT_FORMATS.map((value) => ({
+        value,
+        label:
+          value === "csv"
+            ? t("skippedDownload.formatCsv")
+            : value === "xlsx"
+              ? t("skippedDownload.formatXlsx")
+              : t("skippedDownload.formatExcel"),
+      })),
+    [t],
+  );
 
   const stats: Array<{ label: string; value: number; tone?: "ok" | "warn" | "bad" }> = [
     { label: t("stats.total"), value: total },
@@ -693,6 +722,19 @@ function ImportResultSummary({
       ? [{ label: t("stats.notImported"), value: notImported, tone: "warn" as const }]
       : []),
   ];
+
+  async function handleDownloadSkipped() {
+    if (!canDownloadSkipped || downloadingSkipped) return;
+    setDownloadingSkipped(true);
+    try {
+      await downloadModuleImportSkipped(apiSegment, taskId, skippedFormat);
+      toastSuccess(t("skippedDownload.successToast"));
+    } catch (err) {
+      toastApiError(err, t("skippedDownload.errorToast"));
+    } finally {
+      setDownloadingSkipped(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -739,6 +781,43 @@ function ImportResultSummary({
           </div>
         ))}
       </div>
+
+      {canDownloadSkipped ? (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/25">
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            {t("skippedDownload.title", { count: skipped })}
+          </p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            {t("skippedDownload.hint")}
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <CheckmarkSelect
+              value={skippedFormat}
+              onChange={(v) => {
+                if (v === "csv" || v === "xlsx" || v === "excel") setSkippedFormat(v);
+              }}
+              options={skippedFormatOptions}
+              listLabel={t("skippedDownload.formatLabel")}
+              size="sm"
+              className="min-w-[160px]"
+            />
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={downloadingSkipped}
+              onClick={() => void handleDownloadSkipped()}
+            >
+              {downloadingSkipped ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Download className="size-3.5" aria-hidden />
+              )}
+              {downloadingSkipped ? t("skippedDownload.downloading") : t("skippedDownload.download")}
+            </AppButton>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
