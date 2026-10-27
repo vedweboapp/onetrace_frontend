@@ -299,7 +299,7 @@
         "retry": "Reintentar"
       },
       "duplicateEntry": {
-        "viewExisting": "Ver existente",
+        "viewExisting": "Ver",
         "title": "El registro ya existe",
         "description": "Se encontró un registro coincidente. Puedes conservarlo o actualizarlo con los datos que introdujiste.",
         "keepExisting": "Conservar existente",
@@ -397,7 +397,8 @@
         "formatLabel": "Formato",
         "formatCsv": "CSV (.csv)",
         "formatXlsx": "Excel (.xlsx)",
-        "formatExcel": "Excel (.xls)",
+        "formatZip": "ZIP (.zip)",
+        "formatXls": "Excel (.xls)",
         "download": "Descargar omitidos",
         "downloading": "Descargando…",
         "successToast": "Datos omitidos descargados.",

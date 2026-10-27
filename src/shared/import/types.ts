@@ -67,4 +67,4 @@ export type ModuleImportResult = ModuleImportStatusResult & {
 };
 
 /** Query `export_format` for `GET {segment}/download-skipped/{taskId}/`. */
-export type ImportSkippedExportFormat = "csv" | "xlsx" | "excel";
+export type ImportSkippedExportFormat = "csv" | "xlsx" | "zip" | "xls";
