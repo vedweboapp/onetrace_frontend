@@ -4,11 +4,13 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { fetchAuditTrailsPage } from "@/features/audit-trails/api/audit-trail.api";
-import { AuditTrailFieldChangesModal } from "@/features/audit-trails/components/audit-trail-field-changes-modal";
 import {
-  AUDIT_TRAIL_MODULE_OPTIONS,
-} from "@/features/audit-trails/constants/audit-trail-modules";
+  fetchAuditActionOptions,
+  fetchAuditModuleNameOptions,
+  fetchAuditTrailsPage,
+  type AuditTrailFilterOption,
+} from "@/features/audit-trails/api/audit-trail.api";
+import { AuditTrailFieldChangesModal } from "@/features/audit-trails/components/audit-trail-field-changes-modal";
 import type { AuditTrailEntry } from "@/features/audit-trails/types/audit-trail.types";
 import {
   auditTrailActionLabel,
@@ -123,35 +125,56 @@ export function AuditLogsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<AuditTrailEntry | null>(null);
+  const [moduleNameOptions, setModuleNameOptions] = React.useState<AuditTrailFilterOption[]>([]);
+  const [actionNameOptions, setActionNameOptions] = React.useState<AuditTrailFilterOption[]>([]);
 
-  const moduleOptions = React.useMemo(
-    () => [
+  const moduleOptions = React.useMemo(() => {
+    const opts: { value: string; label: string }[] = [
       { value: "", label: t("filters.allModules") },
-      ...AUDIT_TRAIL_MODULE_OPTIONS.map((opt) => ({
-        value: opt.value,
-        label: t(`modules.${opt.labelKey}`),
-      })),
-    ],
-    [t],
-  );
+      ...moduleNameOptions,
+    ];
+    if (moduleFilter && !moduleNameOptions.some((opt) => opt.value === moduleFilter)) {
+      opts.push({
+        value: moduleFilter,
+        label: moduleFilter.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      });
+    }
+    return opts;
+  }, [moduleNameOptions, moduleFilter, t]);
 
   const actionOptions = React.useMemo(() => {
-    const seen = new Set<string>();
-    const opts: { value: string; label: string }[] = [{ value: "", label: t("filters.allActions") }];
-    for (const row of items) {
-      const action = row.action?.trim();
-      if (!action || seen.has(action)) continue;
-      seen.add(action);
-      opts.push({ value: action, label: auditTrailActionLabel(row) || action });
-    }
-    if (actionFilter && !seen.has(actionFilter)) {
+    const opts: { value: string; label: string }[] = [
+      { value: "", label: t("filters.allActions") },
+      ...actionNameOptions,
+    ];
+    if (actionFilter && !actionNameOptions.some((opt) => opt.value === actionFilter)) {
       opts.push({
         value: actionFilter,
         label: actionFilter.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       });
     }
     return opts;
-  }, [items, actionFilter, t]);
+  }, [actionNameOptions, actionFilter, t]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [modulesResult, actionsResult] = await Promise.allSettled([
+        fetchAuditModuleNameOptions(),
+        fetchAuditActionOptions(),
+      ]);
+      if (cancelled) return;
+      setModuleNameOptions(
+        modulesResult.status === "fulfilled" ? modulesResult.value : [],
+      );
+      setActionNameOptions(
+        actionsResult.status === "fulfilled" ? actionsResult.value : [],
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
