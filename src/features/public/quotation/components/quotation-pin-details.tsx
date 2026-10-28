@@ -1000,28 +1000,39 @@ function prepareQuotationHtml(html: string): string {
     }
   });
 
-  // 3. Repair orphan </strong> tags left by backend variable-substitution
-  // A. Quoted terms ending in </strong>, e.g. "Red 5"</strong>
-  processedHtml = processedHtml.replace(/(["“][^"“”<]+?["”])<\/strong>/gi, (_m, term) => {
-    return `<strong style="font-weight: 700;">${term}</strong>`;
+  // 3. Repair orphan </strong> tags left by backend variable-substitution stripping bare opening tags.
+  // First: handle quoted terms ending in </strong>, e.g. "Red 5"</strong> -> <strong>"Red 5"</strong>
+  processedHtml = processedHtml.replace(/(["“][^"“”<]+?["”])<\/strong>/gi, (_match, term) => {
+    return `<strong>${term}</strong>`;
   });
 
-  // B. Sentences ending in </strong>
-  processedHtml = processedHtml.replace(/(\.\s*)([A-Z][^<]*?\.)<\/strong>/g, (_m, dot, sentence) => {
-    return `${dot}<strong style="font-weight: 700;">${sentence}</strong>`;
-  });
+  // Second: handle orphan </strong> where text is preceded by a non-strong tag
+  const openSt = (processedHtml.match(/<strong\b/gi) || []).length;
+  const closeSt = (processedHtml.match(/<\/strong>/gi) || []).length;
+  if (closeSt > openSt) {
+    processedHtml = processedHtml.replace(/(<(?!strong\b|\/strong>)[a-z0-9_-]+(?:\s+[^>]*)?>)([^<]*?)<\/strong>/gi, (_match, tag, text) => {
+      if (!text.trim()) return _match;
+      return `${tag}<strong>${text}</strong>`;
+    });
+  }
 
-  // C. Whole element content ending in </strong> inside <p>, <span>, <li>, <td>, <th>
-  processedHtml = processedHtml.replace(/(<(?:p|span|li|td|th)\b[^>]*>)([^<]+?)<\/strong>/gi, (m, openTag, text) => {
-    if (text.includes("<strong")) return m;
-    return `${openTag}<strong style="font-weight: 700;">${text}</strong>`;
-  });
-
-  // D. Any remaining orphan </strong> preceded by plain text up to the nearest tag
-  processedHtml = processedHtml.replace(/([^>.]+)<\/strong>/gi, (m, text) => {
-    if (text.includes("<strong")) return m;
-    return `<strong style="font-weight: 700;">${text}</strong>`;
-  });
+  // Ensure balance: remove any remaining orphan </strong> or close any unclosed <strong>
+  {
+    const curOpen = (processedHtml.match(/<strong\b/gi) || []).length;
+    const curClose = (processedHtml.match(/<\/strong>/gi) || []).length;
+    if (curClose > curOpen) {
+      let excess = curClose - curOpen;
+      processedHtml = processedHtml.replace(/<\/strong>/gi, (match) => {
+        if (excess > 0) {
+          excess--;
+          return "";
+        }
+        return match;
+      });
+    } else if (curOpen > curClose) {
+      processedHtml += "</strong>".repeat(curOpen - curClose);
+    }
+  }
 
   // 4. Repair orphan </li> / </ol> / </ul>
   const openOl = (processedHtml.match(/<ol\b/gi) || []).length;
@@ -1064,11 +1075,6 @@ function prepareQuotationHtml(html: string): string {
       return `${beforeList}\n<${listType} ${listStyle}>\n${itemsHtml}\n</${listType}>`;
     });
   }
-
-  // 5. Clean up any duplicated nested strong tags
-  processedHtml = processedHtml
-    .replace(/<strong[^>]*>\s*<strong[^>]*>/gi, '<strong style="font-weight: 700;">')
-    .replace(/<\/strong>\s*<\/strong>/gi, "</strong>");
 
   return processedHtml;
 }
