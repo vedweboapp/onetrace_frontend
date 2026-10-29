@@ -1,38 +1,35 @@
 "use client";
 
 import * as React from "react";
-import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import {
   parseDuplicateEntryConflict,
   type DuplicateEntryConflict,
 } from "@/shared/form/duplicate-entry.util";
 
 type Args = {
-  /** Called when the user chooses to update the existing record. */
-  onUpdateExisting: (existingId: number) => Promise<void>;
-  updatedToast?: string;
-  updateErrorToast?: string;
+  /** Detail page path for the existing record (opened in a new tab from “View”). */
+  getDetailHref: (existingId: number) => string;
 };
 
 /**
  * Create-form helper for API `DUPLICATE_ENTRY` responses that include the existing row.
+ * “View” opens the existing record’s detail page in a new tab.
  */
-export function useDuplicateEntryConflict({
-  onUpdateExisting,
-  updatedToast,
-  updateErrorToast,
-}: Args) {
+export function useDuplicateEntryConflict({ getDetailHref }: Args) {
   const [conflict, setConflict] = React.useState<DuplicateEntryConflict | null>(null);
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [updating, setUpdating] = React.useState(false);
-  const onUpdateRef = React.useRef(onUpdateExisting);
-  onUpdateRef.current = onUpdateExisting;
+  const getDetailHrefRef = React.useRef(getDetailHref);
+  getDetailHrefRef.current = getDetailHref;
+
+  const existingHref = React.useMemo(() => {
+    if (!conflict) return null;
+    const href = getDetailHrefRef.current(conflict.existingId)?.trim();
+    return href || null;
+  }, [conflict]);
 
   const capture = React.useCallback((error: unknown): boolean => {
     const parsed = parseDuplicateEntryConflict(error);
     if (!parsed) {
       setConflict(null);
-      setModalOpen(false);
       return false;
     }
     setConflict(parsed);
@@ -41,41 +38,18 @@ export function useDuplicateEntryConflict({
 
   const clear = React.useCallback(() => {
     setConflict(null);
-    setModalOpen(false);
-    setUpdating(false);
   }, []);
 
-  const openModal = React.useCallback(() => {
-    if (!conflict) return;
-    setModalOpen(true);
-  }, [conflict]);
-
-  const keepExisting = React.useCallback(() => {
-    setModalOpen(false);
-  }, []);
-
-  const updateExisting = React.useCallback(async () => {
-    if (!conflict || updating) return;
-    setUpdating(true);
-    try {
-      await onUpdateRef.current(conflict.existingId);
-      if (updatedToast) toastSuccess(updatedToast);
-      clear();
-    } catch (error) {
-      toastApiError(error, updateErrorToast);
-    } finally {
-      setUpdating(false);
-    }
-  }, [clear, conflict, updateErrorToast, updatedToast, updating]);
+  const openExisting = React.useCallback(() => {
+    if (!existingHref) return;
+    window.open(existingHref, "_blank", "noopener,noreferrer");
+  }, [existingHref]);
 
   return {
     conflict,
-    modalOpen,
-    updating,
+    existingHref,
     capture,
     clear,
-    openModal,
-    keepExisting,
-    updateExisting,
+    openExisting,
   };
 }

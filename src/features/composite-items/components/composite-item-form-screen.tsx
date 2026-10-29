@@ -43,7 +43,6 @@ import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import {
-  DuplicateEntryConflictModal,
   DuplicateEntryFieldError,
   getApiFieldErrorMap,
   useDuplicateEntryConflict,
@@ -266,10 +265,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [nameTouched, setNameTouched] = React.useState(false);
   const [skuTouched, setSkuTouched] = React.useState(false);
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
-  const pendingCreateRef = React.useRef<{
-    body: CompositeItemCreatePayload;
-    attachmentRefs: ItemAttachmentWriteRef[];
-  } | null>(null);
   const [componentsTouched, setComponentsTouched] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
@@ -830,23 +825,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   }
 
   const duplicate = useDuplicateEntryConflict({
-    updatedToast: tModal("updatedToast"),
-    onUpdateExisting: async (existingId) => {
-      const pending = pendingCreateRef.current;
-      if (!pending) return;
-      const saved = await updateCompositeItem(existingId, pending.body, {
-        attachmentRefs: pending.attachmentRefs,
-      });
-      clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.compositeItems,
-        }),
-      );
-    },
+    getDetailHref: (existingId) => `${routes.dashboard.compositeItems}/${existingId}`,
   });
 
   async function submit(e: React.FormEvent) {
@@ -980,7 +959,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           ...(hasDimensions ? { dimensions_unit: dimensionsUnit } : {}),
           ...weightFields,
         };
-        pendingCreateRef.current = { body: createBody, attachmentRefs };
         saved = await createCompositeItem(createBody, { attachmentRefs });
       }
 
@@ -1105,7 +1083,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     message={nameError}
                     fieldKey="name"
                     conflict={duplicate.conflict}
-                    onViewExisting={duplicate.openModal}
+                    existingHref={duplicate.existingHref}
                   />
                 ) : null}
               </FieldGroup>
@@ -1129,7 +1107,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
                     message={skuError}
                     fieldKey="sku"
                     conflict={duplicate.conflict}
-                    onViewExisting={duplicate.openModal}
+                    existingHref={duplicate.existingHref}
                   />
                 ) : null}
               </FieldGroup>
@@ -1414,14 +1392,6 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         open={installationTypeModalOpen}
         onClose={() => setInstallationTypeModalOpen(false)}
         onSaved={handleInstallationTypeCreated}
-      />
-
-      <DuplicateEntryConflictModal
-        open={duplicate.modalOpen}
-        conflict={duplicate.conflict}
-        updating={duplicate.updating}
-        onKeepExisting={duplicate.keepExisting}
-        onUpdateExisting={() => void duplicate.updateExisting()}
       />
     </div>
   );

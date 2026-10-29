@@ -22,7 +22,6 @@ import {
 } from "@/features/vendors/utils/vendor-form-map";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import {
-  DuplicateEntryConflictModal,
   DuplicateEntryFieldError,
   reportFormSubmitApiError,
   useDuplicateEntryConflict,
@@ -70,7 +69,6 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [typeOptions, setTypeOptions] = React.useState<Array<{ value: string; label: string }>>([]);
   const [vendorTypeModalOpen, setVendorTypeModalOpen] = React.useState(false);
-  const pendingCreateValuesRef = React.useRef<VendorFormValues | null>(null);
 
   const loadTypeOptions = React.useCallback(async () => {
     const { items } = await fetchVendorTypesPage(1, 20, { is_active: true, dropdown: true });
@@ -195,13 +193,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
   );
 
   const duplicate = useDuplicateEntryConflict({
-    updatedToast: t("updatedToast"),
-    onUpdateExisting: async (existingId) => {
-      const values = pendingCreateValuesRef.current;
-      if (!values) return;
-      const saved = await updateVendor(existingId, mapVendorFormToPayload(values));
-      navigateAfterSave(saved.id, true);
-    },
+    getDetailHref: (existingId) => `${routes.dashboard.vendors}/${existingId}`,
   });
 
   async function submit(values: VendorFormValues) {
@@ -213,10 +205,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
       duplicate.clear();
       navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
-      if (!isEdit) {
-        pendingCreateValuesRef.current = values;
-        duplicate.capture(error);
-      }
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
@@ -276,7 +265,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                       message={errors.name.message}
                       fieldKey="name"
                       conflict={duplicate.conflict}
-                      onViewExisting={duplicate.openModal}
+                      existingHref={duplicate.existingHref}
                     />
                   ) : undefined
                 }
@@ -326,7 +315,7 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                       message={errors.email.message}
                       fieldKey="email"
                       conflict={duplicate.conflict}
-                      onViewExisting={duplicate.openModal}
+                      existingHref={duplicate.existingHref}
                     />
                   ) : undefined
                 }
@@ -380,14 +369,6 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
         open={vendorTypeModalOpen}
         onClose={() => setVendorTypeModalOpen(false)}
         onSaved={handleVendorTypeCreated}
-      />
-
-      <DuplicateEntryConflictModal
-        open={duplicate.modalOpen}
-        conflict={duplicate.conflict}
-        updating={duplicate.updating}
-        onKeepExisting={duplicate.keepExisting}
-        onUpdateExisting={() => void duplicate.updateExisting()}
       />
     </div>
   );

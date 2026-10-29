@@ -299,14 +299,7 @@
         "retry": "Reintentar"
       },
       "duplicateEntry": {
-        "viewExisting": "Ver",
-        "title": "El registro ya existe",
-        "description": "Se encontró un registro coincidente. Puedes conservarlo o actualizarlo con los datos que introdujiste.",
-        "keepExisting": "Conservar existente",
-        "updateExisting": "Actualizar",
-        "fields": {
-          "id": "ID"
-        }
+        "viewExisting": "Ver"
       },
       "map": {
         "loading": "Buscando ubicación…",

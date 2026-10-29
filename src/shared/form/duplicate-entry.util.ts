@@ -81,25 +81,3 @@ export function parseDuplicateEntryConflict(error: unknown): DuplicateEntryConfl
     data,
   };
 }
-
-/** Human-readable label for a duplicate-data key. */
-export function duplicateEntryFieldLabel(key: string): string {
-  const normalized = key.replace(/_/g, " ").trim();
-  if (!normalized) return key;
-  return normalized.replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-export function formatDuplicateEntryValue(value: unknown): string {
-  if (value == null) return "—";
-  if (typeof value === "string") return value.trim() || "—";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) return value.length ? value.map(formatDuplicateEntryValue).join(", ") : "—";
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return "—";
-    }
-  }
-  return String(value);
-}
