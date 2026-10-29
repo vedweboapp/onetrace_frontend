@@ -20,7 +20,6 @@ import { DetailPageHeader } from "@/shared/components/layout/detail-page-header"
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import {
-  DuplicateEntryConflictModal,
   DuplicateEntryFieldError,
   reportFormSubmitApiError,
   useDuplicateEntryConflict,
@@ -59,7 +58,6 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
-  const pendingCreateValuesRef = React.useRef<ClientFormValues | null>(null);
 
   const schema = React.useMemo(
     () =>
@@ -109,13 +107,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
   );
 
   const duplicate = useDuplicateEntryConflict({
-    updatedToast: t("updatedToast"),
-    onUpdateExisting: async (existingId) => {
-      const values = pendingCreateValuesRef.current;
-      if (!values) return;
-      const saved = await updateClient(existingId, mapClientFormToPayload(values));
-      navigateAfterSave(saved.id, true);
-    },
+    getDetailHref: (existingId) => `${routes.dashboard.clients}/${existingId}`,
   });
 
   React.useEffect(() => {
@@ -147,10 +139,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
       duplicate.clear();
       navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
-      if (!isEdit) {
-        pendingCreateValuesRef.current = values;
-        duplicate.capture(error);
-      }
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
@@ -212,7 +201,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                       message={errors.name.message}
                       fieldKey="name"
                       conflict={duplicate.conflict}
-                      onViewExisting={duplicate.openModal}
+                      existingHref={duplicate.existingHref}
                     />
                   ) : undefined
                 }
@@ -233,7 +222,7 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                       message={errors.email.message}
                       fieldKey="email"
                       conflict={duplicate.conflict}
-                      onViewExisting={duplicate.openModal}
+                      existingHref={duplicate.existingHref}
                     />
                   ) : undefined
                 }
@@ -285,14 +274,6 @@ export function ClientFormScreen({ mode, clientId }: Props) {
           </form>
         )}
       </SurfaceShell>
-
-      <DuplicateEntryConflictModal
-        open={duplicate.modalOpen}
-        conflict={duplicate.conflict}
-        updating={duplicate.updating}
-        onKeepExisting={duplicate.keepExisting}
-        onUpdateExisting={() => void duplicate.updateExisting()}
-      />
     </div>
   );
 }

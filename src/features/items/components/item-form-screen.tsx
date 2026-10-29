@@ -9,7 +9,6 @@ import { cn } from "@/core/utils/http.util";
 import { createItem, fetchItem, updateItem } from "@/features/items/api/item.api";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import {
-  DuplicateEntryConflictModal,
   DuplicateEntryFieldError,
   getApiFieldErrorMap,
   useDuplicateEntryConflict,
@@ -112,7 +111,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [touched, setTouched] = React.useState<{ name?: boolean; sku?: boolean; cost?: boolean; sell?: boolean }>({});
   const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
-  const pendingCreatePayloadRef = React.useRef<ItemCreatePayload | null>(null);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const isService = itemType === "service";
@@ -382,13 +380,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   );
 
   const duplicate = useDuplicateEntryConflict({
-    updatedToast: tModal("updatedToast"),
-    onUpdateExisting: async (existingId) => {
-      const payload = pendingCreatePayloadRef.current;
-      if (!payload) return;
-      const saved = await updateItem(existingId, payload);
-      navigateAfterSave(saved.id, true);
-    },
+    getDetailHref: (existingId) => `${routes.dashboard.items}/${existingId}`,
   });
 
   async function submit(e: React.FormEvent) {
@@ -449,7 +441,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         is_composite: false,
         ...goodsExtras,
       };
-      if (!isEdit) pendingCreatePayloadRef.current = createPayload;
       const saved =
         isEdit && itemId
           ? await updateItem(itemId, { ...basePayload, ...goodsExtras })
@@ -536,7 +527,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                     message={nameError}
                     fieldKey="name"
                     conflict={duplicate.conflict}
-                    onViewExisting={duplicate.openModal}
+                    existingHref={duplicate.existingHref}
                   />
                 ) : null}
               </FieldGroup>
@@ -565,7 +556,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
                         message={skuError}
                         fieldKey="sku"
                         conflict={duplicate.conflict}
-                        onViewExisting={duplicate.openModal}
+                        existingHref={duplicate.existingHref}
                       />
                     ) : null}
                   </FieldGroup>
@@ -729,14 +720,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         open={unitTypeModalOpen}
         onClose={() => setUnitTypeModalOpen(false)}
         onSaved={handleUnitTypeCreated}
-      />
-
-      <DuplicateEntryConflictModal
-        open={duplicate.modalOpen}
-        conflict={duplicate.conflict}
-        updating={duplicate.updating}
-        onKeepExisting={duplicate.keepExisting}
-        onUpdateExisting={() => void duplicate.updateExisting()}
       />
     </div>
   );

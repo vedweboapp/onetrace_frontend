@@ -9,42 +9,42 @@ type Props = {
   message?: string | null;
   fieldKey: string;
   conflict: DuplicateEntryConflict | null;
-  onViewExisting: () => void;
+  /** Detail page for the existing record; opens in a new tab. */
+  existingHref?: string | null;
 };
 
-/** Field error that adds a “View existing” link for DUPLICATE_ENTRY conflicts. */
+/** Field error that adds a blue “View” link for DUPLICATE_ENTRY conflicts. */
 export function DuplicateEntryFieldError({
   id,
   message,
   fieldKey,
   conflict,
-  onViewExisting,
+  existingHref,
 }: Props) {
   const t = useTranslations("Dashboard.common.duplicateEntry");
   if (!message) return null;
 
   const showLink =
     conflict != null
+    && Boolean(existingHref)
     && (conflict.fieldKeys.length === 0 || conflict.fieldKeys.includes(fieldKey));
 
   return (
     <FieldErrorText id={id}>
       <span className="inline">
         {message}
-        {showLink ? (
+        {showLink && existingHref ? (
           <>
             {" "}
-            <button
-              type="button"
-              className="ml-1 inline font-semibold text-red-700 underline underline-offset-2 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onViewExisting();
-              }}
+            <a
+              href={existingHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-1 inline font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              onClick={(e) => e.stopPropagation()}
             >
               {t("viewExisting")}
-            </button>
+            </a>
           </>
         ) : null}
       </span>

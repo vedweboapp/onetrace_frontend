@@ -16,7 +16,6 @@ import { fetchCompositeItemsPage } from "@/features/composite-items/api/composit
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import {
-  DuplicateEntryConflictModal,
   DuplicateEntryFieldError,
   getApiFieldErrorMap,
   useDuplicateEntryConflict,
@@ -107,7 +106,6 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [serverErrors, setServerErrors] = React.useState<{ name?: string }>({});
-  const pendingCreatePayloadRef = React.useRef<GroupCreatePayload | null>(null);
 
   const nameInvalid = (nameTouched && name.trim().length === 0) || Boolean(serverErrors.name);
   const nameError =
@@ -245,21 +243,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
   }
 
   const duplicate = useDuplicateEntryConflict({
-    updatedToast: tModal("updatedToast"),
-    onUpdateExisting: async (existingId) => {
-      const payload = pendingCreatePayloadRef.current;
-      if (!payload) return;
-      const saved = await updateGroup(existingId, payload);
-      clearQuickCreateFormDraft(draftReturnTo);
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.groups,
-        }),
-      );
-    },
+    getDetailHref: (existingId) => `${routes.dashboard.groups}/${existingId}`,
   });
 
   async function submit(e: React.FormEvent) {
@@ -283,7 +267,6 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     if (compositeItems == null) return;
 
     const payload: GroupCreatePayload = { name: name.trim(), items: compositeItems };
-    if (!isEdit) pendingCreatePayloadRef.current = payload;
 
     setSubmitting(true);
     try {
@@ -371,7 +354,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                     message={nameError}
                     fieldKey="name"
                     conflict={duplicate.conflict}
-                    onViewExisting={duplicate.openModal}
+                    existingHref={duplicate.existingHref}
                   />
                 ) : null}
               </FieldGroup>
@@ -490,14 +473,6 @@ export function GroupFormScreen({ mode, groupId }: Props) {
           </form>
         )}
       </SurfaceShell>
-
-      <DuplicateEntryConflictModal
-        open={duplicate.modalOpen}
-        conflict={duplicate.conflict}
-        updating={duplicate.updating}
-        onKeepExisting={duplicate.keepExisting}
-        onUpdateExisting={() => void duplicate.updateExisting()}
-      />
     </div>
   );
 }

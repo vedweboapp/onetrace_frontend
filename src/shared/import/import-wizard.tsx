@@ -688,6 +688,119 @@ function ImportProgressPanel({ progress }: { progress: ModuleImportStatusResult 
   );
 }
 
+function SkippedDownloadIconMenu({
+  downloading,
+  onDownload,
+}: {
+  downloading: boolean;
+  onDownload: (format: ImportSkippedExportFormat) => void;
+}) {
+  const t = useTranslations("Dashboard.import");
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimer = React.useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = React.useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 140);
+  }, [clearCloseTimer]);
+
+  React.useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative inline-flex"
+      onMouseEnter={() => {
+        clearCloseTimer();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        type="button"
+        disabled={downloading}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("skippedDownload.download")}
+        title={t("skippedDownload.download")}
+        className={cn(
+          "inline-flex size-7 items-center justify-center rounded-md text-amber-700 transition-colors",
+          "hover:bg-amber-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
+          "disabled:cursor-wait disabled:opacity-70 dark:text-amber-300 dark:hover:bg-amber-950/50",
+        )}
+        onClick={() => setOpen((v) => !v)}
+        onFocus={() => {
+          clearCloseTimer();
+          setOpen(true);
+        }}
+      >
+        {downloading ? (
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        ) : (
+          <Download className="size-3.5" aria-hidden />
+        )}
+      </button>
+
+      {open && !downloading ? (
+        <div
+          role="menu"
+          aria-label={t("skippedDownload.formatLabel")}
+          className={cn(
+            "absolute left-1/2 top-full z-40 mt-1 min-w-[9.5rem] -translate-x-1/2 overflow-hidden",
+            "rounded-lg border border-slate-200 bg-white py-1 shadow-lg",
+            "dark:border-slate-700 dark:bg-slate-900",
+          )}
+          onMouseEnter={clearCloseTimer}
+          onMouseLeave={scheduleClose}
+        >
+          {SKIPPED_EXPORT_FORMATS.map((format) => (
+            <button
+              key={format}
+              type="button"
+              role="menuitem"
+              className={cn(
+                "flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700",
+                "hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-none",
+                "dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800",
+              )}
+              onClick={() => {
+                setOpen(false);
+                onDownload(format);
+              }}
+            >
+              {skippedFormatLabel(format, t)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ImportResultSummary({
   result,
   failed,
@@ -698,7 +811,6 @@ function ImportResultSummary({
   apiSegment: string;
 }) {
   const t = useTranslations("Dashboard.import");
-  const [skippedFormat, setSkippedFormat] = React.useState<ImportSkippedExportFormat>("csv");
   const [downloadingSkipped, setDownloadingSkipped] = React.useState(false);
 
   const inserted = result.inserted_count ?? result.created_count ?? 0;
@@ -712,33 +824,43 @@ function ImportResultSummary({
   const taskId = result.task_id?.trim() || "";
   const canDownloadSkipped = skipped > 0 && Boolean(taskId);
 
-  const skippedFormatOptions = React.useMemo(
-    () =>
-      SKIPPED_EXPORT_FORMATS.map((value) => ({
-        value,
-        label: skippedFormatLabel(value, t),
-      })),
-    [t],
-  );
-
-  const stats: Array<{ label: string; value: number; tone?: "ok" | "warn" | "bad" }> = [
-    { label: t("stats.total"), value: total },
-    { label: t("stats.inserted"), value: inserted, tone: "ok" },
-    ...(updated > 0 ? [{ label: t("stats.updated"), value: updated, tone: "ok" as const }] : []),
-    { label: t("stats.skipped"), value: skipped, tone: "warn" },
+  const stats: Array<{
+    key: string;
+    label: string;
+    value: number;
+    tone?: "ok" | "warn" | "bad";
+    downloadSkipped?: boolean;
+  }> = [
+    { key: "total", label: t("stats.total"), value: total },
+    { key: "inserted", label: t("stats.inserted"), value: inserted, tone: "ok" },
+    ...(updated > 0
+      ? [{ key: "updated", label: t("stats.updated"), value: updated, tone: "ok" as const }]
+      : []),
+    {
+      key: "skipped",
+      label: t("stats.skipped"),
+      value: skipped,
+      tone: "warn",
+      downloadSkipped: canDownloadSkipped,
+    },
     ...(failedCount > 0
-      ? [{ label: t("stats.failed"), value: failedCount, tone: "bad" as const }]
+      ? [{ key: "failed", label: t("stats.failed"), value: failedCount, tone: "bad" as const }]
       : []),
     ...(notImported > 0
-      ? [{ label: t("stats.notImported"), value: notImported, tone: "warn" as const }]
+      ? [{
+          key: "notImported",
+          label: t("stats.notImported"),
+          value: notImported,
+          tone: "warn" as const,
+        }]
       : []),
   ];
 
-  async function handleDownloadSkipped() {
+  async function handleDownloadSkipped(format: ImportSkippedExportFormat) {
     if (!canDownloadSkipped || downloadingSkipped) return;
     setDownloadingSkipped(true);
     try {
-      await downloadModuleImportSkipped(apiSegment, taskId, skippedFormat);
+      await downloadModuleImportSkipped(apiSegment, taskId, format);
       toastSuccess(t("skippedDownload.successToast"));
     } catch (err) {
       toastApiError(err, t("skippedDownload.errorToast"));
@@ -772,63 +894,34 @@ function ImportResultSummary({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {stats.map((s) => (
           <div
-            key={s.label}
+            key={s.key}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
           >
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {s.label}
             </p>
-            <p
-              className={cn(
-                "mt-0.5 text-lg font-semibold tabular-nums",
-                s.tone === "ok" && "text-emerald-700 dark:text-emerald-400",
-                s.tone === "warn" && s.value > 0 && "text-amber-700 dark:text-amber-400",
-                s.tone === "bad" && s.value > 0 && "text-red-600 dark:text-red-400",
-                !s.tone && "text-slate-900 dark:text-slate-100",
-              )}
-            >
-              {s.value}
-            </p>
+            <div className="mt-0.5 flex min-h-7 items-center gap-1.5">
+              <p
+                className={cn(
+                  "text-lg font-semibold tabular-nums leading-none",
+                  s.tone === "ok" && "text-emerald-700 dark:text-emerald-400",
+                  s.tone === "warn" && s.value > 0 && "text-amber-700 dark:text-amber-400",
+                  s.tone === "bad" && s.value > 0 && "text-red-600 dark:text-red-400",
+                  !s.tone && "text-slate-900 dark:text-slate-100",
+                )}
+              >
+                {s.value}
+              </p>
+              {s.downloadSkipped ? (
+                <SkippedDownloadIconMenu
+                  downloading={downloadingSkipped}
+                  onDownload={(format) => void handleDownloadSkipped(format)}
+                />
+              ) : null}
+            </div>
           </div>
         ))}
       </div>
-
-      {canDownloadSkipped ? (
-        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/25">
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-            {t("skippedDownload.title", { count: skipped })}
-          </p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-            {t("skippedDownload.hint")}
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <CheckmarkSelect
-              value={skippedFormat}
-              onChange={(v) => {
-                if (v === "csv" || v === "xlsx" || v === "zip" || v === "xls") setSkippedFormat(v);
-              }}
-              options={skippedFormatOptions}
-              listLabel={t("skippedDownload.formatLabel")}
-              size="sm"
-              className="min-w-[160px]"
-            />
-            <AppButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={downloadingSkipped}
-              onClick={() => void handleDownloadSkipped()}
-            >
-              {downloadingSkipped ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              ) : (
-                <Download className="size-3.5" aria-hidden />
-              )}
-              {downloadingSkipped ? t("skippedDownload.downloading") : t("skippedDownload.download")}
-            </AppButton>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -305,14 +305,7 @@
         "retry": "Retry"
       },
       "duplicateEntry": {
-        "viewExisting": "View",
-        "title": "Record already exists",
-        "description": "A matching record was found. Keep it as-is, or update it with the details you entered.",
-        "keepExisting": "Keep existing",
-        "updateExisting": "Update",
-        "fields": {
-          "id": "ID"
-        }
+        "viewExisting": "View"
       },
       "map": {
         "loading": "Finding location…",
