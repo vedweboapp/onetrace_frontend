@@ -6,11 +6,12 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchClient, updateClientAttachments } from "@/features/clients/api/client.api";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientProjectsTab } from "@/features/clients/components/client-projects-tab";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -41,6 +42,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "sites", label: t("detail.tabs.sites") },
       { id: "projects", label: t("detail.tabs.projects") },
+      { id: "attachments", label: t("detail.tabs.attachments") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
     [t, tAudit],
@@ -50,9 +52,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = React.useState(() =>
-    tabFromUrl && ["details", "contacts", "sites", "projects", "timeline"].includes(tabFromUrl)
-      ? tabFromUrl
-      : "details",
+    tabFromUrl && allowedDetailTabIds.has(tabFromUrl) ? tabFromUrl : "details",
   );
 
   React.useEffect(() => {
@@ -141,6 +141,14 @@ export function ClientDetailScreen({ clientId, className }: Props) {
             <ClientSitesTab clientId={detail.id} />
           ) : detail && activeTab === "projects" ? (
             <ClientProjectsTab clientId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="clients"
+              updateAttachments={(refs) => updateClientAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.client}

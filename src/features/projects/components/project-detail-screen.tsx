@@ -16,6 +16,7 @@ import {
   fetchProjectJobsHierarchy,
   patchProject,
   updateProject,
+  updateProjectAttachments,
 } from "@/features/projects/api/project.api";
 import {
   DEFAULT_PROJECT_JOBS_SOURCE,
@@ -30,6 +31,7 @@ import { ProjectQuotationsTab } from "@/features/projects/components/project-quo
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -200,6 +202,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
     if (hasJobs) {
       tabs.push({ id: "jobs", label: t("detail.tabs.jobs") });
     }
+    tabs.push({ id: "attachments", label: t("detail.tabs.attachments") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
   }, [hasQuotations, hasJobs, t, tAudit]);
@@ -495,6 +498,14 @@ export function ProjectDetailScreen({ projectId }: Props) {
             <ProjectQuotationsTab projectId={detail.id} />
           ) : detail && activeTab === "location" ? (
             <ProjectPinsListTab sites={detail.sites} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="projects"
+              updateAttachments={(refs) => updateProjectAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.project}

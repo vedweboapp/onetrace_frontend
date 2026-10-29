@@ -7,10 +7,11 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
-import { deleteVendor, fetchVendor } from "@/features/vendors/api/vendor.api";
+import { deleteVendor, fetchVendor, updateVendorAttachments } from "@/features/vendors/api/vendor.api";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
 import { VendorItemsTab } from "@/features/vendors/components/vendor-items-tab";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -44,6 +45,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "items", label: t("detail.tabs.items") },
+      { id: "attachments", label: t("detail.tabs.attachments") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
     [t, tAudit],
@@ -158,6 +160,14 @@ export function VendorDetailScreen({ vendorId }: Props) {
             <EntityContactsTab entityType="vendor" entityId={detail.id} />
           ) : detail && activeTab === "items" ? (
             <VendorItemsTab vendorId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="vendors"
+              updateAttachments={(refs) => updateVendorAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.vendor}

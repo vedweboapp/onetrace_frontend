@@ -4,6 +4,8 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import {
   applyDropdownListParam,
   resolveDropdownListPages,
@@ -102,6 +104,13 @@ export async function updateProject(id: number, body: ProjectUpdatePayload): Pro
   const { data } = await api.patch<ApiEnvelope<Project>>(PROJECT_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateProjectAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Project> {
+  return updateEntityAttachments<Project>(PROJECT_PATHS.detail(id), refs);
 }
 export async function createJobFromLocation(body: LocationToJobPayload): Promise<Job> {
   const { data } = await api.post<ApiEnvelope<Job>>(PROJECT_PATHS.createJobFromLocation, body);

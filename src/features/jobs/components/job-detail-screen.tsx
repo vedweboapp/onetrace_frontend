@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
+import { fetchJob, updateJob, updateJobAttachments } from "@/features/jobs/api/job.api";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
@@ -15,6 +15,7 @@ import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   parseJobCategoryParam,
   resolveJobCategory,
@@ -40,7 +41,15 @@ type Props = {
   jobId: number;
 };
 
-type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns" | "forms" | "timeline";
+type JobDetailTabId =
+  | "overview"
+  | "scheduling"
+  | "materials"
+  | "dispatch"
+  | "returns"
+  | "forms"
+  | "attachments"
+  | "timeline";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
   return (
@@ -50,6 +59,7 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
     value === "dispatch" ||
     value === "returns" ||
     value === "forms" ||
+    value === "attachments" ||
     value === "timeline"
   );
 }
@@ -89,6 +99,7 @@ export function JobDetailScreen({ jobId }: Props) {
     if (showFormsTab) {
       tabs.push({ id: "forms", label: t("detail.tabs.forms") });
     }
+    tabs.push({ id: "attachments", label: t("detail.tabs.attachments") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
   }, [showFormsTab, t, tAudit]);
@@ -274,6 +285,14 @@ function JobDetailTabPanel({
             <JobReturnsTab detail={detail} />
           ) : detail && activeTab === "forms" ? (
             <JobFormsTab detail={detail} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="jobs"
+              updateAttachments={(refs) => updateJobAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.job}
