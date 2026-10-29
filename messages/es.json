@@ -301,6 +301,21 @@
       "duplicateEntry": {
         "viewExisting": "Ver"
       },
+      "attachmentsTab": {
+        "title": "Adjuntos",
+        "subtitle": "Sube y gestiona archivos de este registro.",
+        "addFiles": "Añadir archivos",
+        "uploadedToast": "Archivos subidos",
+        "uploadError": "No se pudieron subir los archivos.",
+        "deletedToast": "Adjunto eliminado",
+        "deleteError": "No se pudo eliminar el adjunto.",
+        "emptyTitle": "Aún no hay adjuntos",
+        "emptyDescription": "Sube uno o más archivos para adjuntarlos a este registro.",
+        "download": "Descargar",
+        "downloadAria": "Descargar {name}",
+        "remove": "Eliminar",
+        "removeAria": "Eliminar {name}"
+      },
       "map": {
         "loading": "Buscando ubicación…",
         "noAddress": "Añade la dirección completa para ver el mapa.",
@@ -2552,7 +2567,8 @@
           "details": "Resumen",
           "contacts": "Contactos",
           "sites": "Sitios",
-          "projects": "Proyectos"
+          "projects": "Proyectos",
+          "attachments": "Adjuntos"
         },
         "contactsEmptyTitle": "No hay contactos para este cliente",
         "contactsEmptyDescription": "Los contactos vinculados a este cliente aparecerán aquí.",
@@ -2716,7 +2732,8 @@
         "tabs": {
           "details": "Detalles",
           "contacts": "Contactos",
-          "items": "Ítems"
+          "items": "Ítems",
+          "attachments": "Adjuntos"
         },
         "contactsEmptyTitle": "No hay contactos para este proveedor",
         "contactsEmptyDescription": "Los contactos vinculados a este proveedor aparecerán aquí.",
@@ -4673,7 +4690,8 @@
           "materials": "Materiales",
           "dispatch": "Envío",
           "returns": "Devoluciones",
-          "forms": "Formularios"
+          "forms": "Formularios",
+          "attachments": "Adjuntos"
         },
         "schedulingTitle": "Programación",
         "schedulingEmpty": "Este trabajo aún no está programado.",
@@ -5042,6 +5060,7 @@
           "jobs": "Trabajos",
           "quotations": "Cotizaciones",
           "location": "Ubicacións",
+          "attachments": "Adjuntos",
           "docs": "Documentos",
           "approvals": "Aprobaciones",
           "pins": "patas"

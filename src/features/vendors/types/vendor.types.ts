@@ -1,4 +1,5 @@
 import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 
 export type VendorUserRef = {
@@ -32,6 +33,7 @@ export type Vendor = {
   created_by: VendorUserRef | null;
   modified_by: VendorUserRef | null;
   deleted_by: unknown;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type VendorPagination = {

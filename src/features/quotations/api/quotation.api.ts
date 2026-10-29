@@ -2,6 +2,8 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { Job, JobListResponse } from "@/features/jobs/types/job.types";
 import { resolveDropdownListPages, parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
@@ -173,9 +175,7 @@ export async function updateQuotation(id: number, body: QuotationUpdatePayload):
   return data.data;
 }
 
-export type QuotationAttachmentWriteRef =
-  | { id: number; is_deleted: true }
-  | { file: File };
+export type QuotationAttachmentWriteRef = EntityAttachmentWriteRef;
 
 /**
  * Patch quotation attachments via multipart FormData.
@@ -184,19 +184,9 @@ export type QuotationAttachmentWriteRef =
  */
 export async function updateQuotationAttachments(
   id: number,
-  refs: QuotationAttachmentWriteRef[],
+  refs: EntityAttachmentWriteRef[],
 ): Promise<QuotationDetail> {
-  const fd = new FormData();
-  for (const ref of refs) {
-    if ("file" in ref && ref.file instanceof File) {
-      fd.append("attachments", ref.file, ref.file.name);
-    } else if ("id" in ref && ref.is_deleted === true) {
-      fd.append("deleted_attachment_ids", String(ref.id));
-    }
-  }
-  const { data } = await api.patch<ApiEnvelope<QuotationDetail>>(QUOTATION_PATHS.detail(id), fd);
-  assertApiSuccess(data);
-  return data.data;
+  return updateEntityAttachments<QuotationDetail>(QUOTATION_PATHS.detail(id), refs);
 }
 
 /** Loads selectable levels for a project when composing a quotation. */
