@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -697,7 +698,13 @@ function SkippedDownloadIconMenu({
 }) {
   const t = useTranslations("Dashboard.import");
   const [open, setOpen] = React.useState(false);
-  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = React.useState<{
+    top: number;
+    left: number;
+    placement: "up" | "down";
+  } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
   const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearCloseTimer = React.useCallback(() => {
@@ -712,27 +719,104 @@ function SkippedDownloadIconMenu({
     closeTimerRef.current = setTimeout(() => setOpen(false), 140);
   }, [clearCloseTimer]);
 
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = 152;
+    const gap = 6;
+    const left = Math.min(
+      Math.max(8, rect.left + rect.width / 2 - menuWidth / 2),
+      window.innerWidth - menuWidth - 8,
+    );
+    // Prefer above the icon so the modal body scroll does not clip the menu.
+    const estimatedHeight = 8 + SKIPPED_EXPORT_FORMATS.length * 30;
+    const spaceAbove = rect.top - 8;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const placement: "up" | "down" =
+      spaceAbove >= estimatedHeight || spaceAbove >= spaceBelow ? "up" : "down";
+    setMenuPos({
+      top: placement === "up" ? rect.top - gap : rect.bottom + gap,
+      left,
+      placement,
+    });
+  }, []);
+
   React.useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPosition();
     function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
+    function onReposition() {
+      updateMenuPosition();
+    }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open]);
+  }, [open, updateMenuPosition]);
+
+  const menu =
+    open && !downloading && menuPos && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            aria-label={t("skippedDownload.formatLabel")}
+            className={cn(
+              "fixed z-[300] min-w-[9.5rem] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg",
+              "dark:border-slate-700 dark:bg-slate-900",
+            )}
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              transform: menuPos.placement === "up" ? "translateY(-100%)" : undefined,
+            }}
+            onMouseEnter={clearCloseTimer}
+            onMouseLeave={scheduleClose}
+          >
+            {SKIPPED_EXPORT_FORMATS.map((format) => (
+              <button
+                key={format}
+                type="button"
+                role="menuitem"
+                className={cn(
+                  "flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700",
+                  "hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-none",
+                  "dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800",
+                )}
+                onClick={() => {
+                  setOpen(false);
+                  onDownload(format);
+                }}
+              >
+                {skippedFormatLabel(format, t)}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div
-      ref={rootRef}
       className="relative inline-flex"
       onMouseEnter={() => {
         clearCloseTimer();
@@ -741,6 +825,7 @@ function SkippedDownloadIconMenu({
       onMouseLeave={scheduleClose}
     >
       <button
+        ref={triggerRef}
         type="button"
         disabled={downloading}
         aria-haspopup="menu"
@@ -764,39 +849,7 @@ function SkippedDownloadIconMenu({
           <Download className="size-3.5" aria-hidden />
         )}
       </button>
-
-      {open && !downloading ? (
-        <div
-          role="menu"
-          aria-label={t("skippedDownload.formatLabel")}
-          className={cn(
-            "absolute left-1/2 top-full z-40 mt-1 min-w-[9.5rem] -translate-x-1/2 overflow-hidden",
-            "rounded-lg border border-slate-200 bg-white py-1 shadow-lg",
-            "dark:border-slate-700 dark:bg-slate-900",
-          )}
-          onMouseEnter={clearCloseTimer}
-          onMouseLeave={scheduleClose}
-        >
-          {SKIPPED_EXPORT_FORMATS.map((format) => (
-            <button
-              key={format}
-              type="button"
-              role="menuitem"
-              className={cn(
-                "flex w-full items-center px-3 py-1.5 text-left text-xs font-medium text-slate-700",
-                "hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-none",
-                "dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800",
-              )}
-              onClick={() => {
-                setOpen(false);
-                onDownload(format);
-              }}
-            >
-              {skippedFormatLabel(format, t)}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {menu}
     </div>
   );
 }
