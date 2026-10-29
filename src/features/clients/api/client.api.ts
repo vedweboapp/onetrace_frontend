@@ -3,6 +3,8 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import {
   applyDropdownListParam,
   DROPDOWN_LIST_PAGE_SIZE,
@@ -80,6 +82,13 @@ export async function updateClient(
   const { data } = await api.patch<ApiEnvelope<Client>>(CLIENT_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateClientAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Client> {
+  return updateEntityAttachments<Client>(CLIENT_PATHS.detail(id), refs);
 }
 
 export async function deleteClient(id: number): Promise<void> {

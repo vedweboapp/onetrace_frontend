@@ -17,6 +17,7 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   ListPageEmptyStates,
@@ -187,7 +188,10 @@ export function UsersPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div> : <div className="space-y-2 p-6"><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" /></div>
         ) : items.length === 0 ? (
@@ -196,13 +200,7 @@ export function UsersPanel() {
             onboarding={{
               iconName: "users",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AddButton
-                  type="button"
-                  onClick={() => router.push(buildPathWithStoredBack(`${pathname}/new`, listHref))}
-                />
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />

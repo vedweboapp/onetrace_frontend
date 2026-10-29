@@ -14,9 +14,14 @@ export function assertApiSuccess<T>(
       message?: string;
       error_code?: string | null;
       errors?: unknown;
+      data?: unknown;
     };
     const msg = typeof fail.message === "string" ? fail.message : "Request failed";
     const code = typeof fail.error_code === "string" ? fail.error_code : null;
-    throw new ApiBusinessError(msg, { errorCode: code, errors: fail.errors });
+    throw new ApiBusinessError(msg, {
+      errorCode: code,
+      errors: fail.errors,
+      data: fail.data,
+    });
   }
 }

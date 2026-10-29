@@ -90,6 +90,7 @@ export type DashboardListSection =
   | "quotations"
   | "invoices"
   | "purchase-orders"
+  | "purchase-receives"
   | "jobs"
   | "qr-codes"
   | "projects"

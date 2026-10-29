@@ -7,10 +7,11 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
-import { deleteVendor, fetchVendor } from "@/features/vendors/api/vendor.api";
+import { deleteVendor, fetchVendor, updateVendorAttachments } from "@/features/vendors/api/vendor.api";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
 import { VendorItemsTab } from "@/features/vendors/components/vendor-items-tab";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -21,7 +22,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs, ConfirmDialog, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   vendorId: number;
@@ -33,6 +35,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("vendorDetail");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [detailForDelete, setDetailForDelete] = React.useState<Vendor | null>(null);
@@ -42,6 +45,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "items", label: t("detail.tabs.items") },
+      { id: "attachments", label: t("detail.tabs.attachments") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
     [t, tAudit],
@@ -93,7 +97,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={(tab) => {
@@ -104,6 +108,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
             const qs = p.toString();
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="vendor-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -155,6 +160,14 @@ export function VendorDetailScreen({ vendorId }: Props) {
             <EntityContactsTab entityType="vendor" entityId={detail.id} />
           ) : detail && activeTab === "items" ? (
             <VendorItemsTab vendorId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="vendors"
+              updateAttachments={(refs) => updateVendorAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.vendor}

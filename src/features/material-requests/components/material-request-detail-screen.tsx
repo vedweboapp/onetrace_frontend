@@ -10,6 +10,7 @@ import { MaterialRequestDetailBody } from "@/features/material-requests/componen
 import { MaterialRequestDispatchesTab } from "@/features/material-requests/components/material-request-dispatches-tab";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   EntityDetailErrorState,
@@ -19,7 +20,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -27,10 +29,12 @@ type Props = {
 };
 
 export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.materialRequests");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
+  const tabsStorageKey = useTabOrderStorageKey("materialRequestDetail");
   const [activeTab, setActiveTab] = React.useState("overview");
   const dueFmt = React.useMemo(
     () =>
@@ -64,7 +68,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   const { labelFor: statusLabel, rowFor: statusRowFor, options: statusOptions } = useMaterialStatusCatalog();
 
@@ -91,10 +95,11 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
       fetch={fetchMaterialRequest}
       getTitle={(detail) => detail.request_number}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="material-request-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"

@@ -6,6 +6,7 @@ import {
   createProjectForm,
   createProjectFormRules,
   createProjectFormSections,
+  deleteProjectFormRules,
   getProjectForm,
   updateProjectForm,
 } from "./project-forms.api";
@@ -74,5 +75,17 @@ export const projectFormHandlers: FormBuilderApiHandlers = {
     ctx: HandlerContext,
   ): Promise<any> => {
     return createProjectFormRules(formId, rules, ctx.purpose);
+  },
+
+  /**
+   * Step 4 — DELETE /api/v1/forms/{formId}/rules/
+   * Called automatically by FormBuilder when existing rules have been deleted.
+   */
+  deleteRules: async (
+    formId: string | number,
+    deletedRuleIds: (string | number)[],
+    _ctx: HandlerContext,
+  ): Promise<any> => {
+    return deleteProjectFormRules(formId, deletedRuleIds);
   },
 };

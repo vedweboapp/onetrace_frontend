@@ -9,7 +9,7 @@ import { toastError } from "@/shared/feedback/app-toast";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { AUTH_API_PATHS } from "@/features/auth/api/auth.paths";
 import { assertApiSuccess } from "@/core/types/api.types";
-import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { ApiBusinessError, isApiBusinessError } from "@/core/errors/api-business-error";
 import {
   parseApiFailurePayload,
   resolveApiErrorUserText,
@@ -23,6 +23,10 @@ import {
 } from "@/features/auth/utils/auth-redirect.util";
 import { isInvalidAuthTokenError } from "@/features/auth/utils/auth-token-error.util";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
+import {
+  dropdownCatalogKindFromRequest,
+  notifyDropdownCatalogChanged,
+} from "@/shared/catalog/dropdown-catalog-bus";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
@@ -91,31 +95,43 @@ function rejectIfEnvelopeFailed(
     return response;
   }
   const d = response.data;
-  if (
-    d &&
-    typeof d === "object" &&
-    "success" in d &&
-    (d as { success: unknown }).success === false
-  ) {
-    const raw = d as unknown as {
-      message?: unknown;
-      error_code?: unknown;
-      errors?: unknown;
-    };
-    const msg =
-      typeof raw.message === "string" ? raw.message : "Request failed";
-    const code =
-      typeof raw.error_code === "string" ? raw.error_code : null;
-    const businessError = new ApiBusinessError(msg, {
-      errorCode: code,
-      errors: raw.errors,
-    });
+  if (d && typeof d === "object" && isFailedApiEnvelope(d)) {
+    const businessError = businessErrorFromEnvelope(d);
     if (typeof window !== "undefined" && isInvalidAuthTokenError(businessError)) {
       forceSessionExpiredLogout();
     }
     return Promise.reject(businessError);
   }
   return response;
+}
+
+function isFailedApiEnvelope(body: object): boolean {
+  const raw = body as Record<string, unknown>;
+  const success = raw.success ?? raw.sucess;
+  if (success === false) return true;
+  if (typeof success === "string" && success.trim().toLowerCase() === "false") return true;
+  return typeof raw.error_code === "string" && Boolean(raw.errors);
+}
+
+function businessErrorFromEnvelope(body: object): ApiBusinessError {
+  const raw = body as Record<string, unknown>;
+  const msg = typeof raw.message === "string" ? raw.message : "Request failed";
+  const code = typeof raw.error_code === "string" ? raw.error_code : null;
+  return new ApiBusinessError(msg, {
+    errorCode: code,
+    errors: raw.errors,
+    data: raw.data,
+  });
+}
+
+/** HTTP 4xx responses often carry the same envelope; normalize to ApiBusinessError. */
+function normalizeAxiosFailure(error: unknown): unknown {
+  if (!axios.isAxiosError(error)) return error;
+  if (isApiBusinessError(error)) return error;
+  const body = error.response?.data;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return error;
+  if (!isFailedApiEnvelope(body)) return error;
+  return businessErrorFromEnvelope(body);
 }
 
 function attachJsonEnvelopeGuard(client: AxiosInstance) {
@@ -163,25 +179,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use((response) => {
+  if (typeof window === "undefined") return response;
+  const kind = dropdownCatalogKindFromRequest(response.config.method, response.config.url);
+  if (kind) notifyDropdownCatalogChanged(kind);
+  return response;
+});
+
 attachJsonEnvelopeGuard(api);
 attachJsonEnvelopeGuard(refreshClient);
 
 api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
+    const normalized = normalizeAxiosFailure(error);
     if (typeof window === "undefined") {
-      return Promise.reject(error);
+      return Promise.reject(normalized);
     }
     const cfg = axios.isAxiosError(error)
       ? (error.config as InternalAxiosRequestConfig | undefined)
       : undefined;
-    if (shouldSuppressApiErrorToast(error, cfg)) {
-      return Promise.reject(error);
+    if (shouldSuppressApiErrorToast(normalized, cfg)) {
+      return Promise.reject(normalized);
     }
-    const payload = parseApiFailurePayload(error);
+    const payload = parseApiFailurePayload(normalized);
     toastError(resolveApiErrorUserText(payload));
-    markApiErrorToasted(error);
-    return Promise.reject(error);
+    markApiErrorToasted(normalized);
+    return Promise.reject(normalized);
   },
 );
 

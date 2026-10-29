@@ -16,7 +16,8 @@ import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs } from "@/shared/ui";
 
 type Props = {
   invoiceId: number;
@@ -25,6 +26,7 @@ type Props = {
 export function InvoiceDetailScreen({ invoiceId }: Props) {
   const t = useTranslations("Dashboard.invoices");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tabsStorageKey = useTabOrderStorageKey("invoiceDetail");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -118,10 +120,11 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
       fetch={fetchInvoice}
       getTitle={(detail) => detail.invoice_number}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
+          storageKey={tabsStorageKey}
         />
       }
       actions={({ detail, listBack }) => (

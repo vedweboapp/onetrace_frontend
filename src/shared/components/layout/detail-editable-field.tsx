@@ -38,7 +38,7 @@ export const detailFieldLabelClassName = cn(
 
 /** Soft box shared by display + edit — weight/color match list table cells. */
 export const detailValueSurfaceClassName = cn(
-  "flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
+  "detail-value-surface flex w-full min-w-0 min-h-[var(--detail-value-height,1.875rem)] items-center rounded-md px-1.5",
   "text-[length:var(--dash-body-size,0.875rem)] font-normal leading-normal text-slate-700",
   "dark:text-slate-300",
 );
@@ -50,11 +50,17 @@ export const detailInlineEditorClassName = cn(
   "dark:border-slate-700 dark:bg-slate-900/80",
 );
 
-/** Zoho-style description box: min height, inner scroll, user can drag to grow. */
+/**
+ * Zoho-style description box: min height, inner scroll, user can drag to grow.
+ * Do not use `detail-value-surface` — top-label appearance CSS zeroes its padding.
+ */
 export const detailTextareaBoxClassName = cn(
-  "field-control",
-  detailInlineEditorClassName,
-  "min-h-[100px] resize-y overflow-y-auto py-2.5 leading-5 font-normal [field-sizing:fixed]",
+  "field-control detail-textarea-box box-border block w-full min-w-0 min-h-[100px] resize-y overflow-y-auto",
+  "rounded-md border border-slate-200/90 bg-white px-3.5 py-3",
+  "text-[length:var(--dash-body-size,0.875rem)] font-normal leading-relaxed text-slate-700 outline-none transition",
+  "focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-900/10",
+  "dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300",
+  "[field-sizing:fixed]",
 );
 
 const detailInlineActionBtnClassName = cn(
@@ -132,7 +138,10 @@ export function DetailEditableField({
 }) {
   const tLocked = useTranslations("Dashboard.common.lockedField");
   const fieldId = React.useId();
-  const hasValue = children != null && children !== "";
+  const hasChildren = children != null && children !== "";
+  const trimmedValue = typeof value === "string" ? value.trim() : "";
+  const hasValue = hasChildren || trimmedValue.length > 0;
+  const displayNode = hasChildren ? children : trimmedValue || empty;
   const readOnly = disabled || locked;
   const canInline =
     !readOnly &&
@@ -476,7 +485,7 @@ export function DetailEditableField({
                   aria-invalid={Boolean(error)}
                   className={cn(
                     detailInlineEditorClassName,
-                    "resize-none break-words [overflow-wrap:anywhere]",
+                    "block resize-none break-words px-3 py-2.5 leading-relaxed [overflow-wrap:anywhere]",
                     error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/20",
                   )}
                   onChange={(e) => {
@@ -663,7 +672,7 @@ export function DetailEditableField({
                 multiline && "whitespace-pre-wrap",
               )}
             >
-              {hasValue ? children : empty}
+              {hasValue ? displayNode : empty}
             </div>
             {locked ? (
               <span

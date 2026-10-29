@@ -22,6 +22,17 @@ export async function updateProjectForm(
   return data?.data ?? data;
 }
 
+/** PATCH /api/v1/forms/{formId}/ */
+export async function patchProjectForm(
+  formId: string | number,
+  payload: any,
+): Promise<any> {
+  const { data } = await api.patch(`forms/${formId}/`, payload, {
+    skipErrorToast: true,
+  });
+  return data?.data ?? data;
+}
+
 /** POST/PUT /api/v1/forms/{formId}/rules/ */
 export async function createProjectFormRules(
   formId: string | number,
@@ -74,6 +85,23 @@ export async function createProjectFormRules(
   // Return merged result or single result
   return results.length > 1 ? results : results[0] || null;
 }
+
+/** DELETE /api/v1/forms/{formId}/rules/ */
+export async function deleteProjectFormRules(
+  formId: string | number,
+  ruleIds: (string | number)[],
+): Promise<any> {
+  if (!ruleIds || ruleIds.length === 0) {
+    return null;
+  }
+
+  const { data } = await api.delete(`forms/${formId}/rules/`, {
+    data: { ids: ruleIds },
+    skipErrorToast: true,
+  });
+  return data?.data ?? data;
+}
+
 /** POST /api/v1/forms/{formId}/sections/ */
 export async function createProjectFormSections(
   formId: string | number,

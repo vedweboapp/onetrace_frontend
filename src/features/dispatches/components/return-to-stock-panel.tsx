@@ -23,6 +23,7 @@ import {
   returnRequestTotalQty,
 } from "@/features/dispatches/utils/return-request-list.util";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
@@ -31,6 +32,7 @@ import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { useListMassSelection } from "@/shared/mass-actions/use-list-mass-selection";
 import { massSelectionColumn } from "@/shared/mass-actions/mass-selection-column";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -52,6 +54,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 
 export function ReturnToStockPanel() {
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.dispatches");
   const tList = useTranslations("Dashboard.list");
   const dateFmt = useDashboardDateFormat({ dateOnly: true });
@@ -172,7 +175,7 @@ export function ReturnToStockPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -342,7 +345,7 @@ export function ReturnToStockPanel() {
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
                 value={search}
-                onCommit={commitSearch}
+                onCommit={commitSearch}
                 className="sm:max-w-sm"
               />
               <CheckmarkSelect
@@ -447,7 +450,10 @@ export function ReturnToStockPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -469,13 +475,7 @@ export function ReturnToStockPanel() {
             onboarding={{
               iconName: "returnToStock",
               title: t("return.emptyListTitle"),
-              description: t("return.emptyListDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" aria-hidden />
-                  {t("return.newRequest")}
-                </AppButton>
-              ),
+              description: t("return.emptyListDescription")
             }}
             onClearFilters={() =>
               setUrl(

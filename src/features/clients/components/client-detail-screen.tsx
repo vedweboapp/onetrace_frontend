@@ -6,11 +6,12 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchClient } from "@/features/clients/api/client.api";
+import { fetchClient, updateClientAttachments } from "@/features/clients/api/client.api";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientProjectsTab } from "@/features/clients/components/client-projects-tab";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -20,7 +21,8 @@ import {
 } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   clientId: number;
@@ -33,12 +35,14 @@ export function ClientDetailScreen({ clientId, className }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("clientDetail");
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: t("detail.tabs.details") },
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "sites", label: t("detail.tabs.sites") },
       { id: "projects", label: t("detail.tabs.projects") },
+      { id: "attachments", label: t("detail.tabs.attachments") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
     [t, tAudit],
@@ -48,9 +52,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = React.useState(() =>
-    tabFromUrl && ["details", "contacts", "sites", "projects", "timeline"].includes(tabFromUrl)
-      ? tabFromUrl
-      : "details",
+    tabFromUrl && allowedDetailTabIds.has(tabFromUrl) ? tabFromUrl : "details",
   );
 
   React.useEffect(() => {
@@ -80,7 +82,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
       }}
 
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={(tab) => {
@@ -91,6 +93,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
             const qs = p.toString();
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="client-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -138,6 +141,14 @@ export function ClientDetailScreen({ clientId, className }: Props) {
             <ClientSitesTab clientId={detail.id} />
           ) : detail && activeTab === "projects" ? (
             <ClientProjectsTab clientId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="clients"
+              updateAttachments={(refs) => updateClientAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.client}

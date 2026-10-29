@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 
 export type ClientUserRef = {
@@ -44,6 +45,7 @@ export type Client = {
   is_active: boolean;
   deleted_by: unknown;
   organization?: number;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type ClientPagination = {

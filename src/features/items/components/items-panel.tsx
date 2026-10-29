@@ -7,14 +7,18 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchAllItemIds, fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
+import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   AddButton,
+  CheckmarkSelect,
   ConfirmDialog,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
@@ -28,6 +32,7 @@ import {
   ListPageSearchField,
   SurfaceShell,
 } from "@/shared/ui";
+import type { ItemType } from "@/features/items/types/item.types";
 import { cn } from "@/core/utils/http.util";
 import { buildDetailHrefWithListReturn, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
@@ -69,6 +74,9 @@ export function ItemsPanel() {
   );
 
   const { page, pageSize, listViewMode, search, setUrl, setPage, setPageSize, setListViewMode } = useListUrlState();
+  const itemTypeParam = searchParams.get("item_type");
+  const itemTypeFilter: ItemType | undefined =
+    itemTypeParam === "goods" || itemTypeParam === "service" ? itemTypeParam : undefined;
   const [items, setItems] = React.useState<Item[]>([]);
   const [pagination, setPagination] = React.useState({
     total_records: 0,
@@ -88,9 +96,21 @@ export function ItemsPanel() {
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
   const pageRange = getListPageRange(pagination);
 
+  const itemTypeFilterOptions = React.useMemo(
+    () => [
+      { value: "goods", label: t("modal.itemTypeGoods") },
+      { value: "service", label: t("modal.itemTypeService") },
+    ],
+    [t],
+  );
+
   const listFilters = React.useMemo(
-    () => ({ search: search || undefined, isComposite: false as const }),
-    [search],
+    () => ({
+      search: search || undefined,
+      isComposite: false as const,
+      itemType: itemTypeFilter,
+    }),
+    [search, itemTypeFilter],
   );
 
   const massUpdateFields = React.useMemo(
@@ -115,7 +135,7 @@ export function ItemsPanel() {
     totalRecords: pagination.total_records,
     pageItems: items,
     fetchAllIds,
-    resetDeps: [pageSize, search],
+    resetDeps: [pageSize, search, itemTypeFilter],
     updateFields: massUpdateFields,
     onApplied: () => setRefreshNonce((n) => n + 1),
   });
@@ -139,9 +159,15 @@ export function ItemsPanel() {
         const { items: next, pagination: p } = await fetchItemsPage(page, pageSize, {
           search: search || undefined,
           isComposite: false,
+          itemType: itemTypeFilter,
         });
         if (!cancelled) {
-          setItems(next);
+          // Fallback client filter if API ignores item_type.
+          setItems(
+            itemTypeFilter
+              ? next.filter((row) => resolveItemType(row.item_type) === itemTypeFilter)
+              : next,
+          );
           setPagination(p);
         }
       } catch (error) {
@@ -156,9 +182,9 @@ export function ItemsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, refreshNonce, search, t]);
+  }, [page, pageSize, refreshNonce, search, itemTypeFilter, t]);
 
-  const hasActiveFilters = hasListActiveFilters({ search });
+  const hasActiveFilters = hasListActiveFilters({ search, itemTypeParam });
   const { hideListChrome, listLoading, emptyStateKind, filtersActive } = useSimpleListEmptyState({
     loading,
     loadError,
@@ -194,10 +220,23 @@ export function ItemsPanel() {
     return [
       massSel.tableColumn,
       c.primary("name", t("table.name"), (r) => r.name),
-      c.mono("sku", t("table.sku"), (r) => r.sku || "—", { cellClassName: "text-slate-600 dark:text-slate-400" }),
-      c.tabular("qty", t("table.quantity"), (r) => formatQuantity(r.quantity), {
+      c.text(
+        "itemType",
+        t("table.itemType"),
+        (r) => (resolveItemType(r.item_type) === "service" ? t("modal.itemTypeService") : t("modal.itemTypeGoods")),
+        { cellClassName: "text-slate-600 dark:text-slate-400" },
+      ),
+      c.mono("sku", t("table.sku"), (r) => (resolveItemType(r.item_type) === "service" ? "—" : r.sku || "—"), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
+      c.tabular(
+        "qty",
+        t("table.quantity"),
+        (r) => (resolveItemType(r.item_type) === "service" ? "—" : formatQuantity(r.quantity)),
+        {
+          cellClassName: "text-slate-600 dark:text-slate-400",
+        },
+      ),
       c.tabular("cost", t("modal.costPrice"), (r) => moneyDisplay(r.cost_price), {
         cellClassName: "text-slate-600 dark:text-slate-400",
       }),
@@ -238,7 +277,14 @@ export function ItemsPanel() {
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
           action={
-            <AddButton type="button" onClick={openCreate} />
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="items"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
           }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -246,6 +292,23 @@ export function ItemsPanel() {
                 value={search}
                 onCommit={commitSearch}
                 className="sm:max-w-sm"
+              />
+              <CheckmarkSelect
+                listLabel={t("modal.filterItemType")}
+                buttonAriaLabel={t("modal.filterItemType")}
+                options={itemTypeFilterOptions}
+                value={itemTypeFilter ?? ""}
+                emptyLabel={t("modal.filterAllItemTypes")}
+                portaled
+                clearable
+                clearAriaLabel={tList("clearFilter")}
+                className="w-full min-w-0 sm:w-44"
+                onChange={(v) =>
+                  setUrl(
+                    { item_type: v === "goods" || v === "service" ? v : null, page: null },
+                    { replace: true },
+                  )
+                }
               />
             </div>
           }
@@ -263,7 +326,10 @@ export function ItemsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -287,9 +353,8 @@ export function ItemsPanel() {
               iconName: "items",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
-            onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
+            onClearFilters={() => setUrl({ search: null, item_type: null, page: null }, { replace: true })}
           />
         ) : listViewMode === "list" ? (
           <div className="p-4 sm:p-6">
