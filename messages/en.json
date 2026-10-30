@@ -278,7 +278,7 @@
         "user": "Add New User"
       }
     },
-      "common": {
+    "common": {
       "back": "Back",
       "breadcrumbNav": "Breadcrumb",
       "customizeTabs": {
@@ -663,6 +663,10 @@
           "title": {
             "title": "Titles",
             "description": "Organize the title for the project."
+          },
+          "taxes": {
+            "title": "Taxes",
+            "description": "Configure tax rates and percentages applied to transactions."
           }
         }
       }
@@ -5791,6 +5795,55 @@
     "settings": {
       "title": "Settings",
       "body": "Account and workspace settings will go here."
+    },
+    "taxes": {
+      "metaTitle": "Taxes",
+      "title": "Taxes",
+      "subtitle": "Manage tax rates and percentages applied across transactions.",
+      "add": "Add Tax",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "filterState": "Active state",
+      "table": {
+        "name": "Tax Name",
+        "percentage": "Percentage",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "emptyTitle": "No Taxes Yet",
+      "emptyDescription": "Create your first tax rate (e.g. GST, VAT) for items and invoices.",
+      "loadError": "Could not load taxes. Try again.",
+      "modal": {
+        "createTitle": "New Tax",
+        "editTitle": "Edit Tax",
+        "taxName": "Tax Name",
+        "taxNamePlaceholder": "e.g. GST",
+        "taxPercentage": "Tax Percentage",
+        "taxPercentagePlaceholder": "e.g. 18.00",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "deleteConfirmTitle": "Delete This Tax?",
+      "deleteConfirmBody": "This action cannot be undone.",
+      "confirmDelete": "Delete",
+      "pageLabel": "Showing {start}-{end} of {total} taxes",
+      "prev": "Previous",
+      "next": "Next",
+      "saved": "Tax updated successfully",
+      "created": "Tax created successfully",
+      "deleted": "Tax deleted successfully",
+      "activatedToast": "Tax activated",
+      "deactivatedToast": "Tax deactivated",
+      "toggleActiveError": "Could not update tax status. Try again.",
+      "validationName": "Enter a tax name.",
+      "validationPercentage": "Enter a valid percentage between 0 and 100."
     }
   },
   "validation": {

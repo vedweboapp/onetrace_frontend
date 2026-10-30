@@ -1,4 +1,4 @@
-import api from "@/core/api/axios";
+﻿import api from "@/core/api/axios";
 
 export interface VariableItem {
   key: string;
@@ -9,6 +9,16 @@ export interface VariableItem {
   parentModule: string;
   isRelated?: boolean;
   description?: string;
+  hasChildren?: boolean;
+  children?: VariableItem[];
+  relationType?: "single" | "multivalues";
+  modelName?: string;
+}
+
+export interface RelatedModuleMeta {
+  type: "single" | "multivalues";
+  modelName: string;
+  fields: VariableItem[];
 }
 
 export interface ModuleVariablesData {
@@ -16,6 +26,9 @@ export interface ModuleVariablesData {
   primaryKeys: VariableItem[];
   relatedModules: Record<string, VariableItem[]>;
   allVariables: VariableItem[];
+  multivalueModules: Record<string, VariableItem[]>;
+  singleModules: Record<string, VariableItem[]>;
+  relatedModulesMeta: Record<string, RelatedModuleMeta>;
 }
 
 export function formatFieldLabel(key: string): string {
@@ -61,6 +74,9 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     primaryKeys: [],
     relatedModules: {},
     allVariables: [],
+    multivalueModules: {},
+    singleModules: {},
+    relatedModulesMeta: {},
   };
 
   if (!raw || typeof raw !== "object") return empty;
@@ -81,7 +97,10 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     payload.keys ??
     payload.fields;
 
-  const relatedModulesRaw =
+  // New API: related_fields = { key: { type, model_name, fields: string[] } }
+  // Old API: Related_Modules / related_modules = { key: string[] | object[] }
+  const relatedFieldsRaw: any =
+    payload.related_fields ??
     payload.Related_Modules ??
     payload.related_modules ??
     payload.RelatedModules ??
@@ -89,6 +108,9 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
 
   const primaryKeys: VariableItem[] = [];
   const relatedModules: Record<string, VariableItem[]> = {};
+  const multivalueModules: Record<string, VariableItem[]> = {};
+  const singleModules: Record<string, VariableItem[]> = {};
+  const relatedModulesMeta: Record<string, RelatedModuleMeta> = {};
   const allVariables: VariableItem[] = [];
   const seenTags = new Set<string>();
 
@@ -150,58 +172,84 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     };
   };
 
-  // 1. Process Primary Module Keys
+  // Build a map of related fields keyed by field name for quick lookup
+  // Used to attach children to primary keys that match a "single" relation
+  const singleRelationMap: Record<string, { modelName: string; children: VariableItem[] }> = {};
+
+  // 1. Process related_fields (new format) or legacy related modules
+  if (relatedFieldsRaw && typeof relatedFieldsRaw === "object") {
+    for (const [relModName, relData] of Object.entries(relatedFieldsRaw)) {
+      const relKey = relModName.toLowerCase();
+      const items: VariableItem[] = [];
+
+      // New API format: { type, model_name, fields: string[] }
+      if (
+        relData &&
+        typeof relData === "object" &&
+        "type" in (relData as any) &&
+        "fields" in (relData as any)
+      ) {
+        const typedRelData = relData as { type: string; model_name: string; fields: any[] };
+        const relType = typedRelData.type as "single" | "multivalues";
+        const modelName = typedRelData.model_name ?? relKey;
+
+        // Build VariableItem[] for this relation's fields
+        if (Array.isArray(typedRelData.fields)) {
+          for (const fieldInput of typedRelData.fields) {
+            const item = createFieldItem(fieldInput, relKey, true);
+            if (item) {
+              item.relationType = relType;
+              item.modelName = modelName;
+              items.push(item);
+              allVariables.push(item);
+            }
+          }
+        }
+
+        // Store meta
+        relatedModulesMeta[relKey] = { type: relType, modelName, fields: items };
+
+        if (relType === "multivalues") {
+          multivalueModules[relKey] = items;
+          relatedModules[relKey] = items; // keep backward compat
+        } else if (relType === "single") {
+          singleModules[relKey] = items;
+          relatedModules[relKey] = items; // keep backward compat
+          singleRelationMap[relKey] = { modelName, children: items };
+        }
+      } else {
+        // Legacy format: relData is string[] | object[]
+        const legacyFields = Array.isArray(relData) ? relData : [];
+        for (const fieldInput of legacyFields) {
+          const item = createFieldItem(fieldInput, relKey, true);
+          if (item) {
+            items.push(item);
+            allVariables.push(item);
+          }
+        }
+        relatedModules[relKey] = items;
+        // Legacy has no type info - treat as multivalues for subform
+        multivalueModules[relKey] = items;
+        relatedModulesMeta[relKey] = { type: "multivalues", modelName: relKey, fields: items };
+      }
+    }
+  }
+
+  // 2. Process Primary Module Keys
   if (Array.isArray(primaryKeysRaw)) {
     for (const item of primaryKeysRaw) {
       const fieldItem = createFieldItem(item, moduleName, false);
       if (fieldItem) {
-        primaryKeys.push(fieldItem);
-        allVariables.push(fieldItem);
-      }
-    }
-  }
-
-  // 2. Process Related Modules and their inner object keys
-  if (relatedModulesRaw && typeof relatedModulesRaw === "object") {
-    for (const [relModName, relFields] of Object.entries(relatedModulesRaw)) {
-      const modCategory = relModName.trim().toLowerCase();
-      const list: VariableItem[] = [];
-
-      if (Array.isArray(relFields)) {
-        for (const item of relFields) {
-          const fieldItem = createFieldItem(item, modCategory, true);
-          if (fieldItem) {
-            list.push(fieldItem);
-            allVariables.push(fieldItem);
-          }
+        // Check if this primary field name matches a "single" relation
+        const fieldName = fieldItem.key.toLowerCase();
+        if (singleRelationMap[fieldName]) {
+          fieldItem.hasChildren = true;
+          fieldItem.children = singleRelationMap[fieldName].children;
+          fieldItem.modelName = singleRelationMap[fieldName].modelName;
+          fieldItem.relationType = "single";
         }
-      } else if (relFields && typeof relFields === "object") {
-        for (const [innerKey, innerVal] of Object.entries(relFields)) {
-          const fieldItem = createFieldItem(
-            typeof innerVal === "object" ? innerVal : innerKey,
-            modCategory,
-            true,
-          );
-          if (fieldItem) {
-            list.push(fieldItem);
-            allVariables.push(fieldItem);
-          }
-        }
-      }
-
-      if (list.length > 0) {
-        relatedModules[modCategory] = list;
-      }
-    }
-  }
-
-  // 3. Fallback: if payload was a flat array of field objects
-  if (primaryKeys.length === 0 && Object.keys(relatedModules).length === 0 && Array.isArray(payload)) {
-    for (const item of payload) {
-      const fieldItem = createFieldItem(item, moduleName, false);
-      if (fieldItem) {
         primaryKeys.push(fieldItem);
-        allVariables.push(fieldItem);
+        allVariables.unshift(fieldItem); // primary keys first
       }
     }
   }
@@ -211,6 +259,9 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     primaryKeys,
     relatedModules,
     allVariables,
+    multivalueModules,
+    singleModules,
+    relatedModulesMeta,
   };
 }
 
@@ -237,10 +288,12 @@ export async function fetchModuleVariables(
 
 export interface TemplateKeyItem {
   Key: string;
-  Type: string;
-  Module: string;
+  module?: string;
+  Module?: string;
+  Type?: string;
   Columns?: string[];
-  columns?: string[];
+  tax_id?: number | string | null;
+  tax?: number | string | null;
   [key: string]: unknown;
 }
 
@@ -323,9 +376,10 @@ export function extractTemplateKeys(
     } as TemplateKeyItem);
   }
 
-  // 2. Match items table / pins table blocks:
+  // 2. Match items table / pins table / subform table blocks:
   //    <div data-pins-table="true" data-key="..." data-module="..." data-type="..." data-columns="..." data-aggregate-columns="...">
-  const PINS_TABLE_REGEX = /<div\b([^>]*\bdata-pins-table=["']?true["']?[^>]*)>/gi;
+  //    or <div data-subform-table="true" data-key="..." data-module="..." data-type="subformtable" data-columns="...">
+  const PINS_TABLE_REGEX = /<div\b([^>]*\b(?:data-pins-table|data-subform-table)=["']?true["']?[^>]*)>/gi;
   let tableMatch: RegExpExecArray | null;
   while ((tableMatch = PINS_TABLE_REGEX.exec(htmlContent)) !== null) {
     const attrsStr = tableMatch[1];
@@ -333,17 +387,27 @@ export function extractTemplateKeys(
     const keyMatch = attrsStr.match(/\bdata-key=["']([^"']*)["']/i);
     const tableKey = keyMatch?.[1] || "items_table";
 
-    // Deduplicate if already extracted
-    const dedupeKey = `table:${tableKey.toLowerCase()}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-
     const typeMatch = attrsStr.match(/\bdata-type=["']([^"']*)["']/i);
     const rawType = typeMatch?.[1];
-    const tableType = !rawType || rawType === "table" ? "item_table" : rawType;
+    const isSubform =
+      rawType === "subformtable" ||
+      rawType === "subform_table" ||
+      /\bdata-subform-table=["']?true["']?/i.test(attrsStr);
+    const tableType = isSubform
+      ? "subformtable"
+      : !rawType || rawType === "table"
+      ? "item_table"
+      : rawType;
 
     const modMatch = attrsStr.match(/\bdata-module=["']([^"']*)["']/i);
-    const tableModule = modMatch?.[1] || "pins";
+    const tableModule = modMatch?.[1] || (isSubform ? (keyMatch?.[1] || "sections") : "pins");
+
+    // Deduplicate if already extracted
+    const dedupeKey = isSubform
+      ? `subform:${tableModule.toLowerCase()}`
+      : `table:${tableKey.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
 
     const colsMatch = attrsStr.match(/\bdata-columns=["']([^"']*)["']/i);
     let columnsList: string[] = [];
@@ -361,6 +425,15 @@ export function extractTemplateKeys(
       }
     }
 
+    if (isSubform) {
+      keys.push({
+        Key: "subform",
+        module: tableModule,
+        Columns: columnsList,
+      });
+      continue;
+    }
+
     if (columnsList.length === 0) {
       columnsList = ["snapshot", "location", "item_name", "variation", "quantity", "unit_price", "total_price"];
     }
@@ -372,43 +445,18 @@ export function extractTemplateKeys(
     colSet.add("total_price");
     columnsList = Array.from(colSet);
 
-    // Parse aggregate_columns (subtotal / VAT / total rows)
-    const aggColsAttrMatch = attrsStr.match(/\bdata-aggregate-columns=["']([^"']*)["']/i);
-    let aggregateColumnsList: Array<{ label: string; variable: string }> = [];
-    if (aggColsAttrMatch && aggColsAttrMatch[1]) {
-      try {
-        const decoded = aggColsAttrMatch[1].replace(/&quot;/g, '"');
-        const parsed = JSON.parse(decoded);
-        if (Array.isArray(parsed)) aggregateColumnsList = parsed;
-      } catch {
-        aggregateColumnsList = [];
-      }
-    }
-
-    const aggFormatted = aggregateColumnsList.map((agg) => {
-      const rawVar = (agg as any).variable || (agg as any).Key || (agg as any).key || "";
-      const label = (agg as any).label || (agg as any).Label || "";
-      let mod = (agg as any).Module || (agg as any).module || tableModule;
-      let field = rawVar;
-      if (rawVar.includes(".")) {
-        const dotIdx = rawVar.indexOf(".");
-        mod = rawVar.slice(0, dotIdx);
-        field = rawVar.slice(dotIdx + 1);
-      }
-      return {
-        Key: field,
-        Type: "text",
-        Module: mod,
-        label: label,
-      };
-    });
+    // Extract tax_id from data-tax-id attribute
+    const taxIdMatch = attrsStr.match(/\bdata-tax-id=["']([^"']*)['"]/i);
+    const taxId = taxIdMatch?.[1]
+      ? (isNaN(Number(taxIdMatch[1])) ? taxIdMatch[1] : Number(taxIdMatch[1]))
+      : null;
 
     keys.push({
       Key: tableKey,
       Type: tableType,
       Module: tableModule,
       Columns: columnsList,
-      aggregate_columns: aggFormatted,
+      tax_id: taxId,
     });
   }
 
@@ -524,10 +572,15 @@ export function extractTemplateKeys(
 export function serializeContentWithTableComments(html: string): string {
   if (!html) return html;
 
-  // 1. Serialize pins/items table blocks → <!-- items_table -->
+    // 1. Serialize pins/items/subform table blocks → <!-- key --> or <!-- subform -->
   let result = html.replace(
-    /<div\b[^>]*\bdata-pins-table=["']?true["']?[^>]*>(?:[\s\S]*?<\/div>|)/gi,
+    /<div\b[^>]*\b(?:data-pins-table|data-subform-table)=["']?true["']?[^>]*>(?:[\s\S]*?<\/div>|)/gi,
     (match) => {
+      const isSubformBlock = /\bdata-subform-table=["']?true["']?/i.test(match);
+      if (isSubformBlock) {
+        // Always emit <!-- subform --> for subform table blocks
+        return `<!-- subform -->`;
+      }
       const keyMatch = match.match(/\bdata-key=["']([^"']*)["']/i);
       const key = keyMatch?.[1] || "items_table";
       return `<!-- ${key} -->`;
@@ -662,13 +715,10 @@ export function hydrateTablesFromKeys(
     const type = matchedKeyItem?.Type || "item_table";
     const module = matchedKeyItem?.Module || "pins";
 
-    const aggCols = (matchedKeyItem as any)?.aggregate_columns;
-    const aggAttr =
-      Array.isArray(aggCols) && aggCols.length > 0
-        ? ` data-aggregate-columns='${JSON.stringify(aggCols)}'`
-        : "";
+    const taxId = (matchedKeyItem as any)?.tax_id ?? (matchedKeyItem as any)?.tax;
+    const taxAttr = taxId != null ? ` data-tax-id="${taxId}"` : "";
 
-    return `<div data-pins-table="true" data-key="${key}" data-type="${type}" data-module="${module}" data-columns="${cols.join(",")}" data-title="Pins List" data-include-total="true"${aggAttr}></div>`;
+    return `<div data-pins-table="true" data-key="${key}" data-type="${type}" data-module="${module}" data-columns="${cols.join(",")}" data-title="Pins List" data-include-total="true"${taxAttr}></div>`;
   };
 
   // If already contains <div data-pins-table="true", synchronize columns from keys if present
@@ -692,15 +742,15 @@ export function hydrateTablesFromKeys(
               `data-columns="${cols.join(",")}"`,
             );
           }
-          const aggCols = (matchedKeyItem as any)?.aggregate_columns;
-          if (Array.isArray(aggCols) && aggCols.length > 0) {
-            if (/\bdata-aggregate-columns=["'][^"']*["']/i.test(updated)) {
+          const itemTaxId = (matchedKeyItem as any)?.tax_id ?? (matchedKeyItem as any)?.tax;
+          if (itemTaxId != null) {
+            if (/\bdata-tax-id=["'][^"']*["']/i.test(updated)) {
               updated = updated.replace(
-                /\bdata-aggregate-columns=["'][^"']*["']/i,
-                `data-aggregate-columns='${JSON.stringify(aggCols)}'`,
+                /\bdata-tax-id=["'][^"']*["']/i,
+                `data-tax-id="${itemTaxId}"`,
               );
             } else {
-              updated = updated.replace(/>$/, ` data-aggregate-columns='${JSON.stringify(aggCols)}'>`);
+              updated = updated.replace(/>$/, ` data-tax-id="${itemTaxId}">`);
             }
           }
           return updated;
@@ -715,6 +765,27 @@ export function hydrateTablesFromKeys(
     const sigKey = g1 || g2 || g3 || "items_table";
     return replaceWithDiv(sigKey);
   });
+
+  // Replace subform table comments from keys (<!-- subform --> or <!-- key --> -> <div data-subform-table="true" ...>)
+  if (Array.isArray(keys)) {
+    const subformKeys = keys.filter(
+      (k) =>
+        k.Type === "subformtable" ||
+        (k as any).type === "subformtable" ||
+        k.Key === "subform" ||
+        (k as any).key === "subform",
+    );
+    for (const sk of subformKeys) {
+      const skKey = sk.Key || (sk as any).key || "subform";
+      const skCols = sk.Columns || (sk as any).columns || [];
+      const skMod = sk.Module || (sk as any).module || (skKey !== "subform" ? skKey : "sections");
+      const subformRegex = new RegExp(`<!--\\s*(?:subform|${skKey}|${skMod})\\s*-->`, "i");
+      result = result.replace(
+        subformRegex,
+        `<div data-subform-table="true" data-key="subform" data-type="subformtable" data-module="${skMod}" data-columns="${skCols.join(",")}" data-title="${formatFieldLabel(skMod)} Details"></div>`,
+      );
+    }
+  }
 
   // Replace legacy signature block comments -> signature preview divs
   // Pattern: <!-- signature:imageKey:encodedLabel -->
