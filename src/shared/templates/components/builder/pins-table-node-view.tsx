@@ -137,6 +137,16 @@ export function PinsTableNodeView({
 
   const activeColDefs = PIN_COLUMNS.filter((c) => columns.includes(c.id));
 
+  // Ensure table stays responsive across 100% width when few columns are selected
+  // or if all selected columns have fixed pixel widths
+  const hasFlexibleCol = activeColDefs.some((c) => !c.width);
+  const getColWidth = (col: (typeof activeColDefs)[0]) => {
+    if (activeColDefs.length <= 5 || !hasFlexibleCol) {
+      return `${(100 / Math.max(1, activeColDefs.length)).toFixed(2)}%`;
+    }
+    return col.width || "auto";
+  };
+
   const handleSaveConfig = (newConfig: {
     columns: string[];
     title: string;
@@ -211,7 +221,10 @@ export function PinsTableNodeView({
         {/* ── Main Table Card Rendered Exactly Like Screenshot ── */}
         <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <div className="overflow-x-auto">
-            <table className="pins-preview-table w-full border-collapse">
+            <table
+              className="pins-preview-table w-full border-collapse"
+              style={{ tableLayout: "fixed" }}
+            >
               {/* Dark Navy Header Row (#2b394b) */}
               <thead>
                 <tr className="bg-[#2b394b] text-white">
@@ -219,9 +232,12 @@ export function PinsTableNodeView({
                     <th
                       key={col.id}
                       className="px-4 py-3 text-xs font-bold tracking-wide text-white whitespace-nowrap"
-                      style={{ textAlign: col.align || "left", width: col.width }}
+                      style={{
+                        textAlign: col.align || "left",
+                        width: getColWidth(col),
+                      }}
                     >
-                      {col.label}
+                      <span className="truncate block">{col.label}</span>
                     </th>
                   ))}
                 </tr>
@@ -240,7 +256,10 @@ export function PinsTableNodeView({
                         <td
                           key={col.id}
                           className="px-4 py-4 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap"
-                          style={{ textAlign: col.align || "left" }}
+                          style={{
+                            textAlign: col.align || "left",
+                            width: getColWidth(col),
+                          }}
                         >
                           {col.id === "snapshot" ? (
                             <DrawingSnapshotThumbnail

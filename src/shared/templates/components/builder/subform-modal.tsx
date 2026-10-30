@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
@@ -416,13 +416,19 @@ export function SubformModal({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse" style={{ tableLayout: "fixed" }}>
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/60">
                       {selectedColumns.map((colKey) => (
-                        <th key={colKey} className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200">
-                          <div>{columnLabels[colKey] || formatFieldLabel(colKey)}</div>
-                          <div className="text-[9.5px] font-mono text-blue-600/80 dark:text-blue-400 font-normal">
+                        <th
+                          key={colKey}
+                          className="px-3 py-2 font-semibold text-slate-700 dark:text-slate-200"
+                          style={{
+                            width: `${(100 / Math.max(1, selectedColumns.length)).toFixed(2)}%`,
+                          }}
+                        >
+                          <div className="truncate">{columnLabels[colKey] || formatFieldLabel(colKey)}</div>
+                          <div className="text-[9.5px] font-mono text-blue-600/80 dark:text-blue-400 font-normal truncate">
                             &lt;{selectedModule}.{colKey}&gt;
                           </div>
                         </th>
@@ -433,8 +439,14 @@ export function SubformModal({
                     {[1, 2].map((rowIdx) => (
                       <tr key={rowIdx} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/30">
                         {selectedColumns.map((colKey) => (
-                          <td key={colKey} className="px-3 py-2 text-slate-600 dark:text-slate-300 text-xs">
-                            <span className="text-slate-400 dark:text-slate-500 italic">
+                          <td
+                            key={colKey}
+                            className="px-3 py-2 text-slate-600 dark:text-slate-300 text-xs"
+                            style={{
+                              width: `${(100 / Math.max(1, selectedColumns.length)).toFixed(2)}%`,
+                            }}
+                          >
+                            <span className="text-slate-400 dark:text-slate-500 italic truncate block">
                               Sample {formatFieldLabel(colKey)} {rowIdx}
                             </span>
                           </td>

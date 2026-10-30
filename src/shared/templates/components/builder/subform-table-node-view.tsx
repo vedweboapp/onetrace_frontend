@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
@@ -146,7 +146,10 @@ export function SubformTableNodeView({
 
           {/* Table Element with proper classes for styling and pagination protection */}
           <div className="overflow-x-auto">
-            <table className="subform-preview-table pins-preview-table w-full border-collapse">
+            <table
+              className="subform-preview-table pins-preview-table w-full border-collapse"
+              style={{ tableLayout: "fixed" }}
+            >
               {/* Table Header: Dark Navy theme matching Pins Table */}
               <thead>
                 <tr className="bg-[#2b394b] text-white">
@@ -154,9 +157,12 @@ export function SubformTableNodeView({
                     <th
                       key={col}
                       className="px-4 py-3 text-xs font-bold tracking-wide text-white whitespace-nowrap text-left border-none"
+                      style={{
+                        width: `${(100 / Math.max(1, columns.length)).toFixed(2)}%`,
+                      }}
                     >
-                      <div>{columnLabels[col] || formatFieldLabel(col)}</div>
-                      <div className="text-[9.5px] font-mono text-slate-300 font-normal opacity-85 mt-0.5">
+                      <div className="truncate">{columnLabels[col] || formatFieldLabel(col)}</div>
+                      <div className="text-[9.5px] font-mono text-slate-300 font-normal opacity-85 mt-0.5 truncate">
                         &lt;{moduleName}.{col}&gt;
                       </div>
                     </th>
@@ -175,8 +181,11 @@ export function SubformTableNodeView({
                       <td
                         key={col}
                         className="px-4 py-3.5 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap border-none"
+                        style={{
+                          width: `${(100 / Math.max(1, columns.length)).toFixed(2)}%`,
+                        }}
                       >
-                        <span className="font-medium text-slate-600 dark:text-slate-400">
+                        <span className="font-medium text-slate-600 dark:text-slate-400 truncate block">
                           Sample {formatFieldLabel(col)} #{rowIdx}
                         </span>
                       </td>
