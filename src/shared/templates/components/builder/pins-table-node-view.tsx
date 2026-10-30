@@ -108,6 +108,7 @@ export function PinsTableNodeView({
   REQUIRED_COLUMN_IDS.forEach((id) => colSet.add(id));
   const columns = Array.from(colSet);
   const includeTotal = false;
+  const taxId = node.attrs.taxId ? (isNaN(Number(node.attrs.taxId)) ? node.attrs.taxId : Number(node.attrs.taxId)) : null;
 
   // Parse aggregate columns from node attrs
   const rawAggCols = node.attrs.aggregateColumns;
@@ -141,6 +142,7 @@ export function PinsTableNodeView({
     title: string;
     includeTotal: boolean;
     aggregateColumns: AggregateColumn[];
+    taxId: number | null;
   }) => {
     const finalSet = new Set(newConfig.columns);
     REQUIRED_COLUMN_IDS.forEach((id) => finalSet.add(id));
@@ -149,6 +151,7 @@ export function PinsTableNodeView({
       title: newConfig.title,
       includeTotal: newConfig.includeTotal,
       aggregateColumns: newConfig.aggregateColumns,
+      taxId: newConfig.taxId ?? null,
     });
     setModalOpen(false);
   };
@@ -174,8 +177,13 @@ export function PinsTableNodeView({
               ({activeColDefs.length} columns)
             </span>
             {aggregateColumns.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[10px] font-semibold">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-semibold">
                 Σ {aggregateColumns.length} totals
+              </span>
+            )}
+            {taxId != null && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px] font-semibold border border-blue-200 dark:border-blue-800">
+                Tax #{taxId}
               </span>
             )}
           </div>
@@ -346,6 +354,7 @@ export function PinsTableNodeView({
         initialTitle={title}
         initialIncludeTotal={includeTotal}
         initialAggregateColumns={aggregateColumns}
+        initialTaxId={taxId}
         variables={(editor as any)?.templateVariables || []}
         onSave={handleSaveConfig}
         isEditing

@@ -3,8 +3,13 @@
 import React, { useState, useMemo, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import type { VariableItem } from "../../api/template-variables.api";
+import { fetchTaxesPage } from "@/features/taxes/api/tax.api";
+import type { Tax } from "@/features/taxes/types/tax.types";
+import { formatTaxPercentage } from "@/features/taxes/utils/tax-display.util";
 import {
   Table2,
+  Percent,
+  Loader2,
   CheckSquare,
   Square,
   RotateCcw,
@@ -175,12 +180,14 @@ interface PinsListModalProps {
   initialTitle?: string;
   initialIncludeTotal?: boolean;
   initialAggregateColumns?: AggregateColumn[];
+  initialTaxId?: number | null;
   variables?: VariableItem[];
   onSave?: (config: {
     columns: string[];
     title: string;
     includeTotal: boolean;
     aggregateColumns: AggregateColumn[];
+    taxId: number | null;
   }) => void;
   isEditing?: boolean;
 }
@@ -193,6 +200,7 @@ export function PinsListModal({
   initialTitle,
   initialIncludeTotal,
   initialAggregateColumns,
+  initialTaxId,
   variables = [],
   onSave,
   isEditing = false,
@@ -208,6 +216,9 @@ export function PinsListModal({
   const [headingText, setHeadingText] = useState("Pins List");
   const [rowCount, setRowCount] = useState<number>(2);
   const [aggregateColumns, setAggregateColumns] = useState<AggregateColumn[]>([]);
+  const [taxesList, setTaxesList] = useState<Tax[]>([]);
+  const [loadingTaxes, setLoadingTaxes] = useState(false);
+  const [selectedTaxId, setSelectedTaxId] = useState<number | null>(initialTaxId ?? null);
 
   // Track previous open state — only apply initialValues when modal OPENS (false → true),
   // NOT on every re-render. This prevents the parent creating a new array ref from resetting
@@ -235,7 +246,30 @@ export function PinsListModal({
       setAggregateColumns(initialAggregateColumns);
     } else {
       setAggregateColumns([]);
+    setSelectedTaxId(null);
     }
+    if (initialTaxId !== undefined) {
+      setSelectedTaxId(initialTaxId);
+    }
+  }, [open, initialTaxId]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoadingTaxes(true);
+    fetchTaxesPage(1, 100, { is_active: true })
+      .then((res) => {
+        if (!cancelled) setTaxesList(res.items);
+      })
+      .catch((err) => {
+        console.warn("Could not load taxes for pins modal:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTaxes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const toggleColumn = (id: string) => {
@@ -321,7 +355,7 @@ export function PinsListModal({
     const total = false;
 
     if (onSave) {
-      onSave({ columns: cols, title, includeTotal: total, aggregateColumns });
+      onSave({ columns: cols, title, includeTotal: total, aggregateColumns, taxId: selectedTaxId });
       toastSuccess("Configuration updated");
       onClose();
       return;
@@ -336,6 +370,7 @@ export function PinsListModal({
         title: title || "Pins List",
         includeTotal: total,
         aggregateColumns,
+        taxId: selectedTaxId,
       });
     } else {
       editor
@@ -348,6 +383,7 @@ export function PinsListModal({
             title: title || "Pins List",
             includeTotal: total,
             aggregateColumns,
+            taxId: selectedTaxId,
           },
         })
         .run();
@@ -512,6 +548,42 @@ export function PinsListModal({
           </div>
         </div>
 
+        {/* ── Taxes Section ── */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Percent className="size-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                Tax Configuration
+              </span>
+            </div>
+            {loadingTaxes && (
+              <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                <Loader2 className="size-3 animate-spin text-blue-500" />
+                Loading taxes...
+              </span>
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Select a tax to apply to this items table. The tax ID will be sent with the items table keys.
+          </p>
+
+          <div className="pt-0.5">
+            <select
+              value={selectedTaxId ?? ""}
+              onChange={(e) => setSelectedTaxId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full text-xs font-medium py-1.5 pl-2.5 pr-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+            >
+              <option value="">No Tax Selected / None</option>
+              {taxesList.map((tax) => (
+                <option key={tax.id} value={tax.id}>
+                  {tax.tax_name} ({formatTaxPercentage(tax)})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {/* ── Aggregate / Subtotal Columns Section (temporarily hidden) ──
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-3.5 space-y-3">

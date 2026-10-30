@@ -21,6 +21,8 @@ import { TemplateVariablePillExtension } from "./template-variable-pill-extensio
 import { ImageVariableExtension } from "./image-variable-extension";
 import { ContainerBoxExtension } from "./container-box-extension";
 import { DocumentHeaderExtension } from "./document-header-extension";
+import { ImageLayoutExtension } from "./image-layout-extension";
+import { SubformTableExtension } from "./subform-table-extension";
 import { PaginationPlus, PAGE_SIZES } from "tiptap-pagination-plus";
 import { ImageUploaderModal } from "./image-uploader-modal";
 import { PinsListModal } from "./pins-list-modal";
@@ -1247,18 +1249,22 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
       .template-doc-editor .ProseMirror h1,
       .template-doc-editor .ProseMirror h2,
       .template-doc-editor .ProseMirror h3,
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) td,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         white-space: pre-wrap;
       }
 
-      /* Protect pins list preview table from vertical wrapping */
+      /* Protect preview tables from vertical wrapping */
       .template-doc-editor .ProseMirror .pins-preview-table,
-      .template-doc-editor .ProseMirror .pins-preview-table * {
+      .template-doc-editor .ProseMirror .pins-preview-table *,
+      .template-doc-editor .ProseMirror .subform-preview-table,
+      .template-doc-editor .ProseMirror .subform-preview-table * {
         word-break: normal !important;
       }
       .template-doc-editor .ProseMirror .pins-preview-table th,
-      .template-doc-editor .ProseMirror .pins-preview-table td {
+      .template-doc-editor .ProseMirror .pins-preview-table td,
+      .template-doc-editor .ProseMirror .subform-preview-table th,
+      .template-doc-editor .ProseMirror .subform-preview-table td {
         white-space: nowrap !important;
       }
 
@@ -1352,7 +1358,7 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         outline: 2px solid #3b82f6;
         outline-offset: 2px;
       }
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) {
         border-collapse: collapse;
         width: 100%;
         margin: 0.75rem 0;
@@ -1366,8 +1372,8 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
       .template-doc-editor .ProseMirror th {
         overflow: visible !important;
       }
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) td,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         border: 1px solid #cbd5e1;
         padding: 6px 10px;
         min-width: 60px;
@@ -1375,18 +1381,18 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         position: relative;
         box-sizing: border-box;
       }
-      .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         background: #f1f5f9;
         font-weight: 600;
         font-size: 0.8em;
         text-align: left;
         color: #475569;
       }
-      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) td,
-      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) td,
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         border-color: #334155;
       }
-      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table) th {
+      .dark .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         background: #1e293b;
         color: #94a3b8;
       }
@@ -1475,6 +1481,44 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
       .dark .template-doc-editor .ProseMirror tr:focus-within > td.borderless-cell:not(:last-child),
       .dark .template-doc-editor .ProseMirror tr:has(td.borderless-cell):focus-within > td:not(:last-child) {
         border-right: 1px dashed #475569 !important;
+      }
+
+      /* ── Subform Table Node View & Preview Table Styles ── */
+      .template-doc-editor .subform-table-node-view {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .template-doc-editor .ProseMirror table.subform-preview-table,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table {
+        display: table !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 0 !important;
+        border: none !important;
+        overflow: visible !important;
+      }
+      .template-doc-editor .ProseMirror table.subform-preview-table thead,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table thead {
+        display: table-header-group !important;
+      }
+      .template-doc-editor .ProseMirror table.subform-preview-table tbody,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table tbody {
+        display: table-row-group !important;
+        overflow: visible !important;
+      }
+      .template-doc-editor .ProseMirror table.subform-preview-table tr,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table tr {
+        display: table-row !important;
+      }
+      .template-doc-editor .ProseMirror table.subform-preview-table th,
+      .template-doc-editor .ProseMirror table.subform-preview-table td,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table th,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table td {
+        display: table-cell !important;
+        border: none !important;
+        padding: 10px 14px !important;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
       }
       .template-doc-editor .ProseMirror table .selectedCell::after {
         background: rgba(59,130,246,0.12);
@@ -2011,35 +2055,51 @@ export function preserveSpacesInHtml(html: string): string {
     return `>${res}<`;
   });
 
-  // Convert colwidth attributes on <td> and <th> tags to inline CSS widths
+  // Convert colwidth attributes on <td> and <th> tags to inline CSS widths and inject table cell styles
   out = out.replace(/<(td|th)\b([^>]*)>/gi, (match, tag, attrs) => {
+    const isHeader = tag.toLowerCase() === "th";
+    const isBorderless = attrs.includes("borderless");
+
+    const defaultCellStyles = isBorderless
+      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle;"
+      : isHeader
+      ? "border: 1px solid #cbd5e1; padding: 6px 10px; background-color: #f1f5f9; font-weight: 600; text-align: left; color: #475569; vertical-align: top;"
+      : "border: 1px solid #cbd5e1; padding: 6px 10px; vertical-align: top;";
+
     const colMatch = attrs.match(/\bcolwidth="([^"]+)"/i);
-    if (!colMatch) return match;
-    const totalWidth = colMatch[1]
-      .split(",")
-      .reduce((sum: number, v: string) => sum + (parseInt(v.trim(), 10) || 0), 0);
-    if (totalWidth <= 0) return match;
+    let totalWidth = 0;
+    if (colMatch) {
+      totalWidth = colMatch[1]
+        .split(",")
+        .reduce((sum: number, v: string) => sum + (parseInt(v.trim(), 10) || 0), 0);
+    }
 
     if (attrs.includes("style=")) {
       return match.replace(/style="([^"]*)"/i, (_sMatch: string, styleVal: string) => {
         let updated = styleVal;
-        if (!/width\s*:/i.test(updated)) {
+        if (totalWidth > 0 && !/width\s*:/i.test(updated)) {
           updated = `width: ${totalWidth}px; ${updated}`.trim();
+        }
+        if (!/border\s*:/i.test(updated)) {
+          updated = `${defaultCellStyles} ${updated}`.trim();
         }
         return `style="${updated}"`;
       });
     } else {
-      return `<${tag}${attrs} style="width: ${totalWidth}px;">`;
+      const widthStyle = totalWidth > 0 ? ` width: ${totalWidth}px;` : "";
+      return `<${tag}${attrs} style="${defaultCellStyles}${widthStyle}">`;
     }
   });
 
-  // Ensure all tables (including borderless side-by-side header tables) retain width: 100% inline style
-  // and table-layout: fixed when colwidth or borderless is present
+  // Ensure all tables retain inline table styles (border-collapse, width, borders)
   out = out.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
-    const isBorderlessOrColWidth =
+    const isBorderless =
       attrs.includes("borderless") ||
-      attrs.includes("colwidth") ||
-      out.includes("colwidth=");
+      attrs.includes("data-borderless=\"true\"");
+
+    const defaultTableStyles = isBorderless
+      ? "width: 100%; border-collapse: collapse; border: none; table-layout: fixed;"
+      : "width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #cbd5e1;";
 
     if (attrs.includes("style=")) {
       return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
@@ -2047,16 +2107,20 @@ export function preserveSpacesInHtml(html: string): string {
         if (!/width\s*:/i.test(updated)) {
           updated = `width: 100%; ${updated}`.trim();
         }
-        if (isBorderlessOrColWidth && !/table-layout\s*:/i.test(updated)) {
+        if (!/border-collapse\s*:/i.test(updated)) {
+          updated = `border-collapse: collapse; ${updated}`.trim();
+        }
+        if (!/table-layout\s*:/i.test(updated)) {
           updated = `table-layout: fixed; ${updated}`.trim();
+        }
+        if (!/border\s*:/i.test(updated)) {
+          const borderPart = isBorderless ? "border: none;" : "border: 1px solid #cbd5e1;";
+          updated = `${borderPart} ${updated}`.trim();
         }
         return `style="${updated}"`;
       });
     } else {
-      const layout = isBorderlessOrColWidth
-        ? "width: 100%; table-layout: fixed;"
-        : "width: 100%;";
-      return `<table${attrs} style="${layout}">`;
+      return `<table${attrs} style="${defaultTableStyles}">`;
     }
   });
 
@@ -2088,12 +2152,27 @@ const CustomTable = Table.extend({
     if (!existingStyle.includes("width:") && !existingStyle.includes("width :")) {
       updatedStyle = existingStyle ? `width: 100%; ${existingStyle}` : "width: 100%;";
     }
+    if (!updatedStyle.includes("border-collapse:") && !updatedStyle.includes("border-collapse :")) {
+      updatedStyle = `${updatedStyle} border-collapse: collapse;`.trim();
+    }
     const isBorderless =
       HTMLAttributes.borderless ||
       (HTMLAttributes.class as string)?.includes("borderless-table") ||
       HTMLAttributes["data-borderless"] === "true";
-    if (isBorderless && !updatedStyle.includes("table-layout:") && !updatedStyle.includes("table-layout :")) {
-      updatedStyle = `${updatedStyle} table-layout: fixed;`.trim();
+    if (isBorderless) {
+      if (!updatedStyle.includes("table-layout:") && !updatedStyle.includes("table-layout :")) {
+        updatedStyle = `${updatedStyle} table-layout: fixed;`.trim();
+      }
+      if (!updatedStyle.includes("border:") && !updatedStyle.includes("border :")) {
+        updatedStyle = `${updatedStyle} border: none;`.trim();
+      }
+    } else {
+      if (!updatedStyle.includes("table-layout:") && !updatedStyle.includes("table-layout :")) {
+        updatedStyle = `${updatedStyle} table-layout: fixed;`.trim();
+      }
+      if (!updatedStyle.includes("border:") && !updatedStyle.includes("border :")) {
+        updatedStyle = `${updatedStyle} border: 1px solid #cbd5e1;`.trim();
+      }
     }
     return [
       "table",
@@ -2137,9 +2216,21 @@ const CustomTableCell = TableCell.extend({
         style = style ? `width: ${totalWidth}px; ${style}` : `width: ${totalWidth}px;`;
       }
     }
+
+    const isBorderless =
+      HTMLAttributes.borderless ||
+      (HTMLAttributes.class as string)?.includes("borderless-cell") ||
+      HTMLAttributes["data-borderless"] === "true";
+
+    const baseStyle = isBorderless
+      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle;"
+      : "border: 1px solid #cbd5e1; padding: 6px 10px; vertical-align: top;";
+
+    const finalStyle = style ? `${baseStyle} ${style}`.trim() : baseStyle;
+
     return [
       "td",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, style ? { style } : {}),
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: finalStyle }),
       0,
     ];
   },
@@ -2159,9 +2250,21 @@ const CustomTableHeader = TableHeader.extend({
         style = style ? `width: ${totalWidth}px; ${style}` : `width: ${totalWidth}px;`;
       }
     }
+
+    const isBorderless =
+      HTMLAttributes.borderless ||
+      (HTMLAttributes.class as string)?.includes("borderless-cell") ||
+      HTMLAttributes["data-borderless"] === "true";
+
+    const baseStyle = isBorderless
+      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle;"
+      : "border: 1px solid #cbd5e1; padding: 6px 10px; background-color: #f1f5f9; font-weight: 600; text-align: left; color: #475569; vertical-align: top;";
+
+    const finalStyle = style ? `${baseStyle} ${style}`.trim() : baseStyle;
+
     return [
       "th",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, style ? { style } : {}),
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: finalStyle }),
       0,
     ];
   },
@@ -2239,6 +2342,8 @@ export default function TemplateDocEditor({
       ContainerBoxExtension,
       DocumentHeaderExtension,
       ImageVariableExtension,
+      ImageLayoutExtension,
+      SubformTableExtension,
       TemplateVariablePillExtension,
       Placeholder.configure({ placeholder }),
       PaginationPlus.configure({
@@ -2344,6 +2449,41 @@ export default function TemplateDocEditor({
           flushChange(editor);
           return true;
         }
+
+        const imageLayoutData = event.dataTransfer?.getData("application/x-image-layout");
+        if (imageLayoutData) {
+          event.preventDefault();
+          const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (coordinates) {
+            try {
+              const attrs = JSON.parse(imageLayoutData);
+              const node = view.state.schema.nodes.imageLayout?.create(attrs);
+              if (node) {
+                const tr = view.state.tr.insert(coordinates.pos, node);
+                view.dispatch(tr);
+                return true;
+              }
+            } catch { /* ignore */ }
+          }
+        }
+
+        const subformData = event.dataTransfer?.getData("application/x-subform-table");
+        if (subformData) {
+          event.preventDefault();
+          const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (coordinates) {
+            try {
+              const attrs = JSON.parse(subformData);
+              const node = view.state.schema.nodes.subformTable?.create(attrs);
+              if (node) {
+                const tr = view.state.tr.insert(coordinates.pos, node);
+                view.dispatch(tr);
+                return true;
+              }
+            } catch { /* ignore */ }
+          }
+        }
+
         return false;
       },
       attributes: {

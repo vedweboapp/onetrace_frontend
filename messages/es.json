@@ -272,7 +272,7 @@
         "user": "Añadir nuevo usuario"
       }
     },
-      "common": {
+    "common": {
       "back": "Atrás",
       "breadcrumbNav": "Migas de pan",
       "customizeTabs": {
@@ -625,6 +625,10 @@
           "title": {
             "title": "Títulos",
             "description": "Organiza los títulos del proyecto."
+          },
+          "taxes": {
+            "title": "Impuestos",
+            "description": "Configurar tasas de impuestos y porcentajes aplicados a transacciones."
           }
         }
       }
@@ -5736,6 +5740,55 @@
     "settings": {
       "title": "Ajustes",
       "body": "Aquí irán los ajustes de cuenta y espacio de trabajo."
+    },
+    "taxes": {
+      "metaTitle": "Impuestos",
+      "title": "Impuestos",
+      "subtitle": "Administre las tasas de impuestos y porcentajes aplicados a las transacciones.",
+      "add": "Agregar Impuesto",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "filterState": "Estado activo",
+      "table": {
+        "name": "Nombre del Impuesto",
+        "percentage": "Porcentaje",
+        "status": "Estado",
+        "created": "Creado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "emptyTitle": "No hay impuestos aún",
+      "emptyDescription": "Cree su primer impuesto (ej. IVA, GST) para artículos y facturas.",
+      "loadError": "No se pudieron cargar los impuestos. Intente de nuevo.",
+      "modal": {
+        "createTitle": "Nuevo Impuesto",
+        "editTitle": "Editar Impuesto",
+        "taxName": "Nombre del Impuesto",
+        "taxNamePlaceholder": "ej. IVA",
+        "taxPercentage": "Porcentaje de Impuesto",
+        "taxPercentagePlaceholder": "ej. 18.00",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "deleteConfirmTitle": "¿Eliminar este impuesto?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer.",
+      "confirmDelete": "Eliminar",
+      "pageLabel": "Mostrando {start}-{end} de {total} impuestos",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "saved": "Impuesto actualizado correctamente",
+      "created": "Impuesto creado correctamente",
+      "deleted": "Impuesto eliminado correctamente",
+      "activatedToast": "Impuesto activado",
+      "deactivatedToast": "Impuesto desactivado",
+      "toggleActiveError": "No se pudo actualizar el estado del impuesto. Intente de nuevo.",
+      "validationName": "Ingrese el nombre del impuesto.",
+      "validationPercentage": "Ingrese un porcentaje válido entre 0 y 100."
     }
   },
   "validation": {
