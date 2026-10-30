@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { QualityAssuranceRecord } from "./quality-assurance.types";
 
@@ -249,6 +250,7 @@ export type Job = {
   job_category?: string | null;
   job_meta?: JobMetaPayload | JobMetaLegacyPayload | null;
   job_quality_assurance?: QualityAssuranceRecord | null;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type JobPagination = {

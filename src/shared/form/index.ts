@@ -6,6 +6,13 @@ export {
   reportLocalFormSubmitApiError,
 } from "./report-form-api-error.util";
 export {
+  DUPLICATE_ENTRY_ERROR_CODE,
+  parseDuplicateEntryConflict,
+  type DuplicateEntryConflict,
+} from "./duplicate-entry.util";
+export { DuplicateEntryFieldError } from "./components/duplicate-entry-field-error";
+export { useDuplicateEntryConflict } from "./hooks/use-duplicate-entry-conflict";
+export {
   capitalizeFirstLetter,
   rhfSanitizeOnChange,
   sanitizeAbbreviationInput,

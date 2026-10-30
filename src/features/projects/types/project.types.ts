@@ -1,3 +1,5 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
+
 export type ProjectUserRef = {
   id: number;
   email: string;
@@ -102,6 +104,7 @@ export type Project = {
   is_active: boolean;
   organization: number;
   deleted_by: unknown;
+  attachments?: EntityAttachment[] | null;
 };
 export type Location = {
   [key: string]: any

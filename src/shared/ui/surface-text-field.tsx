@@ -25,6 +25,8 @@ export type SurfaceTextFieldProps<TFieldValues extends FieldValues> = {
   required?: boolean;
   disabled?: boolean;
   error?: string | null;
+  /** When set, replaces the default `FieldErrorText` (e.g. duplicate-entry link). */
+  errorNode?: ReactNode;
   autoComplete?: string;
   placeholder?: string;
   className?: string;
@@ -46,13 +48,15 @@ export function SurfaceTextField<TFieldValues extends FieldValues>({
   required,
   disabled,
   error,
+  errorNode,
   autoComplete,
   placeholder,
   className,
   inputClassName,
   maxLength,
 }: SurfaceTextFieldProps<TFieldValues>) {
-  const errId = error ? `${id}-error` : undefined;
+  const hasError = Boolean(error) || errorNode != null;
+  const errId = hasError ? `${id}-error` : undefined;
   const inputType = type ?? (kind === "email" ? "email" : "text");
   const resolvedMaxLength = getMaxLengthForFieldKind(kind, maxLength);
   const registration = register(name, {
@@ -68,12 +72,12 @@ export function SurfaceTextField<TFieldValues extends FieldValues>({
         disabled={disabled}
         placeholder={placeholder}
         maxLength={resolvedMaxLength}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={hasError ? true : undefined}
         aria-describedby={errId}
-        className={cn(surfaceInputClassName, error && "border-red-500 dark:border-red-500", inputClassName)}
+        className={cn(surfaceInputClassName, hasError && "border-red-500 dark:border-red-500", inputClassName)}
         {...registration}
       />
-      <FieldErrorText id={errId}>{error}</FieldErrorText>
+      {errorNode ?? <FieldErrorText id={errId}>{error}</FieldErrorText>}
     </FieldGroup>
   );
 }

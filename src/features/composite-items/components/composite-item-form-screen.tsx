@@ -42,6 +42,13 @@ import type {
 import type { Item } from "@/features/items/types/item.types";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import {
+  DuplicateEntryFieldError,
+  getApiFieldErrorMap,
+  useDuplicateEntryConflict,
+} from "@/shared/form";
+import { markApiErrorToasted } from "@/core/errors/api-error-toast.util";
+import type { CompositeItemCreatePayload } from "@/features/composite-items/types/composite-item.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
@@ -257,6 +264,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [skuTouched, setSkuTouched] = React.useState(false);
+  const [serverErrors, setServerErrors] = React.useState<{ name?: string; sku?: string }>({});
   const [componentsTouched, setComponentsTouched] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
@@ -290,8 +298,12 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     setInstallationTypesError(null);
   }, []);
 
-  const nameInvalid = nameTouched && name.trim().length === 0;
-  const skuInvalid = skuTouched && sku.trim().length === 0;
+  const nameInvalid = (nameTouched && name.trim().length === 0) || Boolean(serverErrors.name);
+  const skuInvalid = (skuTouched && sku.trim().length === 0) || Boolean(serverErrors.sku);
+  const nameError =
+    nameTouched && name.trim().length === 0 ? tModal("nameError") : serverErrors.name;
+  const skuError =
+    skuTouched && sku.trim().length === 0 ? tModal("skuError") : serverErrors.sku;
   const hasAtLeastOneComponentItem = rows.some((r) => r.child_item.trim().length > 0);
   const componentsInvalid = componentsTouched && !hasAtLeastOneComponentItem;
   const itemSelectOptions = React.useMemo<CheckmarkSelectOption[]>(
@@ -812,6 +824,10 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     return out;
   }
 
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => `${routes.dashboard.compositeItems}/${existingId}`,
+  });
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setNameTouched(true);
@@ -846,6 +862,7 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
     const attachmentRefs = buildAttachmentRefs(attachmentDrafts);
 
     setSubmitting(true);
+    setServerErrors({});
     try {
       let saved: any;
       if (isEdit && itemId) {
@@ -927,27 +944,26 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
 
         saved = await updateCompositeItem(itemId, payload, { attachmentRefs });
       } else {
-        saved = await createCompositeItem(
-          {
-            name: name.trim(),
-            sku: sku.trim(),
-            quantity: qtyN,
-            cost_price: costN,
-            selling_price: sellN,
-            components: comps,
-            ...installationTypePayload,
-            ...unitTypePayload,
-            ...installationCostFields,
-            ...(installationHoursValue != null ? { installation_hours: installationHoursValue } : {}),
-            ...dimensionsFields,
-            ...(hasDimensions ? { dimensions_unit: dimensionsUnit } : {}),
-            ...weightFields,
-          },
-          { attachmentRefs },
-        );
+        const createBody: CompositeItemCreatePayload = {
+          name: name.trim(),
+          sku: sku.trim(),
+          quantity: qtyN,
+          cost_price: costN,
+          selling_price: sellN,
+          components: comps,
+          ...installationTypePayload,
+          ...unitTypePayload,
+          ...installationCostFields,
+          ...(installationHoursValue != null ? { installation_hours: installationHoursValue } : {}),
+          ...dimensionsFields,
+          ...(hasDimensions ? { dimensions_unit: dimensionsUnit } : {}),
+          ...weightFields,
+        };
+        saved = await createCompositeItem(createBody, { attachmentRefs });
       }
 
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
+      duplicate.clear();
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(
         hrefAfterEntityCreate({
@@ -958,7 +974,14 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
         }),
       );
     } catch (error) {
-      toastApiError(error, t("loadError"));
+      if (!isEdit) duplicate.capture(error);
+      const fieldErrors = getApiFieldErrorMap(error);
+      if (fieldErrors.name || fieldErrors.sku) {
+        setServerErrors({ name: fieldErrors.name, sku: fieldErrors.sku });
+        markApiErrorToasted(error);
+      } else {
+        toastApiError(error, t("loadError"));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1041,12 +1064,52 @@ export function CompositeItemFormScreen({ mode, itemId }: Props) {
           <form id="composite-item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
             <FormFieldRow cols="2" from="md" className="gap-4">
               <FieldGroup label={tModal("name")} htmlFor={nameId} required>
-                <input id={nameId} type="text" autoComplete="off" value={name} onChange={(e) => setName(sanitizeTitleInput(e.target.value))} onBlur={() => setNameTouched(true)} disabled={submitting} placeholder={tModal("namePlaceholder")} className={surfaceInputClassName} />
-                {nameInvalid ? <FieldErrorText>{tModal("nameError")}</FieldErrorText> : null}
+                <input
+                  id={nameId}
+                  type="text"
+                  autoComplete="off"
+                  value={name}
+                  onChange={(e) => {
+                    setName(sanitizeTitleInput(e.target.value));
+                    if (serverErrors.name) setServerErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  onBlur={() => setNameTouched(true)}
+                  disabled={submitting}
+                  placeholder={tModal("namePlaceholder")}
+                  className={cn(surfaceInputClassName, nameInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                />
+                {nameError ? (
+                  <DuplicateEntryFieldError
+                    message={nameError}
+                    fieldKey="name"
+                    conflict={duplicate.conflict}
+                    existingHref={duplicate.existingHref}
+                  />
+                ) : null}
               </FieldGroup>
               <FieldGroup label={tModal("sku")} htmlFor={skuId} required>
-                <input id={skuId} type="text" autoComplete="off" value={sku} onChange={(e) => setSku(e.target.value)} onBlur={() => setSkuTouched(true)} disabled={submitting} placeholder={tModal("skuPlaceholder")} className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} />
-                {skuInvalid ? <FieldErrorText>{tModal("skuError")}</FieldErrorText> : null}
+                <input
+                  id={skuId}
+                  type="text"
+                  autoComplete="off"
+                  value={sku}
+                  onChange={(e) => {
+                    setSku(e.target.value);
+                    if (serverErrors.sku) setServerErrors((prev) => ({ ...prev, sku: undefined }));
+                  }}
+                  onBlur={() => setSkuTouched(true)}
+                  disabled={submitting}
+                  placeholder={tModal("skuPlaceholder")}
+                  className={cn(surfaceInputClassName, skuInvalid && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
+                />
+                {skuError ? (
+                  <DuplicateEntryFieldError
+                    message={skuError}
+                    fieldKey="sku"
+                    conflict={duplicate.conflict}
+                    existingHref={duplicate.existingHref}
+                  />
+                ) : null}
               </FieldGroup>
             </FormFieldRow>
             <FormFieldRow cols="2" from="md" className="gap-4">

@@ -304,6 +304,24 @@
         "confirm": "Confirm",
         "retry": "Retry"
       },
+      "duplicateEntry": {
+        "viewExisting": "View"
+      },
+      "attachmentsTab": {
+        "title": "Attachments",
+        "subtitle": "Upload and manage files for this record.",
+        "addFiles": "Add files",
+        "uploadedToast": "Files uploaded",
+        "uploadError": "Could not upload files.",
+        "deletedToast": "Attachment removed",
+        "deleteError": "Could not remove attachment.",
+        "emptyTitle": "No attachments yet",
+        "emptyDescription": "Upload one or more files to attach them to this record.",
+        "download": "Download",
+        "downloadAria": "Download {name}",
+        "remove": "Remove",
+        "removeAria": "Remove {name}"
+      },
       "map": {
         "loading": "Finding location…",
         "noAddress": "Add address fields to see this location on the map.",
@@ -387,6 +405,19 @@
         "skipped": "Skipped",
         "failed": "Failed",
         "notImported": "Not imported"
+      },
+      "skippedDownload": {
+        "title": "{count, plural, one {# skipped row} other {# skipped rows}} available to download",
+        "hint": "Download the skipped rows to review and fix them before re-importing.",
+        "formatLabel": "Format",
+        "formatCsv": "CSV (.csv)",
+        "formatXlsx": "Excel (.xlsx)",
+        "formatZip": "ZIP (.zip)",
+        "formatXls": "Excel (.xls)",
+        "download": "Download skipped",
+        "downloading": "Downloading…",
+        "successToast": "Skipped data downloaded.",
+        "errorToast": "Could not download skipped data."
       },
       "errors": {
         "tooLarge": "File exceeds the 10 MB limit.",
@@ -2551,7 +2582,8 @@
           "details": "Overview",
           "contacts": "Contacts",
           "sites": "Sites",
-          "projects": "Projects"
+          "projects": "Projects",
+          "attachments": "Attachments"
         },
         "contactsEmptyTitle": "No contacts for this client",
         "contactsEmptyDescription": "Contacts linked to this client will appear here.",
@@ -2715,7 +2747,8 @@
         "tabs": {
           "details": "Details",
           "contacts": "Contacts",
-          "items": "Items"
+          "items": "Items",
+          "attachments": "Attachments"
         },
         "contactsEmptyTitle": "No contacts for this vendor",
         "contactsEmptyDescription": "Contacts linked to this vendor will appear here.",
@@ -4676,7 +4709,8 @@
           "materials": "Materials",
           "dispatch": "Dispatch",
           "returns": "Returns",
-          "forms": "Forms"
+          "forms": "Forms",
+          "attachments": "Attachments"
         },
         "schedulingTitle": "Scheduling",
         "schedulingEmpty": "This job is not scheduled yet.",
@@ -5047,6 +5081,7 @@
           "jobs": "Jobs",
           "location": "Locations",
           "quotations": "Quotes",
+          "attachments": "Attachments",
           "docs": "Docs",
           "approvals": "Approvals",
           "pins": "Pins"
