@@ -308,6 +308,16 @@ export function PinsListModal({
     return PIN_COLUMNS.filter((c) => selectedColIds.has(c.id));
   }, [selectedColIds]);
 
+  // Ensure table stays responsive across 100% width when few columns are selected
+  // or if all selected columns have fixed pixel widths
+  const hasFlexibleCol = activeColumns.some((c) => !c.width);
+  const getColWidth = (col: (typeof activeColumns)[0]) => {
+    if (activeColumns.length <= 5 || !hasFlexibleCol) {
+      return `${(100 / Math.max(1, activeColumns.length)).toFixed(2)}%`;
+    }
+    return col.width || "auto";
+  };
+
   // ── Aggregate variable options from API variables (or fallback) ──
   const aggregateVariableOptions = useMemo(() => {
     if (variables && variables.length > 0) {
@@ -716,16 +726,22 @@ export function PinsListModal({
                   </p>
                 )}
 
-                <table className="w-full border-collapse text-xs rounded-md overflow-hidden">
+                <table
+                  className="w-full border-collapse text-xs rounded-md overflow-hidden"
+                  style={{ tableLayout: "fixed" }}
+                >
                   <thead>
                     <tr className="bg-[#2b394b] text-white">
                       {activeColumns.map((col) => (
                         <th
                           key={col.id}
                           className="px-3 py-2.5 text-xs font-bold text-white tracking-wide whitespace-nowrap"
-                          style={{ textAlign: col.align || "left", width: col.width }}
+                          style={{
+                            textAlign: col.align || "left",
+                            width: getColWidth(col),
+                          }}
                         >
-                          {col.label}
+                          <span className="truncate block">{col.label}</span>
                         </th>
                       ))}
                     </tr>
@@ -748,7 +764,10 @@ export function PinsListModal({
                             <td
                               key={col.id}
                               className="px-3 py-3 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap"
-                              style={{ textAlign: col.align || "left" }}
+                              style={{
+                                textAlign: col.align || "left",
+                                width: getColWidth(col),
+                              }}
                             >
                               {col.id === "snapshot" ? (
                                 <div className="w-28 h-16 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 relative flex items-center justify-center shrink-0">

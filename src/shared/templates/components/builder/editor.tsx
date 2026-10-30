@@ -1024,9 +1024,31 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
           editor.getAttributes("table").borderless
         );
 
+        // Determine the actual visual top/left of the table.
+        // PaginationPlus injects display: contents on tables, causing table.getBoundingClientRect()
+        // to return top: 0, left: 0, height: 0, width: 0.
+        // We anchor to the table's first row or cell to get the true on-screen table position.
+        const firstRow = table.querySelector("tr");
+        const currentRow = node?.closest("tr");
+        const firstCell = table.querySelector("th, td");
+
+        let anchor = firstRow || firstCell || node?.closest("tr, th, td");
+        if (firstRow && firstRow.getBoundingClientRect().bottom <= 0 && currentRow) {
+          anchor = currentRow;
+        }
+
+        let visualTop = tableRect.top;
+        let visualLeft = tableRect.left;
+
+        if (anchor) {
+          const anchorRect = anchor.getBoundingClientRect();
+          visualTop = anchorRect.top;
+          visualLeft = anchorRect.left;
+        }
+
         setCoords({
-          top: Math.max(8, tableRect.top - containerRect.top - 28),
-          left: Math.max(8, tableRect.left - containerRect.left),
+          top: Math.max(8, visualTop - containerRect.top - 28),
+          left: Math.max(8, visualLeft - containerRect.left),
           isColumns,
         });
       } catch {
@@ -1035,12 +1057,22 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
       }
     };
 
+    const scrollContainer = dom.closest(".overflow-y-auto");
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", update, { passive: true });
+    }
+    window.addEventListener("resize", update, { passive: true });
+
     editor.on("selectionUpdate", update);
     editor.on("transaction", update);
     editor.on("focus", update);
 
     return () => {
       dom.removeEventListener("mousedown", handleEditorMouseDown);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", update);
+      }
+      window.removeEventListener("resize", update);
       editor.off("selectionUpdate", update);
       editor.off("transaction", update);
       editor.off("focus", update);
@@ -1489,9 +1521,12 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         page-break-inside: avoid !important;
       }
       .template-doc-editor .ProseMirror table.subform-preview-table,
-      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table {
+      .template-doc-editor .ProseMirror.rm-with-pagination table.subform-preview-table,
+      .template-doc-editor .ProseMirror table.pins-preview-table,
+      .template-doc-editor .ProseMirror.rm-with-pagination table.pins-preview-table {
         display: table !important;
         width: 100% !important;
+        table-layout: fixed !important;
         border-collapse: collapse !important;
         margin: 0 !important;
         border: none !important;
