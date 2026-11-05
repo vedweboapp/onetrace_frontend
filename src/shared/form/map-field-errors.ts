@@ -7,7 +7,9 @@ export function mapApiErrorsToFieldStrings(errors: unknown): Record<string, stri
   if (!errors || typeof errors !== "object" || Array.isArray(errors)) return out;
 
   for (const [key, raw] of Object.entries(errors as Record<string, unknown>)) {
-    if (key === "non_field_errors" || key === "detail" || key === "__all__") continue;
+    if (key === "non_field_errors" || key === "detail" || key === "__all__" || key === "existing_data") {
+      continue;
+    }
     const msg = firstStringInTree(raw);
     if (msg) out[key] = msg;
   }
