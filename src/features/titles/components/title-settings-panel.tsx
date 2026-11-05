@@ -4,10 +4,13 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
-import { createTitle, deleteTitle, fetchTitlesPage, updateTitle } from "@/features/titles/api/title.api";
+import { createTitle, deleteTitle, fetchTitle, fetchTitlesPage, updateTitle } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
 import { formatTitleLabel } from "@/features/titles/utils/title-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -86,6 +89,10 @@ export function TitleSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<Title | null>(null);
+  useOpenSettingsRecord(fetchTitle, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsTitle, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Title | null>(null);
@@ -137,6 +144,7 @@ export function TitleSettingsPanel() {
     setEditing(row);
     setTitleName(formatTitleLabel(row));
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -145,6 +153,7 @@ export function TitleSettingsPanel() {
     setEditing(null);
     setTitleName("");
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -165,6 +174,7 @@ export function TitleSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { title } = parsed.data;
     setSaving(true);
     try {
@@ -179,6 +189,7 @@ export function TitleSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(error, (fieldErrors) => {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));
       });
@@ -447,7 +458,13 @@ export function TitleSettingsPanel() {
             autoComplete="off"
           />
           {errors.title ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p>
+            <DuplicateEntryFieldError
+              message={errors.title}
+              fieldKey="title"
+              conflict={duplicate.conflict}
+              existingHref={duplicate.existingHref}
+              linkOnDuplicate
+            />
           ) : null}
         </FieldGroup>
       </AppModal>

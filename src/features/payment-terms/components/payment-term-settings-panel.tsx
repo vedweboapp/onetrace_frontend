@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   createPaymentTerm,
   deletePaymentTerm,
+  fetchPaymentTerm,
   fetchPaymentTermsPage,
   updatePaymentTerm,
 } from "@/features/payment-terms/api/payment-term.api";
@@ -15,6 +16,9 @@ import {
   formatPaymentTermLabel,
 } from "@/features/payment-terms/utils/payment-term-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -116,6 +120,10 @@ export function PaymentTermSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<PaymentTerm | null>(null);
+  useOpenSettingsRecord(fetchPaymentTerm, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsPaymentTerms, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<PaymentTerm | null>(null);
@@ -183,6 +191,7 @@ export function PaymentTermSettingsPanel() {
     setTermType(row.type?.trim() || "standard");
     setIsDefault(Boolean(row.is_default));
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -196,6 +205,7 @@ export function PaymentTermSettingsPanel() {
     setTermType("standard");
     setIsDefault(false);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -233,6 +243,7 @@ export function PaymentTermSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const payload = {
       payment_term_label: parsed.data.payment_term_label,
       payment_term_days: Number.parseInt(parsed.data.payment_term_days, 10),
@@ -254,6 +265,7 @@ export function PaymentTermSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => {
@@ -581,7 +593,13 @@ export function PaymentTermSettingsPanel() {
               disabled={saving}
             />
             {errors.payment_term_label ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.payment_term_label}</p>
+              <DuplicateEntryFieldError
+                message={errors.payment_term_label}
+                fieldKey="payment_term_label"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup label={t("modal.days")} htmlFor="payment-term-days" required>

@@ -62,6 +62,12 @@ export async function fetchTagsPage(
   });
 }
 
+export async function fetchTag(id: number): Promise<Tag> {
+  const { data } = await api.get<ApiEnvelope<Tag>>(TAG_PATHS.detail(id));
+  assertApiSuccess(data);
+  return data.data;
+}
+
 export async function createTag(body: TagCreatePayload): Promise<Tag> {
   const { data } = await api.post<ApiEnvelope<Tag>>(TAG_PATHS.list, toTagWritePayload(body));
   assertApiSuccess(data);

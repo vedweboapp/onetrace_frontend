@@ -18,6 +18,7 @@ import {
   updateProject,
   updateProjectAttachments,
 } from "@/features/projects/api/project.api";
+import { PROJECT_PATHS } from "@/features/projects/api/project.paths";
 import {
   DEFAULT_PROJECT_JOBS_SOURCE,
   filterProjectJobsHierarchy,
@@ -32,6 +33,7 @@ import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
 import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -65,6 +67,7 @@ type Props = {
 
 export function ProjectDetailScreen({ projectId }: Props) {
   const t = useTranslations("Dashboard.projects");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
@@ -203,9 +206,10 @@ export function ProjectDetailScreen({ projectId }: Props) {
       tabs.push({ id: "jobs", label: t("detail.tabs.jobs") });
     }
     tabs.push({ id: "attachments", label: t("detail.tabs.attachments") });
+    tabs.push({ id: "notes", label: tCommon("notesTab.title") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [hasQuotations, hasJobs, t, tAudit]);
+  }, [hasQuotations, hasJobs, t, tAudit, tCommon]);
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
 
@@ -506,6 +510,8 @@ export function ProjectDetailScreen({ projectId }: Props) {
               updateAttachments={(refs) => updateProjectAttachments(detail.id, refs)}
               onSaved={retry}
             />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={PROJECT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.project}

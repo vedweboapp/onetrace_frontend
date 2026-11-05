@@ -7,6 +7,7 @@ import { cn } from "@/core/utils/http.util";
 import {
   createInstallationType,
   deleteInstallationType,
+  fetchInstallationType,
   fetchInstallationTypesPage,
   updateInstallationType,
 } from "@/features/installation-types/api/installation-type.api";
@@ -14,6 +15,9 @@ import { InstallationTypeChip } from "@/features/installation-types/components/i
 import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { formatInstallationTypeLabel, normalizeInstallationTypeHex } from "@/features/installation-types/utils/installation-type-display.util";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -106,6 +110,10 @@ export function InstallationTypeSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<InstallationType | null>(null);
+  useOpenSettingsRecord(fetchInstallationType, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsInstallationTypes, existingId),
+  });
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [formOpen, setFormOpen] = React.useState(false);
@@ -163,6 +171,7 @@ export function InstallationTypeSettingsPanel() {
     setTextColour(textHex(row));
     setIsActive(row.is_active);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -174,6 +183,7 @@ export function InstallationTypeSettingsPanel() {
     setTextColour(DEFAULT_TEXT);
     setIsActive(true);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -215,6 +225,7 @@ export function InstallationTypeSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { installation_type, bg_color: bg, text_color: fg } = parsed.data;
     setSaving(true);
     try {
@@ -234,6 +245,7 @@ export function InstallationTypeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(error, (fieldErrors) => {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));
       });
@@ -539,7 +551,13 @@ export function InstallationTypeSettingsPanel() {
               autoComplete="off"
             />
             {errors.installation_type ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.installation_type}</p>
+              <DuplicateEntryFieldError
+                message={errors.installation_type}
+                fieldKey="installation_type"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup

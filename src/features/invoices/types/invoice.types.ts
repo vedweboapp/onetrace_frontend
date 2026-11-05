@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 
 export type InvoiceUserRef = {
@@ -113,6 +114,7 @@ export type InvoiceDetail = InvoiceListItem & {
   created_by?: InvoiceUserRef | null;
   modified_by?: InvoiceUserRef | null;
   modified_at?: string | null;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type InvoiceLineItemPayload = {

@@ -1,3 +1,5 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
+
 export type DispatchWorkerRef = {
   id: number;
   name?: string | null;
@@ -160,6 +162,7 @@ export type DispatchDetail = DispatchListItem & {
   created_by?: DispatchUserRef | number | null;
   modified_by?: DispatchUserRef | number | null;
   modified_at?: string | null;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type DispatchPagination = {
@@ -254,6 +257,7 @@ export type DispatchReturnRequest = {
   requested_at: string;
   completed_at?: string | null;
   created_at?: string | null;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type CreateDispatchReturnRequestLineInput = {

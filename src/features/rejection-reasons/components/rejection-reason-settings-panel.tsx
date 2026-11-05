@@ -7,12 +7,16 @@ import { cn } from "@/core/utils/http.util";
 import {
   createRejectionReason,
   deleteRejectionReason,
+  fetchRejectionReason,
   fetchRejectionReasonsPage,
   updateRejectionReason,
 } from "@/features/rejection-reasons/api/rejection-reason.api";
 import type { RejectionReason } from "@/features/rejection-reasons/types/rejection-reason.types";
 import { formatRejectionReasonLabel } from "@/features/rejection-reasons/utils/rejection-reason-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -90,6 +94,10 @@ export function RejectionReasonSettingsPanel() {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
   const [detailRow, setDetailRow] = React.useState<RejectionReason | null>(null);
+  useOpenSettingsRecord(fetchRejectionReason, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsRejectionReasons, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<RejectionReason | null>(null);
@@ -140,6 +148,7 @@ export function RejectionReasonSettingsPanel() {
     setEditing(null);
     setReasonName("");
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -148,6 +157,7 @@ export function RejectionReasonSettingsPanel() {
     setEditing(row);
     setReasonName(formatRejectionReasonLabel(row));
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -180,6 +190,7 @@ export function RejectionReasonSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { name } = parsed.data;
     setSaving(true);
     try {
@@ -194,6 +205,7 @@ export function RejectionReasonSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(error, (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })));
     } finally {
       setSaving(false);
@@ -491,7 +503,15 @@ export function RejectionReasonSettingsPanel() {
             )}
             autoComplete="off"
           />
-          {errors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p> : null}
+          {errors.name ? (
+            <DuplicateEntryFieldError
+              message={errors.name}
+              fieldKey="name"
+              conflict={duplicate.conflict}
+              existingHref={duplicate.existingHref}
+              linkOnDuplicate
+            />
+          ) : null}
         </FieldGroup>
       </AppModal>
 

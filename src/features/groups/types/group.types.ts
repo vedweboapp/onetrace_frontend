@@ -1,4 +1,5 @@
 import type { ProjectPagination } from "@/features/projects/types/project.types";
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 
 export type GroupUserRef = {
   id: number;
@@ -37,6 +38,7 @@ export type Group = {
   deleted_by: unknown;
   organization: number;
   items?: GroupItemRef[];
+  attachments?: EntityAttachment[] | null;
 };
 
 export type GroupCreatePayload = {

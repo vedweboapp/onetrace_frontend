@@ -4,6 +4,8 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { PURCHASE_ORDER_PATHS } from "./purchase-order.paths";
 import type {
   PurchaseOrderCreatePayload,
@@ -79,6 +81,13 @@ export async function updatePurchaseOrder(
   );
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updatePurchaseOrderAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<PurchaseOrderDetail> {
+  return updateEntityAttachments<PurchaseOrderDetail>(PURCHASE_ORDER_PATHS.detail(id), refs);
 }
 
 export async function deletePurchaseOrder(id: number): Promise<void> {

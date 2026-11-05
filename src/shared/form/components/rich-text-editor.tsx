@@ -35,6 +35,11 @@ interface RichTextEditorProps {
   readOnly?: boolean;
   placeholder?: string;
   name?: string;
+  /** `plain` drops the editor border so a parent card can own the frame. */
+  chrome?: "default" | "plain";
+  toolbarPlacement?: "top" | "bottom";
+  /** Rendered between the writing area and a bottom toolbar. */
+  between?: React.ReactNode;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -46,6 +51,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   readOnly,
   placeholder,
   name,
+  chrome = "default",
+  toolbarPlacement = "top",
+  between,
 }) => {
   const editor = useEditor({
     extensions: [
@@ -232,7 +240,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           flex flex-col
           rounded-[8px]
           w-full
-          ${readOnly
+          ${chrome === "plain"
+            ? "border-none bg-transparent"
+            : readOnly
             ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
             : `bg-white dark:bg-slate-900 border ${
                 errors
@@ -242,7 +252,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           }
         `}
       >
-        {editor && !readOnly && (
+        {editor && !readOnly && toolbarPlacement === "top" ? (
           <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 rounded-t-[8px]">
             <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={isBoldActive} title="Bold">
               <Bold size={16} />
@@ -314,10 +324,84 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </ToolbarButton>
             )}
           </div>
-        )}
+        ) : null}
         <div className="p-1">
           <EditorContent editor={editor} />
         </div>
+        {between}
+        {editor && !readOnly && toolbarPlacement === "bottom" ? (
+          <div className="flex flex-wrap items-center gap-1 border-t border-gray-200 p-2 dark:border-slate-700">
+            <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={isBoldActive} title="Bold">
+              <Bold size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={isItalicActive} title="Italic">
+              <Italic size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={isUnderlineActive} title="Underline">
+              <UnderlineIcon size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={isStrikeActive} title="Strikethrough">
+              <Strikethrough size={16} />
+            </ToolbarButton>
+
+            <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
+
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} isActive={isHeading1Active} title="Heading 1">
+              <Heading1 size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={isHeading2Active} title="Heading 2">
+              <Heading2 size={16} />
+            </ToolbarButton>
+
+            <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
+
+            <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={isBulletListActive} title="Bullet List">
+              <List size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={isOrderedListActive} title="Ordered List">
+              <ListOrdered size={16} />
+            </ToolbarButton>
+
+            <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
+
+            <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={isAlignLeftActive} title="Align Left">
+              <AlignLeft size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={isAlignCenterActive} title="Align Center">
+              <AlignCenter size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={isAlignRightActive} title="Align Right">
+              <AlignRight size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={isAlignJustifyActive} title="Align Justify">
+              <AlignJustify size={16} />
+            </ToolbarButton>
+
+            <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
+
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} isActive={isHighlightActive} title="Highlight">
+              <Highlighter size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={setLink}
+              isActive={editor?.isActive("link")}
+              title="Add or edit link"
+            >
+              <LinkIcon size={16} />
+            </ToolbarButton>
+            {editor?.isActive("link") && (
+              <ToolbarButton
+                onClick={() => {
+                  editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                  clearStoredLinkMark();
+                }}
+                title="Remove link"
+              >
+                <Unlink size={16} />
+              </ToolbarButton>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {errors && (

@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   createPaymentMode,
   deletePaymentMode,
+  fetchPaymentMode,
   fetchPaymentModesPage,
   updatePaymentMode,
 } from "@/features/payment-modes/api/payment-mode.api";
@@ -15,6 +16,9 @@ import {
   toPaymentModeSystemName,
 } from "@/features/payment-modes/utils/payment-mode-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -99,6 +103,10 @@ export function PaymentModeSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<PaymentMode | null>(null);
+  useOpenSettingsRecord(fetchPaymentMode, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsPaymentModes, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<PaymentMode | null>(null);
@@ -158,6 +166,7 @@ export function PaymentModeSettingsPanel() {
     setIsDefault(Boolean(row.is_default));
     setIsMandatory(Boolean(row.is_mandatory));
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -170,6 +179,7 @@ export function PaymentModeSettingsPanel() {
     setIsDefault(false);
     setIsMandatory(false);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -202,6 +212,7 @@ export function PaymentModeSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const payload = {
       name: parsed.data.name,
       system_name: parsed.data.system_name,
@@ -221,6 +232,7 @@ export function PaymentModeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => {
@@ -524,7 +536,13 @@ export function PaymentModeSettingsPanel() {
               disabled={saving}
             />
             {errors.name ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>
+              <DuplicateEntryFieldError
+                message={errors.name}
+                fieldKey="name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup label={t("modal.systemName")} htmlFor="payment-mode-system-name" required>
@@ -541,7 +559,13 @@ export function PaymentModeSettingsPanel() {
               disabled={saving || Boolean(editing?.is_system_generated)}
             />
             {errors.system_name ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.system_name}</p>
+              <DuplicateEntryFieldError
+                message={errors.system_name}
+                fieldKey="system_name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">

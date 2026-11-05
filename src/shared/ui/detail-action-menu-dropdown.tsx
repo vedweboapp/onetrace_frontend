@@ -3,6 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { AppButton, type AppButtonVariant } from "@/shared/ui/app-button";
 import { cn } from "@/core/utils/http.util";
 import { popoverPanelClassName } from "@/shared/config/design-tokens";
@@ -28,6 +29,8 @@ export type DetailActionMenuDropdownProps = {
   disabled?: boolean;
   items: DetailActionMenuItem[];
   buttonVariant?: AppButtonVariant;
+  /** Shows a chevron so the button reads as a menu. */
+  showChevron?: boolean;
 };
 
 export function DetailActionMenuDropdown({
@@ -39,6 +42,7 @@ export function DetailActionMenuDropdown({
   disabled = false,
   items,
   buttonVariant = "secondary",
+  showChevron = false,
 }: DetailActionMenuDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -166,6 +170,9 @@ export function DetailActionMenuDropdown({
           onClick={() => setOpen((v) => !v)}
         >
           {buttonText}
+          {showChevron ? (
+            <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} aria-hidden />
+          ) : null}
         </AppButton>
       </div>
       {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}

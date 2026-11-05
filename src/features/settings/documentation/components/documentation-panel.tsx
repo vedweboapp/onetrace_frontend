@@ -295,7 +295,7 @@ const SECTIONS: DocSection[] = [
           ["Search", "Find by name, code, or ID"],
           ["Filters", "Status, client, worker, active/inactive, and more"],
           ["Card / Table", "Switch layout"],
-          ["Add / Create", "Open the create form"],
+          ["Create", "Open the create form"],
           ["Row actions", "Edit, delete, activate/deactivate, update status"],
           ["Mass actions", "Select rows → update, delete, or export"],
         ]
@@ -332,7 +332,7 @@ const SECTIONS: DocSection[] = [
       label("List page"),
       ul([
         "Search, Card / Table view",
-        "Add client",
+        "Create",
         "Mass update, mass delete, mass export",
         "Mass-update examples: name, email, phone, address fields, active",
       ]),

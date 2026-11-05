@@ -4,11 +4,14 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchPurchaseReceive } from "@/features/purchase-receives/api/purchase-receive.api";
+import { fetchPurchaseReceive, updatePurchaseReceiveAttachments } from "@/features/purchase-receives/api/purchase-receive.api";
+import { PURCHASE_RECEIVE_PATHS } from "@/features/purchase-receives/api/purchase-receive.paths";
 import { PurchaseReceiveDetailBody } from "@/features/purchase-receives/components/purchase-receive-detail-body";
 import type { PurchaseReceiveDetail } from "@/features/purchase-receives/types/purchase-receive.types";
 import { normalizePurchaseReceiveStatus } from "@/features/purchase-receives/utils/purchase-receive-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
@@ -22,9 +25,10 @@ type Props = {
 export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
   const t = useTranslations("Dashboard.purchaseReceives");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const tabsStorageKey = useTabOrderStorageKey("purchaseReceiveDetail");
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "timeline">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "attachments" | "notes" | "timeline">("overview");
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
 
   React.useEffect(() => {
@@ -62,9 +66,11 @@ export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
     () => [
       { id: "overview", label: t("tabs.overview") },
       { id: "lineItems", label: t("tabs.lineItems") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -84,7 +90,7 @@ export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
         <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
+          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "attachments" | "notes" | "timeline")}
           storageKey={tabsStorageKey}
         />
       }
@@ -95,7 +101,7 @@ export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
           label={t("edit")}
         />
       )}
-      renderSurface={({ detail, dateFmt }) => {
+      renderSurface={({ detail, dateFmt, retry }) => {
         if (!detail) return null;
         if (activeTab === "timeline") {
           return (
@@ -110,6 +116,36 @@ export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
                 objectId={detail.id}
                 dateFmt={dateFmt}
               />
+            </div>
+          );
+        }
+        if (activeTab === "attachments") {
+          return (
+            <div
+              role="tabpanel"
+              id={`purchase-receive-detail-tab-${activeTab}`}
+              aria-labelledby={`purchase-receive-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAttachmentsTab
+                entityId={detail.id}
+                attachments={detail.attachments}
+                emptyIconName="purchaseReceives"
+                updateAttachments={(refs) => updatePurchaseReceiveAttachments(detail.id, refs)}
+                onSaved={retry}
+              />
+            </div>
+          );
+        }
+        if (activeTab === "notes") {
+          return (
+            <div
+              role="tabpanel"
+              id={`purchase-receive-detail-tab-${activeTab}`}
+              aria-labelledby={`purchase-receive-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityNotesTab detailPath={PURCHASE_RECEIVE_PATHS.detail(detail.id)} />
             </div>
           );
         }

@@ -10,6 +10,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { GROUP_PATHS } from "./group.paths";
 import type {
   Group,
@@ -91,6 +93,14 @@ export async function updateGroup(id: number, body: GroupUpdatePayload): Promise
   const { data } = await api.patch<ApiEnvelope<Group>>(GROUP_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateGroupAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Group> {
+  groupDetailCache.delete(`auth:${id}`);
+  return updateEntityAttachments<Group>(GROUP_PATHS.detail(id), refs);
 }
 
 export async function deleteGroup(id: number): Promise<void> {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -17,8 +17,8 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
   DashboardLoadErrorState,
-  AddButton,
   CheckmarkSelect,
+  DetailActionMenuDropdown,
   ConfirmDialog,
   DataTablePaginationBar,
   DataTableRowActionsMenu,
@@ -44,11 +44,14 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
+import { useDashboardActions } from "@/shared/ui/dashboard-action-buttons";
+import { QUICK_CREATE_ITEM_TYPE_PARAM } from "@/shared/utils/quick-create-navigation.util";
 import { useOrgCurrency } from "@/shared/money/use-org-currency";
 import { useOrgNumber } from "@/shared/number/use-org-number";
 
 export function ItemsPanel() {
   const t = useTranslations("Dashboard.items");
+  const tActions = useDashboardActions();
   const tComposite = useTranslations("Dashboard.compositeItems");
   const tList = useTranslations("Dashboard.list");
   const { formatMoneyValue: moneyDisplay } = useOrgCurrency();
@@ -192,8 +195,10 @@ export function ItemsPanel() {
     hasActiveFilters,
   });
 
-  function openCreate() {
-    router.push(buildPathWithStoredBack(`${pathname}/new`, listHref));
+  function openCreate(itemType: ItemType) {
+    router.push(
+      buildPathWithStoredBack(`${pathname}/new?${QUICK_CREATE_ITEM_TYPE_PARAM}=${itemType}`, listHref),
+    );
   }
 
   function openEdit(row: Item) {
@@ -283,7 +288,17 @@ export function ItemsPanel() {
                 moduleLabel={t("title")}
                 onSuccess={() => setRefreshNonce((n) => n + 1)}
               />
-              <AddButton type="button" onClick={openCreate} />
+              <DetailActionMenuDropdown
+                buttonLabel={tActions("add")}
+                buttonAriaLabel={t("modal.addItemTypeAria")}
+                menuAriaLabel={t("modal.addItemTypeAria")}
+                buttonVariant="primary"
+                showChevron
+                items={[
+                  { id: "labour", label: t("modal.itemTypeService"), onSelect: () => openCreate("service") },
+                  { id: "goods", label: t("modal.itemTypeGoods"), onSelect: () => openCreate("goods") },
+                ]}
+              />
             </ListPageActionGroup>
           }
           controls={

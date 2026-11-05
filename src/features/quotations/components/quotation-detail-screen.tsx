@@ -16,6 +16,7 @@ import {
   createJobFromServiceQuotation,
   updateQuotation,
 } from "@/features/quotations/api/quotation.api";
+import { QUOTATION_PATHS } from "@/features/quotations/api/quotation.paths";
 import {
   parseQuoteCategoryParam,
   QUOTE_CATEGORY,
@@ -26,6 +27,7 @@ import { QuotationExportDropdown } from "@/features/quotations/components/quotat
 import { QuotationJobsTab } from "@/features/quotations/components/quotation-jobs-tab";
 import { QuotationJobsTableTab } from "@/features/quotations/components/quotation-jobs-table-tab";
 import { QuotationAttachmentsTab } from "@/features/quotations/components/quotation-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { QuotationFormsTab } from "@/features/quotations/components/quotation-forms-tab";
 import { QuotationScheduleTab } from "@/features/quotations/components/quotation-schedule-tab";
 import { QuotationSendDropdown } from "@/features/quotations/components/quotation-send-dropdown";
@@ -75,6 +77,7 @@ type QuotationDetailTabId =
   | "schedule"
   | "forms"
   | "attachments"
+  | "notes"
   | "docs"
   | "approvals"
   | "timeline";
@@ -86,6 +89,7 @@ function parseQuotationDetailTab(raw: string | null): QuotationDetailTabId {
   if (raw === "schedule" || raw === "scheduling") return "schedule";
   if (raw === "forms" || raw === "form") return "forms";
   if (raw === "attachments" || raw === "attachment") return "attachments";
+  if (raw === "notes" || raw === "note") return "notes";
   if (raw === "docs") return "docs";
   if (raw === "approvals") return "approvals";
   if (raw === "timeline") return "timeline";
@@ -98,6 +102,7 @@ type Props = {
 
 export function QuotationDetailScreen({ quotationId }: Props) {
   const t = useTranslations("Dashboard.quotations");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const dueFmt = useDashboardDateFormat({ dateOnly: true });
   const quotationTabsStorageKey = useTabOrderStorageKey("quotationDetail");
@@ -153,6 +158,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     const tabs: AppTabItem[] = [
       { id: "details", label: t("relatedTabs.details") },
       { id: "attachments", label: t("relatedTabs.attachments") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "vendors", label: t("formTabs.vendorQuotations") },
     ];
     if (showJobTabs) {
@@ -167,7 +173,7 @@ export function QuotationDetailScreen({ quotationId }: Props) {
     }
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [showJobTabs, isProjectQuote, t, tAudit]);
+  }, [showJobTabs, isProjectQuote, t, tAudit, tCommon]);
 
   const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
   const activeTab: QuotationDetailTabId = allowedTabIds.has(requestedTab)
@@ -600,6 +606,19 @@ export function QuotationDetailScreen({ quotationId }: Props) {
                   await retry();
                 }}
               />
+            </div>
+          );
+        }
+
+        if (activeTab === "notes") {
+          return (
+            <div
+              role="tabpanel"
+              id="quotation-detail-tab-notes"
+              aria-labelledby="quotation-detail-tab-trigger-notes"
+              className={cn(entityDetailTabPanelClassName, "flex min-h-0 w-full flex-col")}
+            >
+              <EntityNotesTab detailPath={QUOTATION_PATHS.detail(detail.id)} />
             </div>
           );
         }

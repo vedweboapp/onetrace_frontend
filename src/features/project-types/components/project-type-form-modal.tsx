@@ -13,6 +13,10 @@ import {
   projectTypeTextHex,
 } from "@/features/project-types/utils/project-type-display.util";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref } from "@/shared/form/settings-record-query";
+import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, FieldGroup, surfaceInputClassName } from "@/shared/ui";
@@ -36,6 +40,9 @@ export function ProjectTypeFormModal({
 }: ProjectTypeFormModalProps) {
   const t = useTranslations("Dashboard.projectTypes");
   const isEdit = editing != null;
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsProjectTypes, existingId),
+  });
 
   const [typeName, setTypeName] = React.useState("");
   const [bgColour, setBgColour] = React.useState(DEFAULT_BG);
@@ -62,6 +69,7 @@ export function ProjectTypeFormModal({
       setIsActive(true);
     }
     setErrors({});
+    duplicate.clear();
   }, [open, editing]);
 
   async function submitForm() {
@@ -88,6 +96,7 @@ export function ProjectTypeFormModal({
     }
 
     setErrors({});
+    duplicate.clear();
     const { project_type, bg_color: bg, text_color: fg } = parsed.data;
     setSaving(true);
     try {
@@ -103,6 +112,7 @@ export function ProjectTypeFormModal({
       onSaved?.(saved);
       onClose();
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -155,7 +165,13 @@ export function ProjectTypeFormModal({
             autoComplete="off"
           />
           {errors.project_type ? (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.project_type}</p>
+            <DuplicateEntryFieldError
+              message={errors.project_type}
+              fieldKey="project_type"
+              conflict={duplicate.conflict}
+              existingHref={duplicate.existingHref}
+              linkOnDuplicate
+            />
           ) : null}
         </FieldGroup>
         <FieldGroup

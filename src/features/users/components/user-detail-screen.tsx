@@ -6,7 +6,8 @@ import { Mail, Phone, User } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchRoles, fetchUserProfile, updateUserProfile } from "@/features/users/api/user.api";
+import { fetchRoles, fetchUserProfile, updateUserAttachments, updateUserProfile } from "@/features/users/api/user.api";
+import { USER_PATHS } from "@/features/users/api/user.paths";
 import type { UserProfile } from "@/features/users/types/user.types";
 import { resolveUserAddresses } from "@/features/users/utils/user-form-map";
 import { normalizeUserAvailabilityFromApi } from "@/features/users/utils/user-availability.util";
@@ -15,6 +16,8 @@ import {
   userProfileLabel,
   userProfileSelectId,
 } from "@/features/users/utils/user-profile-select.util";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { SchedulingPanel } from "@/features/scheduling/components/scheduling-panel";
 import { routes } from "@/shared/config/routes";
 import { DetailSystemMetadataSection, EntityDetailLoadingSkeleton } from "@/shared/components/entity";
@@ -72,16 +75,17 @@ function resolveUserAvailability(row: UserProfile) {
   return normalizeUserAvailabilityFromApi(source ?? null).filter((day) => day.enabled);
 }
 
-type UserDetailTabId = "overview" | "scheduling";
+type UserDetailTabId = "overview" | "scheduling" | "attachments" | "notes";
 
 function isUserDetailTabId(value: string | null): value is UserDetailTabId {
-  return value === "overview" || value === "scheduling";
+  return value === "overview" || value === "scheduling" || value === "attachments" || value === "notes";
 }
 
 export function UserDetailScreen({ userId }: { userId: number }) {
   const t = useTranslations("Dashboard.users");
   const tMeta = useTranslations("Dashboard.common.detail");
   const tActions = useTranslations("Dashboard.common.actions");
+  const tCommon = useTranslations("Dashboard.common");
   const { formatMoneyValue } = useOrgCurrency();
   const locale = useLocale();
   const router = useRouter();
@@ -96,8 +100,10 @@ export function UserDetailScreen({ userId }: { userId: number }) {
     () => [
       { id: "overview", label: t("detail.tabs.overview") },
       { id: "scheduling", label: t("detail.tabs.scheduling") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
     ],
-    [t],
+    [t, tCommon],
   );
 
   function handleTabChange(tab: string) {
@@ -313,6 +319,22 @@ export function UserDetailScreen({ userId }: { userId: number }) {
             <SchedulingPanel fixedWorkerId={userId} syncUrl={false} />
           </Suspense>
         </div>
+      ) : activeTab === "attachments" ? (
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
+          {detail ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="users"
+              updateAttachments={(refs) => updateUserAttachments(detail.id, refs)}
+              onSaved={() => setRefreshNonce((k) => k + 1)}
+            />
+          ) : null}
+        </SurfaceShell>
+      ) : activeTab === "notes" ? (
+        <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
+          {detail ? <EntityNotesTab detailPath={USER_PATHS.detail(detail.id)} /> : null}
+        </SurfaceShell>
       ) : (
         <SurfaceShell className={cn(detailRecordSurfaceShellClassName, "mt-3")}>
           <div className={detailRecordInnerClassName}>

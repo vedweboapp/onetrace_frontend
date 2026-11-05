@@ -5,11 +5,14 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchMaterialRequest } from "@/features/material-requests/api/material-request.api";
+import { fetchMaterialRequest, updateMaterialRequestAttachments } from "@/features/material-requests/api/material-request.api";
+import { MATERIAL_REQUEST_PATHS } from "@/features/material-requests/api/material-request.paths";
 import { MaterialRequestDetailBody } from "@/features/material-requests/components/material-request-detail-body";
 import { MaterialRequestDispatchesTab } from "@/features/material-requests/components/material-request-dispatches-tab";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
@@ -32,6 +35,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
   const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.materialRequests");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const router = useRouter();
   const pathname = usePathname();
   const tabsStorageKey = useTabOrderStorageKey("materialRequestDetail");
@@ -76,9 +80,11 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     () => [
       { id: "overview", label: t("detail.tabOverview") },
       { id: "dispatches", label: t("detail.tabDispatches") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -156,6 +162,16 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
             })()
           ) : detail && activeTab === "dispatches" ? (
             <MaterialRequestDispatchesTab materialRequestId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="materialRequests"
+              updateAttachments={(refs) => updateMaterialRequestAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={MATERIAL_REQUEST_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.materialRequest}

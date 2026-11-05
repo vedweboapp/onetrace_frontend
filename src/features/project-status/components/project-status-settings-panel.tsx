@@ -4,12 +4,15 @@ import { WorkflowColourStatusSettingsPanel } from "@/shared/components/settings/
 import {
   createProjectStatus,
   deleteProjectStatus,
+  fetchProjectStatus,
   fetchProjectStatusesPage,
   updateProjectStatus,
 } from "@/features/project-status/api/project-status.api";
+import { routes } from "@/shared/config/routes";
 
 const projectStatusApi = {
   fetchPage: fetchProjectStatusesPage,
+  fetch: fetchProjectStatus,
   create: createProjectStatus,
   update: updateProjectStatus,
   remove: deleteProjectStatus,
@@ -22,6 +25,7 @@ export function ProjectStatusSettingsPanel() {
         translationNamespace: "Dashboard.projectStatus",
         emptyStateIconName: "projectStatus",
         formTitleId: "project-status-form-title",
+        listPath: routes.dashboard.settingsProjectStatus,
         api: projectStatusApi,
         showCategory: true,
       }}

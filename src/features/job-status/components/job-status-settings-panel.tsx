@@ -4,12 +4,15 @@ import { WorkflowColourStatusSettingsPanel } from "@/shared/components/settings/
 import {
   createJobStatus,
   deleteJobStatus,
+  fetchJobStatus,
   fetchJobStatusesPage,
   updateJobStatus,
 } from "@/features/job-status/api/job-status.api";
+import { routes } from "@/shared/config/routes";
 
 const jobStatusApi = {
   fetchPage: fetchJobStatusesPage,
+  fetch: fetchJobStatus,
   create: createJobStatus,
   update: updateJobStatus,
   remove: deleteJobStatus,
@@ -22,6 +25,7 @@ export function JobStatusSettingsPanel() {
         translationNamespace: "Dashboard.jobStatus",
         emptyStateIconName: "jobStatus",
         formTitleId: "job-status-form-title",
+        listPath: routes.dashboard.settingsJobStatus,
         api: jobStatusApi,
       }}
     />

@@ -7,11 +7,14 @@ import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-tra
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
-import { fetchInvoice, previewInvoicePdf, sendInvoice } from "@/features/invoices/api/invoice.api";
+import { fetchInvoice, previewInvoicePdf, sendInvoice, updateInvoiceAttachments } from "@/features/invoices/api/invoice.api";
+import { INVOICE_PATHS } from "@/features/invoices/api/invoice.paths";
 import { InvoiceDetailBody } from "@/features/invoices/components/invoice-detail-body";
 import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-export-dropdown";
 import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types/invoice.types";
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
@@ -26,6 +29,7 @@ type Props = {
 export function InvoiceDetailScreen({ invoiceId }: Props) {
   const t = useTranslations("Dashboard.invoices");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const tabsStorageKey = useTabOrderStorageKey("invoiceDetail");
   const dueFmt = React.useMemo(
     () =>
@@ -37,7 +41,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     [],
   );
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "timeline">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "attachments" | "notes" | "timeline">("overview");
   const [previewing, setPreviewing] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
@@ -101,9 +105,11 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
     () => [
       { id: "overview", label: t("tabs.overview") },
       { id: "lineItems", label: t("tabs.lineItems") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -123,7 +129,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
         <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
+          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "attachments" | "notes" | "timeline")}
           storageKey={tabsStorageKey}
         />
       }
@@ -185,6 +191,36 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
                 objectId={detail.id}
                 dateFmt={dateFmt}
               />
+            </div>
+          );
+        }
+        if (activeTab === "attachments") {
+          return (
+            <div
+              role="tabpanel"
+              id={`invoice-detail-tab-${activeTab}`}
+              aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAttachmentsTab
+                entityId={detail.id}
+                attachments={detail.attachments}
+                emptyIconName="invoices"
+                updateAttachments={(refs) => updateInvoiceAttachments(detail.id, refs)}
+                onSaved={retry}
+              />
+            </div>
+          );
+        }
+        if (activeTab === "notes") {
+          return (
+            <div
+              role="tabpanel"
+              id={`invoice-detail-tab-${activeTab}`}
+              aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityNotesTab detailPath={INVOICE_PATHS.detail(detail.id)} />
             </div>
           );
         }
