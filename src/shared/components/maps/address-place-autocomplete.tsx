@@ -20,6 +20,7 @@ import {
 } from "@/shared/ui/field-primitives";
 import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
 import { sanitizeAddressInput } from "@/shared/form/field-input.util";
+import { placeNamedSelection } from "@/shared/utils/address-place-form.util";
 
 type Props = {
   id: string;
@@ -47,6 +48,12 @@ type Props = {
   multiline?: boolean;
   /** Portal suggestions so narrow columns don't squash the menu. */
   portaled?: boolean;
+  /**
+   * `address` writes the full place into this field.
+   * `placeName` writes only the main place name; the rest stays on the suggestion.
+   */
+  selection?: "address" | "placeName";
+  sanitizeValue?: (value: string, maxLength?: number) => string;
 };
 
 export function AddressPlaceAutocomplete({
@@ -71,6 +78,8 @@ export function AddressPlaceAutocomplete({
   inputClassName,
   multiline = false,
   portaled = false,
+  selection = "address",
+  sanitizeValue = sanitizeAddressInput,
 }: Props) {
   const t = useTranslations("Dashboard.sites.location");
   const listId = `${id}-suggestions`;
@@ -184,7 +193,13 @@ export function AddressPlaceAutocomplete({
 
   async function pickNominatim(place: PlaceSuggestion) {
     skipSearchRef.current = true;
-    onSelectPlace(place);
+    if (selection === "placeName") {
+      const selected = placeNamedSelection(place.label.split(",")[0] ?? "", place.label, place);
+      onChange(sanitizeValue(selected.name, maxLength));
+      onSelectPlace(selected.place);
+    } else {
+      onSelectPlace(place);
+    }
     setOpen(false);
     setNominatimItems([]);
     setGooglePredictions([]);
@@ -207,12 +222,23 @@ export function AddressPlaceAutocomplete({
         place.line1;
 
       skipSearchRef.current = true;
-      onChange(addressLine1);
-      onSelectPlace({
-        ...place,
-        line1: addressLine1,
-        label: description || place.label,
-      });
+      if (selection === "placeName") {
+        const fullAddress =
+          place.label ||
+          description ||
+          [main, secondary].filter(Boolean).join(", ") ||
+          addressLine1;
+        const selected = placeNamedSelection(main || "", fullAddress, place);
+        onChange(sanitizeValue(selected.name, maxLength));
+        onSelectPlace(selected.place);
+      } else {
+        onChange(addressLine1);
+        onSelectPlace({
+          ...place,
+          line1: addressLine1,
+          label: description || place.label,
+        });
+      }
       setOpen(false);
       setGooglePredictions([]);
       setNominatimItems([]);
@@ -407,7 +433,7 @@ export function AddressPlaceAutocomplete({
           maxLength={maxLength}
           rows={textareaRows}
           onChange={(e) => {
-            onChange(sanitizeAddressInput(e.target.value, maxLength));
+            onChange(sanitizeValue(e.target.value, maxLength));
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
@@ -442,7 +468,7 @@ export function AddressPlaceAutocomplete({
           value={value}
           maxLength={maxLength}
           onChange={(e) => {
-            onChange(sanitizeAddressInput(e.target.value, maxLength));
+            onChange(sanitizeValue(e.target.value, maxLength));
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}

@@ -7,6 +7,7 @@ import { cn } from "@/core/utils/http.util";
 import {
   createVendorType,
   deleteVendorType,
+  fetchVendorType,
   fetchVendorTypesPage,
   updateVendorType,
 } from "@/features/vendor-types/api/vendor-type.api";
@@ -14,6 +15,9 @@ import { VendorTypeChip } from "@/features/vendor-types/components/vendor-type-c
 import type { VendorType } from "@/features/vendor-types/types/vendor-type.types";
 import { formatVendorTypeLabel, normalizeVendorTypeHex } from "@/features/vendor-types/utils/vendor-type-display.util";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -106,6 +110,10 @@ export function VendorTypeSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<VendorType | null>(null);
+  useOpenSettingsRecord(fetchVendorType, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsVendorTypes, existingId),
+  });
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [formOpen, setFormOpen] = React.useState(false);
@@ -164,6 +172,7 @@ export function VendorTypeSettingsPanel() {
     setTextColour(textHex(row));
     setIsActive(row.is_active);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -175,6 +184,7 @@ export function VendorTypeSettingsPanel() {
     setTextColour(DEFAULT_TEXT);
     setIsActive(true);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -212,6 +222,7 @@ export function VendorTypeSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { name, bg_color: bg, text_color: fg } = parsed.data;
     setSaving(true);
     try {
@@ -226,6 +237,7 @@ export function VendorTypeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(error, (fieldErrors) => {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));
       });
@@ -530,7 +542,15 @@ export function VendorTypeSettingsPanel() {
               )}
               autoComplete="off"
             />
-            {errors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p> : null}
+            {errors.name ? (
+              <DuplicateEntryFieldError
+                message={errors.name}
+                fieldKey="name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
+            ) : null}
           </FieldGroup>
           <FieldGroup
             label={

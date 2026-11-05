@@ -7,15 +7,20 @@ import {
   deleteCompositeItem,
   fetchCompositeItem,
 } from "@/features/composite-items/api/composite-item.api";
+import { updateItemAttachments } from "@/features/items/api/item.api";
+import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { ConfirmDialog } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { ConfirmDialog, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   itemId: number;
@@ -24,7 +29,11 @@ type Props = {
 export function CompositeItemDetailScreen({ itemId }: Props) {
   const t = useTranslations("Dashboard.compositeItems");
   const tItems = useTranslations("Dashboard.items");
+  const tCommon = useTranslations("Dashboard.common");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
+  const tabsStorageKey = useTabOrderStorageKey("compositeItemDetail");
+  const [activeTab, setActiveTab] = React.useState("details");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [detailForDelete, setDetailForDelete] = React.useState<CompositeItem | null>(null);
@@ -41,6 +50,15 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
     }
   }
 
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: tAudit("tabDetails") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
+    ],
+    [tAudit, tCommon],
+  );
+
   return (
     <EntityDetailScreen
       entityId={itemId}
@@ -54,6 +72,17 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
         backAria: t("detail.backAria"),
         retry: tItems("detail.retry"),
       }}
+      headerExtension={
+        <CustomizableAppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
+          ariaLabel={t("detail.backAria")}
+          panelIdPrefix="composite-item-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, listBack }) => (
         <EntityDetailDeleteEditActions
           deleteLabel={t("delete")}
@@ -80,9 +109,21 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt, retry }) => (
-        <ItemDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
-      )}
+      {({ detail, dateFmt, retry }) =>
+        activeTab === "attachments" ? (
+          <EntityAttachmentsTab
+            entityId={detail.id}
+            attachments={detail.attachments}
+            emptyIconName="compositeItems"
+            updateAttachments={(refs) => updateItemAttachments(detail.id, refs)}
+            onSaved={retry}
+          />
+        ) : activeTab === "notes" ? (
+          <EntityNotesTab detailPath={ITEM_PATHS.detail(detail.id)} />
+        ) : (
+          <ItemDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+        )
+      }
     </EntityDetailScreen>
   );
 }

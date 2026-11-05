@@ -629,8 +629,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   disabled={saving}
                   onBlur={field.onBlur}
                   onAdd={openUsersSettings}
-                  addAriaLabel="Add user"
-                  addLabel="Add new"
+                  addAriaLabel="Create user"
+                  addLabel="Create"
                   onChange={field.onChange}
                 />
               )}
@@ -651,8 +651,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   disabled={saving}
                   onBlur={field.onBlur}
                   onAdd={openUsersSettings}
-                  addAriaLabel="Add user"
-                  addLabel="Add new"
+                  addAriaLabel="Create user"
+                  addLabel="Create"
                   onChange={field.onChange}
                 />
               )}
@@ -689,8 +689,8 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
                   listLabel={t("fields.technicians")}
                   placeholder={t("placeholders.userOptional")}
                   onAdd={openUsersSettings}
-                  addAriaLabel="Add user"
-                  addLabel="Add new"
+                  addAriaLabel="Create user"
+                  addLabel="Create"
                 />
               )}
             />

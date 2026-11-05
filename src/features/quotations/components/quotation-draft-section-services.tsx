@@ -31,6 +31,8 @@ type Props = {
   getFormDraft?: () => unknown;
   /** Restore parent section draft after returning from quick-create. */
   restoreFormDraft?: (draft: unknown) => void;
+  /** When false, only the added labour lines are shown. */
+  showAddForm?: boolean;
 };
 
 function serviceFromItem(row: Item): QuotationDraftServiceLine {
@@ -76,6 +78,7 @@ export function QuotationDraftSectionServices({
   onChange,
   getFormDraft,
   restoreFormDraft,
+  showAddForm = true,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const locale = useLocale();
@@ -193,9 +196,11 @@ export function QuotationDraftSectionServices({
     onApplySelect: readOnly ? () => {} : applyQuickCreateSelect,
   });
 
+  if (!showAddForm && services.length === 0) return null;
+
   return (
     <div className="space-y-3">
-      {!readOnly ? (
+      {!readOnly && showAddForm ? (
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
           <div className="w-full max-w-xs sm:w-72">
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -222,7 +227,7 @@ export function QuotationDraftSectionServices({
       ) : null}
 
       {services.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("serviceEmpty")}</p>
+        showAddForm ? <p className="text-sm text-slate-500 dark:text-slate-400">{t("serviceEmpty")}</p> : null
       ) : (
         <ul className="space-y-2">
           {services.map((row, index) => {

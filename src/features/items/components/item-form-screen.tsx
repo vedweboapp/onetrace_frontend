@@ -90,7 +90,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
   const isEdit = mode === "edit";
 
   const nameId = React.useId();
-  const itemTypeId = React.useId();
   const skuId = React.useId();
   const unitId = React.useId();
   const qtyId = React.useId();
@@ -103,6 +102,11 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     if (isEdit) return "goods";
     return resolveItemType(searchParams.get(QUICK_CREATE_ITEM_TYPE_PARAM));
   });
+
+  React.useEffect(() => {
+    if (isEdit) return;
+    setItemType(resolveItemType(searchParams.get(QUICK_CREATE_ITEM_TYPE_PARAM)));
+  }, [isEdit, searchParams]);
   const [sku, setSku] = React.useState("");
   const [qty, setQty] = React.useState("");
   const [cost, setCost] = React.useState("");
@@ -346,14 +350,6 @@ export function ItemFormScreen({ mode, itemId }: Props) {
     setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
   }
 
-  const itemTypeOptions = React.useMemo(
-    () => [
-      { value: "goods", label: tModal("itemTypeGoods") },
-      { value: "service", label: tModal("itemTypeService") },
-    ],
-    [tModal],
-  );
-
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = !isService && Boolean(touched.sku) && sku.trim().length === 0;
   const costNPreview = numOrNull(cost);
@@ -494,20 +490,7 @@ export function ItemFormScreen({ mode, itemId }: Props) {
         ) : (
           <form id="item-form-screen" className="space-y-5 p-4 sm:p-6" onSubmit={(e) => void submit(e)}>
             <FormFieldRow cols="2" from="md" className="gap-4">
-              <FieldGroup label={tModal("itemType")} htmlFor={itemTypeId} required>
-                <CheckmarkSelect
-                  id={itemTypeId}
-                  listLabel={tModal("itemType")}
-                  buttonAriaLabel={tModal("itemType")}
-                  options={itemTypeOptions}
-                  value={itemType}
-                  disabled={submitting}
-                  portaled
-                  className="w-full"
-                  onChange={(v) => setItemType(resolveItemType(v))}
-                />
-              </FieldGroup>
-              <FieldGroup label={tModal("name")} htmlFor={nameId} required>
+              <FieldGroup label={tModal("name")} htmlFor={nameId} required className="md:col-span-2">
                 <input
                   id={nameId}
                   type="text"

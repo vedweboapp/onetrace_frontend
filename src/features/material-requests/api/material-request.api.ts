@@ -3,6 +3,8 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { MATERIAL_REQUEST_PATHS } from "./material-request.paths";
 import { DISPATCH_PATHS } from "@/features/dispatches/api/dispatch.paths";
 import type { MaterialRequestDispatchPayload } from "../types/material-request-dispatch.types";
@@ -120,6 +122,17 @@ export async function updateMaterialRequest(
   );
   assertApiSuccess(data);
   return normalizeMaterialRequestRow(data.data);
+}
+
+export async function updateMaterialRequestAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<MaterialRequestDetail> {
+  const saved = await updateEntityAttachments<MaterialRequestDetail>(
+    MATERIAL_REQUEST_PATHS.detail(id),
+    refs,
+  );
+  return normalizeMaterialRequestRow(saved);
 }
 
 export async function fetchMaterialRequestLogs(id: number): Promise<MaterialRequestLogEntry[]> {

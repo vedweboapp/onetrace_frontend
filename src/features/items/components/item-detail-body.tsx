@@ -44,7 +44,7 @@ import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
 import { getItemDimensionUnit } from "@/features/items/utils/item-dimensions-input.util";
 import { getItemVendorIds, itemVendorRows, vendorIdsPayload } from "@/features/items/utils/item-vendors.util";
 import { DimensionsLwhInput, InputWithEndSelect } from "@/shared/ui";
-import type { DimensionUnit, InstallationCostType, ItemType, WeightUnit } from "@/features/items/types/item.types";
+import type { DimensionUnit, InstallationCostType, WeightUnit } from "@/features/items/types/item.types";
 import { resolveItemType } from "@/features/items/utils/item-type.util";
 import {
   parseItemNumber,
@@ -152,14 +152,6 @@ export function ItemDetailBody({
       ? String(detail.installation_hours).trim()
       : null;
   const hasInstallationHours = Boolean(!isService && detail.is_composite && installationHoursRaw);
-  const itemTypeOptions = React.useMemo(
-    () => [
-      { value: "goods", label: t("detail.itemTypeGoods") },
-      { value: "service", label: t("detail.itemTypeService") },
-    ],
-    [t],
-  );
-
   const patchField = useDetailPatch(
     (body: Parameters<typeof updateItem>[1]) => updateItem(detail.id, body),
     { success: t("modal.updatedToast"), error: t("loadError") },
@@ -293,16 +285,9 @@ export function ItemDetailBody({
               />
             ) : null}
             {!detail.is_composite ? (
-              <DetailEditableField
-                label={t("detail.itemType")}
-                value={itemType}
-                kind="select"
-                options={itemTypeOptions}
-                editAriaLabel={tActions("edit")}
-                onSave={(next) => patchField({ item_type: resolveItemType(next) as ItemType })}
-              >
+              <DetailMetricCard label={t("detail.itemType")}>
                 <span>{itemType === "service" ? t("detail.itemTypeService") : t("detail.itemTypeGoods")}</span>
-              </DetailEditableField>
+              </DetailMetricCard>
             ) : null}
             {!isService ? (
               <>

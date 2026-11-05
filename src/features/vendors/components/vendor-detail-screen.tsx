@@ -8,10 +8,12 @@ import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-a
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { EntityContactsTab } from "@/features/contacts/components/entity-contacts-tab";
 import { deleteVendor, fetchVendor, updateVendorAttachments } from "@/features/vendors/api/vendor.api";
+import { VENDOR_PATHS } from "@/features/vendors/api/vendor.paths";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
 import { VendorItemsTab } from "@/features/vendors/components/vendor-items-tab";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailErrorState,
@@ -31,6 +33,7 @@ type Props = {
 
 export function VendorDetailScreen({ vendorId }: Props) {
   const t = useTranslations("Dashboard.vendors");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
@@ -46,9 +49,10 @@ export function VendorDetailScreen({ vendorId }: Props) {
       { id: "contacts", label: t("detail.tabs.contacts") },
       { id: "items", label: t("detail.tabs.items") },
       { id: "attachments", label: t("detail.tabs.attachments") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
@@ -168,6 +172,8 @@ export function VendorDetailScreen({ vendorId }: Props) {
               updateAttachments={(refs) => updateVendorAttachments(detail.id, refs)}
               onSaved={retry}
             />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={VENDOR_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.vendor}

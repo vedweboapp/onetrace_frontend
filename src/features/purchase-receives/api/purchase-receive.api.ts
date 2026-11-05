@@ -3,6 +3,8 @@ import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { PURCHASE_RECEIVE_PATHS } from "./purchase-receive.paths";
 import type {
   PurchaseReceiveCreatePayload,
@@ -76,6 +78,13 @@ export async function updatePurchaseReceive(
   );
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updatePurchaseReceiveAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<PurchaseReceiveDetail> {
+  return updateEntityAttachments<PurchaseReceiveDetail>(PURCHASE_RECEIVE_PATHS.detail(id), refs);
 }
 
 export async function deletePurchaseReceive(id: number): Promise<void> {

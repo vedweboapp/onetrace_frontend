@@ -41,6 +41,8 @@ type Props = {
   trailing?: React.ReactNode;
   /** @deprecated Prefer `trailing` so content stays in the map column beside the extended map. */
   footer?: React.ReactNode;
+  /** Site-name place search writes address lines and pins the map through this. */
+  applyPlaceRef?: React.MutableRefObject<((place: PlaceSuggestion) => void) | null>;
 };
 
 function parseCoordField(raw: string | undefined): number | null {
@@ -72,6 +74,7 @@ export function SiteLocationFields({
   afterAddress,
   trailing,
   footer,
+  applyPlaceRef,
 }: Props) {
   const t = useTranslations("Dashboard.sites");
 
@@ -124,6 +127,22 @@ export function SiteLocationFields({
   const onPlaceApplied = React.useCallback((place: PlaceSuggestion) => {
     setPinnedAddressKey(placeToPinnedKey(place));
   }, []);
+
+  const applySearchedPlace = React.useCallback(
+    (place: PlaceSuggestion) => {
+      applyPlaceSuggestionToForm(setValue, place, { line: "1", withCoordinates: true });
+      setPinnedAddressKey(placeToPinnedKey(place));
+    },
+    [setValue],
+  );
+
+  React.useEffect(() => {
+    if (!applyPlaceRef) return;
+    applyPlaceRef.current = applySearchedPlace;
+    return () => {
+      applyPlaceRef.current = null;
+    };
+  }, [applyPlaceRef, applySearchedPlace]);
 
   const addressFields = (
     <div className="space-y-6">

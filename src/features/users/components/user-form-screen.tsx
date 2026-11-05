@@ -20,6 +20,8 @@ import { resolveAppRoleIdMap } from "@/features/users/utils/load-users-by-role.u
 import { loadUserProfileSelectOptions } from "@/features/users/utils/user-profile-select.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { UserAvailabilityFields } from "@/features/users/components/user-availability-fields";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
@@ -95,6 +97,9 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   });
 
   const phoneCountry = usePhoneCountryFromAddresses(control);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => `${routes.dashboard.settingsUsers}/${existingId}`,
+  });
 
   const basePayTypeOptions = React.useMemo<InputWithEndSelectOption[]>(
     () => [
@@ -190,6 +195,7 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
         );
       }
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError, t("saveError"), {
         fieldMap: {
           address1: "addresses.0.address_line_1",
@@ -284,6 +290,18 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 required
                 autoComplete="email"
                 error={errors.email?.message}
+                errorNode={
+                  errors.email?.message ? (
+                    <DuplicateEntryFieldError
+                      id="user-email-error"
+                      message={errors.email.message}
+                      fieldKey="email"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                      linkOnDuplicate
+                    />
+                  ) : undefined
+                }
               />
               <SurfacePhoneField
                 control={control}
@@ -292,6 +310,18 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 label={t("fields.phone")}
                 required
                 error={errors.phone_number?.message}
+                errorNode={
+                  errors.phone_number?.message ? (
+                    <DuplicateEntryFieldError
+                      id="user-phone-error"
+                      message={errors.phone_number.message}
+                      fieldKey="phone_number"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                      linkOnDuplicate
+                    />
+                  ) : undefined
+                }
                 disabled={saving}
                 countryIso={phoneCountry}
               />

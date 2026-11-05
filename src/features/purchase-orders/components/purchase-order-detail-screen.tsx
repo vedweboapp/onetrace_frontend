@@ -6,11 +6,14 @@ import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-a
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
-import { fetchPurchaseOrder } from "@/features/purchase-orders/api/purchase-order.api";
+import { fetchPurchaseOrder, updatePurchaseOrderAttachments } from "@/features/purchase-orders/api/purchase-order.api";
+import { PURCHASE_ORDER_PATHS } from "@/features/purchase-orders/api/purchase-order.paths";
 import { PurchaseOrderDetailBody } from "@/features/purchase-orders/components/purchase-order-detail-body";
 import type { PurchaseOrderContactRef, PurchaseOrderDetail } from "@/features/purchase-orders/types/purchase-order.types";
 import { nestedId, normalizePurchaseOrderStatus } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
@@ -24,6 +27,7 @@ type Props = {
 export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
   const t = useTranslations("Dashboard.purchaseOrders");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const tabsStorageKey = useTabOrderStorageKey("purchaseOrderDetail");
   const dueFmt = React.useMemo(
     () =>
@@ -35,7 +39,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     [],
   );
 
-  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "timeline">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "lineItems" | "attachments" | "notes" | "timeline">("overview");
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [contactNames, setContactNames] = React.useState<Record<number, string>>({});
 
@@ -97,9 +101,11 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
     () => [
       { id: "overview", label: t("tabs.overview") },
       { id: "lineItems", label: t("tabs.lineItems") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -119,7 +125,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
         <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
-          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "timeline")}
+          onValueChange={(id) => setActiveTab(id as "overview" | "lineItems" | "attachments" | "notes" | "timeline")}
           storageKey={tabsStorageKey}
         />
       }
@@ -145,6 +151,36 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
                 objectId={detail.id}
                 dateFmt={dateFmt}
               />
+            </div>
+          );
+        }
+        if (activeTab === "attachments") {
+          return (
+            <div
+              role="tabpanel"
+              id={`purchase-order-detail-tab-${activeTab}`}
+              aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityAttachmentsTab
+                entityId={detail.id}
+                attachments={detail.attachments}
+                emptyIconName="purchaseOrders"
+                updateAttachments={(refs) => updatePurchaseOrderAttachments(detail.id, refs)}
+                onSaved={retry}
+              />
+            </div>
+          );
+        }
+        if (activeTab === "notes") {
+          return (
+            <div
+              role="tabpanel"
+              id={`purchase-order-detail-tab-${activeTab}`}
+              aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
+              className={entityDetailTabPanelClassName}
+            >
+              <EntityNotesTab detailPath={PURCHASE_ORDER_PATHS.detail(detail.id)} />
             </div>
           );
         }

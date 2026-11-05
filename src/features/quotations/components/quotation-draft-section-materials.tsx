@@ -29,6 +29,8 @@ type Props = {
   readOnly?: boolean;
   saving?: boolean;
   onChange: (next: QuotationDraftLine[]) => void;
+  /** When false, only the added goods lines are shown. */
+  showAddForm?: boolean;
 };
 
 function parseQty(raw: string): number {
@@ -37,7 +39,13 @@ function parseQty(raw: string): number {
   return n;
 }
 
-export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving = false, onChange }: Props) {
+export function QuotationDraftSectionMaterials({
+  pins,
+  readOnly = false,
+  saving = false,
+  onChange,
+  showAddForm = true,
+}: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
   const tDraw = useTranslations("Dashboard.projects.drawings.editor");
   const locale = useLocale();
@@ -189,9 +197,11 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
     setQuantity("1");
   }
 
+  if (!showAddForm && pins.length === 0) return null;
+
   return (
     <div className="space-y-3">
-      {!readOnly ? (
+      {!readOnly && showAddForm ? (
         <div className="w-full min-w-0 space-y-1.5">
           <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1 sm:min-w-[11rem]">
@@ -280,7 +290,7 @@ export function QuotationDraftSectionMaterials({ pins, readOnly = false, saving 
       />
 
       {pins.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p>
+        showAddForm ? <p className="text-sm text-slate-500 dark:text-slate-400">{t("emptyLines")}</p> : null
       ) : (
         <QuotationDraftPriceTotalBar
           label={t("materialsTotal")}

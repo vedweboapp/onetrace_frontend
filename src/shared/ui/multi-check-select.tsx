@@ -299,14 +299,14 @@ export function MultiCheckSelect({
           <button
             type="button"
             className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-[color:var(--dash-accent,#111111)] transition hover:bg-slate-50 dark:hover:bg-slate-800"
-            aria-label={addAriaLabel ?? "Add new"}
+            aria-label={addAriaLabel ?? "Create"}
             onClick={() => {
               setOpen(false);
               onAdd?.();
             }}
           >
             <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-            <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+            <span>{addLabel ?? addAriaLabel ?? "Create"}</span>
           </button>
         </div>
       ) : null}

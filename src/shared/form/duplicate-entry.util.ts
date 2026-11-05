@@ -1,5 +1,6 @@
 import axios from "axios";
 import { isApiBusinessError } from "@/core/errors/api-business-error";
+import { getRawApiErrors } from "@/core/errors/api-field-errors.util";
 import { getApiFieldErrorMap } from "@/shared/form/report-form-api-error.util";
 
 export const DUPLICATE_ENTRY_ERROR_CODE = "DUPLICATE_ENTRY";
@@ -19,6 +20,24 @@ function toPositiveId(raw: unknown): number | null {
     const n = Number.parseInt(raw.trim(), 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
+  return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/** Existing row may be `data` or `errors.existing_data` (id can be a string). */
+function readExistingSnapshot(source: unknown): { id: number; data: Record<string, unknown> } | null {
+  const row = asRecord(source);
+  if (!row) return null;
+  const directId = toPositiveId(row.id);
+  if (directId != null) return { id: directId, data: row };
+  const nested = asRecord(row.existing_data);
+  const nestedId = nested ? toPositiveId(nested.id) : null;
+  if (nested && nestedId != null) return { id: nestedId, data: nested };
   return null;
 }
 
@@ -60,24 +79,19 @@ export function parseDuplicateEntryConflict(error: unknown): DuplicateEntryConfl
   if (!envelope) return null;
   if ((envelope.errorCode ?? "").trim().toUpperCase() !== DUPLICATE_ENTRY_ERROR_CODE) return null;
 
-  const data =
-    envelope.data && typeof envelope.data === "object" && !Array.isArray(envelope.data)
-      ? (envelope.data as Record<string, unknown>)
-      : null;
-  if (!data) return null;
-
-  const existingId = toPositiveId(data.id);
-  if (existingId == null) return null;
+  const existing =
+    readExistingSnapshot(envelope.data) ?? readExistingSnapshot(getRawApiErrors(error));
+  if (!existing) return null;
 
   const fieldMap = getApiFieldErrorMap(error);
   const fieldKeys = Object.keys(fieldMap).filter(
-    (k) => k !== "non_field_errors" && k !== "detail" && k !== "__all__",
+    (k) => k !== "non_field_errors" && k !== "detail" && k !== "__all__" && k !== "existing_data",
   );
 
   return {
-    existingId,
+    existingId: existing.id,
     fieldKeys,
     message: envelope.message || fieldMap[fieldKeys[0] ?? ""] || "Duplicate entry",
-    data,
+    data: existing.data,
   };
 }

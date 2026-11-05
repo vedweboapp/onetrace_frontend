@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchJob, updateJob, updateJobAttachments } from "@/features/jobs/api/job.api";
+import { JOB_PATHS } from "@/features/jobs/api/job.paths";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
@@ -16,6 +17,7 @@ import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
 import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   parseJobCategoryParam,
   resolveJobCategory,
@@ -49,6 +51,7 @@ type JobDetailTabId =
   | "returns"
   | "forms"
   | "attachments"
+  | "notes"
   | "timeline";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
@@ -60,6 +63,7 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
     value === "returns" ||
     value === "forms" ||
     value === "attachments" ||
+    value === "notes" ||
     value === "timeline"
   );
 }
@@ -72,6 +76,7 @@ function isServiceJobDetail(detail: Job | null, jobCategoryParam: string | null)
 
 export function JobDetailScreen({ jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
@@ -100,9 +105,10 @@ export function JobDetailScreen({ jobId }: Props) {
       tabs.push({ id: "forms", label: t("detail.tabs.forms") });
     }
     tabs.push({ id: "attachments", label: t("detail.tabs.attachments") });
+    tabs.push({ id: "notes", label: tCommon("notesTab.title") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [showFormsTab, t, tAudit]);
+  }, [showFormsTab, t, tAudit, tCommon]);
 
   const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
   const activeTab: JobDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "overview";
@@ -293,6 +299,8 @@ function JobDetailTabPanel({
               updateAttachments={(refs) => updateJobAttachments(detail.id, refs)}
               onSaved={retry}
             />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={JOB_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.job}

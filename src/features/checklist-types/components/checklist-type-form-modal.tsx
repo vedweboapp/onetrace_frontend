@@ -10,6 +10,10 @@ import type { ChecklistType } from "@/features/checklist-types/types/checklist-t
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref } from "@/shared/form/settings-record-query";
+import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import {
@@ -37,6 +41,9 @@ export function ChecklistTypeFormModal({
   onSaved,
 }: ChecklistTypeFormModalProps) {
   const t = useTranslations("Dashboard.checklistTypes");
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsChecklistTypes, existingId),
+  });
 
   const [title, setTitle] = React.useState("");
   const [projectTypeId, setProjectTypeId] = React.useState("");
@@ -63,6 +70,7 @@ export function ChecklistTypeFormModal({
     setIsRequired(true);
     setFile(null);
     setErrors({});
+    duplicate.clear();
   }, [open, defaultProjectTypeId]);
 
   React.useEffect(() => {
@@ -114,6 +122,7 @@ export function ChecklistTypeFormModal({
     if (!parsed.success || !file) return;
 
     setErrors({});
+    duplicate.clear();
     setSaving(true);
     try {
       const payload = new FormData();
@@ -127,6 +136,7 @@ export function ChecklistTypeFormModal({
       onSaved?.(saved);
       onClose();
     } catch (error) {
+      duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -178,7 +188,15 @@ export function ChecklistTypeFormModal({
             )}
             autoComplete="off"
           />
-          {errors.title ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p> : null}
+          {errors.title ? (
+            <DuplicateEntryFieldError
+              message={errors.title}
+              fieldKey="title"
+              conflict={duplicate.conflict}
+              existingHref={duplicate.existingHref}
+              linkOnDuplicate
+            />
+          ) : null}
         </FieldGroup>
         <FieldGroup
           label={

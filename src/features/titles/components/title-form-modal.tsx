@@ -7,6 +7,10 @@ import { cn } from "@/core/utils/http.util";
 import { createTitle } from "@/features/titles/api/title.api";
 import type { Title } from "@/features/titles/types/title.types";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref } from "@/shared/form/settings-record-query";
+import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, FieldGroup, surfaceInputClassName } from "@/shared/ui";
@@ -22,11 +26,15 @@ export function TitleFormModal({ open, onClose, onSaved }: TitleFormModalProps) 
   const [titleName, setTitleName] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<{ title?: string }>({});
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsTitle, existingId),
+  });
 
   React.useEffect(() => {
     if (!open) return;
     setTitleName("");
     setErrors({});
+    duplicate.clear();
   }, [open]);
 
   async function submitForm() {
@@ -53,6 +61,7 @@ export function TitleFormModal({ open, onClose, onSaved }: TitleFormModalProps) 
       onSaved?.(saved);
       onClose();
     } catch (error) {
+      duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -104,7 +113,15 @@ export function TitleFormModal({ open, onClose, onSaved }: TitleFormModalProps) 
           )}
           autoComplete="off"
         />
-        {errors.title ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.title}</p> : null}
+        {errors.title ? (
+          <DuplicateEntryFieldError
+            message={errors.title}
+            fieldKey="title"
+            conflict={duplicate.conflict}
+            existingHref={duplicate.existingHref}
+            linkOnDuplicate
+          />
+        ) : null}
       </FieldGroup>
     </AppModal>
   );

@@ -7,6 +7,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { USER_PATHS } from "./user.paths";
 import type {
   InviteUserPayload,
@@ -73,6 +75,13 @@ export async function updateUserProfile(id: number, body: UpdateUserProfilePaylo
   const { data } = await api.patch<ApiEnvelope<UserProfile>>(USER_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateUserAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<UserProfile> {
+  return updateEntityAttachments<UserProfile>(USER_PATHS.detail(id), refs);
 }
 
 export async function fetchRoles(): Promise<Role[]> {
