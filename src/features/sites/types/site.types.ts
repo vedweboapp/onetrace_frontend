@@ -1,3 +1,5 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
+
 export type SiteUserRef = {
   id: number;
   email: string;
@@ -79,6 +81,7 @@ export type Site = {
   is_active: boolean;
   deleted_by: unknown;
   organization: number;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type SitePagination = {

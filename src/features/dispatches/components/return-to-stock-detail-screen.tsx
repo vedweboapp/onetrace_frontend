@@ -2,13 +2,17 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { fetchDispatchReturnRequest, approveReturnRequest, rejectReturnRequest } from "@/features/dispatches/api/dispatch.api";
+import { fetchDispatchReturnRequest, approveReturnRequest, rejectReturnRequest, updateReturnRequestAttachments } from "@/features/dispatches/api/dispatch.api";
+import { DISPATCH_RETURN_REQUEST_PATHS } from "@/features/dispatches/api/dispatch.paths";
 import { toastSuccess, toastError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { ReturnToStockDetailBody } from "@/features/dispatches/components/return-to-stock-detail-body";
 import type { DispatchReturnRequest } from "@/features/dispatches/types/dispatch.types";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { AppButton } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   requestId: number;
@@ -16,6 +20,10 @@ type Props = {
 
 export function ReturnToStockDetailScreen({ requestId }: Props) {
   const t = useTranslations("Dashboard.dispatches");
+  const tCommon = useTranslations("Dashboard.common");
+  const tAudit = useTranslations("Dashboard.auditTrails");
+  const tabsStorageKey = useTabOrderStorageKey("returnToStockDetail");
+  const [activeTab, setActiveTab] = React.useState("details");
   const dueFmt = React.useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -24,6 +32,15 @@ export function ReturnToStockDetailScreen({ requestId }: Props) {
         day: "numeric",
       }),
     [],
+  );
+
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: tAudit("tabDetails") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
+    ],
+    [tAudit, tCommon],
   );
 
   return (
@@ -40,6 +57,17 @@ export function ReturnToStockDetailScreen({ requestId }: Props) {
       fetch={fetchDispatchReturnRequest}
       getTitle={(detail) => detail.request_number}
       subtitle={(detail) => dispatchReturnWorkerSubtitle(detail)}
+      headerExtension={
+        <CustomizableAppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
+          ariaLabel={t("return.detail.backAria")}
+          panelIdPrefix="return-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, retry }) =>
         detail.status === "pending" ? (
           <ReturnRequestActionButtons
@@ -49,9 +77,21 @@ export function ReturnToStockDetailScreen({ requestId }: Props) {
         ) : null
       }
     >
-      {({ detail }) => (
-        <ReturnToStockDetailBody detail={detail} dueFmt={dueFmt} />
-      )}
+      {({ detail, retry }) =>
+        activeTab === "attachments" ? (
+          <EntityAttachmentsTab
+            entityId={detail.id}
+            attachments={detail.attachments}
+            emptyIconName="returnToStock"
+            updateAttachments={(refs) => updateReturnRequestAttachments(detail.id, refs)}
+            onSaved={retry}
+          />
+        ) : activeTab === "notes" ? (
+          <EntityNotesTab detailPath={DISPATCH_RETURN_REQUEST_PATHS.detail(detail.id)} />
+        ) : (
+          <ReturnToStockDetailBody detail={detail} dueFmt={dueFmt} />
+        )
+      }
     </EntityDetailScreen>
   );
 }

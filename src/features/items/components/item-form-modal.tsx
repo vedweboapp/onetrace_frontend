@@ -87,7 +87,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
   const router = useRouter();
 
   const nameId = React.useId();
-  const itemTypeId = React.useId();
   const skuId = React.useId();
   const unitId = React.useId();
   const qtyId = React.useId();
@@ -238,14 +237,6 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     setSell(String(suggestedItemSellPrice(parseItemNumber(nextCost), parseItemNumber(nextMarkup))));
   }
 
-  const itemTypeOptions = React.useMemo(
-    () => [
-      { value: "goods", label: t("itemTypeGoods") },
-      { value: "service", label: t("itemTypeService") },
-    ],
-    [t],
-  );
-
   const nameInvalid = Boolean(touched.name) && name.trim().length === 0;
   const skuInvalid = !isService && Boolean(touched.sku) && sku.trim().length === 0;
   const nameError = nameInvalid ? t("nameError") : serverErrors.name;
@@ -354,20 +345,7 @@ export function ItemFormModal({ open, onClose, mode, item, onSaved }: Props) {
     >
       <form id="item-form" className="space-y-5" onSubmit={(e) => void submit(e)}>
         <FormFieldRow cols="2" from="md" className="gap-4">
-          <FieldGroup label={t("itemType")} htmlFor={itemTypeId} required>
-            <CheckmarkSelect
-              id={itemTypeId}
-              listLabel={t("itemType")}
-              buttonAriaLabel={t("itemType")}
-              options={itemTypeOptions}
-              value={itemType}
-              disabled={submitting}
-              portaled
-              className="w-full"
-              onChange={(v) => setItemType(resolveItemType(v))}
-            />
-          </FieldGroup>
-          <FieldGroup label={t("name")} htmlFor={nameId} required>
+          <FieldGroup label={t("name")} htmlFor={nameId} required className="md:col-span-2">
             <input
               id={nameId}
               type="text"

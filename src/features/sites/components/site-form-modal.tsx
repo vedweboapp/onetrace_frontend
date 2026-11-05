@@ -13,14 +13,14 @@ import {
   mapSiteFormToPayload,
   siteToFormDefaults,
 } from "@/features/sites/utils/site-form-map";
-import { cn } from "@/core/utils/http.util";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
+import { SiteNamePlaceField } from "@/features/sites/components/site-name-place-field";
+import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
 import { useQuickCreate } from "@/shared/hooks/use-quick-create";
 import {
   AppButton,
@@ -94,6 +94,8 @@ export function SiteFormModal({
     reValidateMode: "onChange",
     defaultValues: emptySiteFormDefaults(),
   });
+
+  const applyPlaceRef = React.useRef<((place: PlaceSuggestion) => void) | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -174,22 +176,16 @@ export function SiteFormModal({
           setValue={setValue}
           errors={errors}
           disabled={saving}
+          applyPlaceRef={applyPlaceRef}
           leading={
             <FormFieldRow cols="2">
-              <FieldGroup label={t("fields.siteName")} htmlFor="site-name" required>
-                <input
-                  id="site-name"
-                  aria-invalid={errors.site_name ? true : undefined}
-                  aria-describedby={errors.site_name ? "site-name-err" : undefined}
-                  className={cn(surfaceInputClassName, errors.site_name && "border-red-500 dark:border-red-500")}
-                  {...register("site_name", {
-                    onChange: (e) => {
-                      e.target.value = sanitizeTitleInput(e.target.value);
-                    },
-                  })}
-                />
-                <FieldErrorText id="site-name-err">{errors.site_name?.message}</FieldErrorText>
-              </FieldGroup>
+              <SiteNamePlaceField
+                control={control}
+                setValue={setValue}
+                error={errors.site_name?.message}
+                disabled={saving}
+                onPlaceSelected={(place) => applyPlaceRef.current?.(place)}
+              />
               {lockClient ? (
                 <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
                   <CheckmarkSelect

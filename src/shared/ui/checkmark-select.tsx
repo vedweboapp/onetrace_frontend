@@ -430,7 +430,7 @@ export function CheckmarkSelect({
               }}
             >
               <Plus className={size === "sm" ? "size-3.5" : "size-4"} strokeWidth={2.5} aria-hidden />
-              <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+              <span>{addLabel ?? addAriaLabel ?? "Create"}</span>
             </button>
           </div>
         ) : null}

@@ -9,6 +9,7 @@ import { cn } from "@/core/utils/http.util";
 import {
   createChecklistType,
   deleteChecklistType,
+  fetchChecklistType,
   fetchChecklistTypesPage,
   patchChecklistType,
   updateChecklistType,
@@ -22,6 +23,9 @@ import {
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { ChecklistTypeSortableTable } from "@/features/checklist-types/components/checklist-type-sortable-table";
 import {
   SettingsDetailActions,
@@ -143,6 +147,10 @@ export function ChecklistTypeSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<ChecklistType | null>(null);
+  useOpenSettingsRecord(fetchChecklistType, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsChecklistTypes, existingId),
+  });
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<
@@ -268,6 +276,7 @@ const openEdit = React.useCallback((row: ChecklistType) => {
     concentricPoint: row.concentric_point ?? false,
   });
   setErrors({});
+  duplicate.clear();
   setFormOpen(true);
 }, []);
 
@@ -282,6 +291,7 @@ function openCreate() {
   setExistingFileName(null);
   setInitialValues(null);
   setErrors({});
+  duplicate.clear();
   setFormOpen(true);
 }
   async function handleToggleActive(row: ChecklistType, next: boolean) {
@@ -412,6 +422,7 @@ if (editing && initialValues) {
     if (!editing) setUrl({ page: null });
     setRefreshNonce((n) => n + 1);
   } catch (error) {
+    if (!editing) duplicate.capture(error);
     reportLocalFormSubmitApiError(error, (fieldErrors) => {
       setErrors((prev) => ({ ...prev, ...fieldErrors }));
     });
@@ -819,9 +830,13 @@ if (editing && initialValues) {
               autoComplete="off"
             />
             {errors.title ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                {errors.title}
-              </p>
+              <DuplicateEntryFieldError
+                message={errors.title}
+                fieldKey="title"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup

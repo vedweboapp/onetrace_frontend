@@ -1920,8 +1920,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       listLabel={t("fields.tags")}
                       placeholder={t("placeholders.tags")}
                       onAdd={openTagModal}
-                      addAriaLabel="Add tag"
-                      addLabel="Add new"
+                      addAriaLabel="Create tag"
+                      addLabel="Create"
                     />
                   )}
                 />

@@ -8,6 +8,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { Item, ItemCreatePayload, ItemListResponse, ItemUpdatePayload } from "@/features/items/types/item.types";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
@@ -95,6 +97,13 @@ export async function updateItem(
   const { data } = await api.patch<ApiEnvelope<Item>>(ITEM_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateItemAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Item> {
+  return updateEntityAttachments<Item>(ITEM_PATHS.detail(id), refs);
 }
 
 export async function deleteItem(id: number): Promise<void> {

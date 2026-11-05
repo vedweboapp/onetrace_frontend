@@ -7,11 +7,13 @@ import { useSearchParams } from "next/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClient, updateClientAttachments } from "@/features/clients/api/client.api";
+import { CLIENT_PATHS } from "@/features/clients/api/client.paths";
 import { ClientContactsTab } from "@/features/clients/components/client-contacts-tab";
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientProjectsTab } from "@/features/clients/components/client-projects-tab";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
 import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -31,6 +33,7 @@ type Props = {
 
 export function ClientDetailScreen({ clientId, className }: Props) {
   const t = useTranslations("Dashboard.clients");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
@@ -43,9 +46,10 @@ export function ClientDetailScreen({ clientId, className }: Props) {
       { id: "sites", label: t("detail.tabs.sites") },
       { id: "projects", label: t("detail.tabs.projects") },
       { id: "attachments", label: t("detail.tabs.attachments") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   const allowedDetailTabIds = React.useMemo(() => new Set(detailTabs.map((x) => x.id)), [detailTabs]);
@@ -149,6 +153,8 @@ export function ClientDetailScreen({ clientId, className }: Props) {
               updateAttachments={(refs) => updateClientAttachments(detail.id, refs)}
               onSaved={retry}
             />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={CLIENT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.client}

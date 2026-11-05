@@ -18,7 +18,8 @@ import { EntityDetailLoadingSkeleton } from "@/shared/components/entity";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { DetailPagePadding, DetailPanelCard } from "@/shared/components/layout/detail-metric-card";
 import { mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
+import { useDashboardActions } from "@/shared/ui/dashboard-action-buttons";
+import { AppButton, DetailActionMenuDropdown, SurfaceShell, surfaceTextareaClassName } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -29,6 +30,7 @@ type LeaveIntent = "idle" | "done" | "quickcreate";
 
 export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
+  const tActions = useDashboardActions();
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
   const router = useRouter();
@@ -48,7 +50,7 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const [draft, setDraft] = React.useState<QuotationDraft | null>(null);
   const [sectionId, setSectionId] = React.useState("");
   const [readOnly, setReadOnly] = React.useState(false);
-  const [innerTab, setInnerTab] = React.useState<"service" | "materials">("service");
+  const [addKind, setAddKind] = React.useState<"service" | "materials" | null>(null);
 
   const draftRef = React.useRef(draft);
   draftRef.current = draft;
@@ -232,42 +234,41 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
           </div>
 
           <DetailPanelCard title={t("sectionLabourMaterials")}>
-            <AppTabs
-              tabs={[
-                { id: "service", label: t("sectionServiceTab") },
-                { id: "materials", label: t("sectionMaterialsTab") },
-              ]}
-              value={innerTab}
-              onValueChange={(id) => setInnerTab(id === "materials" ? "materials" : "service")}
-              ariaLabel={t("sectionInnerTabsAria")}
-              panelIdPrefix="quotation-section-scope"
-            />
-            <div className="mt-4 space-y-3">
-              {/* Keep both panels mounted so Service ↔ Items switches do not drop lines. */}
-              <div className={innerTab === "service" ? "space-y-3" : "hidden"} hidden={innerTab !== "service"}>
-                <QuotationDraftSectionServices
-                  services={section.services ?? []}
-                  readOnly={readOnly}
-                  onChange={(services) => patchSection({ services })}
-                  getFormDraft={readOnly ? undefined : getFormDraft}
-                  restoreFormDraft={readOnly ? undefined : restoreFormDraft}
+            {!readOnly ? (
+              <div className="mb-4 flex justify-end">
+                <DetailActionMenuDropdown
+                  buttonLabel={tActions("add")}
+                  buttonAriaLabel={t("addLineKindAria")}
+                  menuAriaLabel={t("addLineKindAria")}
+                  buttonVariant="primary"
+                  showChevron
+                  items={[
+                    { id: "labour", label: t("sectionLabourTab"), onSelect: () => setAddKind("service") },
+                    { id: "goods", label: t("addGoods"), onSelect: () => setAddKind("materials") },
+                  ]}
                 />
               </div>
-              <div
-                className={innerTab === "materials" ? "space-y-3" : "hidden"}
-                hidden={innerTab !== "materials"}
-              >
-                <QuotationDraftSectionMaterials
-                  pins={section.section_pins ?? []}
-                  readOnly={readOnly}
-                  onChange={(section_pins) => patchSection({ section_pins })}
-                />
-              </div>
+            ) : null}
+            <div className="space-y-3">
+              <QuotationDraftSectionServices
+                services={section.services ?? []}
+                readOnly={readOnly}
+                showAddForm={addKind === "service"}
+                onChange={(services) => patchSection({ services })}
+                getFormDraft={readOnly ? undefined : getFormDraft}
+                restoreFormDraft={readOnly ? undefined : restoreFormDraft}
+              />
+              <QuotationDraftSectionMaterials
+                pins={section.section_pins ?? []}
+                readOnly={readOnly}
+                showAddForm={addKind === "materials"}
+                onChange={(section_pins) => patchSection({ section_pins })}
+              />
               <QuotationDraftPriceTotalBar
                 label={t("sectionTotal")}
                 amount={sectionTotal}
                 locale={loc}
-                showMenuSpacer={innerTab === "materials" && !readOnly}
+                showMenuSpacer={addKind === "materials" && !readOnly}
                 className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
               />
             </div>

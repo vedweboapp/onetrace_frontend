@@ -19,7 +19,10 @@ export async function updateEntityAttachments<T>(
       fd.append("deleted_attachment_ids", String(ref.id));
     }
   }
-  const { data } = await api.patch<ApiEnvelope<T>>(detailPath, fd);
-  assertApiSuccess(data);
-  return data.data;
+  const { data } = await api.patch<ApiEnvelope<T> | T>(detailPath, fd);
+  if (data && typeof data === "object" && "success" in data) {
+    assertApiSuccess(data as ApiEnvelope<T>);
+    return (data as ApiEnvelope<T>).data;
+  }
+  return data as T;
 }

@@ -11,6 +11,11 @@ type Props = {
   conflict: DuplicateEntryConflict | null;
   /** Detail page for the existing record; opens in a new tab. */
   existingHref?: string | null;
+  /**
+   * Show View whenever this field has an error during a duplicate conflict.
+   * Used when the API field key may not match the form key exactly.
+   */
+  linkOnDuplicate?: boolean;
 };
 
 /** Field error that adds a blue “View” link for DUPLICATE_ENTRY conflicts. */
@@ -20,14 +25,19 @@ export function DuplicateEntryFieldError({
   fieldKey,
   conflict,
   existingHref,
+  linkOnDuplicate = false,
 }: Props) {
   const t = useTranslations("Dashboard.common.duplicateEntry");
   if (!message) return null;
 
+  const keyMatch =
+    conflict != null
+    && (conflict.fieldKeys.length === 0
+      || conflict.fieldKeys.some((key) => key.toLowerCase() === fieldKey.toLowerCase()));
   const showLink =
     conflict != null
     && Boolean(existingHref)
-    && (conflict.fieldKeys.length === 0 || conflict.fieldKeys.includes(fieldKey));
+    && (keyMatch || linkOnDuplicate);
 
   return (
     <FieldErrorText id={id}>

@@ -1074,8 +1074,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           portaled
                           searchable
                           onAdd={openJobStatusSettings}
-                          addAriaLabel="Add job status"
-                          addLabel="Add new"
+                          addAriaLabel="Create job status"
+                          addLabel="Create"
                         />
                         <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
                       </FieldGroup>
@@ -1159,8 +1159,8 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           portaled
                           searchable
                           onAdd={openJobStatusSettings}
-                          addAriaLabel="Add job status"
-                          addLabel="Add new"
+                          addAriaLabel="Create job status"
+                          addLabel="Create"
                         />
                         <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
                       </FieldGroup>
