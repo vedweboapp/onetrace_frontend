@@ -9,6 +9,7 @@ export type JobStatusListFilters = {
 };
 
 export const fetchJobStatusesPage = jobStatusApi.fetchPage;
+export const fetchJobStatus = jobStatusApi.fetch;
 export const createJobStatus = jobStatusApi.create;
 export const updateJobStatus = jobStatusApi.update;
 export const deleteJobStatus = jobStatusApi.remove;

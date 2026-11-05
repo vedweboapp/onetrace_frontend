@@ -39,7 +39,11 @@ export function useQuotationDraftState(
 
   React.useEffect(() => {
     const queueDraft = (next: QuotationDraft | null) => {
-      queueMicrotask(() => setDraft(next));
+      queueMicrotask(() => {
+        // Section-scope / working-draft restore may set preventAutoSeedRef after schedule.
+        if (options?.preventAutoSeedRef?.current) return;
+        setDraft(next);
+      });
     };
 
     if (options?.preventAutoSeedRef?.current) {
@@ -47,6 +51,8 @@ export function useQuotationDraftState(
     }
 
     if (!enabled) {
+      // Keep any restored/initial draft while edit detail is still loading.
+      if (options?.initialDraft) return;
       seededProjectRef.current = null;
       hadRowsRef.current = false;
       editSeededForQuotationRef.current = null;

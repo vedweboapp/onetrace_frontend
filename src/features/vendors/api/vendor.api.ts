@@ -2,6 +2,8 @@ import api from "@/core/api/axios";
 import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
 import {
   applyDropdownListParam,
@@ -71,6 +73,14 @@ export async function fetchVendor(id: number): Promise<Vendor> {
   return data.data;
 }
 
+/** GET vendors/{id}/approved-quotations/ */
+export async function fetchVendorApprovedQuotations(vendorId: number): Promise<unknown> {
+  const { data } = await api.get(VENDOR_PATHS.approvedQuotations(vendorId), {
+    skipErrorToast: true,
+  });
+  return data;
+}
+
 export async function createVendor(body: VendorCreatePayload): Promise<Vendor> {
   const { data } = await api.post<ApiEnvelope<Vendor>>(VENDOR_PATHS.list, body);
   assertApiSuccess(data);
@@ -81,6 +91,13 @@ export async function updateVendor(id: number, body: VendorUpdatePayload): Promi
   const { data } = await api.patch<ApiEnvelope<Vendor>>(VENDOR_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateVendorAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Vendor> {
+  return updateEntityAttachments<Vendor>(VENDOR_PATHS.detail(id), refs);
 }
 
 export async function deleteVendor(id: number): Promise<void> {

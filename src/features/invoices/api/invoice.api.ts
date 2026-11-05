@@ -4,6 +4,8 @@ import { fetchAllEntityIds } from "@/shared/mass-actions";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { INVOICE_PATHS } from "./invoice.paths";
 import type {
   InvoiceCreatePayload,
@@ -67,6 +69,13 @@ export async function updateInvoice(id: number, body: InvoiceUpdatePayload): Pro
   const { data } = await api.patch<ApiEnvelope<InvoiceDetail>>(INVOICE_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateInvoiceAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<InvoiceDetail> {
+  return updateEntityAttachments<InvoiceDetail>(INVOICE_PATHS.detail(id), refs);
 }
 
 export async function deleteInvoice(id: number): Promise<void> {

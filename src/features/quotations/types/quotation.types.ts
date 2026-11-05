@@ -142,6 +142,7 @@ export type QuotationQuoteSectionPin = {
   quantity: number;
   selling_price: number;
   pins_total: number;
+  is_composite?: boolean;
   /** Product group selected when adding the line (service quotes). */
   group_id?: number | null;
   group_name?: string | null;
@@ -160,17 +161,47 @@ export type QuotationQuoteSectionPlot = {
   plot_total: number;
 };
 
+/** Scope bucket: Primary / Optional (service) or Project (project quote). */
+export type QuotationQuoteSectionKind = "primary" | "optional" | "project";
+
+/**
+ * Service / labour-compatible line on a quote section.
+ * Prefer `item` (service catalog item). `labour_type` kept for older payloads.
+ */
+export type QuotationQuoteSectionLabour = {
+  /** Service catalog item id (`item_type=service`). */
+  item?: number | null;
+  /** @deprecated Prefer `item` — legacy labour-type id. */
+  labour_type?: number | null;
+  /** Denormalized name for `labour_type` / service catalog item. */
+  labour_type_name?: string | null;
+  time_hours?: number;
+  cost_rate: number;
+  markup_percentage: number;
+  selling_price: number;
+  total_cost: number;
+  /** Present when API embeds the item / labour name. */
+  name?: string | null;
+};
+
 export type QuotationQuoteSection = {
   section_order: number;
   /** Project level (drawing) id when this section maps to the levels API; null for quote-only sections. */
   level_id: number | null;
   name: string;
+  /** @deprecated Prefer `section_type`. Kept for older payloads. */
+  kind?: QuotationQuoteSectionKind;
+  /** API field: primary | optional | project. */
+  section_type?: QuotationQuoteSectionKind;
+  description?: string | null;
+  notes?: string | null;
   drawing_file?: string | null;
   drawing_file_type?: string | null;
   drawing_file_size?: number | null;
   block?: string | null;
   level?: string | null;
   order?: number | null;
+  labours?: QuotationQuoteSectionLabour[];
   plots: QuotationQuoteSectionPlot[];
   section_total: number;
 };
@@ -188,6 +219,22 @@ export type QuotationSiteSnapshot = {
   what3words?: string | null;
   /** Site contact id at submission time (same source as form `site_contact`). */
   site_contact?: number | null;
+};
+
+/** File attached to a quotation (`attachments` on read/write). */
+export type QuotationAttachment = {
+  id?: number;
+  /** Absolute or relative media URL from the API. */
+  file?: string | null;
+  file_name?: string | null;
+  file_size?: number | null;
+  content_type_value?: string | null;
+  /** Legacy aliases */
+  attachment?: string | null;
+  file_url?: string | null;
+  url?: string | null;
+  created_at?: string | null;
+  modified_at?: string | null;
 };
 
 export type QuotationCreatePayload = {
@@ -215,6 +262,10 @@ export type QuotationCreatePayload = {
   grand_total?: number | null;
   /** Quote workflow status: draft | sent | approved | rejected. */
   status?: string | null;
+  /** Existing attachment ids / delete markers when updating via JSON (prefer multipart). */
+  attachments?: Array<{ id: number; is_deleted?: boolean }> | null;
+  /** Template ID associated with this quotation. */
+  template?: number | null;
 };
 
 export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
@@ -271,10 +322,36 @@ export type QuotationListItem = {
   organization: number | null;
 };
 
+export type QuotationVendorItemNestedItem = {
+  id: number;
+  name: string;
+  sku?: string | null;
+  cost_price?: string | number | null;
+  selling_price?: string | number | null;
+  is_composite?: boolean;
+  unit_type?:
+    | {
+        id?: number;
+        name?: string;
+        short_form?: string;
+        organization?: number;
+      }
+    | string
+    | null;
+  installation_type?: any;
+  group_name?: string | null;
+};
+
 export type QuotationVendorItem = {
+  id?: number;
+  item?: QuotationVendorItemNestedItem | number | null;
+  item_id?: number | null;
   quantity?: number;
-  item_total?: number;
-  unit_price?: number;
+  item_total?: number | string | null;
+  unit_price?: number | string | null;
+  lead_time_days?: string | number | null;
+  status?: string;
+  comments?: string | null;
   /** Note: backend uses the typo spelling `composite_itmes` */
   composite_itmes?: number | string | null;
   composite_items?: number | string | null;
@@ -282,6 +359,11 @@ export type QuotationVendorItem = {
   composite_item_id?: number | null;
   item_name?: string | null;
   name?: string | null;
+  sku?: string | null;
+  unit?: string | null;
+  unit_type?: string | null;
+  cost_price?: string | number | null;
+  selling_price?: string | number | null;
   date_of_delivery?: string | null;
   delivery_date?: string | null;
   purchased?: boolean;
@@ -298,6 +380,7 @@ export type QuotationVendorRef = {
 
 export type QuotationVendorSubmission = {
   id?: number;
+  quotation_vendor_id?: number;
   quotation?: number;
   status?: string;
   sent_at?: string | null;
@@ -305,6 +388,7 @@ export type QuotationVendorSubmission = {
   public_token?: string | null;
   signature?: string | null;
   vendor: QuotationVendorRef;
+  vendor_items?: QuotationVendorItem[];
   items?: QuotationVendorItem[];
 };
 
@@ -318,6 +402,8 @@ export type QuotationDetail = QuotationListItem & {
   site_snapshots?: QuotationSiteSnapshot[];
   comment: string | null;
   sites?: Array<{ id: number; site_name: string }>;
+  /** Files attached to this quotation. */
+  attachments?: QuotationAttachment[] | null;
   /** Client acceptance signature (URL or data URL) after approve. */
   signature?: string | null;
   signature_url?: string | null;
@@ -328,6 +414,19 @@ export type QuotationDetail = QuotationListItem & {
   accepted_at?: string | null;
   /** Vendor quotation submissions returned when fetched with ?include=vendors */
   vendors?: QuotationVendorSubmission[];
+  vendors_quote_details?: QuotationVendorSubmission[];
+  /** Selected template id or nested object */
+  template?: number | { id: number; name?: string; template_name?: string } | null;
+  template_id?: string | number | null;
+  template_name?: string | null;
+  /** Rendered template HTML returned when fetched with ?include=html */
+  html?: string | null;
+  html_string?: string | null;
+  page_width?: string | null;
+  page_height?: string | null;
+  orientation?: string | null;
+  template_type?: string | null;
+  template_type_formatted?: string | null;
 };
 
 export type QuotationPagination = {

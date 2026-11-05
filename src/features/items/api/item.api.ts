@@ -8,6 +8,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { Item, ItemCreatePayload, ItemListResponse, ItemUpdatePayload } from "@/features/items/types/item.types";
 import type { ItemAttachmentWriteRef } from "@/features/items/utils/item-write-form-data.util";
@@ -27,6 +29,8 @@ export type ItemListFilters = {
   groupId?: number;
   /** Filter items linked to a vendor (`item/?vendor_id=`). */
   vendorId?: number;
+  /** Filter by catalog kind (`item/?item_type=`). */
+  itemType?: "goods" | "service";
   dropdown?: boolean;
 };
 
@@ -47,6 +51,11 @@ export async function fetchItemsPage(
   if (filters?.groupId != null) params.group = filters.groupId;
   if (typeof filters?.vendorId === "number" && Number.isFinite(filters.vendorId) && filters.vendorId > 0) {
     params.vendor_id = filters.vendorId;
+  }
+  if (filters?.itemType === "goods" || filters?.itemType === "service") {
+    params.item_type = filters.itemType;
+    // Some backends also filter service catalog rows via `service_type`.
+    if (filters.itemType === "service") params.service_type = "service";
   }
   applyDropdownListParam(params, filters?.dropdown);
 
@@ -88,6 +97,13 @@ export async function updateItem(
   const { data } = await api.patch<ApiEnvelope<Item>>(ITEM_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateItemAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Item> {
+  return updateEntityAttachments<Item>(ITEM_PATHS.detail(id), refs);
 }
 
 export async function deleteItem(id: number): Promise<void> {

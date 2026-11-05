@@ -1,4 +1,5 @@
 import type { ProjectPagination } from "@/features/projects/types/project.types";
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 
 export type GroupUserRef = {
   id: number;
@@ -6,12 +7,22 @@ export type GroupUserRef = {
   username: string;
 };
 
+export type GroupItemComponentRef = {
+  id?: number;
+  child_item: number;
+  child_name?: string | null;
+  quantity?: number | null;
+};
+
 export type GroupItemRef = {
   id?: number;
   item: number;
   abbreviation: string;
   item_name?: string;
+  item_selling_price?: string | number | null;
   selling_price?: string | number | null;
+  /** Nested on group list/detail payloads — prefer this over a separate composite fetch. */
+  components?: GroupItemComponentRef[];
 };
 
 export type Group = {
@@ -27,6 +38,7 @@ export type Group = {
   deleted_by: unknown;
   organization: number;
   items?: GroupItemRef[];
+  attachments?: EntityAttachment[] | null;
 };
 
 export type GroupCreatePayload = {

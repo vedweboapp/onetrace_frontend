@@ -7,7 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchJob, updateJob } from "@/features/jobs/api/job.api";
+import { fetchJob, updateJob, updateJobAttachments } from "@/features/jobs/api/job.api";
+import { JOB_PATHS } from "@/features/jobs/api/job.paths";
 import { JobDetailBody } from "@/features/jobs/components/job-detail-body";
 import { JobMaterialsTab } from "@/features/jobs/components/job-materials-tab";
 import { JobDispatchTab } from "@/features/jobs/components/job-dispatch-tab";
@@ -15,6 +16,8 @@ import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   parseJobCategoryParam,
   resolveJobCategory,
@@ -30,7 +33,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 import { EditButton } from "@/shared/ui/dashboard-action-buttons";
 import { buildCurrentPageBackHref, buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import { cn } from "@/core/utils/http.util";
@@ -39,7 +43,16 @@ type Props = {
   jobId: number;
 };
 
-type JobDetailTabId = "overview" | "scheduling" | "materials" | "dispatch" | "returns" | "forms" | "timeline";
+type JobDetailTabId =
+  | "overview"
+  | "scheduling"
+  | "materials"
+  | "dispatch"
+  | "returns"
+  | "forms"
+  | "attachments"
+  | "notes"
+  | "timeline";
 
 function isJobDetailTabId(value: string | null): value is JobDetailTabId {
   return (
@@ -49,6 +62,8 @@ function isJobDetailTabId(value: string | null): value is JobDetailTabId {
     value === "dispatch" ||
     value === "returns" ||
     value === "forms" ||
+    value === "attachments" ||
+    value === "notes" ||
     value === "timeline"
   );
 }
@@ -61,16 +76,19 @@ function isServiceJobDetail(detail: Job | null, jobCategoryParam: string | null)
 
 export function JobDetailScreen({ jobId }: Props) {
   const t = useTranslations("Dashboard.jobs");
+  const tCommon = useTranslations("Dashboard.common");
   const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("jobDetail");
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [statusSaving, setStatusSaving] = React.useState(false);
   const [detailForNav, setDetailForNav] = React.useState<Job | null>(null);
   const tabFromUrl = searchParams.get("tab");
   const showFormsTab = isServiceJobDetail(detailForNav, searchParams.get("job_category"));
-  const activeTab: JobDetailTabId =
+
+  const requestedTab: JobDetailTabId =
     isJobDetailTabId(tabFromUrl) && (tabFromUrl !== "forms" || showFormsTab)
       ? tabFromUrl
       : "overview";
@@ -86,9 +104,14 @@ export function JobDetailScreen({ jobId }: Props) {
     if (showFormsTab) {
       tabs.push({ id: "forms", label: t("detail.tabs.forms") });
     }
+    tabs.push({ id: "attachments", label: t("detail.tabs.attachments") });
+    tabs.push({ id: "notes", label: tCommon("notesTab.title") });
     tabs.push({ id: "timeline", label: tAudit("tabTimeline") });
     return tabs;
-  }, [showFormsTab, t, tAudit]);
+  }, [showFormsTab, t, tAudit, tCommon]);
+
+  const allowedTabIds = React.useMemo(() => new Set(detailTabs.map((tab) => tab.id)), [detailTabs]);
+  const activeTab: JobDetailTabId = allowedTabIds.has(requestedTab) ? requestedTab : "overview";
 
   function handleTabChange(tab: string) {
     if (!isJobDetailTabId(tab)) return;
@@ -98,6 +121,11 @@ export function JobDetailScreen({ jobId }: Props) {
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
+
+  React.useEffect(() => {
+    if (requestedTab === activeTab) return;
+    handleTabChange(activeTab);
+  }, [activeTab, requestedTab]);
 
   /** Keep header/sidebar job category in sync when opening detail without `?job_category=`. */
   React.useEffect(() => {
@@ -137,7 +165,7 @@ export function JobDetailScreen({ jobId }: Props) {
       wrapSurface={activeTab !== "scheduling"}
       className={
         activeTab === "scheduling"
-          ? "flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
+          ? "dashboard-list-page flex h-full min-h-0 flex-1 flex-col overflow-hidden pb-0 sm:pb-0"
           : undefined
       }
       labels={{
@@ -146,10 +174,11 @@ export function JobDetailScreen({ jobId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={handleTabChange}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="job-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -227,7 +256,7 @@ function JobDetailTabPanel({
               activeTab === "dispatch" ||
               activeTab === "returns" ||
               activeTab === "forms"
-              ? "flex min-h-0 flex-1 flex-col"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : entityDetailTabPanelClassName,
           )}
         >
@@ -262,6 +291,16 @@ function JobDetailTabPanel({
             <JobReturnsTab detail={detail} />
           ) : detail && activeTab === "forms" ? (
             <JobFormsTab detail={detail} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="jobs"
+              updateAttachments={(refs) => updateJobAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={JOB_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.job}

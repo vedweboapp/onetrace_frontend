@@ -54,6 +54,12 @@ export function createWorkflowColourStatusApi(
     });
   }
 
+  async function fetch(id: number): Promise<WorkflowColourStatus> {
+    const { data } = await api.get<ApiEnvelope<WorkflowColourStatus>>(resolveUrl(paths.detail(id)));
+    assertApiSuccess(data);
+    return data.data;
+  }
+
   async function create(body: WorkflowColourStatusCreatePayload): Promise<WorkflowColourStatus> {
     const { data } = await api.post<ApiEnvelope<WorkflowColourStatus>>(resolveUrl(paths.list), body);
     assertApiSuccess(data);
@@ -74,5 +80,5 @@ export function createWorkflowColourStatusApi(
     assertEnvelopeSuccess(data);
   }
 
-  return { fetchPage, create, update, remove };
+  return { fetchPage, fetch, create, update, remove };
 }

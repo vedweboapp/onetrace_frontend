@@ -21,7 +21,11 @@ import {
   vendorToFormDefaults,
 } from "@/features/vendors/utils/vendor-form-map";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import {
+  DuplicateEntryFieldError,
+  reportFormSubmitApiError,
+  useDuplicateEntryConflict,
+} from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
@@ -174,21 +178,34 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
     };
   }, [vendorId, isEdit, reset, t]);
 
+  const navigateAfterSave = React.useCallback(
+    (savedId: number, fromCreate: boolean) => {
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: savedId,
+          selectTarget: fromCreate ? searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) : null,
+          backHref: safeBack,
+          listPath: routes.dashboard.vendors,
+        }),
+      );
+    },
+    [router, safeBack, searchParams],
+  );
+
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => `${routes.dashboard.vendors}/${existingId}`,
+  });
+
   async function submit(values: VendorFormValues) {
     const payload = mapVendorFormToPayload(values);
     setSaving(true);
     try {
       const saved = isEdit && vendorId ? await updateVendor(vendorId, payload) : await createVendor(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.vendors,
-        }),
-      );
+      duplicate.clear();
+      navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
@@ -241,6 +258,17 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 required
                 autoComplete="name"
                 error={errors.name?.message}
+                errorNode={
+                  errors.name?.message ? (
+                    <DuplicateEntryFieldError
+                      id="vendor-name-error"
+                      message={errors.name.message}
+                      fieldKey="name"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                    />
+                  ) : undefined
+                }
               />
 
               <Controller
@@ -280,6 +308,17 @@ export function VendorFormScreen({ mode, vendorId }: Props) {
                 required
                 autoComplete="email"
                 error={errors.email?.message}
+                errorNode={
+                  errors.email?.message ? (
+                    <DuplicateEntryFieldError
+                      id="vendor-email-error"
+                      message={errors.email.message}
+                      fieldKey="email"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                    />
+                  ) : undefined
+                }
               />
               <SurfacePhoneField
                 control={control}

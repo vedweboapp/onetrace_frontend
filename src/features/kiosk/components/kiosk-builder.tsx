@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { routes } from "@/shared/config/routes";
 import { AppButton as Button } from "@/shared/ui/app-button";
+import { AppTabs } from "@/shared/ui/app-tabs";
 import { toastSuccess, toastError } from "@/shared/feedback/app-toast";
 import { createKiosk, getKioskById, updateKiosk } from "../api/kiosk.api";
 import {
@@ -20,6 +21,10 @@ import {
   Check,
   Columns,
   Eye,
+  ChevronDown,
+  Globe,
+  Save,
+  X,
 } from "lucide-react";
 import {
   type KioskConfig,
@@ -881,6 +886,7 @@ export const sanitizeConfig = (rawConfig: KioskConfig): KioskConfig => {
     description: rawConfig.description,
     submitting: rawConfig.submitting,
     is_active: rawConfig.is_active,
+    is_published: rawConfig.is_published,
     questions: (rawConfig.questions || []).map((q) => {
       const q_id = q.q_id || q._uid || generateUid("q_");
 
@@ -977,6 +983,38 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   });
   const configRef = useRef(config);
   configRef.current = config;
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [closeMenuOpen, setCloseMenuOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const closeMenuRef = useRef<HTMLDivElement>(null);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!closeMenuOpen && !saveMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | PointerEvent) => {
+      const target = e.target as Node;
+      if (closeMenuRef.current && !closeMenuRef.current.contains(target)) {
+        setCloseMenuOpen(false);
+      }
+      if (saveMenuRef.current && !saveMenuRef.current.contains(target)) {
+        setSaveMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCloseMenuOpen(false);
+        setSaveMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenuOpen, saveMenuOpen]);
+
   const [isLoadingKiosk, setIsLoadingKiosk] = useState(false);
   const [persistedLookupCompositeItemIds, setPersistedLookupCompositeItemIds] = useState<Set<string>>(
     () => getPersistedLookupCompositeItemIds(initialConfig),
@@ -998,28 +1036,35 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     return { [editingOptionModal.questionUid]: draftOption };
   }, [editingOptionModal, draftOption]);
 
+  const refreshKioskFromServer = useCallback(async () => {
+    if (kioskMode !== "edit" || !routeKioskId) return;
+
+    setIsLoadingKiosk(true);
+    try {
+      const kiosk = await getKioskById(routeKioskId);
+      if (kiosk) {
+        setPersistedLookupCompositeItemIds(getPersistedLookupCompositeItemIds(kiosk));
+        setConfig(sanitizeConfig(kiosk));
+      }
+      return kiosk;
+    } catch (err) {
+      console.error("Failed to load kiosk:", err);
+      toastError(getSaveErrorMessage(err));
+      return null;
+    } finally {
+      setIsLoadingKiosk(false);
+    }
+  }, [kioskMode, routeKioskId]);
+
   useEffect(() => {
     if (initialConfig || kioskMode !== "edit" || !routeKioskId) return;
 
     let cancelled = false;
 
     const loadKiosk = async () => {
-      setIsLoadingKiosk(true);
-      try {
-        const kiosk = await getKioskById(routeKioskId);
-        if (!cancelled && kiosk) {
-          setPersistedLookupCompositeItemIds(getPersistedLookupCompositeItemIds(kiosk));
-          setConfig(sanitizeConfig(kiosk));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Failed to load kiosk:", err);
-          toastError(getSaveErrorMessage(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingKiosk(false);
-        }
+      const kiosk = await refreshKioskFromServer();
+      if (!cancelled && !kiosk) {
+        return;
       }
     };
 
@@ -1028,7 +1073,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [initialConfig, kioskMode, routeKioskId]);
+  }, [initialConfig, kioskMode, routeKioskId, refreshKioskFromServer]);
 
   const previewConfig = useMemo((): KioskConfig => {
     if (!draftOption || !editingOptionModal) return config;
@@ -1418,7 +1463,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
         label,
         sub_label: defaultOpt.sub_label || defaultOpt.subLabel || "",
         api_name: apiName,
-        value: initialValue || apiName,
+        value: fieldType === "input" ? "" : initialValue || apiName,
         color:
           defaultOpt.color ||
           (isColorType
@@ -1683,73 +1728,110 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
   }, []);
 
   // Top Action Handlers
-  const handleSaveOnly = async () => {
-    const finalConfig = sanitizeConfig(configRef.current);
-    const formData = buildKioskFormData(finalConfig);
-    console.log("==================== KIOSK BUILDER SAVE PAYLOAD ====================");
-    console.log("Kiosk Payload Object:", finalConfig);
-    console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
-    console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
-    console.log("====================================================================");
+  const handleSaveOnly = async (isPublish = false) => {
+    try {
+      setSaving(true);
+      if (isPublish) setPublishing(true);
 
-    if (onSave) {
-      onSave(finalConfig, formData);
-      toastSuccess("Kiosk saved successfully");
-    } else {
-      try {
+      const willPublish = isPublish || Boolean(configRef.current.is_published);
+      const finalConfig = sanitizeConfig({
+        ...configRef.current,
+        is_published: willPublish,
+      });
+      finalConfig.is_published = willPublish;
+
+      const formData = buildKioskFormData(finalConfig);
+      console.log("==================== KIOSK BUILDER SAVE PAYLOAD ====================");
+      console.log("Kiosk Payload Object:", finalConfig);
+      console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+      console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
+      console.log("====================================================================");
+
+      if (onSave) {
+        onSave(finalConfig, formData);
+        if (kioskMode === "edit" && routeKioskId) {
+          await refreshKioskFromServer();
+        }
+        toastSuccess(isPublish ? "Kiosk published successfully" : "Kiosk saved successfully");
+      } else {
         if (finalConfig.id) {
           await updateKiosk(finalConfig.id, formData);
+          if (kioskMode === "edit" && routeKioskId) {
+            await refreshKioskFromServer();
+          }
         } else {
           const res = await createKiosk(formData);
           const createdId = getCreatedKioskId(res);
           if (createdId) {
-            setConfig((prev) => ({ ...prev, id: createdId }));
+            setConfig((prev) => ({ ...prev, id: createdId, is_published: willPublish }));
             router.push(
               getKioskEditUrl(createdId) as Parameters<typeof router.push>[0],
             );
           }
         }
-        toastSuccess("Kiosk saved successfully");
-      } catch (err: unknown) {
-        console.error("Failed to save kiosk:", err);
-        toastError(getSaveErrorMessage(err));
+        toastSuccess(isPublish ? "Kiosk published successfully" : "Kiosk saved successfully");
       }
+      setConfig((prev) => ({ ...prev, is_published: willPublish }));
+    } catch (err: unknown) {
+      console.error("Failed to save kiosk:", err);
+      toastError(getSaveErrorMessage(err));
+    } finally {
+      setSaving(false);
+      setPublishing(false);
     }
   };
 
-  const handleSaveAndClose = async () => {
-    const finalConfig = sanitizeConfig(configRef.current);
-    const formData = buildKioskFormData(finalConfig);
-    console.log("==================== KIOSK BUILDER SAVE & CLOSE PAYLOAD ============");
-    console.log("Kiosk Payload Object:", finalConfig);
-    console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
-    console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
-    console.log("====================================================================");
+  const handleSaveAndClose = async (isPublish = false) => {
+    try {
+      setSaving(true);
+      if (isPublish) setPublishing(true);
 
-    if (onSave) {
-      onSave(finalConfig, formData);
-      toastSuccess("Kiosk saved successfully");
-      router.push(backUrl as Parameters<typeof router.push>[0]);
-    } else {
-      try {
+      const willPublish = isPublish || Boolean(configRef.current.is_published);
+      const finalConfig = sanitizeConfig({
+        ...configRef.current,
+        is_published: willPublish,
+      });
+      finalConfig.is_published = willPublish;
+
+      const formData = buildKioskFormData(finalConfig);
+      console.log("==================== KIOSK BUILDER SAVE & CLOSE PAYLOAD ============");
+      console.log("Kiosk Payload Object:", finalConfig);
+      console.log("Kiosk Payload JSON:\n", JSON.stringify(finalConfig, null, 2));
+      console.log("Kiosk Payload FormData (JSONString & binary files):", formDataToDebugEntries(formData));
+      console.log("====================================================================");
+
+      if (onSave) {
+        onSave(finalConfig, formData);
+        if (kioskMode === "edit" && routeKioskId) {
+          await refreshKioskFromServer();
+        }
+        toastSuccess(isPublish ? "Kiosk published successfully" : "Kiosk saved successfully");
+        router.push(backUrl as Parameters<typeof router.push>[0]);
+      } else {
         if (finalConfig.id) {
           await updateKiosk(finalConfig.id, formData);
-          toastSuccess("Kiosk saved successfully");
+          if (kioskMode === "edit" && routeKioskId) {
+            await refreshKioskFromServer();
+          }
+          toastSuccess(isPublish ? "Kiosk published successfully" : "Kiosk saved successfully");
           router.push(backUrl as Parameters<typeof router.push>[0]);
         } else {
           const res = await createKiosk(formData);
           const createdId = getCreatedKioskId(res);
+          toastSuccess(isPublish ? "Kiosk published successfully" : "Kiosk saved successfully");
           router.push(
             (createdId ? getKioskEditUrl(createdId) : backUrl) as Parameters<
               typeof router.push
             >[0],
           );
         }
-        if (!finalConfig.id) toastSuccess("Kiosk saved successfully");
-      } catch (err: unknown) {
-        console.error("Failed to save kiosk:", err);
-        toastError(getSaveErrorMessage(err));
       }
+    } catch (err: unknown) {
+      console.error("Failed to save kiosk:", err);
+      toastError(getSaveErrorMessage(err));
+    } finally {
+      setSaving(false);
+      setPublishing(false);
     }
   };
 
@@ -1794,49 +1876,146 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
           </div>
 
           {/* Center: Tabs (Form, Preview) */}
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-800 dark:bg-slate-800">
-            <button
-              onClick={() => setActiveTab("form")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                activeTab === "form"
-                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Form
-            </button>
-            <button
-              onClick={() => setActiveTab("preview")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                activeTab === "preview"
-                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              Preview
-            </button>
+          <div className="flex items-center justify-center">
+            <AppTabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "form" | "preview")}
+              tabs={[
+                { id: "form", label: "Form" },
+                { id: "preview", label: "Preview" },
+              ]}
+              className="border-b-0"
+            />
           </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleClose}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
-              Close
-            </button>
-            <button
-              onClick={handleSaveAndClose}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
-              Save and Close
-            </button>
-            <button
-              onClick={handleSaveOnly}
-              className="rounded-md bg-black px-4 py-1.5 text-xs font-semibold text-white hover:bg-black/90 dark:bg-white dark:text-black"
-            >
-              Save
-            </button>
+            {/* Close Dropdown */}
+            <div ref={closeMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleClose}
+                className="justify-center rounded-r-none border-r-0 px-3 h-8 text-xs font-medium"
+              >
+                Close
+              </Button>
+              <button
+                type="button"
+                aria-label="More close options"
+                aria-expanded={closeMenuOpen}
+                onClick={() => {
+                  setCloseMenuOpen((v) => !v);
+                  setSaveMenuOpen(false);
+                }}
+                className={cn(
+                  "flex items-center justify-center px-2 h-8 rounded-r-md border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 cursor-pointer",
+                  "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                  closeMenuOpen && "bg-slate-100 dark:bg-slate-800",
+                )}
+              >
+                <ChevronDown className={cn("size-3.5 transition-transform duration-150", closeMenuOpen && "rotate-180")} />
+              </button>
+
+              {closeMenuOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-48 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCloseMenuOpen(false);
+                      handleClose();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+                  >
+                    <X className="size-3.5 text-slate-400" />
+                    <span>Close</span>
+                  </button>
+                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                  <button
+                    type="button"
+                    disabled={saving || publishing}
+                    onClick={() => {
+                      setCloseMenuOpen(false);
+                      handleSaveAndClose(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                  >
+                    <Check className="size-3.5 text-blue-500" />
+                    <span>Save and Close</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Save Dropdown */}
+            <div ref={saveMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleSaveOnly(false)}
+                disabled={saving || publishing}
+                className="justify-center rounded-r-none border-r border-r-white/20 px-3.5 h-8 text-xs font-medium"
+              >
+                {publishing ? "Publishing…" : saving ? "Saving…" : "Save"}
+              </Button>
+              <button
+                type="button"
+                aria-label="More save options"
+                aria-expanded={saveMenuOpen}
+                disabled={saving || publishing}
+                onClick={() => {
+                  setSaveMenuOpen((v) => !v);
+                  setCloseMenuOpen(false);
+                }}
+                className={cn(
+                  "flex items-center justify-center px-2 h-8 rounded-r-md transition cursor-pointer",
+                  "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
+                  "hover:brightness-110 active:brightness-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  saveMenuOpen && "brightness-95",
+                )}
+              >
+                <ChevronDown className={cn("size-3.5 transition-transform duration-150", saveMenuOpen && "rotate-180")} />
+              </button>
+
+              {saveMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    disabled={saving || publishing}
+                    onClick={() => {
+                      setSaveMenuOpen(false);
+                      handleSaveOnly(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                  >
+                    <Save className="size-3.5 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold">Save</div>
+                      <div className="text-[10px] text-slate-400">Save changes and stay here</div>
+                    </div>
+                  </button>
+                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                  <button
+                    type="button"
+                    disabled={saving || publishing}
+                    onClick={() => {
+                      setSaveMenuOpen(false);
+                      handleSaveOnly(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                  >
+                    <Globe className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-emerald-700 dark:text-emerald-400">Save and Publish</div>
+                      <div className="text-[10px] text-slate-400">Publish kiosk for immediate use</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -1988,6 +2167,7 @@ export const KioskBuilder: React.FC<KioskBuilderProps> = ({
                     console.log("Kiosk simulated submit values:", values);
                     toastSuccess("Simulated kiosk submission recorded!");
                   }}
+                  hideSubmitButton
                 />
               </div>
             </div>

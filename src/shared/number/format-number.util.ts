@@ -11,7 +11,9 @@ export function formatOrgNumber(
   numberFormat: string = DEFAULT_ORG_NUMBER_FORMAT,
 ): string {
   if (!Number.isFinite(amount)) return "—";
-  return formatGroupedNumber(amount, decimalPlaces, normalizeOrgNumberFormat(numberFormat));
+  return formatGroupedNumber(amount, decimalPlaces, normalizeOrgNumberFormat(numberFormat), {
+    trimTrailingZeros: true,
+  });
 }
 
 export function formatOrgQuantity(
@@ -28,7 +30,7 @@ export function formatOrgQuantity(
   if (!Number.isFinite(n)) return "—";
   const rounded = Math.round(n * 10000) / 10000;
   const decimals = Number.isInteger(rounded) ? 0 : 2;
-  return formatGroupedNumber(rounded, decimals, format);
+  return formatGroupedNumber(rounded, decimals, format, { trimTrailingZeros: true });
 }
 
 export function formatOrgNumberValue(

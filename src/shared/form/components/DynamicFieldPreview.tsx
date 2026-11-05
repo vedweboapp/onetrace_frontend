@@ -27,6 +27,7 @@ import {
   Globe,
   LucideIcon,
   PenTool,
+  QrCode,
 } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import {
@@ -63,6 +64,7 @@ const icons: Record<string, LucideIcon> = {
   receiver_lookup: Home,
   country: Globe,
   signature: PenTool,
+  qr_scanner: QrCode,
 };
 
 interface Field {

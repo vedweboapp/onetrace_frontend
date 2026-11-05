@@ -19,7 +19,11 @@ import { EntityAddressesFields } from "@/shared/components/form/entity-addresses
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess } from "@/shared/feedback/app-toast";
-import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import {
+  DuplicateEntryFieldError,
+  reportFormSubmitApiError,
+  useDuplicateEntryConflict,
+} from "@/shared/form";
 import {
   hrefAfterEntityCreate,
   QUICK_CREATE_SELECT_TARGET_PARAM,
@@ -88,6 +92,24 @@ export function ClientFormScreen({ mode, clientId }: Props) {
 
   const phoneCountry = usePhoneCountryFromAddresses(control);
 
+  const navigateAfterSave = React.useCallback(
+    (savedId: number, fromCreate: boolean) => {
+      router.replace(
+        hrefAfterEntityCreate({
+          createdId: savedId,
+          selectTarget: fromCreate ? searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM) : null,
+          backHref: safeBack,
+          listPath: routes.dashboard.clients,
+        }),
+      );
+    },
+    [router, safeBack, searchParams],
+  );
+
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => `${routes.dashboard.clients}/${existingId}`,
+  });
+
   React.useEffect(() => {
     if (!isEdit || !clientId) return;
     let cancelled = false;
@@ -114,15 +136,10 @@ export function ClientFormScreen({ mode, clientId }: Props) {
     try {
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
-      router.replace(
-        hrefAfterEntityCreate({
-          createdId: saved.id,
-          selectTarget: isEdit ? null : searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
-          backHref: safeBack,
-          listPath: routes.dashboard.clients,
-        }),
-      );
+      duplicate.clear();
+      navigateAfterSave(saved.id, !isEdit);
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError);
     } finally {
       setSaving(false);
@@ -177,6 +194,17 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                 required
                 autoComplete="name"
                 error={errors.name?.message}
+                errorNode={
+                  errors.name?.message ? (
+                    <DuplicateEntryFieldError
+                      id="client-name-error"
+                      message={errors.name.message}
+                      fieldKey="name"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                    />
+                  ) : undefined
+                }
               />
               <SurfaceTextField
                 register={register}
@@ -187,6 +215,17 @@ export function ClientFormScreen({ mode, clientId }: Props) {
                 required
                 autoComplete="email"
                 error={errors.email?.message}
+                errorNode={
+                  errors.email?.message ? (
+                    <DuplicateEntryFieldError
+                      id="client-email-error"
+                      message={errors.email.message}
+                      fieldKey="email"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                    />
+                  ) : undefined
+                }
               />
             </FormFieldRow>
 

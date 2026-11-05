@@ -7,6 +7,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { DISPATCH_PATHS } from "./dispatch.paths";
 import { DISPATCH_RETURN_REQUEST_PATHS } from "./dispatch.paths";
 import type {
@@ -150,6 +152,14 @@ export async function fetchDispatch(id: number): Promise<DispatchDetail> {
   return normalizeDispatchDetail(data.data);
 }
 
+export async function updateDispatchAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<DispatchDetail> {
+  const saved = await updateEntityAttachments<DispatchDetail>(DISPATCH_PATHS.detail(id), refs);
+  return normalizeDispatchDetail(saved);
+}
+
 export async function fetchDispatchLogs(id: number): Promise<DispatchLogEntry[]> {
   const { data } = await api.get<ApiEnvelope<DispatchLogEntry[]>>(
     DISPATCH_PATHS.logs(id),
@@ -254,6 +264,17 @@ export async function completeDispatchReturnRequest(id: number): Promise<Dispatc
   );
   const raw = data?.success === true ? data.data : data;
   return normalizeReturnRequest(raw);
+}
+
+export async function updateReturnRequestAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<DispatchReturnRequest> {
+  const saved = await updateEntityAttachments<DispatchReturnRequest>(
+    DISPATCH_RETURN_REQUEST_PATHS.detail(id),
+    refs,
+  );
+  return normalizeReturnRequest(saved);
 }
 
 export async function approveReturnRequest(id: number): Promise<DispatchReturnRequest> {

@@ -4,6 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { usePhoneCountryFromAddresses } from "@/shared/hooks/use-phone-country-from-address";
@@ -15,14 +16,23 @@ import {
   mapUserFormToUpdatePayload,
   userToFormDefaults,
 } from "@/features/users/utils/user-form-map";
+import { resolveAppRoleIdMap } from "@/features/users/utils/load-users-by-role.util";
 import { loadUserProfileSelectOptions } from "@/features/users/utils/user-profile-select.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
 import { EntityAddressesFields } from "@/shared/components/form/entity-addresses-fields";
 import { UserAvailabilityFields } from "@/features/users/components/user-availability-fields";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
+import {
+  QUICK_CREATE_APP_ROLE_PARAM,
+  QUICK_CREATE_SELECT_TARGET_PARAM,
+  hrefAfterEntityCreate,
+  isQuickCreateAppRole,
+} from "@/shared/utils/quick-create-navigation.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -39,6 +49,7 @@ import {
 export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; userId?: number }) {
   const t = useTranslations("Dashboard.users");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const safeBack = useFormBackUrl("settings/users", routes.dashboard.settingsUsers);
   const isEdit = mode === "edit";
   const [saving, setSaving] = React.useState(false);
@@ -86,6 +97,9 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
   });
 
   const phoneCountry = usePhoneCountryFromAddresses(control);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => `${routes.dashboard.settingsUsers}/${existingId}`,
+  });
 
   const basePayTypeOptions = React.useMemo<InputWithEndSelectOption[]>(
     () => [
@@ -141,6 +155,25 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
     };
   }, [isEdit, reset, t, userId]);
 
+  const urlAppRole = searchParams.get(QUICK_CREATE_APP_ROLE_PARAM);
+  React.useEffect(() => {
+    if (isEdit || !isQuickCreateAppRole(urlAppRole)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const roleIds = await resolveAppRoleIdMap();
+        const roleId = roleIds.get(urlAppRole);
+        if (cancelled || roleId == null) return;
+        setValue("role", String(roleId), { shouldDirty: true, shouldValidate: true });
+      } catch {
+        // Role list may still be loading; user can pick manually.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, urlAppRole, setValue]);
+
   async function submit(values: UserFormValues) {
     setSaving(true);
     try {
@@ -152,9 +185,17 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
       } else {
         const created = await inviteUser(mapInviteUserFormToPayload(values));
         toastSuccess(t("createdToast"));
-        router.replace(buildEntityDetailHrefAfterSave(routes.dashboard.settingsUsers, created.id, listBack));
+        router.replace(
+          hrefAfterEntityCreate({
+            createdId: created.id,
+            selectTarget: searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM),
+            backHref: listBack,
+            listPath: routes.dashboard.settingsUsers,
+          }),
+        );
       }
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportFormSubmitApiError(error, setError, t("saveError"), {
         fieldMap: {
           address1: "addresses.0.address_line_1",
@@ -249,6 +290,18 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 required
                 autoComplete="email"
                 error={errors.email?.message}
+                errorNode={
+                  errors.email?.message ? (
+                    <DuplicateEntryFieldError
+                      id="user-email-error"
+                      message={errors.email.message}
+                      fieldKey="email"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                      linkOnDuplicate
+                    />
+                  ) : undefined
+                }
               />
               <SurfacePhoneField
                 control={control}
@@ -257,6 +310,18 @@ export function UserFormScreen({ mode, userId }: { mode: "create" | "edit"; user
                 label={t("fields.phone")}
                 required
                 error={errors.phone_number?.message}
+                errorNode={
+                  errors.phone_number?.message ? (
+                    <DuplicateEntryFieldError
+                      id="user-phone-error"
+                      message={errors.phone_number.message}
+                      fieldKey="phone_number"
+                      conflict={duplicate.conflict}
+                      existingHref={duplicate.existingHref}
+                      linkOnDuplicate
+                    />
+                  ) : undefined
+                }
                 disabled={saving}
                 countryIso={phoneCountry}
               />

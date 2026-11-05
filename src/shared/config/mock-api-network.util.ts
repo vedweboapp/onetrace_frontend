@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { resolvePublicApiBaseUrl } from "@/core/config/api-url.util";
 
@@ -10,7 +10,6 @@ const mockPreviewClient = axios.create({
   baseURL: "/api/mock/v1",
   headers: {
     Accept: "application/json",
-    "Content-Type": "application/json",
   },
 });
 
@@ -18,6 +17,20 @@ mockPreviewClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   else delete config.headers.Authorization;
+
+  // Crucial: for FormData (multipart payloads), remove Content-Type header so
+  // browser XMLHttpRequest/fetch generates 'multipart/form-data; boundary=----WebKitFormBoundary...'
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.delete("Content-Type");
+    } else if (config.headers && typeof config.headers === "object") {
+      delete (config.headers as Record<string, unknown>)["Content-Type"];
+    }
+    // Prevent axios from JSON-stringifying the FormData instance
+    config.transformRequest = [(data) => data];
+  } else if (!config.headers["Content-Type"]) {
+    config.headers["Content-Type"] = "application/json";
+  }
 
   if (typeof config.url === "string" && config.url.length > 0) {
     const [pathOnly, qs] = config.url.split("?");
@@ -48,11 +61,16 @@ export async function emitMockApiNetworkRequest(input: MockApiNetworkRequest): P
         params[key] = value;
       }
     }
+
+    const isFormData = typeof FormData !== "undefined" && input.data instanceof FormData;
+
     await mockPreviewClient.request({
       method: input.method,
       url: input.path.replace(/^\/+/, ""),
       params: Object.keys(params).length > 0 ? params : undefined,
       data: input.data,
+      headers: isFormData ? { "Content-Type": undefined } : undefined,
+      transformRequest: isFormData ? [(data) => data] : undefined,
     });
   } catch {
     // Preview only — local mock storage remains the source of truth.

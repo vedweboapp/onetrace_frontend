@@ -8,13 +8,26 @@ import { cn } from "@/core/utils/http.util";
 import {
   createUnitType,
   deleteUnitType,
+  fetchUnitType,
   fetchUnitTypesPage,
   updateUnitType,
 } from "@/features/unit-types/api/unit-type.api";
 import type { UnitType } from "@/features/unit-types/types/unit-type.types";
 import { formatUnitTypeLabel, formatUnitTypeShortLabel } from "@/features/unit-types/utils/unit-type-display.util";
 import { reportLocalFormSubmitApiError, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
+import {
+  SettingsDetailActions,
+  SettingsDetailList,
+  SettingsDetailRow,
+  SettingsDetailTextValue,
+  SettingsDetailTimestampValue,
+  SettingsDetailTitle,
+  settingsDetailUserLabel,
+} from "@/shared/components/settings/settings-detail-view";
 import {
   getApiErrorDisplayMessage,
   toastApiError,
@@ -29,6 +42,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   AppButton,
@@ -37,6 +51,7 @@ import {
   DataTablePaginationBar,
   DataTableRowActionsMenu,
   type DataTableRowMenuItem,
+  DetailPanel,
   ListPageCard,
   ListPageCardGrid,
   ListPageCardSkeleton,
@@ -134,6 +149,11 @@ export function UnitTypeSettingsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
+  const [detailRow, setDetailRow] = React.useState<UnitType | null>(null);
+  useOpenSettingsRecord(fetchUnitType, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsUnitTypes, existingId),
+  });
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [formOpen, setFormOpen] = React.useState(false);
@@ -188,6 +208,7 @@ export function UnitTypeSettingsPanel() {
     setUnitShortForm(row.short_form?.trim() ?? "");
     setIsActive(row.is_active);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -197,6 +218,7 @@ export function UnitTypeSettingsPanel() {
     setUnitShortForm("");
     setIsActive(true);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -239,6 +261,7 @@ export function UnitTypeSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { name, shortForm } = parsed.data;
     setSaving(true);
     try {
@@ -253,6 +276,7 @@ export function UnitTypeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -358,7 +382,10 @@ export function UnitTypeSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -382,7 +409,6 @@ export function UnitTypeSettingsPanel() {
               iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
@@ -420,7 +446,7 @@ export function UnitTypeSettingsPanel() {
             </ListPageCardGrid>
           </div>
         ) : (
-          <EntityDataTable columns={tableColumns} rows={items} />
+          <EntityDataTable columns={tableColumns} rows={items} onRowClick={(row) => setDetailRow(row)} />
         )}
 
         {!listLoading && !loadError && items.length > 0 ? (
@@ -443,6 +469,74 @@ export function UnitTypeSettingsPanel() {
           />
         ) : null}
       </SurfaceShell>
+
+      <DetailPanel
+        open={detailRow !== null}
+        onClose={() => setDetailRow(null)}
+        title={
+          detailRow ? (
+            <SettingsDetailTitle
+              name={formatUnitTypeLabel(detailRow)}
+              idLabel={t("detail.idLabel", { id: detailRow.id })}
+            />
+          ) : null
+        }
+        footer={
+          detailRow ? (
+            <SettingsDetailActions
+              cancelLabel={t("modal.cancel")}
+              editLabel={t("edit")}
+              deleteLabel={t("delete")}
+              onCancel={() => setDetailRow(null)}
+              onEdit={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                openEdit(row);
+              }}
+              onDelete={() => {
+                const row = detailRow;
+                setDetailRow(null);
+                setDeleteTarget(row);
+              }}
+            />
+          ) : undefined
+        }
+      >
+        {detailRow ? (
+          <SettingsDetailList>
+            <SettingsDetailRow label={t("table.name")}>
+              <SettingsDetailTextValue>{formatUnitTypeLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("table.shortForm")}>
+              <SettingsDetailTextValue>{formatUnitTypeShortLabel(detailRow)}</SettingsDetailTextValue>
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.createdAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.created_at}
+                byUser={settingsDetailUserLabel(detailRow.created_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.created_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.created_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+            <SettingsDetailRow label={t("detail.updatedAt")}>
+              <SettingsDetailTimestampValue
+                dateFmt={dateFmt}
+                value={detailRow.modified_at}
+                byUser={settingsDetailUserLabel(detailRow.modified_by)}
+                byUserTemplate={
+                  settingsDetailUserLabel(detailRow.modified_by) !== "—"
+                    ? t("detail.byUser", { user: settingsDetailUserLabel(detailRow.modified_by) })
+                    : null
+                }
+              />
+            </SettingsDetailRow>
+          </SettingsDetailList>
+        ) : null}
+      </DetailPanel>
 
       <AppModal
         open={formOpen}
@@ -486,7 +580,13 @@ export function UnitTypeSettingsPanel() {
               autoComplete="off"
             />
             {errors.name ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>
+              <DuplicateEntryFieldError
+                message={errors.name}
+                fieldKey="name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup
@@ -512,7 +612,13 @@ export function UnitTypeSettingsPanel() {
               autoComplete="off"
             />
             {errors.shortForm ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.shortForm}</p>
+              <DuplicateEntryFieldError
+                message={errors.shortForm}
+                fieldKey="short_name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           {editing ? (

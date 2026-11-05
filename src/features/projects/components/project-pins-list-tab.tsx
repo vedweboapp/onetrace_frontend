@@ -27,6 +27,7 @@ import type {
   ProjectPagination,
   ProjectSiteRef,
 } from "@/features/projects/types/project.types";
+import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 import { resolvePinProjectFormId } from "@/features/projects/utils/pin-form-meta.util";
 import { useParams } from "next/navigation";
@@ -35,6 +36,8 @@ import { ChevronRight, Layers, MapPinned } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { DetailEntityLink } from "@/shared/components/entity";
 import type { ListEmptyStateKind } from "@/shared/hooks/use-list-active-inactive-empty";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
+import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
 import { Controller, useForm } from "react-hook-form";
 import { DrawingPinPreviewModal } from "./drawing-pin-preview-modal";
 import { useRouter } from "@/i18n/navigation";
@@ -45,13 +48,38 @@ import { DrawingFilePreviewFill } from "@/features/projects/components/drawing-f
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingFilePreview } from "@/features/projects/components/drawing-file-preview";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
+import { ChecklistTypeFormModal } from "@/features/checklist-types/components/checklist-type-form-modal";
+import type { ChecklistType } from "@/features/checklist-types/types/checklist-type.types";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
+import { fetchSitesPage } from "@/features/sites/api/site.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import {
   useLevelSnapshots,
   type LevelSnapshotState,
 } from "@/shared/hooks/use-level-snapshots.hook";
 import { PinThumbnailCropped } from "@/shared/components/pin-thumbnail-cropped";
+
+type SiteOption = { value: string; label: string };
+
+type CreateJobDialogDraft = {
+  dialogVisible?: boolean;
+  site?: string;
+  checklists?: string[];
+  selectedIds?: number[];
+};
+
+function mapProjectSites(sites?: Array<number | ProjectSiteRef> | null): SiteOption[] {
+  if (!sites || sites.length === 0) return [];
+  return sites
+    .map((site) => {
+      if (typeof site === "number") return { value: String(site), label: `#${site}` };
+      return {
+        value: String(site.id),
+        label: site.site_name?.trim() || `#${site.id}`,
+      };
+    })
+    .filter((option) => option.value);
+}
 
 const PIN_TABLE_GRID =
   "grid min-w-0 w-full max-w-full grid-cols-[minmax(0,1.4rem)_minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)_minmax(0,0.5fr)_minmax(0,0.4fr)_minmax(0,0.4fr)_minmax(0,1fr)_minmax(0,0.45fr)] items-center gap-x-3";
@@ -67,6 +95,14 @@ const PIN_TABLE_ROW_CLASS = cn(
 
 const SELECTION_CHECKBOX_CLASS_NAME =
   "h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-900 cursor-pointer accent-(--dash-accent,#f97316)";
+
+const PinsProjectIdContext = React.createContext<string | undefined>(undefined);
+
+function usePinsProjectId(): string | undefined {
+  const fromContext = React.useContext(PinsProjectIdContext);
+  const { id: routeId } = useParams<{ id: string }>();
+  return fromContext || routeId;
+}
 
 const getSelectionState = (
   ids: number[],
@@ -396,7 +432,7 @@ function ProjectPinRow({
 }) {
   const locale = useLocale();
   const isEs = locale === "es";
-  const { id: projectId } = useParams<{ id: string }>();
+  const projectId = usePinsProjectId();
   const productName = pin.item_detail?.name || pin.group_detail?.name || "Pin";
   const sku = pin.item_detail?.sku;
   const variationText = pin.variation
@@ -742,25 +778,24 @@ function PlotPinsBlock({
 }
 const ProjectPinsListTab = ({
   sites,
+  projectId: projectIdProp,
+  quotationId,
 }: {
   sites?: Array<number | ProjectSiteRef> | null;
+  /** When opened from a quotation (or other non-project route), pass the project id. */
+  projectId?: number;
+  /** When set, levels are loaded with `?quotations=<id>` (this quote only). */
+  quotationId?: number;
 }) => {
-  const siteOptions = useMemo(() => {
-    if (!sites || sites.length === 0)
-      return [] as { value: string; label: string }[];
-    return sites
-      .map((site) => {
-        if (typeof site === "number")
-          return { value: String(site), label: `#${site}` };
-        return {
-          value: String(site.id),
-          label: site.site_name?.trim() || `#${site.id}`,
-        };
-      })
-      .filter((option) => option.value);
+  const [siteOptions, setSiteOptions] = useState<SiteOption[]>(() => mapProjectSites(sites));
+  const [clientId, setClientId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSiteOptions(mapProjectSites(sites));
   }, [sites]);
 
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = projectIdProp != null && Number.isFinite(projectIdProp) ? String(projectIdProp) : routeId;
 
   const [collapsedLevelIds, setCollapsedLevelIds] = useState<Set<number>>(
     () => new Set(),
@@ -875,13 +910,16 @@ const ProjectPinsListTab = ({
       setLoadError(null);
 
       try {
-        const rawParams: Record<string, string> = {
+        const rawParams: Record<string, string | number> = {
           is_converted_job: selectedJobStatus,
           quote_status: selectedQuoteStatus,
         };
+        if (quotationId != null && Number.isFinite(quotationId) && quotationId > 0) {
+          rawParams.quotations = quotationId;
+        }
         // Strip empty-string values — empty means "All", so omit them entirely
         const params = Object.fromEntries(
-          Object.entries(rawParams).filter(([, v]) => v !== "")
+          Object.entries(rawParams).filter(([, v]) => v !== ""),
         );
         const { items, pagination: p } = await fetchDrawingsPage(
           Number(id),
@@ -907,7 +945,7 @@ const ProjectPinsListTab = ({
         }
       }
     },
-    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus],
+    [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId],
   );
 
   useEffect(() => {
@@ -917,11 +955,12 @@ const ProjectPinsListTab = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus]);
+  }, [id, page, pageSize, selectedJobStatus, selectedQuoteStatus, quotationId]);
 
   useEffect(() => {
     if (!id || !/^\d+$/.test(id)) {
       setProjectTypeId(null);
+      setClientId(null);
       return;
     }
 
@@ -931,9 +970,13 @@ const ProjectPinsListTab = ({
         const project = await fetchProject(Number.parseInt(id, 10));
         if (!cancelled) {
           setProjectTypeId(getProjectTypeId(project));
+          setClientId(getProjectClientId(project));
         }
       } catch {
-        if (!cancelled) setProjectTypeId(null);
+        if (!cancelled) {
+          setProjectTypeId(null);
+          setClientId(null);
+        }
       }
     })();
     return () => {
@@ -945,12 +988,13 @@ const ProjectPinsListTab = ({
     if (!id) return;
     let cancelled = false;
     setLoadingForms(true);
-    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true })
+    fetchProjectFormsPage(Number(id), 1, 20, { dropdown: true, is_published: true })
       .then((res) => {
         if (!cancelled) {
-          setProjectForms(res.items);
+          const publishedForms = res.items.filter((form) => form.is_published !== false);
+          setProjectForms(publishedForms);
           setFormOptions(
-            res.items.map((form) => ({
+            publishedForms.map((form) => ({
               value: String(form.id),
               label: form.name,
             })),
@@ -1043,6 +1087,8 @@ const ProjectPinsListTab = ({
     handleSubmit,
     reset,
     control,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<{
     site: string;
@@ -1054,15 +1100,112 @@ const ProjectPinsListTab = ({
     },
   });
 
+  const reloadSites = useCallback(async () => {
+    if (!clientId || clientId <= 0) return;
+    try {
+      const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
+      setSiteOptions(
+        items.map((site) => ({
+          value: String(site.id),
+          label: site.site_name?.trim() || `#${site.id}`,
+        })),
+      );
+    } catch {
+      // Keep existing options
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!dialogVisible || !clientId) return;
+    void reloadSites();
+  }, [dialogVisible, clientId, reloadSites]);
+
+  const getCreateJobDraft = useCallback(
+    (): CreateJobDialogDraft => ({
+      dialogVisible: true,
+      site: getValues("site"),
+      checklists: getValues("checklists") ?? [],
+      selectedIds: Array.from(selectedIds),
+    }),
+    [getValues, selectedIds],
+  );
+
+  const restoreCreateJobDraft = useCallback(
+    (draft: unknown) => {
+      if (!draft || typeof draft !== "object") return;
+      const next = draft as CreateJobDialogDraft;
+      if (next.dialogVisible) setDialogVisible(true);
+      if (Array.isArray(next.selectedIds)) {
+        setSelectedIds(new Set(next.selectedIds.filter((id) => Number.isFinite(id))));
+      }
+      reset({
+        site: typeof next.site === "string" ? next.site : "",
+        checklists: Array.isArray(next.checklists) ? next.checklists.map(String) : [],
+      });
+    },
+    [reset],
+  );
+
+  const siteQuickCreate = useQuickCreate({
+    kind: "site",
+    clientId: clientId ?? undefined,
+    addDisabled: !clientId,
+    getFormDraft: getCreateJobDraft,
+  });
+
+  const [checklistModalOpen, setChecklistModalOpen] = useState(false);
+  const checklistQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setChecklistModalOpen(true),
+    addLabel: t("addChecklist"),
+    addDisabled: !projectTypeId,
+  });
+
+  const handleChecklistCreated = useCallback(
+    (row: ChecklistType) => {
+      const id = String(row.id);
+      const label = row.title?.trim() || `Checklist #${row.id}`;
+      setCheckListData((prev) => {
+        if (prev.some((item) => String(item.id) === id)) {
+          return prev.map((item) => (String(item.id) === id ? { id: row.id, label } : item));
+        }
+        return [...prev, { id: row.id, label }];
+      });
+      const current = getValues("checklists") ?? [];
+      if (!current.includes(id)) {
+        setValue("checklists", [...current, id], { shouldDirty: true, shouldValidate: true });
+      }
+    },
+    [getValues, setValue],
+  );
+
+  useQuickCreateReturn({
+    restoreFormDraft: restoreCreateJobDraft,
+    onReloadOptions: async () => {
+      await reloadSites();
+      await fetchCheckListData();
+    },
+    onApplySelect: ({ selectTarget, selectId }) => {
+      if (selectTarget !== "site") return;
+      setDialogVisible(true);
+      setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
+      setSiteOptions((prev) => {
+        if (prev.some((opt) => opt.value === selectId)) return prev;
+        return [...prev, { value: selectId, label: `#${selectId}` }];
+      });
+    },
+  });
+
   const filteredLocations = useMemo(() => {
     return locations
       .filter((level) => levelFilter == null || level.id === levelFilter)
       .map((level) => {
         const plots = (level.plots ?? [])
           .filter((plot) => plotFilter == null || plot.id === plotFilter)
-          .map((plot) => ({ ...plot, pins: plot.pins ?? [] }))
-          .filter((p) => p.pins.length > 0);
-
+          .map((plot) => ({
+            ...plot,
+            pins: Array.isArray(plot.pins) ? plot.pins : [],
+          }))
+          .filter((plot) => plot.pins.length > 0);
         return { ...level, plots };
       })
       .filter((level) => level.plots.length > 0);
@@ -1311,6 +1454,7 @@ const ProjectPinsListTab = ({
     },
   ];
   return (
+    <PinsProjectIdContext.Provider value={id}>
     <div className="flex h-[calc(100dvh-12rem)] min-h-[22rem] w-full min-w-0 flex-col overflow-hidden">
       {dialogVisible && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm sm:py-10">
@@ -1343,6 +1487,9 @@ const ProjectPinsListTab = ({
                       portaled
                       searchable
                       clearable
+                      onAdd={siteQuickCreate.onAdd}
+                      addAriaLabel={siteQuickCreate.addAriaLabel}
+                      addLabel={t("addSite")}
                       className={cn(
                         "w-full",
                         errors.site && "ring ring-red-500 rounded-lg",
@@ -1374,10 +1521,16 @@ const ProjectPinsListTab = ({
                       options={checklistOptions}
                       values={field.value ?? []}
                       onChange={(options: string[]) => field.onChange(options)}
+                      onSearchChange={setChecklistSearch}
                       placeholder={t("selectChecklist") || "Select Checklist"}
                       listLabel={t("checkList")}
                       disabled={checkListLoading}
-                      className="w-full "
+                      searchable
+                      portaled
+                      onAdd={checklistQuickAdd.onAdd}
+                      addAriaLabel={checklistQuickAdd.addAriaLabel}
+                      addLabel={checklistQuickAdd.addLabel}
+                      className="w-full"
                     />
                   )}
                 />
@@ -1415,6 +1568,14 @@ const ProjectPinsListTab = ({
           </div>
         </div>
       )}
+
+      <ChecklistTypeFormModal
+        open={checklistModalOpen}
+        onClose={() => setChecklistModalOpen(false)}
+        defaultProjectTypeId={projectTypeId}
+        lockProjectType={projectTypeId != null && projectTypeId > 0}
+        onSaved={handleChecklistCreated}
+      />
 
       {/* Already-a-job conflict warning modal */}
       {jobConflictWarning && (
@@ -1735,7 +1896,9 @@ const ProjectPinsListTab = ({
                 iconName: "pinStatus",
                 title: "No locations yet",
                 description:
-                  "No locations or blueprints have been added to this project yet.",
+                  quotationId != null
+                    ? "No approved locations were found for this quote."
+                    : "No locations or blueprints have been added to this project yet.",
                 action: null,
               }}
               onClearFilters={clearFilters}
@@ -1908,6 +2071,7 @@ const ProjectPinsListTab = ({
         />
       )}
     </div>
+    </PinsProjectIdContext.Provider>
   );
 };
 

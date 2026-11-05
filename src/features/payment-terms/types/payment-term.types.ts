@@ -48,7 +48,6 @@ export type PaymentTermCreatePayload = {
   payment_terms_discount_percentage?: number;
   payment_terms_discount_due_days?: number | null;
   type?: string;
-  is_system_terms?: boolean;
 };
 
 export type PaymentTermUpdatePayload = Partial<PaymentTermCreatePayload> & {

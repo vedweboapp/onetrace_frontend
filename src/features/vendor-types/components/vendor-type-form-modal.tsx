@@ -11,6 +11,10 @@ import {
   normalizeVendorTypeHex,
 } from "@/features/vendor-types/utils/vendor-type-display.util";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref } from "@/shared/form/settings-record-query";
+import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal, FieldGroup, surfaceInputClassName } from "@/shared/ui";
@@ -29,6 +33,9 @@ export type VendorTypeFormModalProps = {
 export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: VendorTypeFormModalProps) {
   const t = useTranslations("Dashboard.vendorTypes");
   const isEdit = editing != null;
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsVendorTypes, existingId),
+  });
 
   const [typeName, setTypeName] = React.useState("");
   const [bgColour, setBgColour] = React.useState(DEFAULT_BG);
@@ -51,6 +58,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
       setIsActive(true);
     }
     setErrors({});
+    duplicate.clear();
   }, [open, editing]);
 
   async function submitForm() {
@@ -73,6 +81,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
     }
 
     setErrors({});
+    duplicate.clear();
     const { name, bg_color: bg, text_color: fg } = parsed.data;
     setSaving(true);
     try {
@@ -83,6 +92,7 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
       onSaved?.(saved);
       onClose();
     } catch (error) {
+      if (!isEdit) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -134,7 +144,15 @@ export function VendorTypeFormModal({ open, onClose, editing = null, onSaved }: 
             )}
             autoComplete="off"
           />
-          {errors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p> : null}
+          {errors.name ? (
+            <DuplicateEntryFieldError
+              message={errors.name}
+              fieldKey="name"
+              conflict={duplicate.conflict}
+              existingHref={duplicate.existingHref}
+              linkOnDuplicate
+            />
+          ) : null}
         </FieldGroup>
         <FieldGroup
           label={
