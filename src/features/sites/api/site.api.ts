@@ -8,6 +8,8 @@ import {
   resolveDropdownListPages,
   parseListApiPage,
 } from "@/shared/utils/list-dropdown-fetch.util";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import { SITE_PATHS } from "./site.paths";
 import type {
   Site,
@@ -75,6 +77,13 @@ export async function updateSite(id: number, body: SiteUpdatePayload): Promise<S
   const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateSiteAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Site> {
+  return updateEntityAttachments<Site>(SITE_PATHS.detail(id), refs);
 }
 
 export async function deleteSite(id: number): Promise<void> {

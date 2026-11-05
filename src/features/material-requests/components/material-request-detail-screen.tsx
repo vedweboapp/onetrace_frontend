@@ -5,11 +5,15 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
-import { fetchMaterialRequest } from "@/features/material-requests/api/material-request.api";
+import { fetchMaterialRequest, updateMaterialRequestAttachments } from "@/features/material-requests/api/material-request.api";
+import { MATERIAL_REQUEST_PATHS } from "@/features/material-requests/api/material-request.paths";
 import { MaterialRequestDetailBody } from "@/features/material-requests/components/material-request-detail-body";
 import { MaterialRequestDispatchesTab } from "@/features/material-requests/components/material-request-dispatches-tab";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
 import {
   EntityDetailErrorState,
@@ -19,7 +23,8 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
 type Props = {
@@ -27,10 +32,13 @@ type Props = {
 };
 
 export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch(["users"]);
   const t = useTranslations("Dashboard.materialRequests");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const router = useRouter();
   const pathname = usePathname();
+  const tabsStorageKey = useTabOrderStorageKey("materialRequestDetail");
   const [activeTab, setActiveTab] = React.useState("overview");
   const dueFmt = React.useMemo(
     () =>
@@ -64,7 +72,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   const { labelFor: statusLabel, rowFor: statusRowFor, options: statusOptions } = useMaterialStatusCatalog();
 
@@ -72,9 +80,11 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
     () => [
       { id: "overview", label: t("detail.tabOverview") },
       { id: "dispatches", label: t("detail.tabDispatches") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [t, tAudit],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -91,10 +101,11 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
       fetch={fetchMaterialRequest}
       getTitle={(detail) => detail.request_number}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={t("detail.tabsAria")}
           panelIdPrefix="material-request-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -151,6 +162,16 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
             })()
           ) : detail && activeTab === "dispatches" ? (
             <MaterialRequestDispatchesTab materialRequestId={detail.id} />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="materialRequests"
+              updateAttachments={(refs) => updateMaterialRequestAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={MATERIAL_REQUEST_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.materialRequest}

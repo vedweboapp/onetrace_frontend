@@ -1,28 +1,27 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Send } from "lucide-react";
 import {
+    DashboardLoadErrorState,
     AppButton,
-    AppModal,
-    CheckmarkSelect,
+    AppTabs,
+    type AppTabItem,
     DashboardEmptyState,
     ListPageSearchField,
     SurfaceShell,
     DataTablePaginationBar,
     DataTableTextModeToggle,
+    DataTableRowActionsMenu,
     useDataTableTextModeStore,
-    type CheckmarkSelectOption,
 } from "@/shared/ui";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
-import { getProjectFormList, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
+import { getProjectFormList, patchProjectForm, updateProjectForm } from "@/features/project-forms/api/project-forms.api";
+import { CreateProjectFormTypeModal } from "@/features/project-forms/components/create-project-form-type-modal";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
-import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
-import type { ProjectType } from "@/features/project-types/types/project-type.types";
-import { fetchInstallationTypesPage } from "@/features/installation-types/api/installation-type.api";
-import type { InstallationType } from "@/features/installation-types/types/installation-type.types";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
@@ -36,6 +35,7 @@ interface FormListItem {
     description?: string | null;
     project_type?: unknown;
     is_active?: boolean;
+    is_published?: boolean;
     created_at?: string;
     modified_at?: string;
     created_by?: { id: number; username?: string; email?: string } | null;
@@ -80,7 +80,18 @@ function installationTypeLabel(value: unknown): string {
     );
 }
 function formApiName(row: FormListItem): string {
-    return row.api_name || textValue(row.apiName) || "â€”";
+    return row.api_name || textValue(row.apiName) || "—";
+}
+
+type FormTabId = "published" | "drafts";
+
+const FORM_TABS: readonly AppTabItem[] = [
+    { id: "published", label: "Published" },
+    { id: "drafts", label: "Drafts" },
+];
+
+function isFormPublished(form: FormListItem): boolean {
+    return Boolean(form.is_published);
 }
 
 const ProjectTypeFormList = () => {
@@ -114,17 +125,11 @@ const ProjectTypeFormList = () => {
     const [loading, setLoading] = React.useState(true);
     const [loadError, setLoadError] = React.useState<string | null>(null);
     const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
-    const [projectTypes, setProjectTypes] = React.useState<ProjectType[]>([]);
-    const [projectTypesLoading, setProjectTypesLoading] = React.useState(false);
-    const [projectTypesError, setProjectTypesError] = React.useState<string | null>(null);
     const [togglingId, setTogglingId] = React.useState<string | number | null>(null);
 
-    // Installation type state
-    const [installationTypes, setInstallationTypes] = React.useState<InstallationType[]>([]);
-    const [installationTypesLoading, setInstallationTypesLoading] = React.useState(false);
-    const [installationTypesError, setInstallationTypesError] = React.useState<string | null>(null);
-    const [selectedInstallationTypeId, setSelectedInstallationTypeId] = React.useState<number | null>(null);
-    const [selectedProjectTypeId, setSelectedProjectTypeId] = React.useState<number | null>(null);
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const activeTab: FormTabId = tabParam === "drafts" ? "drafts" : "published";
 
     React.useEffect(() => {
         let cancelled = false;
@@ -136,6 +141,7 @@ const ProjectTypeFormList = () => {
                     search: search || undefined,
                     page,
                     page_size: pageSize,
+                    is_published: activeTab === "published",
                 });
                 if (!cancelled) {
                     let resolvedItems: FormListItem[] = [];
@@ -179,7 +185,11 @@ const ProjectTypeFormList = () => {
                         };
                     }
                     
-                    setItems(resolvedItems);
+                    const finalItems = resolvedItems.filter((row) =>
+                        activeTab === "published" ? isFormPublished(row) : !isFormPublished(row),
+                    );
+
+                    setItems(finalItems);
                     setPagination(resolvedPagination);
                 }
             } catch (error) {
@@ -194,69 +204,21 @@ const ProjectTypeFormList = () => {
         return () => {
             cancelled = true;
         };
-    }, [page, pageSize, search, t]);
-
-    React.useEffect(() => {
-        if (!projectTypeModalOpen) return;
-        let cancelled = false;
-        (async () => {
-            // Fetch project types
-            setProjectTypesLoading(true);
-            setProjectTypesError(null);
-            try {
-                const response = await fetchProjectTypesPage(1, 50, {
-                    is_active: true,
-                    dropdown: true,
-                });
-                if (!cancelled) {
-                    setProjectTypes(Array.isArray(response.items) ? response.items : []);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setProjectTypes([]);
-                    setProjectTypesError(t("projectTypesLoadError"));
-                }
-            } finally {
-                if (!cancelled) setProjectTypesLoading(false);
-            }
-
-            // Fetch installation types
-            setInstallationTypesLoading(true);
-            setInstallationTypesError(null);
-            try {
-                const response = await fetchInstallationTypesPage(1, 50, {
-                    is_active: true,
-                    dropdown: true,
-                });
-                if (!cancelled) {
-                    setInstallationTypes(Array.isArray(response.items) ? response.items : []);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setInstallationTypes([]);
-                    setInstallationTypesError(t("installationTypesLoadError"));
-                }
-            } finally {
-                if (!cancelled) setInstallationTypesLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [projectTypeModalOpen, t]);
+    }, [page, pageSize, search, activeTab, t]);
 
     const openProjectTypePicker = React.useCallback(() => {
-        setSelectedProjectTypeId(null);
         setProjectTypeModalOpen(true);
     }, []);
 
-    const continueToCreateForm = React.useCallback(() => {
-        if (!selectedProjectTypeId || !selectedInstallationTypeId) return;
-        setProjectTypeModalOpen(false);
-        router.push(
-            `${routes.dashboard.settingsProjectForms}/${selectedProjectTypeId}/create?purpose=create_project_form&installation_type_id=${selectedInstallationTypeId}`,
-        );
-    }, [router, selectedProjectTypeId, selectedInstallationTypeId]);
+    const continueToCreateForm = React.useCallback(
+        ({ projectTypeId, installationTypeId }: { projectTypeId: number; installationTypeId: number }) => {
+            setProjectTypeModalOpen(false);
+            router.push(
+                `${routes.dashboard.settingsProjectForms}/${projectTypeId}/create?purpose=create_project_form&installation_type_id=${installationTypeId}`,
+            );
+        },
+        [router],
+    );
 
     const handleToggleActive = React.useCallback(
         async (row: FormListItem) => {
@@ -281,26 +243,34 @@ const ProjectTypeFormList = () => {
         [t],
     );
 
-    const projectTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
-        () =>
-            Array.isArray(projectTypes)
-                ? projectTypes.map((projectType) => ({
-                    value: String(projectType.id),
-                    label: projectType.project_type || `#${projectType.id}`,
-                }))
-                : [],
-        [projectTypes],
+    const handlePublishForm = React.useCallback(
+        async (row: FormListItem) => {
+            setTogglingId(row.id);
+            try {
+                await patchProjectForm(row.id, {
+                    is_published: true,
+                });
+                setItems((prev) => {
+                    if (!Array.isArray(prev)) return prev;
+                    return prev.filter((item) => item.id !== row.id);
+                });
+                toastSuccess("Form published successfully");
+            } catch (error) {
+                toastApiError(error, "Failed to publish form");
+            } finally {
+                setTogglingId(null);
+            }
+        },
+        [],
     );
 
-    const installationTypeOptions = React.useMemo<CheckmarkSelectOption[]>(
-        () =>
-            Array.isArray(installationTypes)
-                ? installationTypes.map((inst) => ({
-                    value: String(inst.id),
-                    label: inst.installation_type || `#${inst.id}`,
-                }))
-                : [],
-        [installationTypes],
+    const handleEditForm = React.useCallback(
+        (row: FormListItem) => {
+            router.push(
+                `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${row.id}`,
+            );
+        },
+        [router],
     );
 
     const pageRange = getListPageRange(pagination);
@@ -318,12 +288,28 @@ const ProjectTypeFormList = () => {
                 </AppButton>
             </div>
 
+            <div className="flex shrink-0 items-center justify-between gap-3">
+                <AppTabs
+                    tabs={FORM_TABS}
+                    value={activeTab}
+                    onValueChange={(id) => {
+                        setUrl({
+                            tab: id === "published" ? null : id,
+                            page: null,
+                        });
+                    }}
+                    ariaLabel="Project forms tabs"
+                    panelIdPrefix="project-forms-status"
+                />
+                <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/70 px-2 py-1 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
+                    <DataTableTextModeToggle variant="header" className="shrink-0" />
+                </div>
+            </div>
+
             <SurfaceShell className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-slate-200 dark:border-slate-800">
                 {loadError ? (
-                    <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">
-                        {loadError}
-                    </p>
-                ) : loading ? (
+          <DashboardLoadErrorState message={loadError} />
+        ) : loading ? (
                     <div className="space-y-2 p-6">
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
                         <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -332,8 +318,8 @@ const ProjectTypeFormList = () => {
                 ) : !Array.isArray(items) || items.length === 0 ? (
                     <DashboardEmptyState
                         iconName="projectForms"
-                        title={t("emptyTitle")}
-                        description={t("emptyDescription")}
+                        title={activeTab === "drafts" ? "No draft forms found" : t("emptyTitle")}
+                        description={activeTab === "drafts" ? "Forms saved as drafts will appear here." : t("emptyDescription")}
                         action={
                             <AppButton onClick={openProjectTypePicker} className="gap-1.5 font-semibold">
                                 <Plus className="size-4" /> {t("createNewForm")}
@@ -343,11 +329,6 @@ const ProjectTypeFormList = () => {
                     />
                 ) : (
                     <div className="relative flex min-h-0 flex-1 flex-col">
-                        <div className="pointer-events-none absolute right-4 top-1.5 z-30 sm:right-5 sm:top-2">
-                            <div className="pointer-events-auto rounded-md bg-slate-100/95 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-800/95 dark:ring-slate-700">
-                                <DataTableTextModeToggle variant="header" className="shrink-0" />
-                            </div>
-                        </div>
                         <div className="min-h-0 flex-1 overflow-auto">
                             <table
                                 className={cn(
@@ -362,7 +343,8 @@ const ProjectTypeFormList = () => {
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.projectType")}</th>
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.installationType")}</th>
                                         <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.created")}</th>
-                                        <th className="px-4 py-3 pr-12 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">{t("table.updated")}</th>
+                                        <th className="px-4 py-3 pr-6 text-right font-semibold text-slate-700 dark:text-slate-300 w-24">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -416,7 +398,7 @@ const ProjectTypeFormList = () => {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 pr-12">
+                                                <td className="px-4 py-3">
                                                     <div className="block whitespace-nowrap text-slate-500 dark:text-slate-400">
                                                         {row.modified_at
                                                             ? dateFmt.format(new Date(row.modified_at))
@@ -427,6 +409,37 @@ const ProjectTypeFormList = () => {
                                                             {modifiedBy}
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="px-4 py-3 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <DataTableRowActionsMenu
+                                                        menuAriaLabel="Form actions"
+                                                        items={
+                                                            activeTab === "drafts"
+                                                                ? [
+                                                                      {
+                                                                          id: "edit",
+                                                                          label: "Edit",
+                                                                          icon: Pencil,
+                                                                          onSelect: () => handleEditForm(row),
+                                                                      },
+                                                                      {
+                                                                          id: "publish",
+                                                                          label: "Publish",
+                                                                          icon: Send,
+                                                                          onSelect: () => void handlePublishForm(row),
+                                                                          disabled: togglingId === row.id,
+                                                                      },
+                                                                  ]
+                                                                : [
+                                                                      {
+                                                                          id: "edit",
+                                                                          label: "Edit",
+                                                                          icon: Pencil,
+                                                                          onSelect: () => handleEditForm(row),
+                                                                      },
+                                                                  ]
+                                                        }
+                                                    />
                                                 </td>
                                             </tr>
                                         );
@@ -458,91 +471,11 @@ const ProjectTypeFormList = () => {
                 ) : null}
             </SurfaceShell>
 
-            <AppModal
+            <CreateProjectFormTypeModal
                 open={projectTypeModalOpen}
                 onClose={() => setProjectTypeModalOpen(false)}
-                title={t("modal.selectProjectTypeTitle")}
-                description={t("modal.selectProjectTypeDescription")}
-                size="lg"
-                className="overflow-visible"
-                footer={
-                    <>
-                        <AppButton
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setProjectTypeModalOpen(false)}
-                        >
-                            {t("modal.cancel")}
-                        </AppButton>
-                        <AppButton
-                            type="button"
-                            onClick={continueToCreateForm}
-                            disabled={!selectedProjectTypeId || !selectedInstallationTypeId}
-                        >
-                            {t("modal.next")}
-                        </AppButton>
-                    </>
-                }
-            >
-                <div className="space-y-4">
-                    {projectTypesError ? (
-                        <p className="text-sm text-red-600 dark:text-red-400">
-                            {projectTypesError}
-                        </p>
-                    ) : null}
-                    <CheckmarkSelect
-                      listLabel={t("modal.projectTypesList")}
-                      buttonAriaLabel={t("modal.selectProjectTypeAria")}
-                      value={selectedProjectTypeId ? String(selectedProjectTypeId) : ""}
-                      onChange={(value) =>
-                        setSelectedProjectTypeId(value ? Number(value) : null)
-                      }
-                      options={projectTypeOptions}
-                      emptyLabel={
-                        projectTypesLoading
-                          ? t("modal.loadingProjectTypes")
-                          : t("modal.selectProjectType")
-                      }
-                      disabled={projectTypesLoading || projectTypesError != null}
-                      searchable
-                      searchPlaceholder={t("modal.searchProjectTypes")}
-                      portaled={false}
-                      side="bottom"
-                      className="w-full"
-                    />
-                    {/* Installation Type Select */}
-                    <CheckmarkSelect
-                      listLabel={t("modal.installationTypesList")}
-                      buttonAriaLabel={t("modal.selectInstallationTypeAria")}
-                      value={selectedInstallationTypeId ? String(selectedInstallationTypeId) : ""}
-                      onChange={(value) =>
-                        setSelectedInstallationTypeId(value ? Number(value) : null)
-                      }
-                      options={installationTypeOptions}
-                      emptyLabel={
-                        installationTypesLoading
-                          ? t("modal.loadingInstallationTypes")
-                          : t("modal.selectInstallationType")
-                      }
-                      disabled={installationTypesLoading || installationTypesError != null}
-                      searchable
-                      searchPlaceholder={t("modal.searchInstallationTypes")}
-                      portaled={false}
-                      side="bottom"
-                      className="w-full mt-2"
-                    />
-                    {!projectTypesLoading && !projectTypesError && projectTypeOptions.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {t("modal.noProjectTypes")}
-                      </p>
-                    ) : null}
-                    {!installationTypesLoading && !installationTypesError && installationTypeOptions.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                        {t("modal.noInstallationTypes")}
-                      </p>
-                    ) : null}
-                </div>
-            </AppModal>
+                onContinue={continueToCreateForm}
+            />
         </div>
     );
 };

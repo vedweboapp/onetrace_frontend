@@ -1,4 +1,5 @@
 import { fetchUsersPage } from "@/features/users/api/user.api";
+import { registerDropdownCatalogInvalidator } from "@/shared/catalog/dropdown-catalog-bus";
 import { resolveUserProfileSelectId } from "@/features/users/utils/load-users-by-role.util";
 import { userProfileLabel } from "@/features/jobs/utils/job-nested-fields.util";
 import type {
@@ -9,15 +10,27 @@ import type {
 } from "@/features/dispatches/types/dispatch.types";
 
 let userLabelCache: Record<number, string> | null = null;
+let userLabelGeneration = 0;
+
+export function invalidateDispatchUserLabelCache(): void {
+  userLabelGeneration += 1;
+  userLabelCache = null;
+}
+
+registerDropdownCatalogInvalidator((kind) => {
+  if (kind === "users" || kind === "roles") invalidateDispatchUserLabelCache();
+});
 
 export async function loadDispatchUserLabelById(): Promise<Record<number, string>> {
   if (userLabelCache) return userLabelCache;
+  const generation = userLabelGeneration;
   try {
     const { items } = await fetchUsersPage(1, 20, { dropdown: true });
     const map: Record<number, string> = {};
     for (const u of items) {
       map[resolveUserProfileSelectId(u)] = userProfileLabel(u);
     }
+    if (generation !== userLabelGeneration) return map;
     userLabelCache = map;
     return map;
   } catch {

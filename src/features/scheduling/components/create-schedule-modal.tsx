@@ -70,6 +70,11 @@ type Props = {
   defaultDateKey: string;
   prefill?: CreateSchedulePrefill | null;
   existingSchedule?: Schedule | null;
+  /**
+   * When set (e.g. project quote Schedule), job picker is limited to these jobs
+   * and unassigned-only filtering is skipped.
+   */
+  allowedJobs?: Job[] | null;
   getBookingConflict?: (input: {
     workerId: number;
     startAt: string;
@@ -127,6 +132,7 @@ export function CreateScheduleModal({
   defaultDateKey,
   prefill,
   existingSchedule,
+  allowedJobs = null,
   getBookingConflict,
   onCreated,
   onBulkResult,
@@ -157,7 +163,11 @@ export function CreateScheduleModal({
   const [includeGroupPeers, setIncludeGroupPeers] = React.useState(false);
   const [extraPeerWorkers, setExtraPeerWorkers] = React.useState<CreateScheduleTechnician[]>([]);
 
-  const lockClientJob = Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) || isReschedule;
+  const lockClientJob =
+    Boolean(prefill?.lockJob || (prefill?.clientId && prefill?.jobId)) ||
+    isReschedule ||
+    Boolean(allowedJobs && allowedJobs.length > 0 && prefill?.clientId);
+
   const includeJobId = existingSchedule?.job_id ?? prefill?.jobId;
 
   const seedWorkers = React.useMemo(() => {
@@ -266,6 +276,24 @@ export function CreateScheduleModal({
     if (!includeJobId) setJobId("");
     (async () => {
       try {
+        // Quote / scoped job list: show those jobs (assigned or not), not only unassigned.
+        if (allowedJobs && allowedJobs.length > 0) {
+          if (cancelled) return;
+          const byId: Record<number, Job> = {};
+          for (const job of allowedJobs) byId[job.id] = job;
+          setJobsById(byId);
+          setJobOptions(allowedJobs.map((job) => ({ value: String(job.id), label: jobSelectLabel(job) })));
+          if (includeJobId && byId[includeJobId]) {
+            setJobId(String(includeJobId));
+            if (!existingSchedule) applyJobDefaults(String(includeJobId), byId);
+          } else if (allowedJobs.length === 1) {
+            const only = allowedJobs[0]!;
+            setJobId(String(only.id));
+            if (!existingSchedule) applyJobDefaults(String(only.id), byId);
+          }
+          return;
+        }
+
         const items = await loadUnassignedJobsForClient(clientNum);
         if (cancelled) return;
         let extra = includeJobId ? items.find((j) => j.id === includeJobId) : undefined;
@@ -302,7 +330,7 @@ export function CreateScheduleModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- include job applied once per open
-  }, [open, clientId, includeJobId, existingSchedule?.id]);
+  }, [open, clientId, includeJobId, existingSchedule?.id, allowedJobs]);
 
   function applyJobDefaults(nextJobId: string, map: Record<number, Job> = jobsById) {
     setJobId(nextJobId);

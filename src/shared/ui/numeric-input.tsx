@@ -31,6 +31,8 @@ type NumericInputProps = {
   /** Whole numbers only (quantity). */
   integer?: boolean;
   maxDecimals?: number;
+  /** When false, keep fixed decimal padding (default trims trailing zeros). */
+  trimTrailingZeros?: boolean;
   allowNegative?: boolean;
   /** `field` = boxed surface input; `plain` = no chrome (embed in another control). */
   variant?: "field" | "plain";
@@ -63,6 +65,7 @@ export function NumericInput({
   tabIndex,
   integer = false,
   maxDecimals = 6,
+  trimTrailingZeros = true,
   allowNegative = false,
   variant = "field",
   size = "md",
@@ -81,8 +84,8 @@ export function NumericInput({
     if (!canonical.trim()) return "";
     const n = parseGroupedNumber(canonical, numberFormat);
     if (!Number.isFinite(n)) return canonical;
-    return formatGroupedNumber(n, decimals, numberFormat);
-  }, [focused, readOnly, draft, canonical, numberFormat, decimals]);
+    return formatGroupedNumber(n, decimals, numberFormat, { trimTrailingZeros });
+  }, [focused, readOnly, draft, canonical, numberFormat, decimals, trimTrailingZeros]);
 
   function emitFromDraft(next: string) {
     const trimmed = next.trim();
@@ -140,7 +143,11 @@ export function NumericInput({
         if (!readOnly) {
           setFocused(true);
           const n = parseGroupedNumber(canonical, numberFormat);
-          setDraft(Number.isFinite(n) ? formatGroupedNumber(n, decimals, numberFormat) : canonical);
+          setDraft(
+            Number.isFinite(n)
+              ? formatGroupedNumber(n, decimals, numberFormat, { trimTrailingZeros })
+              : canonical,
+          );
         }
         onFocus?.(e);
       }}

@@ -27,6 +27,7 @@ export type SurfacePhoneFieldProps<TFieldValues extends FieldValues> = {
   required?: boolean;
   disabled?: boolean;
   error?: string | null;
+  errorNode?: ReactNode;
   describedBy?: string;
   defaultCountry?: Country;
   /**
@@ -49,6 +50,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
   required,
   disabled,
   error,
+  errorNode,
   describedBy,
   defaultCountry,
   countryIso,
@@ -105,7 +107,7 @@ export function SurfacePhoneField<TFieldValues extends FieldValues>({
           }}
         />
       </div>
-      <FieldErrorText id={errId}>{error}</FieldErrorText>
+      {errorNode ?? <FieldErrorText id={errId}>{error}</FieldErrorText>}
     </>
   );
 

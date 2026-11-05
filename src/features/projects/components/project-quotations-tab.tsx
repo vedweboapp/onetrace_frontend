@@ -22,7 +22,6 @@ import { DetailEntityLink, entityCol, entityNameLinkClassName } from "@/shared/c
 import type { EntityTableColumn } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
-  detailTabErrorClassName,
   detailTabStandaloneFillClassName,
   detailTabSectionClassName,
   detailTabTitleClassName,
@@ -33,6 +32,7 @@ import { buildDetailHrefWithListReturn, buildProjectDetailTabHref } from "@/shar
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
 import { cn } from "@/core/utils/http.util";
 import {
+  DashboardLoadErrorState,
   DataTable,
   DataTableBody,
   DataTableHead,
@@ -155,6 +155,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
   });
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const pageSize = 20;
 
@@ -219,7 +220,7 @@ export function ProjectQuotationsTab({ projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, pageSize, t]);
+  }, [projectId, page, pageSize, refreshNonce, t]);
 
   const clientLabelById = React.useMemo(() => {
     const m: Record<number, string> = {};
@@ -312,9 +313,10 @@ export function ProjectQuotationsTab({ projectId }: Props) {
 
       <div className={detailTabBodyClassName}>
         {loadError ? (
-          <p className={detailTabErrorClassName}>
-            {loadError}
-          </p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : loading ? (
           <div className="space-y-2">
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

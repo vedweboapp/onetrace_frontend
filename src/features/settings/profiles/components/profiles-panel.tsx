@@ -11,10 +11,10 @@ import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
   AddButton,
-  AppButton,
   ConfirmDialog,
   DataTableRowActionsMenu,
   DashboardEmptyState,
+  DashboardLoadErrorState,
   listPageSurfaceShellClassName,
   listPageRootClassName,
   ListPageCard,
@@ -160,12 +160,7 @@ export function ProfilesPanel() {
             <div className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           </div>
         ) : loadError ? (
-          <div className="p-6 text-center">
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
-            <AppButton variant="secondary" size="sm" className="mt-3" onClick={loadProfiles}>
-              {t("detail.retry")}
-            </AppButton>
-          </div>
+          <DashboardLoadErrorState message={loadError} onRetry={() => void loadProfiles()} />
         ) : filteredProfiles.length === 0 ? (
           <DashboardEmptyState
             iconName="profiles"

@@ -11,7 +11,9 @@ export type QuickCreateKind =
   | "project"
   | "group"
   | "composite-item"
-  | "item";
+  | "item"
+  | "user"
+  | "form";
 
 const QUICK_CREATE_KINDS: readonly QuickCreateKind[] = [
   "client",
@@ -22,6 +24,8 @@ const QUICK_CREATE_KINDS: readonly QuickCreateKind[] = [
   "group",
   "composite-item",
   "item",
+  "user",
+  "form",
 ] as const;
 
 export function isQuickCreateKind(value: string | null | undefined): value is QuickCreateKind {

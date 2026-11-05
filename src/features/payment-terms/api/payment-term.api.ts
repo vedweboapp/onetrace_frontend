@@ -36,7 +36,6 @@ function toPaymentTermWritePayload(
     out.payment_terms_discount_due_days = body.payment_terms_discount_due_days ?? null;
   }
   if (typeof body.type === "string") out.type = body.type;
-  if (typeof body.is_system_terms === "boolean") out.is_system_terms = body.is_system_terms;
   if (typeof (body as PaymentTermUpdatePayload).status === "string") {
     out.status = (body as PaymentTermUpdatePayload).status;
   }

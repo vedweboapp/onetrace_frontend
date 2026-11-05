@@ -713,7 +713,7 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       }
       //5.forms  lists
       if (results[4].status === "fulfilled") {
-        setProjectForms(results[4].value.items);
+        setProjectForms(results[4].value.items.filter((f) => f.is_published !== false));
       }
     } catch (error) {
       toastApiError(error, t("loadError"));
@@ -885,30 +885,49 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
       return [];
     }
 
-    const Fomrs = projectForms
-      ?.filter((form) => {
-        const formType = form?.installation_type?.id ?? form?.installation_type_id;
-        if (formType == null) return false;
-        return String(formType) === String(CompositeItmeInstallationId);
+    return (projectForms ?? [])
+      .filter((form) => {
+        const rawFormType =
+          form?.installation_type ?? (form as any)?.installation_type_id;
+        if (!rawFormType) return false;
+        const formTypeId =
+          typeof rawFormType === "object"
+            ? rawFormType.id != null
+              ? String(rawFormType.id)
+              : ""
+            : String(rawFormType);
+        return formTypeId === String(CompositeItmeInstallationId);
       })
       .map((projectform) => ({
-        label: projectform.name,
-        value: String(projectform.id)
+        label:
+          (projectform as any).form_name ||
+          projectform.name ||
+          `#${projectform.id}`,
+        value: String(projectform.id),
       }));
-    return Fomrs ?? [];
   }, [projectForms]);
 
   const compositeItemInstallationType = React.useMemo(() => {
     if (!detailPin) return "";
     const currentItemId = isPinEditing ? pinEditData.item : detailPin.item;
-    const selectedItem = items.find((i) => i.id === currentItemId) || (isPinEditing ? pinEditData.item_detail : detailPin.item_detail);
-    if (!selectedItem) return "";
-    const instType = selectedItem.installation_type;
-    if (instType && typeof instType === "object") {
-      return instType.id != null ? String(instType.id) : "";
+    const selectedItem =
+      items.find((i) => Number(i.id) === Number(currentItemId)) ||
+      (isPinEditing ? pinEditData.item_detail : detailPin.item_detail);
+
+    const rawInstType =
+      (selectedItem as any)?.installation_type ??
+      (selectedItem as any)?.installation_type_id ??
+      (detailPin as any)?.installation_type ??
+      (detailPin as any)?.installation_type_id ??
+      (pinEditData as any)?.installation_type ??
+      (pinEditData as any)?.installation_type_id;
+
+    if (!rawInstType) return "";
+    if (typeof rawInstType === "object") {
+      return rawInstType.id != null ? String(rawInstType.id) : "";
     }
-    return instType != null ? String(instType) : "";
-  }, [detailPin, isPinEditing, pinEditData.item, pinEditData.item_detail, items]);
+    return String(rawInstType);
+  }, [detailPin, isPinEditing, pinEditData.item, pinEditData.item_detail, (pinEditData as any)?.installation_type, (pinEditData as any)?.installation_type_id, items]);
 
   const availableForms = React.useMemo(() => {
     return filterForms(compositeItemInstallationType);
@@ -2631,14 +2650,36 @@ export function ProjectDrawingEditorScreen({ projectId, drawingId }: Props) {
                             </select>
                           ) : (
                             <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {projectForms?.find(f => f.id === (isPinEditing ? pinEditData.formId : detailPin.formId))?.name || "Select Form"}
+                              {(() => {
+                                const activeId = isPinEditing ? pinEditData.formId : detailPin.formId;
+                                const match = projectForms?.find(f => f.id === activeId);
+                                return (match as any)?.form_name || match?.name || "Select Form";
+                              })()}
                             </span>
                           )
                         ) : compositeItemInstallationType ? (
-                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[200px]">
-                            {t("noFormWithInstallationType")}
-                          </span>
-                        ) : null
+                          isPinEditing ? (
+                            <select
+                              disabled
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                            >
+                              <option value="">No matching forms</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium text-right max-w-[200px]">
+                              {t("noFormWithInstallationType")}
+                            </span>
+                          )
+                        ) : isPinEditing ? (
+                          <select
+                            disabled
+                            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 max-w-[200px] text-slate-400"
+                          >
+                            <option value="">Select Form</option>
+                          </select>
+                        ) : (
+                          <span className="text-sm text-slate-400">Select Form</span>
+                        )
                       }
                     </div>
                   </div>

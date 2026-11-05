@@ -270,7 +270,7 @@ export function EntityDataTable<T extends { id: number | string }>({
                 >
                   {col.headerSrOnly ? <span className="sr-only">{col.header}</span> : col.header}
                 </DataTableTh>
-              ))}
+              ))} 
             </tr>
           </DataTableHead>
           <DataTableBody>

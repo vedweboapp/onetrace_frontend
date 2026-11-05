@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 import type { UserAvailabilityPayloadRow } from "@/features/users/types/user-availability.types";
 
@@ -69,6 +70,7 @@ export type UserProfile = {
   base_pay?: string | number | null;
   base_pay_type?: UserBasePayType | string | null;
   available_days?: UserAvailabilityPayloadRow[] | null;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type UserPagination = {

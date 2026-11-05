@@ -11,6 +11,7 @@ import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
+  DashboardLoadErrorState,
   AppButton,
   DataTablePaginationBar,
   SurfaceShell,
@@ -149,7 +150,7 @@ const ProjectFormDetails = () => {
 
       <SurfaceShell className="rounded-none">
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState message={loadError} />
         ) : loading ? (
           <div className="space-y-2 p-6">
             <div className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />

@@ -19,6 +19,7 @@ import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-u
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import { JOB_CATEGORY, parseJobCategoryParam } from "@/features/jobs/constants/job-category";
 import {
+  DashboardLoadErrorState,
   CheckmarkSelect,
   DataTablePaginationBar,
   ListPageCard,
@@ -268,7 +269,7 @@ export function WorkerFormsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState message={loadError} />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">

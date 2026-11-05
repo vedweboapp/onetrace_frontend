@@ -7,6 +7,7 @@ import { cn } from "@/core/utils/http.util";
 import {
   createProjectType,
   deleteProjectType,
+  fetchProjectType,
   fetchProjectTypesPage,
   updateProjectType,
 } from "@/features/project-types/api/project-type.api";
@@ -14,6 +15,9 @@ import { ProjectTypeChip } from "@/features/project-types/components/project-typ
 import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { formatProjectTypeLabel, normalizeProjectTypeHex } from "@/features/project-types/utils/project-type-display.util";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -35,6 +39,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   AppButton,
@@ -105,6 +110,10 @@ export function ProjectTypeSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<ProjectType | null>(null);
+  useOpenSettingsRecord(fetchProjectType, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsProjectTypes, existingId),
+  });
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
 
   const [formOpen, setFormOpen] = React.useState(false);
@@ -162,6 +171,7 @@ export function ProjectTypeSettingsPanel() {
     setTextColour(textHex(row));
     setIsActive(row.is_active);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -173,6 +183,7 @@ export function ProjectTypeSettingsPanel() {
     setTextColour(DEFAULT_TEXT);
     setIsActive(true);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -224,6 +235,7 @@ export function ProjectTypeSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(error, (fieldErrors) => {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));
       });
@@ -311,7 +323,10 @@ export function ProjectTypeSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -335,7 +350,6 @@ export function ProjectTypeSettingsPanel() {
               iconName: "customization",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() =>
               setUrl({ search: null, is_active: null, page: null }, { replace: true })
@@ -527,7 +541,13 @@ export function ProjectTypeSettingsPanel() {
               autoComplete="off"
             />
             {errors.project_type ? (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.project_type}</p>
+              <DuplicateEntryFieldError
+                message={errors.project_type}
+                fieldKey="project_type"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
             ) : null}
           </FieldGroup>
           <FieldGroup

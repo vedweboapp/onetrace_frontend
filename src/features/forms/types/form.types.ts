@@ -3,6 +3,7 @@ export type FormListItem = {
   name: string;
   project_type?: number | { id: number; project_type?: string | null } | null;
   is_active?: boolean;
+  is_published?: boolean;
   created_by?: { id: number; email?: string; username?: string } | null;
   modified_by?: { id: number; email?: string; username?: string } | null;
   created_at?: string;

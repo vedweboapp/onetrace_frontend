@@ -24,6 +24,7 @@ export const routes = {
     quotationProject: "/quotations?quote_category=projectquote",
     invoices: "/invoices",
     purchaseOrders: "/purchase-orders",
+    purchaseReceives: "/purchase-receives",
     jobs: "/jobs",
     jobFormFill: (jobId: number | string, formId: number | string, job_form_id: number | string) =>
       `/jobs/${jobId}/form?formId=${formId}&job_form_id=${job_form_id}`,
@@ -55,6 +56,7 @@ export const routes = {
     dispatches: "/dispatches",
     returnToStock: "/return-to-stock",
     forms: "/forms",
+    kioskForms: "/kiosk-forms",
     settings: "/settings",
     settingsPinStatus: "/settings/pin-status",
     settingsProjectStatus: "/settings/project-status",
@@ -90,5 +92,6 @@ export const routes = {
     settingsKiosks: "/settings/kiosks",
     settingsKiosk: "/settings/kiosks",
     settingsKioskMachines: "/settings/kiosk-machine",
+    settingsTemplates: "/settings/templates",
   },
 } as const;
