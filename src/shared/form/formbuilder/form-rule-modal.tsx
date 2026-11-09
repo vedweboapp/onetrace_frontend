@@ -225,7 +225,7 @@ const FormRuleModal = ({ onClose, onSave, fields, initialRule, existingRules = [
   };
 
   const isValueDisabled = condition === "is_empty" || condition === "is_not_empty";
-  const selectedField = fields.find((f) => f.value === triggerField);
+  const selectedField = fields.find((f) => f.value === triggerField || f.apiName === triggerField);
 
   const renderValueInput = () => {
     if (isValueDisabled) {

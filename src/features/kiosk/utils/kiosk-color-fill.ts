@@ -23,20 +23,32 @@ export function preloadImage(src: string): Promise<HTMLImageElement> {
 
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (src.startsWith("http://") || src.startsWith("https://")) {
+      img.crossOrigin = "anonymous";
+    }
     img.decoding = "async";
     img.onload = async () => {
       imageElementCache.set(src, img);
       if ("decode" in img) {
         try {
           await img.decode();
-        } catch {
-          // ignore decode errors on unsupported formats
-        }
+        } catch {}
       }
       resolve(img);
     };
     img.onerror = () => {
+      // If crossOrigin failed, retry without crossOrigin to at least get natural dimensions
+      if (img.crossOrigin) {
+        const fallback = new Image();
+        fallback.decoding = "async";
+        fallback.onload = () => {
+          imageElementCache.set(src, fallback);
+          resolve(fallback);
+        };
+        fallback.onerror = () => resolve(img);
+        fallback.src = src;
+        return;
+      }
       resolve(img);
     };
     img.src = src;
@@ -125,8 +137,11 @@ export async function applyColorFill(
 
   try {
     const img = await preloadImage(imageSrc);
-    const rawW = img.naturalWidth || img.width || 300;
-    const rawH = img.naturalHeight || img.height || 200;
+    if (!img.naturalWidth || !img.naturalHeight) {
+      return imageSrc;
+    }
+    const rawW = img.naturalWidth;
+    const rawH = img.naturalHeight;
 
     // Cap dimensions at 480px to avoid allocating massive GPU framebuffers
     const MAX_DIM = 480;
@@ -150,38 +165,20 @@ export async function applyColorFill(
       return imageSrc;
     }
 
-    // 1. Draw base image scaled down
+    // 1. Draw the original image at full size
     ctx.drawImage(img, 0, 0, w, h);
 
-    // 2. Padding inset for the color fill
-    const pad = Math.max(3, Math.round(Math.min(w, h) * 0.05));
-
-    // 3. Offscreen canvas for the inset color fill
-    const offCanvas = document.createElement("canvas");
-    offCanvas.width = w;
-    offCanvas.height = h;
-    const offCtx = offCanvas.getContext("2d");
-    if (offCtx) {
-      offCtx.drawImage(img, pad, pad, w - pad * 2, h - pad * 2);
-      offCtx.globalCompositeOperation = "source-atop";
-      offCtx.fillStyle = color;
-      offCtx.fillRect(0, 0, w, h);
-
-      ctx.globalCompositeOperation = "source-over";
-      ctx.drawImage(offCanvas, 0, 0);
-
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.45)";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(pad, pad, w - pad * 2, h - pad * 2);
-    }
+    // 2. Fill non-transparent image pixels with color (exact dimensions of the image)
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, w, h);
 
     const result = canvas.toDataURL("image/png");
 
     // Immediately deallocate GPU memory backing the canvas elements
     canvas.width = 0;
     canvas.height = 0;
-    offCanvas.width = 0;
-    offCanvas.height = 0;
+
 
     if (colorFillCache.size >= MAX_CACHE_ENTRIES) {
       const oldestKey = colorFillCache.keys().next().value;
