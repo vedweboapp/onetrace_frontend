@@ -1021,7 +1021,11 @@ export default function FormBuilderLayout({
                 associated_value_type:
                   f.associated_value_type ||
                   (f.associated_options && f.associated_options.length > 0
-                    ? f.associated_options[0]?.associated_value_type
+                    ? (f.associated_options[0]?.file !== undefined || f.associated_options[0]?.image
+                        ? "image"
+                        : (typeof f.associated_options[0]?.value === "string" && (f.associated_options[0].value.startsWith("#") || f.associated_options[0].value.startsWith("rgb")))
+                          ? "color"
+                          : f.associated_options[0]?.associated_value_type || "default")
                     : "default"),
               };
             }),
@@ -1356,16 +1360,67 @@ export default function FormBuilderLayout({
             (f.associated_value_type && f.associated_value_type !== "default") ||
             cleaned.some(
               (opt: any) =>
-                opt.associated_value_type && opt.associated_value_type !== "default"
+                (opt.associated_value_type && opt.associated_value_type !== "default") ||
+                opt.image ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb"))) ||
+                (typeof opt.color === "string" && (opt.color.startsWith("#") || opt.color.startsWith("rgb"))),
             );
 
           if (isNonDefault) {
-            fieldPayload.associated_value_type =
-              f.associated_value_type || cleaned[0]?.associated_value_type || "color";
-            fieldPayload.associated_options = cleaned;
+            const rawType = String(f.associated_value_type || cleaned[0]?.associated_value_type || "color").toLowerCase();
+            const targetType = rawType === "image" ? "image" : "color";
+            fieldPayload.associated_value_type = targetType;
+            fieldPayload.associated_options = cleaned.map((opt: any) => {
+              const optLabel = String(opt.label ?? opt.value ?? "");
+              const optColor =
+                opt.color ||
+                opt.associated_color ||
+                opt.color_value ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb")) ? opt.value : null) ||
+                (typeof opt.associated_value === "string" && (opt.associated_value.startsWith("#") || opt.associated_value.startsWith("rgb")) ? opt.associated_value : null);
+
+              const isColorOpt = targetType === "color" || opt.associated_value_type === "color" || !!optColor;
+
+              if (isColorOpt) {
+                // Color option: ONLY label (string) and value (the color hex string)
+                return {
+                  label: optLabel,
+                  value: optColor || opt.value || "#3b82f6",
+                };
+              }
+
+              // Image option: ONLY label, value (could be null), and file (null for new files / blobs)
+              const rawFile =
+                opt.file ||
+                opt.image ||
+                (!String(opt.associated_value || "").startsWith("#") ? opt.associated_value : null) ||
+                null;
+
+              const isBlobOrData =
+                typeof rawFile === "string" &&
+                (rawFile.startsWith("blob:") || rawFile.startsWith("data:"));
+
+              const fileUrl =
+                !isBlobOrData && typeof rawFile === "string" && (rawFile.startsWith("http://") || rawFile.startsWith("https://") || rawFile.startsWith("/"))
+                  ? rawFile
+                  : null;
+
+              const cleanImgOpt: any = {
+                label: optLabel,
+                value: opt.value !== undefined ? opt.value : (optLabel || null),
+                file: fileUrl,
+              };
+              if (opt.fileObject instanceof File) {
+                cleanImgOpt.fileObject = opt.fileObject;
+              }
+              return cleanImgOpt;
+            });
             fieldPayload.options = [];
           } else {
-            fieldPayload.options = cleaned;
+            fieldPayload.options = cleaned.map((opt: any) => ({
+              label: String(opt.label ?? opt.value ?? ""),
+              value: String(opt.value ?? opt.label ?? ""),
+            }));
           }
         }
         if (Array.isArray(f.composite_items)) {

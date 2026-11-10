@@ -55,6 +55,20 @@ function isColorString(s: unknown): boolean {
   );
 }
 
+export function isValidImageUrl(src: unknown): boolean {
+  if (typeof src !== "string" || !src.trim()) return false;
+  const s = src.trim();
+  if (isColorString(s)) return false;
+  return (
+    s.startsWith("http://") ||
+    s.startsWith("https://") ||
+    s.startsWith("data:image/") ||
+    s.startsWith("blob:") ||
+    s.startsWith("/") ||
+    /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i.test(s)
+  );
+}
+
 export function extractImageFromField(fieldDef: any, fieldValue: any): string | null {
   if (fieldDef?.associated_value_type === "color") {
     return null;
@@ -62,11 +76,8 @@ export function extractImageFromField(fieldDef: any, fieldValue: any): string | 
 
   if (!fieldValue && fieldValue !== 0) {
     // If no value provided, check if options has a default image or fieldDef has an image
-    if (fieldDef?.image || fieldDef?.file || fieldDef?.image_url) {
-      const img = fieldDef.image || fieldDef.file || fieldDef.image_url;
-      return isColorString(img) ? null : img;
-    }
-    return null;
+    const defImg = fieldDef?.image || fieldDef?.file || fieldDef?.image_url;
+    return isValidImageUrl(defImg) ? defImg : null;
   }
 
   // If fieldValue is an object, try to extract value/image directly
@@ -84,13 +95,13 @@ export function extractImageFromField(fieldDef: any, fieldValue: any): string | 
       } catch {}
     }
     const directCandidate =
+      fieldValue.image ||
       fieldValue.associated_value ||
       fieldValue.image_value ||
       fieldValue.file ||
       fieldValue.file_url ||
-      fieldValue.image ||
       null;
-    if (directCandidate && typeof directCandidate === "string" && !isColorString(directCandidate)) {
+    if (isValidImageUrl(directCandidate)) {
       return directCandidate;
     }
     if (fieldValue.value !== undefined) {
@@ -106,17 +117,11 @@ export function extractImageFromField(fieldDef: any, fieldValue: any): string | 
   }
 
   if (typeof fieldValue === "string") {
+    if (isValidImageUrl(fieldValue)) {
+      return fieldValue;
+    }
     if (isColorString(fieldValue)) {
       return null;
-    }
-    if (
-      fieldValue.startsWith("http://") ||
-      fieldValue.startsWith("https://") ||
-      fieldValue.startsWith("data:image/") ||
-      fieldValue.startsWith("blob:") ||
-      fieldValue.startsWith("/")
-    ) {
-      return fieldValue;
     }
   }
 
@@ -141,7 +146,7 @@ export function extractImageFromField(fieldDef: any, fieldValue: any): string | 
   });
 
   if (matchedOpt && typeof matchedOpt === "object") {
-    if (matchedOpt.associated_value_type === "color") {
+    if (matchedOpt.associated_value_type === "color" || isColorString(matchedOpt.value)) {
       return null;
     }
     if (matchedOpt.fileObject && typeof File !== "undefined" && matchedOpt.fileObject instanceof File) {
@@ -152,21 +157,21 @@ export function extractImageFromField(fieldDef: any, fieldValue: any): string | 
       }
     }
     const candidate =
+      matchedOpt.image ||
       matchedOpt.associated_value ||
       matchedOpt.image_value ||
       matchedOpt.file ||
       matchedOpt.file_url ||
-      matchedOpt.image ||
       null;
 
-    if (candidate && typeof candidate === "string" && !isColorString(candidate)) {
+    if (isValidImageUrl(candidate)) {
       return candidate;
     }
   }
 
-  if (fieldDef?.image || fieldDef?.file || fieldDef?.image_url) {
-    const fallbackImg = fieldDef.image || fieldDef.file || fieldDef.image_url;
-    return isColorString(fallbackImg) ? null : fallbackImg;
+  const fallbackImg = fieldDef?.image || fieldDef?.file || fieldDef?.image_url;
+  if (isValidImageUrl(fallbackImg)) {
+    return fallbackImg;
   }
 
   return null;
@@ -319,17 +324,22 @@ export const ImageOverlapPreviewCard: React.FC<ImageOverlapPreviewCardProps> = (
 
   // First question is base; Second question overlaps on top
   const isSecondOverFirst = mode === "second_over_first";
-  const baseImg = isSecondOverFirst ? img1 : img2;
-  const overlayImg = isSecondOverFirst ? img2 : img1;
-  const baseField = isSecondOverFirst ? field1Def : field2Def;
-  const overlayFieldDef = isSecondOverFirst ? field2Def : field1Def;
+  let baseImg = isSecondOverFirst ? img1 : img2;
+  let overlayImg = isSecondOverFirst ? img2 : img1;
+  let baseField = isSecondOverFirst ? field1Def : field2Def;
+  let overlayFieldDef = isSecondOverFirst ? field2Def : field1Def;
 
-  const baseFieldLabel = isSecondOverFirst
-    ? field1Def?.field_label || f1Key || "First Question"
-    : field2Def?.field_label || f2Key || "Second Question";
-  const overlayFieldLabel = isSecondOverFirst
-    ? field2Def?.field_label || f2Key || "Second Question"
-    : field1Def?.field_label || f1Key || "First Question";
+  // KEY FIX: If baseImg has no image, but overlayImg DOES have an image,
+  // promote it to baseImg so the available image is always displayed!
+  if (!baseImg && overlayImg) {
+    baseImg = overlayImg;
+    overlayImg = null;
+    baseField = isSecondOverFirst ? field2Def : field1Def;
+    overlayFieldDef = isSecondOverFirst ? field1Def : field2Def;
+  }
+
+  const baseFieldLabel = baseField?.field_label || (isSecondOverFirst ? f1Key : f2Key) || "First Question";
+  const overlayFieldLabel = overlayFieldDef?.field_label || (isSecondOverFirst ? f2Key : f1Key) || "Second Question";
 
   // ── Color fill logic ──────────────────────────────────────────────────────
   // Find a field that targets the BASE image field for color fill.
@@ -341,7 +351,8 @@ export const ImageOverlapPreviewCard: React.FC<ImageOverlapPreviewCardProps> = (
     baseField?.id,
     baseField?._uid,
     baseField?.api_name,
-    isSecondOverFirst ? f1Key : f2Key,
+    f1Key,
+    f2Key,
   ].filter(Boolean).map(String);
 
   const colorSourceField = allFields.find((f: any) => {
@@ -368,17 +379,20 @@ export const ImageOverlapPreviewCard: React.FC<ImageOverlapPreviewCardProps> = (
         String(o.label ?? o.option_label ?? "").trim().toLowerCase() === colorSourceVal.trim().toLowerCase() ||
         String(o.color ?? o.associated_color ?? o.associated_value ?? "").trim().toLowerCase() === colorSourceVal.trim().toLowerCase(),
     );
-    const resolvedColor =
-      opt?.color ??
-      opt?.associated_color ??
-      opt?.associated_value ??
-      opt?.fill_color ??
-      (typeof opt?.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb")) ? opt.value : null);
 
-    if (resolvedColor && typeof resolvedColor === "string") {
-      return resolvedColor;
+    // In clean associated_options: opt.value is the color hex!
+    if (opt) {
+      if (typeof opt.value === "string" && isColorString(opt.value)) {
+        return opt.value;
+      }
+      if (typeof opt.color === "string" && isColorString(opt.color)) {
+        return opt.color;
+      }
+      if (typeof opt.associated_value === "string" && isColorString(opt.associated_value)) {
+        return opt.associated_value;
+      }
     }
-    if (colorSourceVal.startsWith("#") || colorSourceVal.startsWith("rgb")) {
+    if (isColorString(colorSourceVal)) {
       return colorSourceVal;
     }
     return null;
@@ -413,13 +427,14 @@ export const ImageOverlapPreviewCard: React.FC<ImageOverlapPreviewCardProps> = (
   const activePosMeta =
     DEFAULT_POSITIONS.find((p) => p.value === posVal) || DEFAULT_POSITIONS[0];
 
-  const showOverlayPlaceholder =
+  const showOverlayPlaceholder = Boolean(
     !overlayImg &&
     displayBaseImg &&
+    positionField?.field_type === "position_selection" &&
     overlayFieldDef &&
     overlayFieldDef !== colorSourceField &&
-    overlayFieldDef.associated_value_type !== "color" &&
-    (positionField?.field_type === "position_selection" || overlayFieldDef.associated_value_type === "image");
+    overlayFieldDef.associated_value_type === "image"
+  );
 
   return (
     <div
@@ -481,7 +496,7 @@ export const ImageOverlapPreviewCard: React.FC<ImageOverlapPreviewCardProps> = (
                   className="absolute inset-0 pointer-events-none rounded transition-all duration-200"
                   style={{
                     backgroundColor: fillColor,
-                    opacity: 0.75,
+                    opacity: 0.35,
                     mixBlendMode: "multiply",
                   }}
                 />

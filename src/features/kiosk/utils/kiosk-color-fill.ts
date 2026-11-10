@@ -104,6 +104,7 @@ export async function applyColorFill(
               const currentFill = s.getAttribute("fill");
               if (currentFill !== "none") {
                 s.setAttribute("fill", color);
+                s.setAttribute("fill-opacity", "0.35");
               }
               const currentStroke = s.getAttribute("stroke");
               if (currentStroke && currentStroke !== "none") {
@@ -116,6 +117,7 @@ export async function applyColorFill(
             });
           } else {
             svg.setAttribute("fill", color);
+            svg.setAttribute("fill-opacity", "0.35");
             svg.setAttribute("stroke", "rgba(15, 23, 42, 0.6)");
             svg.setAttribute("stroke-width", "1.5");
           }
@@ -168,10 +170,12 @@ export async function applyColorFill(
     // 1. Draw the original image at full size
     ctx.drawImage(img, 0, 0, w, h);
 
-    // 2. Fill non-transparent image pixels with color (exact dimensions of the image)
+    // 2. Fill non-transparent image pixels with color at lower opacity so the underlying image is visible
+    ctx.globalAlpha = 0.35;
     ctx.globalCompositeOperation = "source-atop";
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1.0;
 
     const result = canvas.toDataURL("image/png");
 

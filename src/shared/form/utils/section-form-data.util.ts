@@ -43,8 +43,8 @@ function dataUrlToFile(dataUrl: string, filename: string): File | null {
 function processOption(
   opt: any,
   fd: FormData,
-  key: string,          // e.g. "create[0]field[1]option[2]associated_value"
-  altKey?: string,
+  key: string,          // e.g. "create[0]field[1]option[2]file"
+  associatedType?: string,
 ): any {
   if (!opt || typeof opt !== "object") {
     return opt;
@@ -59,31 +59,58 @@ function processOption(
   ) {
     fileToUpload = dataUrlToFile(opt.file, opt.fileName ?? "upload.png");
   } else if (
+    typeof opt.image === "string" &&
+    opt.image.startsWith("data:")
+  ) {
+    fileToUpload = dataUrlToFile(opt.image, opt.fileName ?? "upload.png");
+  } else if (
     typeof opt.associated_value === "string" &&
     opt.associated_value.startsWith("data:")
   ) {
     fileToUpload = dataUrlToFile(opt.associated_value, opt.fileName ?? "upload.png");
   }
 
+  // Append binary file under single key, e.g. create[0]field[0]option[0]file
   if (fileToUpload) {
     const uploadName = fileToUpload.name ?? opt.fileName ?? "upload.png";
     fd.append(key, fileToUpload, uploadName);
-    if (altKey && altKey !== key) {
-      fd.append(altKey, fileToUpload, uploadName);
+  }
+
+  const isImageOption =
+    associatedType === "image" ||
+    "file" in opt ||
+    "image" in opt ||
+    "image_value" in opt ||
+    Boolean(fileToUpload);
+
+  if (isImageOption) {
+    let existingFile: string | null = null;
+    // Only keep existing remote URLs (http/https); newly uploaded files/blobs become null
+    if (!fileToUpload) {
+      if (typeof opt.file === "string" && !opt.file.startsWith("data:") && !opt.file.startsWith("blob:")) {
+        existingFile = opt.file;
+      } else if (typeof opt.image === "string" && !opt.image.startsWith("data:") && !opt.image.startsWith("blob:")) {
+        existingFile = opt.image;
+      }
     }
-    const { fileObject, associated_value, file, image_value, ...rest } = opt;
+
     return {
-      ...rest,
-      associated_value: null,
-      file: null,
-      image_value: null,
-      __file_key__: key,
+      label: String(opt.label ?? ""),
+      value: opt.value !== undefined ? opt.value : null,
+      file: existingFile,
+    };
+  }
+
+  if (associatedType === "color") {
+    return {
+      label: String(opt.label ?? ""),
+      value: opt.value !== undefined ? opt.value : null,
     };
   }
 
   // Strip fileObject even when no file is attached (not JSON-serialisable)
   if ("fileObject" in opt) {
-    const { fileObject, ...rest } = opt;
+    const { fileObject, fileName, fileType, fileSize, ...rest } = opt;
     return rest;
   }
   return opt;
@@ -113,29 +140,31 @@ function extractSectionFiles(
 
       // field.config.options  (config object wrapping the options array)
       if (cloneField.config?.options) {
+        const assocType = String(cloneField.associated_value_type || cloneField.config?.associated_value_type || "").toLowerCase();
         cloneField.config = {
           ...cloneField.config,
           options: (cloneField.config.options as any[]).map((opt: any, optIdx: number) => {
-            const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]associated_value`;
-            return processOption(opt, fd, fileKey);
+            const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]file`;
+            return processOption(opt, fd, fileKey, assocType);
           }),
         };
       }
 
       // field.options  (options directly on the field)
       if (Array.isArray(cloneField.options)) {
+        const assocType = String(cloneField.associated_value_type || "").toLowerCase();
         cloneField.options = (cloneField.options as any[]).map((opt: any, optIdx: number) => {
-          const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]associated_value`;
-          return processOption(opt, fd, fileKey);
+          const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]file`;
+          return processOption(opt, fd, fileKey, assocType);
         });
       }
 
       // field.associated_options  (non-default options)
       if (Array.isArray(cloneField.associated_options)) {
+        const assocType = String(cloneField.associated_value_type || "").toLowerCase();
         cloneField.associated_options = (cloneField.associated_options as any[]).map((opt: any, optIdx: number) => {
-          const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]associated_value`;
-          const altKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]associated_option[${optIdx}]associated_value`;
-          return processOption(opt, fd, fileKey, altKey);
+          const fileKey = `${groupKey}[${sectionIdx}]field[${fieldIdx}]option[${optIdx}]file`;
+          return processOption(opt, fd, fileKey, assocType);
         });
       }
 

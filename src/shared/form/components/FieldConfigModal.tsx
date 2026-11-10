@@ -61,6 +61,18 @@ export type OptionItem = {
 };
 
 // Pure helpers — defined at module level so useState initializers can safely call them.
+const isColorString = (s: unknown): boolean => {
+  if (typeof s !== "string") return false;
+  const trimmed = s.trim().toLowerCase();
+  return (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("rgb(") ||
+    trimmed.startsWith("rgba(") ||
+    trimmed.startsWith("hsl(") ||
+    trimmed.startsWith("hsla(")
+  );
+};
+
 const parseOptionsLines = (text: string): string[] =>
   text
     .split("\n")
@@ -90,12 +102,19 @@ const toOptionItem = (option: unknown, defaultType?: unknown): OptionItem => {
   const label = String(obj.label ?? obj.value ?? "");
   const value = String(obj.value ?? obj.label ?? "");
 
+  const hasImage = Boolean(obj.image || obj.file || obj.fileObject || obj.image_value);
+  const isColorVal = isColorString(value) || isColorString(obj.color) || isColorString(obj.associated_color);
+
   const candidateType =
     typeof obj.associated_value_type === "string"
       ? obj.associated_value_type
       : typeof obj.associatedValueType === "string"
         ? obj.associatedValueType
-        : safeDefaultType;
+        : hasImage
+          ? "image"
+          : isColorVal
+            ? "color"
+            : safeDefaultType;
 
   const rawType = String(candidateType || "default").toLowerCase();
   const normalizedType: "default" | "color" | "image" =
@@ -105,16 +124,26 @@ const toOptionItem = (option: unknown, defaultType?: unknown): OptionItem => {
         ? "image"
         : "default";
 
-  const assocVal = obj.associated_value ?? obj.associatedValue ?? obj.file ?? obj.file_url ?? obj.color ?? null;
+  const colorVal =
+    normalizedType === "color"
+      ? (isColorString(value) ? value : (obj.color || obj.associated_color || obj.color_value || obj.associated_value || null))
+      : null;
+
+  const imageVal =
+    normalizedType === "image"
+      ? (obj.image || obj.file || obj.file_url || obj.image_value || obj.associated_value || null)
+      : null;
+
+  const assocVal = normalizedType === "color" ? colorVal : normalizedType === "image" ? imageVal : (obj.associated_value ?? null);
 
   return {
     label,
     value,
     associated_value_type: normalizedType,
     associated_value: assocVal,
-    color_value: normalizedType === "color" ? assocVal : (obj.color_value || obj.color || null),
-    image_value: normalizedType === "image" ? assocVal : (obj.image_value || obj.file || null),
-    file: normalizedType === "image" ? (assocVal || obj.file) : (obj.file ?? null),
+    color_value: colorVal,
+    image_value: imageVal,
+    file: imageVal,
     fileObject: obj.fileObject instanceof File ? obj.fileObject : (obj.file instanceof File ? obj.file : null),
     fileName: obj.fileName ?? obj.file_name ?? obj.name ?? null,
     fileType: obj.fileType ?? obj.file_type ?? null,
@@ -834,14 +863,14 @@ export default function FieldConfigModal({
         const itemType = associatedValueType;
         const defaultColor = DEFAULT_COLOR_PALETTE[idx % DEFAULT_COLOR_PALETTE.length];
         const itemValue = itemType === "color"
-          ? (opt.associated_value || opt.color_value || defaultColor)
+          ? (opt.color_value || (isColorString(opt.value) ? opt.value : (opt.associated_value || defaultColor)))
           : itemType === "image"
             ? (opt.associated_value || opt.image_value || opt.file || null)
             : null;
 
         return {
           label: opt.label,
-          value: opt.value || opt.label,
+          value: itemType === "color" ? itemValue : (opt.value || opt.label),
           associated_value_type: itemType,
           associated_value: itemValue,
           ...(itemType === "color"
@@ -866,7 +895,7 @@ export default function FieldConfigModal({
         const defaultCol = DEFAULT_COLOR_PALETTE[idx % DEFAULT_COLOR_PALETTE.length];
         return {
           label: line,
-          value: line,
+          value: associatedValueType === "color" ? defaultCol : line,
           associated_value_type: associatedValueType,
           associated_value: associatedValueType === "color" ? defaultCol : null,
           ...(associatedValueType === "color"
