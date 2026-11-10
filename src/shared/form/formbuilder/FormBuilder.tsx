@@ -23,6 +23,7 @@ import {
   isProjectFormQuickCreateParentBack,
 } from "@/shared/utils/quick-create-navigation.util";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
+import { ImageOverlapPreviewCard } from "../components/position-selection";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
 import FormAdvancedRuleModal from "./form-advanced-rule-modal";
@@ -32,6 +33,10 @@ import {
   SECTION_RULE_TARGET_PREFIX,
 } from "./form-rules.types";
 import type { RuleFieldOption } from "./rule-field-select";
+import {
+  useCompositeItemsCatalog,
+  resolveCompositeFieldOptions,
+} from "../utils/composite-items.util";
 import { Edit2, Monitor, Smartphone, Trash2, ChevronDown, X, Save, Check, Globe } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
@@ -426,6 +431,7 @@ export default function FormBuilderLayout({
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   // Matches dashboard-sidebar.tsx "md:flex" — sidebar is visible only at ≥ 768px.
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const { catalog: compositeCatalog } = useCompositeItemsCatalog(true);
 
   useEffect(() => {
     const lgMedia = window.matchMedia("(min-width: 1024px)");
@@ -491,6 +497,39 @@ export default function FormBuilderLayout({
 
   const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
   const [previewLayout, setPreviewLayout] = useState<"desktop" | "phone">("desktop");
+  const [previewFormData, setPreviewFormData] = useState<Record<string, any>>({});
+
+  const handlePreviewFieldChange = useCallback((name: string, value: any) => {
+    setPreviewFormData((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const allActiveFields = React.useMemo(() => {
+    return sections
+      .filter((s) => !s.is_deleted)
+      .flatMap((sec) => (sec.fields || []).filter((f) => !f.is_deleted));
+  }, [sections]);
+
+  const positionSelectionFields = React.useMemo(() => {
+    return allActiveFields.filter((f) => f.field_type === "position_selection");
+  }, [allActiveFields]);
+
+  const candidateImageFields = React.useMemo(() => {
+    return allActiveFields.filter((f) => {
+      const t = (f.field_type || f.type || "").toLowerCase().replace(/[-\s]/g, "_");
+      return [
+        "picklist",
+        "select",
+        "multi_select",
+        "radio",
+        "checkbox",
+        "image_upload",
+        "file_upload",
+      ].includes(t);
+    });
+  }, [allActiveFields]);
+
+  const showImageOverlapPreview =
+    positionSelectionFields.length > 0 || candidateImageFields.length >= 2;
 
   const tabs = [
     { id: "form", label: "Form" },
@@ -600,6 +639,12 @@ export default function FormBuilderLayout({
                         : f.properties?.is_public || false,
                     ...(editorType ? { editor_type: editorType } : {}),
                     ...validationRules,
+                    is_composite: f.is_composite !== undefined ? Boolean(f.is_composite) : Boolean(validationRules.isComposite ?? validationRules.is_composite),
+                    composite_items: f.composite_items || validationRules.compositeItems || validationRules.composite_items || [],
+                    defaultValue: f.defaultValue ?? f.default_value ?? validationRules.defaultValue ?? validationRules.default_value,
+                    fill_field: f.fill_field ?? f.fill_field_id ?? validationRules.fillField ?? validationRules.fill_field ?? f.properties?.fill_field ?? f.target_image_field,
+                    fill_field_id: f.fill_field_id ?? f.fill_field ?? validationRules.fillFieldId ?? validationRules.fill_field_id,
+                    target_image_field: f.target_image_field ?? f.fill_field ?? validationRules.targetImageField,
                   };
                 }),
             }));
@@ -963,6 +1008,25 @@ export default function FormBuilderLayout({
                     : f.properties?.is_public || false,
                 ...(editorType ? { editor_type: editorType } : {}),
                 ...validationRules,
+                is_composite: f.is_composite !== undefined ? Boolean(f.is_composite) : Boolean(validationRules.isComposite ?? validationRules.is_composite),
+                composite_items: f.composite_items || validationRules.compositeItems || validationRules.composite_items || [],
+                defaultValue: f.defaultValue ?? f.default_value ?? validationRules.defaultValue ?? validationRules.default_value,
+                options:
+                  f.options && f.options.length > 0
+                    ? f.options
+                    : f.associated_options && f.associated_options.length > 0
+                      ? f.associated_options
+                      : [],
+                associated_options: f.associated_options || [],
+                associated_value_type:
+                  f.associated_value_type ||
+                  (f.associated_options && f.associated_options.length > 0
+                    ? (f.associated_options[0]?.file !== undefined || f.associated_options[0]?.image
+                        ? "image"
+                        : (typeof f.associated_options[0]?.value === "string" && (f.associated_options[0].value.startsWith("#") || f.associated_options[0].value.startsWith("rgb")))
+                          ? "color"
+                          : f.associated_options[0]?.associated_value_type || "default")
+                    : "default"),
               };
             }),
         }),
@@ -1056,12 +1120,17 @@ export default function FormBuilderLayout({
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((field) => {
           const fId = field.f_id ?? (hasPersistedId(field.id) ? field.id : field._uid);
+          const runtimeOptions = field.is_composite
+            ? resolveCompositeFieldOptions(field as any, compositeCatalog)
+            : (field.options || []);
           return {
             value: getFieldRuleTarget(field),
             label: field.field_label || field.api_name || "Untitled Field",
             type: field.field_type,
-            options: field.options,
+            options: runtimeOptions,
             apiName: field.api_name,
+            is_composite: field.is_composite,
+            composite_items: field.composite_items,
             targetType: "field" as const,
             fieldId: hasPersistedId(field.id) ? field.id! : null,
             f_id: fId,
@@ -1076,6 +1145,27 @@ export default function FormBuilderLayout({
 
       return [sectionOption, ...fieldOptions];
     });
+
+  const getRuleDisplayValue = (fieldApiName?: string, val?: any) => {
+    if (!fieldApiName || val === undefined || val === null || val === "") return "";
+    const targetField = ruleFieldOptions.find((f) => f.value === fieldApiName || f.apiName === fieldApiName);
+    const options = targetField?.options;
+    if (!options || !Array.isArray(options) || options.length === 0) {
+      return Array.isArray(val) ? val.join(", ") : String(val);
+    }
+    const valArr = Array.isArray(val) ? val : String(val).split(",").map((s) => s.trim());
+    const labels = valArr.map((v) => {
+      const match = options.find((opt: any) => {
+        const optVal = typeof opt === "object" ? String(opt.value ?? opt.label ?? "") : String(opt);
+        return optVal.toLowerCase() === String(v).toLowerCase();
+      });
+      if (match) {
+        return typeof match === "object" ? (match.label || match.value) : match;
+      }
+      return v;
+    });
+    return labels.join(", ");
+  };
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
@@ -1232,7 +1322,118 @@ export default function FormBuilderLayout({
 
         if (f.placeholder) fieldPayload.placeholder = f.placeholder;
         if (f.helpText) fieldPayload.help_text = f.helpText;
-        if (f.options && f.options.length > 0) fieldPayload.options = f.options;
+        if (f.is_composite) {
+          fieldPayload.is_composite = true;
+          fieldPayload.options = [];
+        } else if (
+          (f.associated_options && f.associated_options.length > 0) ||
+          (f.options && f.options.length > 0)
+        ) {
+          // Normalize options: always produce plain objects, strip browser-only
+          // fields (fileObject, fileName) that are not JSON-serialisable.
+          const rawOpts =
+            f.options && f.options.length > 0 ? f.options : f.associated_options;
+          const cleaned = (rawOpts as any[]).map((opt: any) => {
+            if (!opt || typeof opt !== "object") {
+              const s = String(opt ?? "");
+              return { label: s, value: s, associated_value_type: "default", associated_value: null };
+            }
+            const { fileObject, fileName, file, ...rest } = opt;
+            const cleanOpt: any = { ...rest };
+            const resolvedFile =
+              fileObject instanceof File
+                ? fileObject
+                : file instanceof File
+                  ? file
+                  : opt.associated_value instanceof File
+                    ? opt.associated_value
+                    : null;
+
+            cleanOpt.fileObject = resolvedFile;
+            cleanOpt.fileName = fileName ?? (resolvedFile ? resolvedFile.name : null);
+            cleanOpt.file = typeof file === "string" ? file : (typeof opt.associated_value === "string" ? opt.associated_value : null);
+            return cleanOpt;
+          });
+
+          // Check if options are NOT default (e.g. colors, images)
+          const isNonDefault =
+            (f.associated_value_type && f.associated_value_type !== "default") ||
+            cleaned.some(
+              (opt: any) =>
+                (opt.associated_value_type && opt.associated_value_type !== "default") ||
+                opt.image ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb"))) ||
+                (typeof opt.color === "string" && (opt.color.startsWith("#") || opt.color.startsWith("rgb"))),
+            );
+
+          if (isNonDefault) {
+            const rawType = String(f.associated_value_type || cleaned[0]?.associated_value_type || "color").toLowerCase();
+            const targetType = rawType === "image" ? "image" : "color";
+            fieldPayload.associated_value_type = targetType;
+            fieldPayload.associated_options = cleaned.map((opt: any) => {
+              const optLabel = String(opt.label ?? opt.value ?? "");
+              const optColor =
+                opt.color ||
+                opt.associated_color ||
+                opt.color_value ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb")) ? opt.value : null) ||
+                (typeof opt.associated_value === "string" && (opt.associated_value.startsWith("#") || opt.associated_value.startsWith("rgb")) ? opt.associated_value : null);
+
+              const isColorOpt = targetType === "color" || opt.associated_value_type === "color" || !!optColor;
+
+              if (isColorOpt) {
+                // Color option: ONLY label (string) and value (the color hex string)
+                return {
+                  label: optLabel,
+                  value: optColor || opt.value || "#3b82f6",
+                };
+              }
+
+              // Image option: ONLY label, value (could be null), and file (null for new files / blobs)
+              const rawFile =
+                opt.file ||
+                opt.image ||
+                (!String(opt.associated_value || "").startsWith("#") ? opt.associated_value : null) ||
+                null;
+
+              const isBlobOrData =
+                typeof rawFile === "string" &&
+                (rawFile.startsWith("blob:") || rawFile.startsWith("data:"));
+
+              const fileUrl =
+                !isBlobOrData && typeof rawFile === "string" && (rawFile.startsWith("http://") || rawFile.startsWith("https://") || rawFile.startsWith("/"))
+                  ? rawFile
+                  : null;
+
+              const cleanImgOpt: any = {
+                label: optLabel,
+                value: opt.value !== undefined ? opt.value : (optLabel || null),
+                file: fileUrl,
+              };
+              if (opt.fileObject instanceof File) {
+                cleanImgOpt.fileObject = opt.fileObject;
+              }
+              return cleanImgOpt;
+            });
+            fieldPayload.options = [];
+          } else {
+            fieldPayload.options = cleaned.map((opt: any) => ({
+              label: String(opt.label ?? opt.value ?? ""),
+              value: String(opt.value ?? opt.label ?? ""),
+            }));
+          }
+        }
+        if (Array.isArray(f.composite_items)) {
+          fieldPayload.composite_items = f.composite_items;
+        }
+        if (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== "") {
+          fieldPayload.default_value = f.defaultValue;
+        }
+        if (f.fill_field != null) {
+          fieldPayload.fill_field = f.fill_field;
+          fieldPayload.fill_field_id = f.fill_field_id ?? f.fill_field;
+          fieldPayload.target_image_field = f.target_image_field ?? f.fill_field;
+        }
 
         const validationRules: any = {};
         const excludeKeys = [
@@ -1251,6 +1452,8 @@ export default function FormBuilderLayout({
           "placeholder",
           "helpText",
           "options",
+          "associated_options",
+          "associated_value_type",
           "required",
           "is_searchable",
           "is_filterable",
@@ -1260,6 +1463,15 @@ export default function FormBuilderLayout({
           "show_tooltip",
           "tool_tip",
           "properties",
+          // These are top-level payload fields — do NOT duplicate into validation_rules
+          "is_composite",
+          "composite_items",
+          "defaultValue",
+          "default_value",
+          "is_custom",
+          "fill_field",
+          "fill_field_id",
+          "target_image_field",
         ];
 
         Object.keys(f).forEach((key) => {
@@ -2183,12 +2395,16 @@ export default function FormBuilderLayout({
                   </button>
                 </div>
               </div>
-              <div className="flex w-full justify-center px-1 sm:px-2">
+              <div className="flex flex-col lg:flex-row w-full items-start justify-center gap-6 px-1 sm:px-2">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-x-hidden ${previewLayout === "phone"
-                    ? "w-[390px] max-w-full rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-slate-300 dark:border-slate-700"
-                    : "w-full rounded-lg p-3 sm:p-6 lg:p-8"
-                    }`}
+                  className={cn(
+                    "bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-x-hidden",
+                    previewLayout === "phone"
+                      ? "w-[390px] max-w-full rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-slate-300 dark:border-slate-700"
+                      : showImageOverlapPreview
+                        ? "flex-1 min-w-0 max-w-4xl rounded-lg p-3 sm:p-6 lg:p-8"
+                        : "w-full rounded-lg p-3 sm:p-6 lg:p-8",
+                  )}
                 >
                   <FormRenderer
                     key={previewLayout}
@@ -2198,8 +2414,39 @@ export default function FormBuilderLayout({
                     )}
                     rules={rules}
                     renderMode={previewLayout}
+                    onFieldChange={handlePreviewFieldChange}
                   />
                 </div>
+
+                {/* Image Overlap Preview: placed on the RIGHT side outside form sections, only in Form Builder Preview */}
+                {showImageOverlapPreview && (
+                  <div className="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-4 space-y-4">
+                    {positionSelectionFields.length > 0 ? (
+                      positionSelectionFields.map((posField, idx) => (
+                        <ImageOverlapPreviewCard
+                          key={posField.api_name || posField._uid || idx}
+                          positionField={posField}
+                          allFields={allActiveFields}
+                          formData={previewFormData}
+                          candidateFields={candidateImageFields}
+                        />
+                      ))
+                    ) : (
+                      <ImageOverlapPreviewCard
+                        key="candidate-overlap-preview"
+                        positionField={{
+                          field_label: "Image Overlap Preview",
+                          first_field: candidateImageFields[0]?.api_name,
+                          second_field: candidateImageFields[1]?.api_name,
+                          default_position: "center",
+                        }}
+                        allFields={allActiveFields}
+                        formData={previewFormData}
+                        candidateFields={candidateImageFields}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end mt-4">
                 <Button onClick={handleFormSubmit} disabled={isSubmitting}>
@@ -2245,7 +2492,7 @@ export default function FormBuilderLayout({
                                 <p key={block._uid} className="text-sm text-slate-500 dark:text-slate-400">
                                   <strong className="text-xs text-slate-400">Block #{bIdx + 1}:</strong>
                                   <br />
-                                  <strong>If</strong> {ruleFieldOptions.find(f => f.value === block.field_api_name)?.label || block.field_api_name} {block.condition.replace(/_/g, ' ')} {block.value ? (Array.isArray(block.value) ? block.value.join(', ') : block.value) : ''}
+                                  <strong>If</strong> {ruleFieldOptions.find(f => f.value === block.field_api_name)?.label || block.field_api_name} {block.condition.replace(/_/g, ' ')} {getRuleDisplayValue(block.field_api_name, block.value)}
                                   <br />
                                   <strong>Then</strong> {block.output_fields.length} action(s) applied.
                                 </p>
@@ -2253,7 +2500,7 @@ export default function FormBuilderLayout({
                             </div>
                           ) : (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
+                              <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {getRuleDisplayValue(rule.field_api_name, rule.value)}
                               <br />
                               <strong>Then</strong> {rule.output_fields?.length || 0} action(s) applied.
                             </p>
@@ -2298,6 +2545,7 @@ export default function FormBuilderLayout({
         <FieldConfigModal
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
+          sections={sections}
           onSave={(config: any) => {
             if (showModal._fieldUid) {
               updateFieldInSection(

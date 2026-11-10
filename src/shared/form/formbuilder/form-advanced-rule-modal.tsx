@@ -551,7 +551,7 @@ const FormAdvancedRuleModal = ({
       );
     }
 
-    const selectedField = fields.find(f => f.value === fieldApiName);
+    const selectedField = fields.find(f => f.value === fieldApiName || f.apiName === fieldApiName);
     const fieldType = selectedField?.type;
     const blockValue = Array.isArray(rawValue) ? rawValue.join(", ") : (rawValue || "");
 

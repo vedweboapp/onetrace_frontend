@@ -5,7 +5,7 @@ import {
   Percent, MapPin, CheckSquare, Link, Search,
   Calculator, User, FileUp, Image, Images, BarChart3,
   Home, ListChecks, Globe, LucideIcon, PenTool,
-  Video, QrCode
+  Video, QrCode, Layers
 } from "lucide-react";
 
 interface FieldButtonProps {
@@ -208,6 +208,12 @@ export const FormFieldsConfig: FieldConfigItem[] = [
     label: "QR Scanner",
     icon: QrCode,
   },
+  {
+    key: "positionSelection",
+    type: "position_selection",
+    label: "Position Selection",
+    icon: Layers,
+  },
 ];
 
 // Export individual button components (generated from config)
@@ -313,4 +319,8 @@ export const AddressButton: React.FC<{ onClick?: () => void }> = ({ onClick }) =
 
 export const MultiSelectLookupButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
   <FieldButton icon={ListChecks} label="Multi-Select Lookup" onClick={onClick} />
+);
+
+export const PositionSelectionButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
+  <FieldButton icon={Layers} label="Position Selection" onClick={onClick} />
 );
