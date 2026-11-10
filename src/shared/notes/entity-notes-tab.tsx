@@ -18,7 +18,6 @@ import {
   resolveEntityAttachmentLabel,
   resolveEntityAttachmentUrl,
 } from "@/shared/attachments/entity-attachment-display.util";
-import { detailTabSectionClassName } from "@/shared/components/layout/detail-tab-layout";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { AppButton, ConfirmDialog } from "@/shared/ui";
@@ -53,6 +52,15 @@ function noteTime(note: EntityNote): string | null {
   return Number.isNaN(date.getTime()) ? null : raw;
 }
 
+function noteDeleteHighlight(note: EntityNote | null): string | undefined {
+  if (!note) return undefined;
+  const title = note.title?.trim();
+  if (title) return title;
+  const preview = plainText(note.content ?? "");
+  if (preview) return preview.length > 48 ? `${preview.slice(0, 48)}…` : preview;
+  return undefined;
+}
+
 function sortNotes(rows: EntityNote[]): EntityNote[] {
   return [...rows].sort((a, b) => {
     const aTime = Date.parse(a.created_at ?? "") || 0;
@@ -67,7 +75,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
   const dateFmt = useDashboardDateFormat();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [notes, setNotes] = React.useState<EntityNote[]>([]);
-  const [mode, setMode] = React.useState<ComposerMode | null>(null);
+  const [mode, setMode] = React.useState<ComposerMode>({ kind: "create" });
   const [title, setTitle] = React.useState("");
   const [content, setContent] = React.useState("");
   const [files, setFiles] = React.useState<DraftFile[]>([]);
@@ -82,6 +90,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     files.reduce((sum, row) => sum + row.file.size, 0) +
     keptAttachments.reduce((sum, file) => sum + (typeof file.file_size === "number" ? file.file_size : 0), 0);
   const fileCount = files.length + keptAttachments.length;
+  const isEditing = mode.kind === "edit";
 
   const loadNotes = React.useCallback(async () => {
     try {
@@ -95,8 +104,8 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     void loadNotes();
   }, [loadNotes]);
 
-  function closeComposer() {
-    setMode(null);
+  function resetToCreate() {
+    setMode({ kind: "create" });
     setTitle("");
     setContent("");
     setFiles([]);
@@ -106,19 +115,15 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  function openCreate() {
-    closeComposer();
-    setMode({ kind: "create" });
-  }
-
   function openEdit(note: EntityNote) {
+    setMode({ kind: "edit", note });
     setTitle(note.title?.trim() ?? "");
     setContent(note.content ?? "");
     setFiles([]);
     setKeptAttachments(note.attachments ?? []);
     setRemovedAttachmentIds([]);
     setEditorKey((key) => key + 1);
-    setMode({ kind: "edit", note });
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   function addFiles(list: FileList | null) {
@@ -156,7 +161,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     }
     setSaving(true);
     try {
-      if (mode?.kind === "edit" && mode.note.id != null) {
+      if (mode.kind === "edit" && mode.note.id != null) {
         await updateEntityNote(detailPath, mode.note.id, {
           title: trimmedTitle,
           content,
@@ -172,7 +177,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
         });
         toastSuccess(t("savedToast"));
       }
-      closeComposer();
+      resetToCreate();
       await loadNotes();
     } catch (error) {
       toastApiError(error, t("saveError"));
@@ -187,7 +192,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     setDeletingId(noteId);
     try {
       await deleteEntityNote(detailPath, noteId);
-      if (mode?.kind === "edit" && mode.note.id === noteId) closeComposer();
+      if (mode.kind === "edit" && mode.note.id === noteId) resetToCreate();
       toastSuccess(t("deletedToast"));
       setPendingDelete(null);
       await loadNotes();
@@ -199,133 +204,141 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
   }
 
   return (
-    <div className={cn(detailTabSectionClassName, "space-y-4")}>
-      {mode ? (
-        <NoteComposer
-          title={title}
-          content={content}
-          files={files}
-          keptAttachments={keptAttachments}
-          fileCount={fileCount}
-          usedBytes={usedBytes}
-          saving={saving}
-          editorKey={editorKey}
-          inputRef={inputRef}
-          saveLabel={mode.kind === "edit" ? t("save") : t("create")}
-          onTitleChange={setTitle}
-          onContentChange={setContent}
-          onAddFiles={addFiles}
-          onRemoveFile={(key) => setFiles((current) => current.filter((item) => item.key !== key))}
-          onRemoveKept={(file) => {
-            setKeptAttachments((current) => current.filter((item) => item !== file));
-            if (typeof file.id === "number") {
-              setRemovedAttachmentIds((current) => (current.includes(file.id!) ? current : [...current, file.id!]));
-            }
-          }}
-          onCancel={closeComposer}
-          onSave={() => void saveNote()}
-        />
+    <div className="min-w-0 space-y-5 px-4 py-4 sm:px-6">
+      <NoteComposer
+        title={title}
+        content={content}
+        files={files}
+        keptAttachments={keptAttachments}
+        fileCount={fileCount}
+        usedBytes={usedBytes}
+        saving={saving}
+        editorKey={editorKey}
+        inputRef={inputRef}
+        isEditing={isEditing}
+        onTitleChange={setTitle}
+        onContentChange={setContent}
+        onAddFiles={addFiles}
+        onRemoveFile={(key) => setFiles((current) => current.filter((item) => item.key !== key))}
+        onRemoveKept={(file) => {
+          setKeptAttachments((current) => current.filter((item) => item !== file));
+          if (typeof file.id === "number") {
+            setRemovedAttachmentIds((current) => (current.includes(file.id!) ? current : [...current, file.id!]));
+          }
+        }}
+        onCancel={resetToCreate}
+        onSave={() => void saveNote()}
+      />
+
+      {notes.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("empty")}</p>
       ) : (
-        <div className="flex justify-end">
-          <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-            {t("create")}
-          </AppButton>
-        </div>
-      )}
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            {t("allNotes", { count: notes.length })}
+          </p>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            {notes.map((note, index) => {
+              const noteTitle = note.title?.trim() || "";
+              const when = noteTime(note);
+              const bodyHtml = note.content && plainText(note.content) ? note.content : "";
+              const attachments = note.attachments?.filter(Boolean) ?? [];
+              const canChange = note.id != null;
+              const editingThis = mode.kind === "edit" && mode.note.id === note.id;
+              return (
+                <li
+                  key={note.id ?? `note-${index}`}
+                  className={cn(
+                    "group relative -mx-2 rounded-lg px-2 py-3.5 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
+                    editingThis && "bg-slate-50/90 opacity-70 dark:bg-slate-900/50",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {noteTitle ? (
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{noteTitle}</p>
+                      ) : null}
 
-      {notes.length === 0 && !mode ? (
-        <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          {t("empty")}
-        </p>
-      ) : null}
+                      {note.author || when ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {[note.author, when ? dateFmt.format(new Date(when)) : null].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
 
-      {notes.length > 0 ? (
-        <ul className="space-y-3">
-          {notes.map((note, index) => {
-            const label = note.title?.trim() || t("untitled");
-            const when = noteTime(note);
-            const body = note.content && plainText(note.content) ? note.content : "";
-            const canChange = note.id != null;
-            return (
-              <li
-                key={note.id ?? `note-${index}`}
-                className={cn(
-                  "group rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950",
-                  mode?.kind === "edit" && mode.note.id === note.id && "ring-2 ring-slate-900/10 dark:ring-white/15",
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{label}</p>
-                    {note.author || when ? (
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                        {[note.author, when ? dateFmt.format(new Date(when)) : null].filter(Boolean).join(" · ")}
-                      </p>
+                      {bodyHtml ? (
+                        <div
+                          className={cn(
+                            "prose prose-sm max-w-none text-slate-600 dark:prose-invert dark:text-slate-300",
+                            "[&_p]:my-0 [&_p+p]:mt-1.5",
+                          )}
+                          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                        />
+                      ) : !noteTitle && attachments.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic dark:text-slate-500">{t("noContent")}</p>
+                      ) : null}
+
+                      {attachments.length > 0 ? (
+                        <ul className="flex flex-wrap gap-1.5 pt-0.5">
+                          {attachments.map((file, fileIndex) => {
+                            const name = resolveEntityAttachmentLabel(file);
+                            const href = resolveEntityAttachmentUrl(file);
+                            return (
+                              <li key={`${name}-${fileIndex}`}>
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                                  >
+                                    <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                                    <span className="truncate">{name}</span>
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                                    <span className="truncate">{name}</span>
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+
+                    {canChange ? (
+                      <div
+                        className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                        aria-label={t("noteActions")}
+                      >
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                          aria-label={t("editAria")}
+                          title={t("edit")}
+                          onClick={() => openEdit(note)}
+                        >
+                          <Pencil className="size-3.5" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                          aria-label={t("deleteAria")}
+                          title={t("delete")}
+                          onClick={() => setPendingDelete(note)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                        </button>
+                      </div>
                     ) : null}
                   </div>
-                  {canChange ? (
-                    <div
-                      className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-                      aria-label={t("noteActions")}
-                    >
-                      <button
-                        type="button"
-                        className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                        aria-label={t("editAria")}
-                        title={t("edit")}
-                        onClick={() => openEdit(note)}
-                      >
-                        <Pencil className="size-3.5" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                        aria-label={t("deleteAria")}
-                        title={t("delete")}
-                        onClick={() => setPendingDelete(note)}
-                      >
-                        <Trash2 className="size-3.5" aria-hidden />
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                {body ? (
-                  <div
-                    className="prose prose-sm mt-2 max-w-none text-slate-700 dark:prose-invert dark:text-slate-200"
-                    dangerouslySetInnerHTML={{ __html: body }}
-                  />
-                ) : null}
-                {note.attachments?.length ? (
-                  <ul className="mt-2 flex flex-wrap gap-2">
-                    {note.attachments.map((file, fileIndex) => {
-                      const name = resolveEntityAttachmentLabel(file);
-                      const href = resolveEntityAttachmentUrl(file);
-                      return (
-                        <li key={`${name}-${fileIndex}`}>
-                          {href ? (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex max-w-full items-center rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-blue-600 hover:underline dark:border-slate-700"
-                            >
-                              <span className="truncate">{name}</span>
-                            </a>
-                          ) : (
-                            <span className="inline-flex max-w-full items-center rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                              <span className="truncate">{name}</span>
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <ConfirmDialog
         open={pendingDelete != null}
@@ -335,7 +348,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
         onConfirm={confirmDelete}
         title={t("deleteTitle")}
         body={t("deleteBody")}
-        highlight={pendingDelete?.title?.trim() || t("untitled")}
+        highlight={noteDeleteHighlight(pendingDelete)}
         confirmLabel={t("delete")}
         cancelLabel={tActions("cancel")}
         isBusy={deletingId != null}
@@ -354,7 +367,7 @@ function NoteComposer({
   saving,
   editorKey,
   inputRef,
-  saveLabel,
+  isEditing,
   onTitleChange,
   onContentChange,
   onAddFiles,
@@ -372,7 +385,7 @@ function NoteComposer({
   saving: boolean;
   editorKey: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  saveLabel: string;
+  isEditing: boolean;
   onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onAddFiles: (list: FileList | null) => void;
@@ -382,10 +395,19 @@ function NoteComposer({
   onSave: () => void;
 }) {
   const t = useTranslations("Dashboard.common.notesTab");
+  const hasDraft =
+    Boolean(title.trim()) || Boolean(plainText(content)) || files.length > 0 || keptAttachments.length > 0 || isEditing;
+  const hasFiles = keptAttachments.length > 0 || files.length > 0;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
-      <div className="px-4 pt-3">
+    <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+      {isEditing ? (
+        <div className="border-b border-slate-100 px-3.5 py-2 dark:border-slate-800">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("edit")}</p>
+        </div>
+      ) : null}
+
+      <div className="px-3.5 pt-3">
         <label className="sr-only" htmlFor="entity-note-title">
           {t("noteTitle")}
         </label>
@@ -395,11 +417,11 @@ function NoteComposer({
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder={t("titlePlaceholder")}
           disabled={saving}
-          className="w-full border-0 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50"
+          className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 dark:text-slate-50"
         />
       </div>
 
-      <div className="px-2 [&_.ProseMirror]:min-h-[7.5rem]">
+      <div className="px-2 [&_.ProseMirror]:min-h-[5.5rem] [&_.ProseMirror]:px-1.5 [&_.ProseMirror]:py-1">
         <RichTextEditor
           key={editorKey}
           value={content}
@@ -409,27 +431,22 @@ function NoteComposer({
           chrome="plain"
           toolbarPlacement="bottom"
           between={
-            <div className="border-t border-dashed border-slate-200 px-2 py-3 dark:border-slate-700">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("attachments")}</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-rose-500" aria-hidden />
-                  {t("filesUploaded", { count: fileCount, max: NOTE_MAX_FILES })}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden />
-                  {t("storageUsed", { used: formatBytes(usedBytes), max: "20 MB" })}
-                </span>
-              </div>
-              {keptAttachments.length > 0 || files.length > 0 ? (
-                <ul className="mt-3 flex flex-wrap gap-2">
+            hasFiles ? (
+              <div className="space-y-2 border-t border-dashed border-slate-100 px-2.5 py-2.5 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">{t("attachments")}</span>
+                  <span>{t("filesUploaded", { count: fileCount, max: NOTE_MAX_FILES })}</span>
+                  <span>{t("storageUsed", { used: formatBytes(usedBytes), max: "20 MB" })}</span>
+                </div>
+                <ul className="flex flex-wrap gap-1.5">
                   {keptAttachments.map((file, index) => {
                     const name = resolveEntityAttachmentLabel(file);
                     return (
                       <li
                         key={`kept-${file.id ?? index}`}
-                        className="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
+                        <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
                         <span className="truncate">{name}</span>
                         <button
                           type="button"
@@ -445,8 +462,9 @@ function NoteComposer({
                   {files.map((row) => (
                     <li
                       key={row.key}
-                      className="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
+                      <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
                       <span className="truncate">
                         {row.file.name} ({formatBytes(row.file.size)})
                       </span>
@@ -462,14 +480,14 @@ function NoteComposer({
                     </li>
                   ))}
                 </ul>
-              ) : null}
-            </div>
+              </div>
+            ) : null
           }
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
-        <div>
+      <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-2.5 py-2 dark:border-slate-800">
+        <div className="flex items-center gap-1">
           <input
             ref={inputRef}
             type="file"
@@ -488,13 +506,18 @@ function NoteComposer({
           >
             <Paperclip className="size-4" aria-hidden />
           </button>
+          {!hasFiles ? (
+            <span className="hidden text-xs text-slate-400 sm:inline">{t("attachHint")}</span>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={onCancel}>
-            {t("cancel")}
-          </AppButton>
+          {hasDraft ? (
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={onCancel}>
+              {t("cancel")}
+            </AppButton>
+          ) : null}
           <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={onSave}>
-            {saveLabel}
+            {t("save")}
           </AppButton>
         </div>
       </div>

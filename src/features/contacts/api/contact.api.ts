@@ -3,6 +3,8 @@ import { ApiBusinessError } from "@/core/errors/api-business-error";
 import type { ApiEnvelope } from "@/core/types/api.types";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { fetchAllEntityIds } from "@/shared/mass-actions";
+import type { EntityAttachmentWriteRef } from "@/shared/attachments/entity-attachment.types";
+import { updateEntityAttachments } from "@/shared/attachments/update-entity-attachments.util";
 import {
   applyDropdownListParam,
   resolveDropdownListPages,
@@ -79,4 +81,11 @@ export async function updateContact(
   const { data } = await api.patch<ApiEnvelope<Contact>>(CONTACT_PATHS.detail(id), body);
   assertApiSuccess(data);
   return data.data;
+}
+
+export async function updateContactAttachments(
+  id: number,
+  refs: EntityAttachmentWriteRef[],
+): Promise<Contact> {
+  return updateEntityAttachments<Contact>(CONTACT_PATHS.detail(id), refs);
 }
