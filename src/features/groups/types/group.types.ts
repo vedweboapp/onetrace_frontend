@@ -25,6 +25,11 @@ export type GroupItemRef = {
   components?: GroupItemComponentRef[];
 };
 
+export type GroupParentRef = {
+  id: number;
+  name?: string | null;
+};
+
 export type Group = {
   id: number;
   created_by: GroupUserRef | null;
@@ -35,6 +40,8 @@ export type Group = {
   is_deleted: boolean;
   name: string;
   is_active: boolean;
+  /** Parent group id or nested object when returned by the API. */
+  parent?: number | GroupParentRef | null;
   deleted_by: unknown;
   organization: number;
   items?: GroupItemRef[];
@@ -44,11 +51,14 @@ export type Group = {
 export type GroupCreatePayload = {
   name: string;
   items?: GroupItemRef[];
+  /** Optional parent group id. */
+  parent?: number;
 };
 
 export type GroupUpdatePayload = {
   name?: string;
   items?: GroupItemRef[];
+  parent?: number | null;
 };
 
 export type GroupListResponse = {

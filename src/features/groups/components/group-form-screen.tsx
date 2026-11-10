@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
-import { createGroup, fetchGroup, updateGroup } from "@/features/groups/api/group.api";
+import { createGroup, fetchGroup, fetchGroupsPage, updateGroup } from "@/features/groups/api/group.api";
 import {
   validateGroupCompositeRows,
   normalizeGroupAbbreviation,
@@ -29,12 +29,11 @@ import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draf
 import {
   QUICK_CREATE_SELECT_TARGET_PARAM,
   hrefAfterEntityCreate,
-  resolveFormBackUrl,
 } from "@/shared/utils/quick-create-navigation.util";
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { cn } from "@/core/utils/http.util";
-import type { GroupCreatePayload } from "@/features/groups/types/group.types";
+import type { Group, GroupCreatePayload } from "@/features/groups/types/group.types";
 import {
   AppButton,
   CheckmarkSelect,
@@ -56,6 +55,14 @@ type CompositeRow = { id: string; item: string; abbreviation: string };
 
 function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function resolveParentGroupId(parent: Group["parent"]): string {
+  if (typeof parent === "number" && Number.isFinite(parent) && parent > 0) return String(parent);
+  if (parent && typeof parent === "object" && typeof parent.id === "number" && parent.id > 0) {
+    return String(parent.id);
+  }
+  return "";
 }
 
 const COMPOSITE_ITEMS_GRID =
@@ -96,9 +103,12 @@ export function GroupFormScreen({ mode, groupId }: Props) {
 
   const nameId = React.useId();
   const [name, setName] = React.useState("");
+  const [parent, setParent] = React.useState("");
   const [rows, setRows] = React.useState<CompositeRow[]>([{ id: nextRowId(), item: "", abbreviation: "" }]);
   const [compositeOptions, setCompositeOptions] = React.useState<CompositeItem[]>([]);
+  const [groupOptions, setGroupOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [compositeLoadError, setCompositeLoadError] = React.useState<string | null>(null);
+  const [parentLoadError, setParentLoadError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [itemsTouched, setItemsTouched] = React.useState(false);
@@ -116,17 +126,25 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
+  const parentSelectOptions = React.useMemo(
+    () =>
+      isEdit && groupId
+        ? groupOptions.filter((opt) => opt.value !== String(groupId))
+        : groupOptions,
+    [groupOptions, groupId, isEdit],
+  );
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, searchParams]);
 
-  const getFormDraft = React.useCallback(() => ({ name, rows }), [name, rows]);
+  const getFormDraft = React.useCallback(() => ({ name, parent, rows }), [name, parent, rows]);
 
   const restoreFormDraft = React.useCallback((draft: unknown) => {
-    const saved = draft as { name?: string; rows?: CompositeRow[] };
+    const saved = draft as { name?: string; parent?: string; rows?: CompositeRow[] };
     if (typeof saved.name === "string") setName(saved.name);
+    if (typeof saved.parent === "string") setParent(saved.parent);
     if (Array.isArray(saved.rows) && saved.rows.length > 0) setRows(saved.rows);
   }, []);
 
@@ -180,11 +198,21 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     let cancelled = false;
     (async () => {
       setCompositeLoadError(null);
-      try {
-        const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
-        if (!cancelled) setCompositeOptions(items);
-      } catch {
-        if (!cancelled) setCompositeLoadError(tModal("compositeLoadError"));
+      setParentLoadError(null);
+      const [compositesResult, groupsResult] = await Promise.allSettled([
+        fetchCompositeItemsPage(1, 20, { dropdown: true }),
+        fetchGroupsPage(1, 20, { dropdown: true }),
+      ]);
+      if (cancelled) return;
+      if (compositesResult.status === "fulfilled") {
+        setCompositeOptions(compositesResult.value.items);
+      } else {
+        setCompositeLoadError(tModal("compositeLoadError"));
+      }
+      if (groupsResult.status === "fulfilled") {
+        setGroupOptions(groupsResult.value.items.map((g) => ({ value: String(g.id), label: g.name })));
+      } else {
+        setParentLoadError(tModal("parentLoadError"));
       }
     })();
     return () => {
@@ -202,6 +230,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
         const group = await fetchGroup(groupId);
         if (!cancelled) {
           setName(group.name ?? "");
+          setParent(resolveParentGroupId(group.parent));
           const nextRows =
             group.items && group.items.length > 0
               ? group.items.map((entry) => ({
@@ -266,13 +295,20 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
+    const parentId = Number(parent);
     const payload: GroupCreatePayload = { name: name.trim(), items: compositeItems };
+    if (Number.isFinite(parentId) && parentId > 0) {
+      payload.parent = parentId;
+    }
 
     setSubmitting(true);
     try {
       const saved =
         isEdit && groupId
-          ? await updateGroup(groupId, payload)
+          ? await updateGroup(groupId, {
+              ...payload,
+              parent: Number.isFinite(parentId) && parentId > 0 ? parentId : null,
+            })
           : await createGroup(payload);
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       duplicate.clear();
@@ -356,6 +392,25 @@ export function GroupFormScreen({ mode, groupId }: Props) {
                     conflict={duplicate.conflict}
                     existingHref={duplicate.existingHref}
                   />
+                ) : null}
+              </FieldGroup>
+              <FieldGroup label={tModal("parent")}>
+                <CheckmarkSelect
+                  listLabel={tModal("parent")}
+                  buttonAriaLabel={tModal("parent")}
+                  value={parent}
+                  onChange={setParent}
+                  options={parentSelectOptions}
+                  emptyLabel={tModal("parentPlaceholder")}
+                  disabled={submitting}
+                  clearable
+                  clearAriaLabel={tModal("parentClearAria")}
+                  portaled
+                  searchable
+                  className="w-full"
+                />
+                {parentLoadError ? (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">{parentLoadError}</p>
                 ) : null}
               </FieldGroup>
             </FormFieldRow>
