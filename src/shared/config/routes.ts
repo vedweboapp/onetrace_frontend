@@ -71,6 +71,7 @@ export const routes = {
     settingsUnitTypes: "/settings/unit-type",
     settingsRejectionReasons: "/settings/rejection-reason",
     settingsChecklistTypes: "/settings/checklist-type",
+    settingsTaxes: "/settings/taxes",
     settingsCustomization: "/settings/customization",
     settingsUsers: "/settings/users",
     settingsUserGroups: "/settings/user-groups",

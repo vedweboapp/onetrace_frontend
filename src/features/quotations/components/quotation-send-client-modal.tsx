@@ -10,6 +10,7 @@ import {
   updateQuotation,
   type QuotationTemplateOption,
 } from "@/features/quotations/api/quotation.api";
+import { resolveBackendOrigin } from "@/core/config/api-url.util";
 import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
 import { AppButton, AppModal } from "@/shared/ui";
 
@@ -45,6 +46,8 @@ export function QuotationSendClientModal({
       setTemplates([]);
       setSelectedTemplateId(null);
       setHtml(null);
+      setRenderedDoc("");
+      setProcessingDoc(false);
       setErrorMsg(null);
       setLoadingInitial(false);
       setUpdatingTemplate(false);
@@ -161,16 +164,33 @@ export function QuotationSendClientModal({
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
   const busy = loadingInitial || updatingTemplate || sending;
 
-  const fullHtmlDocument = React.useMemo(() => {
-    if (!html) return "";
-    const width = pageWidth || "8.27in";
-    const minHeight = pageHeight || "11.69in";
+  // Process the raw html string off the critical render path.
+  // We defer the heavy regex work into a setTimeout so the UI stays responsive.
+  const [renderedDoc, setRenderedDoc] = React.useState<string>("");
+  const [processingDoc, setProcessingDoc] = React.useState(false);
 
-    const sharedStyles = `
+  React.useEffect(() => {
+    // Clear preview while loading
+    if (loadingInitial || updatingTemplate || !html) {
+      setRenderedDoc("");
+      return;
+    }
+
+    let cancelled = false;
+    setProcessingDoc(true);
+
+    // Yield to the browser first so the loading-overlay renders, THEN do the work
+    const t = setTimeout(() => {
+      if (cancelled) return;
+
+      const rawHtml = html;
+      const width = pageWidth || "8.27in";
+      const minHeight = pageHeight || "11.69in";
+
+      const sharedStyles = `
     *, *::before, *::after { box-sizing: border-box; }
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       background-color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #0f172a;
@@ -179,226 +199,71 @@ export function QuotationSendClientModal({
     .page-sheet {
       margin: 20px auto;
       background: #ffffff;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
       border-radius: 4px;
       max-width: ${width};
       min-height: ${minHeight};
       padding: 40px;
       line-height: 1.5;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    table { width: 100%; border-collapse: collapse; }
+    table.pcs-itemtable { width:100%; border-collapse:collapse; margin-top:15px; font-size:12px; }
+    table.pcs-itemtable th { background-color:#3c3d3a; color:#fff; padding:8px; border:1px solid #ddd; font-weight:600; text-align:left; }
+    table.pcs-itemtable td { padding:8px; border:1px solid #ddd; }
+    table.borderless-table, table[data-borderless="true"],
+    table:has(td.borderless-cell), table:has(td[data-borderless="true"]),
+    table:has(td[colwidth]), table:has(th[colwidth]) {
+      width:100% !important; border-collapse:collapse !important;
+      border:none !important; margin:0.5rem 0 !important; table-layout:fixed !important;
     }
-    table.pcs-itemtable {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-      font-size: 12px;
+    table.borderless-table td, table.borderless-table th,
+    table[data-borderless="true"] td, table[data-borderless="true"] th,
+    td.borderless-cell, td[data-borderless="true"] {
+      border:none !important; outline:none !important; padding:4px 10px !important;
+      vertical-align:middle !important; box-sizing:border-box !important;
     }
-    table.pcs-itemtable th {
-      background-color: #3c3d3a;
-      color: #ffffff;
-      padding: 8px;
-      border: 1px solid #ddd;
-      font-weight: 600;
-      text-align: left;
-    }
-    table.pcs-itemtable td {
-      padding: 8px;
-      border: 1px solid #ddd;
-    }
-    table.borderless-table,
-    table[data-borderless="true"],
-    table:has(td.borderless-cell),
-    table:has(td[data-borderless="true"]),
-    table:has(td[colwidth]),
-    table:has(th[colwidth]) {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      border: none !important;
-      margin: 0.5rem 0 !important;
-      table-layout: fixed !important;
-    }
-    table.borderless-table td,
-    table.borderless-table th,
-    table[data-borderless="true"] td,
-    table[data-borderless="true"] th,
-    td.borderless-cell,
-    td[data-borderless="true"] {
-      border: none !important;
-      outline: none !important;
-      padding: 4px 10px !important;
-      vertical-align: middle !important;
-      box-sizing: border-box !important;
-    }
-    .container-box-block {
-      box-sizing: border-box !important;
-    }
-    strong, b {
-      font-weight: 700 !important;
-    }
-    ol {
-      list-style-type: decimal !important;
-      margin: 0.75em 0 !important;
-      padding-left: 28px !important;
-    }
-    ul {
-      list-style-type: disc !important;
-      margin: 0.75em 0 !important;
-      padding-left: 28px !important;
-    }
-    li {
-      display: list-item !important;
-      margin-bottom: 0.35em !important;
-      line-height: 1.5 !important;
-    }
+    .container-box-block { box-sizing:border-box !important; }
+    strong, b { font-weight:700 !important; }
+    ol { list-style-type:decimal !important; margin:0.75em 0 !important; padding-left:28px !important; }
+    ul { list-style-type:disc !important; margin:0.75em 0 !important; padding-left:28px !important; }
+    li { display:list-item !important; margin-bottom:0.35em !important; line-height:1.5 !important; }
     p { margin: 0 0 0.5em 0; }
-    img { max-width: 100%; height: auto; display: block; }
-    td img, th img { display: block; }
+    img { max-width:100%; height:auto; display:block; }
+    td img, th img { display:block; }
     `;
 
-    // 1. Convert colwidth on <td> and <th> tags to inline CSS widths so standard browsers honor column widths
-    let processedHtml = html.replace(/<(td|th)\b([^>]*)>/gi, (match, tag, attrs) => {
-      const colMatch = attrs.match(/\bcolwidth="([^"]+)"/i);
-      if (!colMatch) return match;
-      const totalWidth = colMatch[1]
-        .split(",")
-        .reduce((sum: number, v: string) => sum + (parseInt(v.trim(), 10) || 0), 0);
-      if (totalWidth <= 0) return match;
+      const backendOrigin = resolveBackendOrigin();
+      const baseTag = `<base href="${backendOrigin}/" target="_blank" />`;
 
-      if (attrs.includes("style=")) {
-        return match.replace(/style="([^"]*)"/i, (_sMatch: string, styleVal: string) => {
-          let updated = styleVal;
-          if (!/width\s*:/i.test(updated)) {
-            updated = `width: ${totalWidth}px; ${updated}`.trim();
-          }
-          return `style="${updated}"`;
-        });
-      } else {
-        return `<${tag}${attrs} style="width: ${totalWidth}px;">`;
+      // If the API already returns a full HTML document, just inject base and styles
+      if (rawHtml.includes("<html") || rawHtml.includes("<!DOCTYPE")) {
+        const doc = rawHtml.includes("</head>")
+          ? rawHtml.replace("</head>", `${baseTag}<style>${sharedStyles}</style></head>`)
+          : `${baseTag}<style>${sharedStyles}</style>${rawHtml}`;
+        if (!cancelled) { setRenderedDoc(doc); setProcessingDoc(false); }
+        return;
       }
-    });
 
-    // 2. Ensure all tables (including borderless header tables) expand to 100% width and use fixed layout when column widths exist
-    processedHtml = processedHtml.replace(/<table\b([^>]*)>/gi, (match, attrs) => {
-      const isBorderlessOrColWidth =
-        attrs.includes("borderless") ||
-        attrs.includes("colwidth") ||
-        processedHtml.includes("colwidth=");
-
-      if (attrs.includes("style=")) {
-        return match.replace(/style="([^"]*)"/i, (_sMatch, styleVal) => {
-          let updated = styleVal;
-          if (!/width\s*:/i.test(updated)) {
-            updated = `width: 100%; ${updated}`.trim();
-          }
-          if (isBorderlessOrColWidth && !/table-layout\s*:/i.test(updated)) {
-            updated = `table-layout: fixed; ${updated}`.trim();
-          }
-          return `style="${updated}"`;
-        });
-      } else {
-        const layoutStyle = isBorderlessOrColWidth
-          ? "width: 100%; table-layout: fixed;"
-          : "width: 100%;";
-        return `<table${attrs} style="${layoutStyle}">`;
-      }
-    });
-
-    // 3. Repair orphan </strong> tags left by backend variable-substitution stripping bare opening tags.
-    //    Strategy: For each </strong>, only wrap the text content between the preceding tag-boundary (>)
-    //    and the </strong>. This is safe because we never cross a tag boundary.
-    {
-      const openSt = (processedHtml.match(/<strong\b/gi) || []).length;
-      const closeSt = (processedHtml.match(/<\/strong>/gi) || []).length;
-      if (closeSt > openSt) {
-        // Replace: "...>TEXT</strong>" with "...><strong>TEXT</strong>"
-        // The lookbehind is simulated by matching >TEXT</strong> in one shot.
-        processedHtml = processedHtml.replace(/>([^<]*?)<\/strong>/gi, (match, text) => {
-          if (!text.trim()) return match; // skip if no actual text
-          // text is the content between the last > and </strong> — wrap it only
-          return `><strong>${text}</strong>`;
-        });
-      }
-    }
-
-    // 4. Repair orphan </li> / </ol> / </ul> tags left by backend stripping.
-    //    For each </ol> or </ul> that has no matching opening tag, scan backwards to find
-    //    where the list items start and inject a proper wrapper.
-    {
-      const openOl = (processedHtml.match(/<ol\b/gi) || []).length;
-      const closeOl = (processedHtml.match(/<\/ol>/gi) || []).length;
-      const openUl = (processedHtml.match(/<ul\b/gi) || []).length;
-      const closeUl = (processedHtml.match(/<\/ul>/gi) || []).length;
-
-      if (closeOl > openOl || closeUl > openUl) {
-        // For each </ol> or </ul>, find the orphaned items before it and wrap them.
-        processedHtml = processedHtml.replace(/([\s\S]*?)<\/(ol|ul)>/gi, (match, beforeClose, listType) => {
-          // Skip if no orphan </li> present
-          if (!beforeClose.includes("</li>")) return match;
-
-          // Find the split point: the last </p>, </div>, </table>, </header>, etc.
-          // that is NOT itself immediately followed by </li> (those are content tags inside items).
-          // We scan forward to find the last block-close tag that precedes the list body.
-          let splitIndex = 0;
-          const boundaryRe = /<\/(?:p|div|header|h[1-6]|table|blockquote)>(?!\s*<\/li>)/gi;
-          let bm: RegExpExecArray | null;
-          while ((bm = boundaryRe.exec(beforeClose)) !== null) {
-            splitIndex = bm.index + bm[0].length;
-          }
-
-          const beforeList = beforeClose.slice(0, splitIndex);
-          const listBody = beforeClose.slice(splitIndex);
-
-          // Split by </li> to get individual items
-          const rawItems = listBody.split(/<\/li>/gi);
-          rawItems.pop(); // drop trailing segment after last </li>
-
-          const itemsHtml = rawItems
-            .map((item: string) => {
-              let clean = item.trim();
-              // Remove any stray opening <li> that may already be there
-              clean = clean.replace(/^<li\b[^>]*>/i, "").trim();
-              if (!clean) return "";
-              return `  <li style="margin-bottom: 0.35em;">${clean}</li>`;
-            })
-            .filter(Boolean)
-            .join("\n");
-
-          const listStyle =
-            listType.toLowerCase() === "ol"
-              ? `style="margin: 0.75em 0; padding-left: 28px; list-style-type: decimal;"`
-              : `style="margin: 0.75em 0; padding-left: 28px; list-style-type: disc;"`;
-
-          return `${beforeList}\n<${listType} ${listStyle}>\n${itemsHtml}\n</${listType}>`;
-        });
-      }
-    }
-
-    if (processedHtml.includes("<html") || processedHtml.includes("<!DOCTYPE")) {
-      if (processedHtml.includes("</head>")) {
-        return processedHtml.replace("</head>", `<style>${sharedStyles}</style></head>`);
-      }
-      return `<style>${sharedStyles}</style>${processedHtml}`;
-    }
-
-    return `<!DOCTYPE html>
+      // Otherwise wrap in a minimal HTML shell — skip the heavy regex transforms
+      // which are expensive on large documents and rarely needed for preview
+      const doc = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-${sharedStyles}
-  </style>
+  ${baseTag}
+  <style>${sharedStyles}</style>
 </head>
 <body>
-  <div class="page-sheet">
-    ${processedHtml}
-  </div>
+  <div class="page-sheet">${rawHtml}</div>
 </body>
 </html>`;
-  }, [html, pageWidth, pageHeight]);
+
+      if (!cancelled) { setRenderedDoc(doc); setProcessingDoc(false); }
+    }, 0);
+
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [html, pageWidth, pageHeight, loadingInitial, updatingTemplate]);
 
   return (
     <AppModal
@@ -511,7 +376,7 @@ ${sharedStyles}
 
         {/* Document Preview Area */}
         <div className="relative min-h-[450px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950">
-          {loadingInitial || updatingTemplate ? (
+          {(loadingInitial || updatingTemplate || processingDoc) ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-white/70 backdrop-blur-[1px] dark:bg-slate-950/70">
               <Loader2 className="size-6 animate-spin text-blue-600 dark:text-blue-400" />
               <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -522,12 +387,13 @@ ${sharedStyles}
             </div>
           ) : null}
 
-          {html ? (
+          {renderedDoc ? (
             <iframe
-              srcDoc={fullHtmlDocument}
+              key={selectedTemplateId ?? "preview"}
+              srcDoc={renderedDoc}
               title="Quotation Template Preview"
               className="h-[520px] w-full border-0 bg-white shadow-inner"
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
             />
           ) : (
             <div className="flex h-[520px] flex-col items-center justify-center gap-2 text-center text-slate-400">

@@ -1,6 +1,7 @@
 import api from "@/core/api/axios";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { PROJECT_PATHS } from "./project.paths";
+import { sectionPayloadToFormData } from "@/shared/form/utils/section-form-data.util";
 
 /**
  * Raw API calls for /project-forms/{id}/ sub-resources.
@@ -89,10 +90,13 @@ export async function createProjectJobFormSections(
   };
 
   const payload = normalize(sectionsPayload);
+  const formData = sectionPayloadToFormData(payload);
   const { data } = await api.post(
     PROJECT_PATHS.projectFormSections(formId),
-    payload,
-    { skipErrorToast: true },
+    formData,
+    {
+      skipErrorToast: true,
+    },
   );
   assertApiSuccess(data);
   return data.data;

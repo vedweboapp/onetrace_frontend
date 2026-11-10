@@ -108,6 +108,7 @@ export function PinsTableNodeView({
   REQUIRED_COLUMN_IDS.forEach((id) => colSet.add(id));
   const columns = Array.from(colSet);
   const includeTotal = false;
+  const taxId = node.attrs.taxId ? (isNaN(Number(node.attrs.taxId)) ? node.attrs.taxId : Number(node.attrs.taxId)) : null;
 
   // Parse aggregate columns from node attrs
   const rawAggCols = node.attrs.aggregateColumns;
@@ -136,11 +137,22 @@ export function PinsTableNodeView({
 
   const activeColDefs = PIN_COLUMNS.filter((c) => columns.includes(c.id));
 
+  // Ensure table stays responsive across 100% width when few columns are selected
+  // or if all selected columns have fixed pixel widths
+  const hasFlexibleCol = activeColDefs.some((c) => !c.width);
+  const getColWidth = (col: (typeof activeColDefs)[0]) => {
+    if (activeColDefs.length <= 5 || !hasFlexibleCol) {
+      return `${(100 / Math.max(1, activeColDefs.length)).toFixed(2)}%`;
+    }
+    return col.width || "auto";
+  };
+
   const handleSaveConfig = (newConfig: {
     columns: string[];
     title: string;
     includeTotal: boolean;
     aggregateColumns: AggregateColumn[];
+    taxId: number | null;
   }) => {
     const finalSet = new Set(newConfig.columns);
     REQUIRED_COLUMN_IDS.forEach((id) => finalSet.add(id));
@@ -149,6 +161,7 @@ export function PinsTableNodeView({
       title: newConfig.title,
       includeTotal: newConfig.includeTotal,
       aggregateColumns: newConfig.aggregateColumns,
+      taxId: newConfig.taxId ?? null,
     });
     setModalOpen(false);
   };
@@ -174,8 +187,13 @@ export function PinsTableNodeView({
               ({activeColDefs.length} columns)
             </span>
             {aggregateColumns.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[10px] font-semibold">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-semibold">
                 Σ {aggregateColumns.length} totals
+              </span>
+            )}
+            {taxId != null && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px] font-semibold border border-blue-200 dark:border-blue-800">
+                Tax #{taxId}
               </span>
             )}
           </div>
@@ -203,7 +221,10 @@ export function PinsTableNodeView({
         {/* ── Main Table Card Rendered Exactly Like Screenshot ── */}
         <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <div className="overflow-x-auto">
-            <table className="pins-preview-table w-full border-collapse">
+            <table
+              className="pins-preview-table w-full border-collapse"
+              style={{ tableLayout: "fixed" }}
+            >
               {/* Dark Navy Header Row (#2b394b) */}
               <thead>
                 <tr className="bg-[#2b394b] text-white">
@@ -211,9 +232,12 @@ export function PinsTableNodeView({
                     <th
                       key={col.id}
                       className="px-4 py-3 text-xs font-bold tracking-wide text-white whitespace-nowrap"
-                      style={{ textAlign: col.align || "left", width: col.width }}
+                      style={{
+                        textAlign: col.align || "left",
+                        width: getColWidth(col),
+                      }}
                     >
-                      {col.label}
+                      <span className="truncate block">{col.label}</span>
                     </th>
                   ))}
                 </tr>
@@ -232,7 +256,10 @@ export function PinsTableNodeView({
                         <td
                           key={col.id}
                           className="px-4 py-4 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap"
-                          style={{ textAlign: col.align || "left" }}
+                          style={{
+                            textAlign: col.align || "left",
+                            width: getColWidth(col),
+                          }}
                         >
                           {col.id === "snapshot" ? (
                             <DrawingSnapshotThumbnail
@@ -346,6 +373,7 @@ export function PinsTableNodeView({
         initialTitle={title}
         initialIncludeTotal={includeTotal}
         initialAggregateColumns={aggregateColumns}
+        initialTaxId={taxId}
         variables={(editor as any)?.templateVariables || []}
         onSave={handleSaveConfig}
         isEditing

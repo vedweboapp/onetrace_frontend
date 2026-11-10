@@ -6,6 +6,7 @@ import { Country, State, City } from "country-state-city";
 import { FormPhoneInput } from "./phone-input";
 import { isNativeDateInputType, nativeDatePickerHitAreaClassName, openNativeDatePicker } from "@/shared/ui/surface-date-input";
 import { cn } from "@/core/utils/http.util";
+import { useCompositeItemsCatalog, resolveCompositeFieldOptions } from "../utils/composite-items.util";
 
 interface SubformField {
   api_name: string;
@@ -15,6 +16,8 @@ interface SubformField {
   is_deleted?: boolean;
   required?: boolean | string;
   options?: any[];
+  is_composite?: boolean;
+  composite_items?: any[];
   placeholder?: string;
   lookup_module?: string;
   module?: string;
@@ -68,7 +71,8 @@ const CellInput: React.FC<{
   value: any;
   onChange: (val: any) => void;
   rowData: any;
-}> = ({ field, value, onChange, rowData = {} }) => {
+  compositeCatalog?: import("../utils/composite-items.util").CompositeItemEntry[];
+}> = ({ field, value, onChange, rowData = {}, compositeCatalog = [] }) => {
   const norm = getNormalizedType(field.field_type);
 
   // For now, we'll implement a simplified version of lookup/user components
@@ -161,6 +165,7 @@ const CellInput: React.FC<{
   }
 
   if (norm === "pick-list" || norm === "select") {
+    const runtimeOptions = resolveCompositeFieldOptions(field, compositeCatalog);
     return (
       <select
         value={value || ""}
@@ -168,7 +173,7 @@ const CellInput: React.FC<{
         className={CELL_CLASS}
       >
         <option value="">Select…</option>
-        {(field.options || []).map((opt: any, i: number) => (
+        {runtimeOptions.map((opt: any, i: number) => (
           <option key={i} value={opt.value ?? opt}>
             {opt.label ?? opt}
           </option>
@@ -242,6 +247,10 @@ const SubForm: React.FC<SubFormProps> = ({
   const activeFields = [...fields]
     .filter((f) => f?.api_name && !f.is_deleted)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  // Fetch composite items catalog if any field in this subform is composite
+  const hasCompositeFields = activeFields.some((f) => f.is_composite);
+  const { catalog: compositeCatalog } = useCompositeItemsCatalog(hasCompositeFields);
 
   const [internalRows, setInternalRows] = useState(() =>
     Array.isArray(value) && value.length > 0
@@ -319,6 +328,7 @@ const SubForm: React.FC<SubFormProps> = ({
                       value={rowData[f.api_name] ?? ""}
                       onChange={(val) => handleCellChange(rowIdx, f.api_name, val)}
                       rowData={rowData}
+                      compositeCatalog={compositeCatalog}
                     />
                   </td>
                 ))}

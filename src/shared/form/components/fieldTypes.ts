@@ -28,6 +28,7 @@ import {
   PenTool,
   Video,
   QrCode,
+  Layers,
 } from "lucide-react";
 import { currencyList } from "./currency-list";
 
@@ -190,6 +191,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       markAsPublic: false,
       show_tooltip: false,
       tool_tip: "",
+      is_composite: false,
+      composite_items: [],
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
@@ -218,6 +221,8 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
       markAsPublic: false,
       show_tooltip: false,
       tool_tip: "",
+      is_composite: false,
+      composite_items: [],
     }),
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
@@ -874,6 +879,37 @@ export const FIELD_TYPES: Record<string, FieldTypeDefinition> = {
     configFields: [
       { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
       { type: "text", label: "Placeholder", key: "placeholder" },
+      { type: "checkbox", label: "Required", key: "required" },
+    ],
+  },
+  position_selection: {
+    label: "Position Selection",
+    icon: Layers,
+    defaultConfig: () => ({
+      type: "position_selection",
+      label: "Position Selection",
+      name: "",
+      required: false,
+      first_field: "",
+      second_field: "",
+      overlap_mode: "second_over_first",
+      default_position: "center",
+      defaultValue: "center",
+      options: [
+        { label: "Left", value: "left" },
+        { label: "Right", value: "right" },
+        { label: "Up", value: "up" },
+        { label: "Down", value: "down" },
+        { label: "Center", value: "center" },
+      ],
+    }),
+    configFields: [
+      { type: "text", label: "Field Label", key: "label", required: true, maxLength: 100 },
+      {
+        type: "position-field-config",
+        label: "Overlap & Position Configuration",
+        key: "position_settings",
+      },
       { type: "checkbox", label: "Required", key: "required" },
     ],
   },

@@ -14,7 +14,8 @@ export type CustomizationSettingsItemId =
   | "title"
   | "tags"
   | "paymentModes"
-  | "paymentTerms";
+  | "paymentTerms"
+  | "taxes";
 
 export const CUSTOMIZATION_SETTINGS_HREFS: ReadonlyArray<{
   id: CustomizationSettingsItemId;
@@ -34,6 +35,7 @@ export const CUSTOMIZATION_SETTINGS_HREFS: ReadonlyArray<{
   { id: "paymentModes", href: routes.dashboard.settingsPaymentModes },
   { id: "paymentTerms", href: routes.dashboard.settingsPaymentTerms },
   { id: "title", href: routes.dashboard.settingsTitle },
+  { id: "taxes", href: routes.dashboard.settingsTaxes },
 ];
 
 export function isCustomizationSettingsPath(pathname: string): boolean {

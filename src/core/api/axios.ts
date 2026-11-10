@@ -166,6 +166,16 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // If sending FormData, do not let "Content-Type: application/json" from defaults or manual headers
+  // override the browser's automatically generated multipart boundary header!
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.delete("Content-Type");
+    } else if (config.headers && typeof config.headers === "object") {
+      delete (config.headers as Record<string, unknown>)["Content-Type"];
+    }
+  }
+
   if (typeof config.url === "string" && config.url.length > 0) {
     config.url = ensureTrailingSlashUrl(toBaseRelativeApiPath(config.url));
   }

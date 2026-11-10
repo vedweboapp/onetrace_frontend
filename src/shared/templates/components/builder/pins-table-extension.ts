@@ -18,6 +18,7 @@ declare module "@tiptap/core" {
         type?: string;
         module?: string;
         aggregateColumns?: AggregateColumn[];
+        taxId?: number | string | null;
       }) => ReturnType;
     };
   }
@@ -128,6 +129,16 @@ export const PinsTableExtension = Node.create({
           ),
         }),
       },
+      taxId: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-tax-id") || element.getAttribute("data-tax");
+          return raw ? (isNaN(Number(raw)) ? raw : Number(raw)) : null;
+        },
+        renderHTML: (attributes) => ({
+          ...(attributes.taxId != null ? { "data-tax-id": String(attributes.taxId) } : {}),
+        }),
+      },
     };
   },
 
@@ -171,6 +182,7 @@ export const PinsTableExtension = Node.create({
             : [];
 
           const moduleValue = options.module || "pins";
+          const taxId = options.taxId !== undefined ? options.taxId : null;
 
           const node = nodeType.create({
             title,
@@ -180,6 +192,7 @@ export const PinsTableExtension = Node.create({
             type,
             module: moduleValue,
             aggregateColumns,
+            taxId,
           });
 
           if (dispatch) {

@@ -191,6 +191,8 @@ export async function fetchPinDetail(pinId: number): Promise<PinDetailApiRespons
 
 export type CloneTakeOffItem = {
   name: string;
+  /** Source takeoff (drawing) id this row is cloned from */
+  drawing_id?: string | number;
   plot_mappings?: Array<{
     id: string | number;
     name: string;
@@ -201,43 +203,69 @@ export type CloneTakeOffItem = {
 export async function cloneDrawing(
   projectId: number,
   body: {
+    /** Top-level source drawing id (used as fallback / primary) */
     drawing_id: number | string;
-    take_offs?: CloneTakeOffItem[];
+    /** Array of target drawing ids (plain numbers) OR legacy CloneTakeOffItem array */
+    take_offs?: number[] | CloneTakeOffItem[];
     files?: (File | null)[];
     names?: string[];
     name?: string | string[];
-    plot_mappings?: Record<number, Record<number | string, string>>;
+    /**
+     * Flat top-level plot mappings (outside take_offs).
+     * Either a Record<plotId, newName> or an Array<{id, name}>.
+     */
+    plot_mappings?: Record<number | string, string> | Array<{ id: string | number; name: string }>;
   },
 ): Promise<Drawing | Drawing[]> {
-  const takeOffsArray: CloneTakeOffItem[] = body.take_offs
-    ? body.take_offs
-    : (Array.isArray(body.names)
-        ? body.names
-        : Array.isArray(body.name)
-        ? body.name
-        : body.name
-        ? [body.name.trim()]
-        : []
-      ).map((name) => ({
-        name,
-        plot_mappings: [],
+  // Normalise top-level plot_mappings to an array of {id, name}
+  let plotMappingsArray: Array<{ id: string | number; name: string }> = [];
+  if (body.plot_mappings) {
+    if (Array.isArray(body.plot_mappings)) {
+      plotMappingsArray = body.plot_mappings;
+    } else {
+      plotMappingsArray = Object.entries(body.plot_mappings).map(([id, name]) => ({
+        id,
+        name: name as string,
       }));
-
-  const takeOffsClean = takeOffsArray.map((t) => ({
-    name: t.name,
-    plot_mappings: t.plot_mappings ?? [],
-  }));
+    }
+  }
 
   const fd = new FormData();
   fd.append("drawing_id", String(body.drawing_id));
-  fd.append("take_offs", JSON.stringify(takeOffsClean));
 
-  takeOffsArray.forEach((t, index) => {
-    const file = t.file || (body.files && body.files[index]);
-    if (file) {
-      fd.append(`take_offs[${index}]drawing_file`, file, file.name);
-    }
-  });
+  // If take_offs is a number[] send as plain array of ids
+  if (Array.isArray(body.take_offs) && body.take_offs.every((t) => typeof t === "number")) {
+    fd.append("take_offs", JSON.stringify(body.take_offs));
+  } else {
+    // Legacy: CloneTakeOffItem[] path
+    const takeOffsArray: CloneTakeOffItem[] = (body.take_offs as CloneTakeOffItem[] | undefined)
+      ?? (Array.isArray(body.names)
+          ? body.names
+          : Array.isArray(body.name)
+          ? body.name
+          : body.name
+          ? [body.name.trim()]
+          : []
+        ).map((name) => ({ name, plot_mappings: [] }));
+
+    const takeOffsClean = takeOffsArray.map((t) => ({
+      name: t.name,
+      ...(t.drawing_id !== undefined ? { drawing_id: t.drawing_id } : {}),
+      plot_mappings: t.plot_mappings ?? [],
+    }));
+    fd.append("take_offs", JSON.stringify(takeOffsClean));
+
+    takeOffsArray.forEach((t, index) => {
+      const file = t.file || (body.files && body.files[index]);
+      if (file) {
+        fd.append(`take_offs[${index}]drawing_file`, file, file.name);
+      }
+    });
+  }
+
+  if (plotMappingsArray.length > 0) {
+    fd.append("plot_mappings", JSON.stringify(plotMappingsArray));
+  }
 
   const { data } = await api.post<ApiEnvelope<Drawing | Drawing[]> | Drawing | Drawing[]>(
     DRAWING_PATHS.clone(projectId),
