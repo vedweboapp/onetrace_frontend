@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { createGroup, updateGroup } from "@/features/groups/api/group.api";
+import { createGroup, fetchGroupsPage, updateGroup } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import {
   validateGroupCompositeRows,
@@ -48,6 +48,14 @@ function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function resolveParentGroupId(parent: Group["parent"]): string {
+  if (typeof parent === "number" && Number.isFinite(parent) && parent > 0) return String(parent);
+  if (parent && typeof parent === "object" && typeof parent.id === "number" && parent.id > 0) {
+    return String(parent.id);
+  }
+  return "";
+}
+
 const COMPOSITE_ITEMS_GRID =
   "grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:gap-x-3";
 
@@ -82,9 +90,12 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
 
   const nameId = React.useId();
   const [name, setName] = React.useState("");
+  const [parent, setParent] = React.useState("");
   const [rows, setRows] = React.useState<CompositeRow[]>([{ id: nextRowId(), item: "", abbreviation: "" }]);
   const [compositeOptions, setCompositeOptions] = React.useState<CompositeItem[]>([]);
+  const [groupOptions, setGroupOptions] = React.useState<CheckmarkSelectOption[]>([]);
   const [compositeLoadError, setCompositeLoadError] = React.useState<string | null>(null);
+  const [parentLoadError, setParentLoadError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [nameTouched, setNameTouched] = React.useState(false);
   const [itemsTouched, setItemsTouched] = React.useState(false);
@@ -97,11 +108,18 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
+  const parentSelectOptions = React.useMemo(
+    () =>
+      mode === "edit" && group
+        ? groupOptions.filter((opt) => opt.value !== String(group.id))
+        : groupOptions,
+    [groupOptions, group, mode],
+  );
 
   const compositeQuickCreate = useQuickCreate({
     kind: "composite-item",
     returnTo: pathname,
-    getFormDraft: open && mode === "create" ? () => ({ name, rows }) : undefined,
+    getFormDraft: open && mode === "create" ? () => ({ name, parent, rows }) : undefined,
   });
 
   const compositeOptionsForRow = React.useCallback(
@@ -119,11 +137,21 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     if (!open) return;
     (async () => {
       setCompositeLoadError(null);
-      try {
-        const { items } = await fetchCompositeItemsPage(1, 20, { dropdown: true });
-        if (!cancelled) setCompositeOptions(items);
-      } catch {
-        if (!cancelled) setCompositeLoadError(t("compositeLoadError"));
+      setParentLoadError(null);
+      const [compositesResult, groupsResult] = await Promise.allSettled([
+        fetchCompositeItemsPage(1, 20, { dropdown: true }),
+        fetchGroupsPage(1, 20, { dropdown: true }),
+      ]);
+      if (cancelled) return;
+      if (compositesResult.status === "fulfilled") {
+        setCompositeOptions(compositesResult.value.items);
+      } else {
+        setCompositeLoadError(t("compositeLoadError"));
+      }
+      if (groupsResult.status === "fulfilled") {
+        setGroupOptions(groupsResult.value.items.map((g) => ({ value: String(g.id), label: g.name })));
+      } else {
+        setParentLoadError(t("parentLoadError"));
       }
     })();
     return () => {
@@ -135,6 +163,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     if (!open) return;
     if (mode === "edit" && group) {
       setName(group.name ?? "");
+      setParent(resolveParentGroupId(group.parent));
       const nextRows =
         group.items && group.items.length > 0
           ? group.items.map((entry) => ({
@@ -146,6 +175,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       setRows(nextRows);
     } else {
       setName("");
+      setParent("");
       setRows([{ id: nextRowId(), item: "", abbreviation: "" }]);
     }
     setNameTouched(false);
@@ -189,12 +219,23 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
+    const parentId = Number(parent);
+    const hasParent = Number.isFinite(parentId) && parentId > 0;
+
     setSubmitting(true);
     try {
       const saved =
         mode === "edit" && group
-          ? await updateGroup(group.id, { name: name.trim(), items: compositeItems })
-          : await createGroup({ name: name.trim(), items: compositeItems });
+          ? await updateGroup(group.id, {
+              name: name.trim(),
+              items: compositeItems,
+              parent: hasParent ? parentId : null,
+            })
+          : await createGroup({
+              name: name.trim(),
+              items: compositeItems,
+              ...(hasParent ? { parent: parentId } : {}),
+            });
       toastSuccess(mode === "edit" ? t("updatedToast") : t("createdToast"));
       onSaved();
       onClose();
@@ -245,6 +286,25 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
               className={surfaceInputClassName}
             />
             {nameInvalid ? <FieldErrorText>{t("nameError")}</FieldErrorText> : null}
+          </FieldGroup>
+          <FieldGroup label={t("parent")}>
+            <CheckmarkSelect
+              listLabel={t("parent")}
+              buttonAriaLabel={t("parent")}
+              value={parent}
+              onChange={setParent}
+              options={parentSelectOptions}
+              emptyLabel={t("parentPlaceholder")}
+              disabled={submitting}
+              clearable
+              clearAriaLabel={t("parentClearAria")}
+              portaled
+              searchable
+              className="w-full"
+            />
+            {parentLoadError ? (
+              <p className="text-sm text-amber-700 dark:text-amber-300">{parentLoadError}</p>
+            ) : null}
           </FieldGroup>
         </FormFieldRow>
 

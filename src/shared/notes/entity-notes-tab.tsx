@@ -74,6 +74,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
   const tActions = useTranslations("Dashboard.common.actions");
   const dateFmt = useDashboardDateFormat();
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const inlineEditRef = React.useRef<HTMLLIElement>(null);
   const [notes, setNotes] = React.useState<EntityNote[]>([]);
   const [mode, setMode] = React.useState<ComposerMode>({ kind: "create" });
   const [title, setTitle] = React.useState("");
@@ -91,6 +92,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     keptAttachments.reduce((sum, file) => sum + (typeof file.file_size === "number" ? file.file_size : 0), 0);
   const fileCount = files.length + keptAttachments.length;
   const isEditing = mode.kind === "edit";
+  const editingNoteId = mode.kind === "edit" ? mode.note.id : null;
 
   const loadNotes = React.useCallback(async () => {
     try {
@@ -104,8 +106,12 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     void loadNotes();
   }, [loadNotes]);
 
-  function resetToCreate() {
-    setMode({ kind: "create" });
+  React.useEffect(() => {
+    if (!isEditing) return;
+    inlineEditRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [isEditing, editingNoteId, editorKey]);
+
+  function resetComposerFields() {
     setTitle("");
     setContent("");
     setFiles([]);
@@ -113,6 +119,11 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
     setRemovedAttachmentIds([]);
     setEditorKey((key) => key + 1);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function resetToCreate() {
+    setMode({ kind: "create" });
+    resetComposerFields();
   }
 
   function openEdit(note: EntityNote) {
@@ -151,6 +162,30 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
       return next;
     });
   }
+
+  const composerProps = {
+    title,
+    content,
+    files,
+    keptAttachments,
+    fileCount,
+    usedBytes,
+    saving,
+    editorKey,
+    inputRef,
+    onTitleChange: setTitle,
+    onContentChange: setContent,
+    onAddFiles: addFiles,
+    onRemoveFile: (key: string) => setFiles((current) => current.filter((item) => item.key !== key)),
+    onRemoveKept: (file: EntityAttachment) => {
+      setKeptAttachments((current) => current.filter((item) => item !== file));
+      if (typeof file.id === "number") {
+        setRemovedAttachmentIds((current) => (current.includes(file.id!) ? current : [...current, file.id!]));
+      }
+    },
+    onCancel: resetToCreate,
+    onSave: () => void saveNote(),
+  };
 
   async function saveNote() {
     const trimmedTitle = title.trim();
@@ -205,30 +240,13 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
 
   return (
     <div className="min-w-0 space-y-5 px-4 py-4 sm:px-6">
-      <NoteComposer
-        title={title}
-        content={content}
-        files={files}
-        keptAttachments={keptAttachments}
-        fileCount={fileCount}
-        usedBytes={usedBytes}
-        saving={saving}
-        editorKey={editorKey}
-        inputRef={inputRef}
-        isEditing={isEditing}
-        onTitleChange={setTitle}
-        onContentChange={setContent}
-        onAddFiles={addFiles}
-        onRemoveFile={(key) => setFiles((current) => current.filter((item) => item.key !== key))}
-        onRemoveKept={(file) => {
-          setKeptAttachments((current) => current.filter((item) => item !== file));
-          if (typeof file.id === "number") {
-            setRemovedAttachmentIds((current) => (current.includes(file.id!) ? current : [...current, file.id!]));
-          }
-        }}
-        onCancel={resetToCreate}
-        onSave={() => void saveNote()}
-      />
+      {!isEditing ? (
+        <NoteComposer {...composerProps} variant="create" titleInputId="entity-note-title-create" />
+      ) : (
+        <p className="rounded-lg border border-dashed border-slate-200 px-3.5 py-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          {t("editingInline")}
+        </p>
+      )}
 
       {notes.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("empty")}</p>
@@ -239,18 +257,32 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
           </p>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {notes.map((note, index) => {
+              const editingThis = mode.kind === "edit" && mode.note.id === note.id;
+              if (editingThis) {
+                return (
+                  <li key={note.id ?? `note-${index}`} ref={inlineEditRef} className="py-3">
+                    <NoteComposer
+                      {...composerProps}
+                      variant="edit"
+                      titleInputId={`entity-note-title-edit-${note.id ?? index}`}
+                    />
+                  </li>
+                );
+              }
+
               const noteTitle = note.title?.trim() || "";
               const when = noteTime(note);
               const bodyHtml = note.content && plainText(note.content) ? note.content : "";
               const attachments = note.attachments?.filter(Boolean) ?? [];
               const canChange = note.id != null;
-              const editingThis = mode.kind === "edit" && mode.note.id === note.id;
               return (
                 <li
                   key={note.id ?? `note-${index}`}
                   className={cn(
-                    "group relative -mx-2 rounded-lg px-2 py-3.5 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
-                    editingThis && "bg-slate-50/90 opacity-70 dark:bg-slate-900/50",
+                    "group relative -mx-2 rounded-lg px-2 py-3.5 transition-colors",
+                    isEditing
+                      ? "opacity-50"
+                      : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -274,7 +306,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
                           dangerouslySetInnerHTML={{ __html: bodyHtml }}
                         />
                       ) : !noteTitle && attachments.length === 0 ? (
-                        <p className="text-sm text-slate-400 italic dark:text-slate-500">{t("noContent")}</p>
+                        <p className="text-sm italic text-slate-400 dark:text-slate-500">{t("noContent")}</p>
                       ) : null}
 
                       {attachments.length > 0 ? (
@@ -307,7 +339,7 @@ export function EntityNotesTab({ detailPath }: { detailPath: string }) {
                       ) : null}
                     </div>
 
-                    {canChange ? (
+                    {canChange && !isEditing ? (
                       <div
                         className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
                         aria-label={t("noteActions")}
@@ -367,7 +399,8 @@ function NoteComposer({
   saving,
   editorKey,
   inputRef,
-  isEditing,
+  variant,
+  titleInputId,
   onTitleChange,
   onContentChange,
   onAddFiles,
@@ -385,7 +418,8 @@ function NoteComposer({
   saving: boolean;
   editorKey: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  isEditing: boolean;
+  variant: "create" | "edit";
+  titleInputId: string;
   onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onAddFiles: (list: FileList | null) => void;
@@ -395,28 +429,37 @@ function NoteComposer({
   onSave: () => void;
 }) {
   const t = useTranslations("Dashboard.common.notesTab");
+  const isEditing = variant === "edit";
   const hasDraft =
     Boolean(title.trim()) || Boolean(plainText(content)) || files.length > 0 || keptAttachments.length > 0 || isEditing;
   const hasFiles = keptAttachments.length > 0 || files.length > 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+    <div
+      className={cn(
+        "rounded-lg border bg-white dark:bg-slate-950",
+        isEditing
+          ? "border-slate-300 shadow-sm dark:border-slate-600"
+          : "border-slate-200 dark:border-slate-700",
+      )}
+    >
       {isEditing ? (
-        <div className="border-b border-slate-100 px-3.5 py-2 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3.5 py-2 dark:border-slate-800">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("edit")}</p>
         </div>
       ) : null}
 
       <div className="px-3.5 pt-3">
-        <label className="sr-only" htmlFor="entity-note-title">
+        <label className="sr-only" htmlFor={titleInputId}>
           {t("noteTitle")}
         </label>
         <input
-          id="entity-note-title"
+          id={titleInputId}
           value={title}
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder={t("titlePlaceholder")}
           disabled={saving}
+          autoFocus={isEditing}
           className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 dark:text-slate-50"
         />
       </div>
