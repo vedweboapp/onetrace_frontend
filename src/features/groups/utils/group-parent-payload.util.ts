@@ -1,4 +1,4 @@
-import type { Group, GroupCreatePayload, GroupUpdatePayload } from "@/features/groups/types/group.types";
+import type { Group } from "@/features/groups/types/group.types";
 
 /** Resolve parent FK from API detail payloads (id or nested object). */
 export function resolveParentGroupId(parent: Group["parent"]): string {
@@ -9,6 +9,16 @@ export function resolveParentGroupId(parent: Group["parent"]): string {
   return "";
 }
 
+type GroupParentCreateFields = {
+  parent?: number;
+  is_parent: boolean;
+};
+
+type GroupParentUpdateFields = {
+  parent?: number | null;
+  is_parent: boolean;
+};
+
 /**
  * Parent field → payload:
  * - parent selected → `parent: <id>` + `is_parent: true`
@@ -16,8 +26,16 @@ export function resolveParentGroupId(parent: Group["parent"]): string {
  */
 export function buildGroupParentPayload(
   parentValue: string,
+  mode: "create",
+): GroupParentCreateFields;
+export function buildGroupParentPayload(
+  parentValue: string,
+  mode: "update",
+): GroupParentUpdateFields;
+export function buildGroupParentPayload(
+  parentValue: string,
   mode: "create" | "update",
-): Pick<GroupCreatePayload & GroupUpdatePayload, "parent" | "is_parent"> {
+): GroupParentCreateFields | GroupParentUpdateFields {
   const parentId = Number(parentValue);
   const hasParent = Number.isFinite(parentId) && parentId > 0;
   if (hasParent) {

@@ -91,7 +91,7 @@ export function DataAdministrationHistoryList({ kind, loadPage }: Props) {
     void reload();
   }, [reload]);
 
-  const range = getListPageRange(pagination.current_page, pagination.page_size, pagination.total_records);
+  const range = getListPageRange(pagination);
 
   async function runAction(row: DataAdministrationLog, action: BusyAction) {
     setBusy({ id: row.id, action });

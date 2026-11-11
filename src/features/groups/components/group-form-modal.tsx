@@ -221,8 +221,6 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
-    const parentFields = buildGroupParentPayload(parent, mode === "edit" ? "update" : "create");
-
     setSubmitting(true);
     try {
       const saved =
@@ -230,12 +228,12 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
           ? await updateGroup(group.id, {
               name: name.trim(),
               items: compositeItems,
-              ...parentFields,
+              ...buildGroupParentPayload(parent, "update"),
             })
           : await createGroup({
               name: name.trim(),
               items: compositeItems,
-              ...parentFields,
+              ...buildGroupParentPayload(parent, "create"),
             });
       toastSuccess(mode === "edit" ? t("updatedToast") : t("createdToast"));
       onSaved();

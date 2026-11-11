@@ -296,19 +296,20 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
-    const parentFields = buildGroupParentPayload(parent, isEdit ? "update" : "create");
-    const payload: GroupCreatePayload = {
-      name: name.trim(),
-      items: compositeItems,
-      ...parentFields,
-    };
-
     setSubmitting(true);
     try {
       const saved =
         isEdit && groupId
-          ? await updateGroup(groupId, payload)
-          : await createGroup(payload);
+          ? await updateGroup(groupId, {
+              name: name.trim(),
+              items: compositeItems,
+              ...buildGroupParentPayload(parent, "update"),
+            })
+          : await createGroup({
+              name: name.trim(),
+              items: compositeItems,
+              ...buildGroupParentPayload(parent, "create"),
+            } satisfies GroupCreatePayload);
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       duplicate.clear();
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);

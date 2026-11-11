@@ -16,8 +16,8 @@ type LookupItem = {
   image?: string | null;
   image_url?: string | null;
   thumbnail?: string | null;
-  item_attachments?: { file?: string | null }[];
-  attachments?: unknown[];
+  item_attachments?: { file?: string | null }[] | null;
+  attachments?: unknown[] | null;
   [key: string]: unknown;
 };
 
