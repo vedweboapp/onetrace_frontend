@@ -25,10 +25,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE / editor (Cursor AI rules & local agent config — do not push)
 .idea
 .vscode/*
 !.vscode/extensions.json
+.cursor/
 
 # Vercel / Turbo
 .vercel

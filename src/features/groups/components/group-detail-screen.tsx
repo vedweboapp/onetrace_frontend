@@ -3,16 +3,21 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { deleteGroup, fetchGroup } from "@/features/groups/api/group.api";
+import { deleteGroup, fetchGroup, updateGroupAttachments } from "@/features/groups/api/group.api";
+import { GROUP_PATHS } from "@/features/groups/api/group.paths";
 import { GroupDetailBody } from "@/features/groups/components/group-detail-body";
+import { GroupSubgroupsTab } from "@/features/groups/components/group-subgroups-tab";
 import type { Group } from "@/features/groups/types/group.types";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
   EntityDetailScreen,
 } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
-import { toastError, toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { ConfirmDialog } from "@/shared/ui";
+import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { ConfirmDialog, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   groupId: number;
@@ -20,7 +25,11 @@ type Props = {
 
 export function GroupDetailScreen({ groupId }: Props) {
   const t = useTranslations("Dashboard.groups");
+  const tCommon = useTranslations("Dashboard.common");
+  const tAudit = useTranslations("Dashboard.auditTrails");
   const router = useRouter();
+  const tabsStorageKey = useTabOrderStorageKey("groupDetail");
+  const [activeTab, setActiveTab] = React.useState("details");
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [detailForDelete, setDetailForDelete] = React.useState<Group | null>(null);
@@ -39,6 +48,16 @@ export function GroupDetailScreen({ groupId }: Props) {
     }
   }
 
+  const detailTabs = React.useMemo<AppTabItem[]>(
+    () => [
+      { id: "details", label: tAudit("tabDetails") },
+      { id: "subgroups", label: t("detail.tabSubgroups") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
+    ],
+    [t, tAudit, tCommon],
+  );
+
   return (
     <EntityDetailScreen
       entityId={groupId}
@@ -52,6 +71,17 @@ export function GroupDetailScreen({ groupId }: Props) {
         backAria: t("detail.backAria"),
         retry: t("detail.retry"),
       }}
+      headerExtension={
+        <CustomizableAppTabs
+          tabs={detailTabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
+          ariaLabel={t("detail.backAria")}
+          panelIdPrefix="group-detail-tab"
+          className="-mx-1 px-1 sm:-mx-0 sm:px-0"
+        />
+      }
       actions={({ detail, listBack }) => (
         <EntityDetailDeleteEditActions
           deleteLabel={t("delete")}
@@ -78,9 +108,23 @@ export function GroupDetailScreen({ groupId }: Props) {
         />
       }
     >
-      {({ detail, dateFmt, retry }) => (
-        <GroupDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
-      )}
+      {({ detail, dateFmt, retry }) =>
+        activeTab === "subgroups" ? (
+          <GroupSubgroupsTab detail={detail} />
+        ) : activeTab === "attachments" ? (
+          <EntityAttachmentsTab
+            entityId={detail.id}
+            attachments={detail.attachments}
+            emptyIconName="groups"
+            updateAttachments={(refs) => updateGroupAttachments(detail.id, refs)}
+            onSaved={retry}
+          />
+        ) : activeTab === "notes" ? (
+          <EntityNotesTab detailPath={GROUP_PATHS.detail(detail.id)} />
+        ) : (
+          <GroupDetailBody detail={detail} dateFmt={dateFmt} onSaved={retry} />
+        )
+      }
     </EntityDetailScreen>
   );
 }

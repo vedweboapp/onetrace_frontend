@@ -9,7 +9,15 @@ import {
   combineDateAndTimeToIso,
 } from "@/features/scheduling/utils/scheduling-week.util";
 import { toastApiError, toastError, toastSuccess } from "@/shared/feedback/app-toast";
-import { AppButton, AppModal, FieldErrorText, FieldGroup, SurfaceDateInput, surfaceInputClassName } from "@/shared/ui";
+import {
+  AppButton,
+  AppModal,
+  FieldErrorText,
+  FieldGroup,
+  SurfaceDateInput,
+  surfaceInputClassName,
+  surfaceTextareaClassName,
+} from "@/shared/ui";
 
 export type TimeOffPrefill = {
   dateKey: string;
@@ -171,7 +179,7 @@ export function MarkUnavailableModal({
             disabled={saving}
             rows={3}
             placeholder={t("timeOff.reasonPlaceholder")}
-            className={surfaceInputClassName}
+            className={surfaceTextareaClassName}
             onChange={(e) => setReason(e.target.value)}
           />
         </FieldGroup>

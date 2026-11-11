@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { Plus, Edit2, Trash2, LayoutList } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Plus, Edit2, Trash2, LayoutList, Send } from "lucide-react";
 import {
   AppButton,
   DashboardEmptyState,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   ListPageSearchField,
 } from "@/shared/ui";
+import { AppTabs, type AppTabItem } from "@/shared/ui/app-tabs";
 import { DataTableRowActionsMenu } from "@/shared/ui/data-table-row-actions-menu";
 import { useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
@@ -16,7 +19,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
-import { getKiosksList, deleteKiosk } from "../api/kiosk.api";
+import { getKiosksList, deleteKiosk, patchKiosk } from "../api/kiosk.api";
 import type { KioskListItem } from "../types/kiosk.types";
 
 function userLabel(user: KioskListItem["created_by"]): string {
@@ -31,9 +34,20 @@ function questionCount(row: KioskListItem): number {
     : 0;
 }
 
+type KioskTabId = "published" | "drafts";
+
+const KIOSK_TABS: readonly AppTabItem[] = [
+  { id: "published", label: "Published" },
+  { id: "drafts", label: "Drafts" },
+];
+
 export const KioskList = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dateFmt = useDashboardDateFormat();
+
+  const tabParam = searchParams.get("tab");
+  const activeTab: KioskTabId = tabParam === "drafts" ? "drafts" : "published";
 
   const { page, pageSize, search, setUrl, setPage, setPageSize } =
     useListUrlState({ defaultPageSize: 20 });
@@ -42,13 +56,18 @@ export const KioskList = () => {
   const [items, setItems] = useState<KioskListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | number | null>(null);
   const [pagination, setPagination] = useState({
     total_records: 0,
     total_pages: 1,
     current_page: 1,
     page_size: 20,
   });
-  const pageRange = getListPageRange({ current_page: pagination.current_page, page_size: pageSize, total_records: pagination.total_records });
+  const pageRange = getListPageRange({
+    current_page: pagination.current_page,
+    page_size: pageSize,
+    total_records: pagination.total_records,
+  });
 
   const loadKiosks = useCallback(async () => {
     setLoading(true);
@@ -58,6 +77,7 @@ export const KioskList = () => {
         search: search || undefined,
         page,
         page_size: pageSize,
+        is_published: activeTab === "published",
       });
       setItems(res.results || []);
       setPagination({
@@ -72,7 +92,7 @@ export const KioskList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, activeTab]);
 
   useEffect(() => {
     loadKiosks();
@@ -95,6 +115,19 @@ export const KioskList = () => {
     }
   };
 
+  const handlePublish = async (id: string | number) => {
+    setPublishingId(id);
+    try {
+      await patchKiosk(id, { is_published: true });
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      toastSuccess("Kiosk published successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to publish kiosk");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   const handleCreate = () => {
     router.push(
       `${routes.dashboard.settingsKiosks}/create?kiosk_mode=create` as Parameters<
@@ -113,8 +146,8 @@ export const KioskList = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-slate-50/50 p-6 dark:bg-slate-950">
-      {/* Header bar with Search and Create Button (Image 2 style) */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header bar with Search and Create Button */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full max-w-sm">
           <ListPageSearchField
             value={search || ""}
@@ -134,29 +167,40 @@ export const KioskList = () => {
         </div>
       </div>
 
+      {/* Published / Drafts Tabs */}
+      <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
+        <AppTabs
+          tabs={KIOSK_TABS}
+          value={activeTab}
+          onValueChange={(id) => {
+            setUrl({
+              tab: id === "published" ? null : id,
+              page: null,
+            });
+          }}
+          ariaLabel="Kiosk status tabs"
+          panelIdPrefix="kiosk-status"
+        />
+      </div>
+
       {/* Main Table Shell */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
         {loading ? (
           <div className="flex flex-1 items-center justify-center gap-2 py-16 text-slate-400">
             <div className="size-4 animate-spin rounded-full border-2 border-[color:var(--dash-accent,#0f766e)] border-t-transparent" />
             <span>Loading kiosks...</span>
           </div>
         ) : loadError ? (
-          <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">{loadError}</p>
-            <button
-              type="button"
-              onClick={loadKiosks}
-              className="mt-1 text-xs text-[color:var(--dash-accent,#0f766e)] underline"
-            >
-              Retry
-            </button>
-          </div>
+          <DashboardLoadErrorState message={loadError} onRetry={() => void loadKiosks()} />
         ) : items.length === 0 ? (
           <DashboardEmptyState
             iconName="kioskForms"
-            title="No kiosks created yet"
-            description="Get started by creating your first interactive kiosk flow."
+            title={activeTab === "drafts" ? "No draft kiosks found" : "No published kiosks found"}
+            description={
+              activeTab === "drafts"
+                ? "Kiosks saved as drafts will appear here."
+                : "Get started by creating and publishing your first interactive kiosk flow."
+            }
             action={
               <AppButton
                 variant="primary"
@@ -164,148 +208,173 @@ export const KioskList = () => {
                 className="flex items-center gap-1.5 font-semibold"
               >
                 <Plus className="size-4" />
-                Create first kiosk
+                Create new kiosk
               </AppButton>
             }
             fill
           />
         ) : (
           <>
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300">
-              <tr>
-                <th className="py-3.5 pl-6 pr-4">Kiosk Name</th>
-                <th className="px-4 py-3.5">API Name</th>
-                <th className="px-4 py-3.5">Questions</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="px-4 py-3.5">Created</th>
-                <th className="py-3.5 pl-4 pr-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {items.map((row) => {
-                  const qCount = questionCount(row);
-                  const isActive = row.is_active !== false;
-                  return (
-                    <tr
-                      key={row.id}
-                      onClick={() => handleEdit(row.id)}
-                      className="group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-                    >
-                      {/* Name */}
-                      <td className="py-4 pl-6 pr-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--dash-accent,#0f766e)]/10 text-[color:var(--dash-accent,#0f766e)]">
-                            <LayoutList className="size-4" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900 dark:text-white leading-tight">
-                              {row.name}
-                            </p>
-                            {row.description && (
-                              <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-slate-400">
-                                {row.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* API Name */}
-                      <td className="px-4 py-4">
-                        <code className="rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {row.api_name || "—"}
-                        </code>
-                      </td>
-
-                      {/* Questions count */}
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          {qCount} {qCount === 1 ? "question" : "questions"}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            isActive
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                          }`}
-                        >
-                          <span
-                            className={`size-1.5 rounded-full ${
-                              isActive ? "bg-emerald-500" : "bg-slate-400"
-                            }`}
-                          />
-                          {isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-
-                      {/* Created */}
-                      <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
-                        <div>
-                          {row.created_at
-                            ? dateFmt.format(new Date(row.created_at))
-                            : "—"}
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          {userLabel(row.created_by)}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td
-                        className="py-4 pl-4 pr-6 text-right"
-                        onClick={(e) => e.stopPropagation()}
+            <div className="flex-1 overflow-auto custom-scrollbar">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300">
+                  <tr>
+                    <th className="py-3.5 pl-6 pr-4">Kiosk Name</th>
+                    <th className="px-4 py-3.5">API Name</th>
+                    <th className="px-4 py-3.5">Questions</th>
+                    <th className="px-4 py-3.5">Status</th>
+                    <th className="px-4 py-3.5">Created</th>
+                    <th className="py-3.5 pl-4 pr-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {items.map((row) => {
+                    const qCount = questionCount(row);
+                    const isPublished = Boolean(row.is_published);
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => handleEdit(row.id)}
+                        className="group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                       >
-                        <DataTableRowActionsMenu
-                          menuAriaLabel="Kiosk options"
-                          items={[
-                            {
-                              id: "edit",
-                              label: "Edit Kiosk",
-                              icon: Edit2,
-                              onSelect: () => handleEdit(row.id),
-                            },
-                            {
-                              id: "delete",
-                              label: "Delete",
-                              icon: Trash2,
-                              tone: "danger",
-                              onSelect: () => handleDelete(row.id),
-                            },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                        {/* Name */}
+                        <td className="py-4 pl-6 pr-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--dash-accent,#0f766e)]/10 text-[color:var(--dash-accent,#0f766e)]">
+                              <LayoutList className="size-4" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-900 dark:text-white leading-tight">
+                                {row.name}
+                              </p>
+                              {row.description && (
+                                <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-slate-400">
+                                  {row.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
 
-        {/* Pagination */}
-        <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-            <DataTablePaginationBar
-              pagination={pagination}
-              summary={`${pageRange.start}-${pageRange.end} of ${pagination.total_records}`}
-              prevLabel="Previous"
-              nextLabel="Next"
-              onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
-              onNext={() => setPage(pagination.current_page + 1)}
-              onPageSelect={(p) => setPage(p)}
-              pageSizeControl={{
-                listLabel: "Rows per page",
-                value: pageSize,
-                options: pageSizeOptions,
-                onChange: setPageSize,
-                disabled: loading,
-              }}
-            />
-          </div>
+                        {/* API Name */}
+                        <td className="px-4 py-4">
+                          <code className="rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {row.api_name || "—"}
+                          </code>
+                        </td>
+
+                        {/* Questions count */}
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {qCount} {qCount === 1 ? "question" : "questions"}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              isPublished
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                            }`}
+                          >
+                            <span
+                              className={`size-1.5 rounded-full ${
+                                isPublished ? "bg-emerald-500" : "bg-amber-500"
+                              }`}
+                            />
+                            {isPublished ? "Published" : "Draft"}
+                          </span>
+                        </td>
+
+                        {/* Created */}
+                        <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
+                          <div>
+                            {row.created_at
+                              ? dateFmt.format(new Date(row.created_at))
+                              : "—"}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {userLabel(row.created_by)}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td
+                          className="py-4 pl-4 pr-6 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DataTableRowActionsMenu
+                            menuAriaLabel="Kiosk options"
+                            items={
+                              activeTab === "drafts"
+                                ? [
+                                    {
+                                      id: "edit",
+                                      label: "Edit Kiosk",
+                                      icon: Edit2,
+                                      onSelect: () => handleEdit(row.id),
+                                    },
+                                    {
+                                      id: "publish",
+                                      label: "Publish",
+                                      icon: Send,
+                                      onSelect: () => void handlePublish(row.id),
+                                      disabled: publishingId === row.id,
+                                    },
+                                    {
+                                      id: "delete",
+                                      label: "Delete",
+                                      icon: Trash2,
+                                      tone: "danger",
+                                      onSelect: () => handleDelete(row.id),
+                                    },
+                                  ]
+                                : [
+                                    {
+                                      id: "edit",
+                                      label: "Edit Kiosk",
+                                      icon: Edit2,
+                                      onSelect: () => handleEdit(row.id),
+                                    },
+                                    {
+                                      id: "delete",
+                                      label: "Delete",
+                                      icon: Trash2,
+                                      tone: "danger",
+                                      onSelect: () => handleDelete(row.id),
+                                    },
+                                  ]
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+              <DataTablePaginationBar
+                pagination={pagination}
+                summary={`${pageRange.start}-${pageRange.end} of ${pagination.total_records}`}
+                prevLabel="Previous"
+                nextLabel="Next"
+                onPrev={() => setPage(Math.max(1, pagination.current_page - 1))}
+                onNext={() => setPage(pagination.current_page + 1)}
+                onPageSelect={(p) => setPage(p)}
+                pageSizeControl={{
+                  listLabel: "Rows per page",
+                  value: pageSize,
+                  options: pageSizeOptions,
+                  onChange: setPageSize,
+                  disabled: loading,
+                }}
+              />
+            </div>
           </>
         )}
       </div>

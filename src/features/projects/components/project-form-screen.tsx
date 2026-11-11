@@ -9,15 +9,24 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchProjectTypesPage } from "@/features/project-types/api/project-type.api";
+import { ProjectTypeFormModal } from "@/features/project-types/components/project-type-form-modal";
+import type { ProjectType } from "@/features/project-types/types/project-type.types";
 import { formatProjectTypeLabel } from "@/features/project-types/utils/project-type-display.util";
 import { createProject, fetchProject, updateProject } from "@/features/projects/api/project.api";
-import { fetchSitesPage } from "@/features/sites/api/site.api";
+import { createProjectStatus } from "@/features/project-status/api/project-status.api";
+import { fetchSite, fetchSitesPage } from "@/features/sites/api/site.api";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
+import { CreateProjectFormTypeModal } from "@/features/project-forms/components/create-project-form-type-modal";
+import { WorkflowColourStatusFormModal } from "@/shared/components/settings/workflow-colour-status-form-modal";
+import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
+import { fetchUserProfile, fetchUsersPage } from "@/features/users/api/user.api";
 import {
   resolveAppRoleIdMap,
+  resolveUserProfileSelectId,
+  userProfileSelectLabel,
   userProfilesToSelectOptions,
 } from "@/features/users/utils/load-users-by-role.util";
-import { fetchUsersPage } from "@/features/users/api/user.api";
+import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
@@ -31,11 +40,16 @@ import { FIELD_MAX_LENGTH, rhfRegisterOptions } from "@/shared/form";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
-import { useQuickCreate } from "@/shared/hooks/use-quick-create";
+import { useQuickCreate, useSettingsQuickAdd } from "@/shared/hooks/use-quick-create";
 import { useQuickCreateReturn } from "@/shared/hooks/use-quick-create-return";
-import { clearQuickCreateFormDraft } from "@/shared/utils/quick-create-form-draft.util";
+import {
+  clearQuickCreateFormDraft,
+  saveQuickCreateFormDraft,
+} from "@/shared/utils/quick-create-form-draft.util";
+import { buildPathWithStoredBack } from "@/shared/utils/detail-from-list.util";
 import {
   QUICK_CREATE_CLIENT_PARAM,
+  QUICK_CREATE_SELECT_PARAM,
   QUICK_CREATE_SELECT_TARGET_PARAM,
   hrefAfterEntityCreate,
   resolveFormBackUrl,
@@ -50,6 +64,7 @@ import {
   SurfaceDateInput,
   SurfaceShell,
   surfaceInputClassName,
+  surfaceTextareaClassName,
 } from "@/shared/ui";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
 import { resolveDefaultProjectStatusId } from "@/features/project-status/utils/project-default-status.util";
@@ -61,6 +76,14 @@ type Props = {
 };
 
 export function ProjectFormScreen({ mode, projectId }: Props) {
+  const catalogEpoch = useDropdownCatalogEpoch([
+    "users",
+    "clients",
+    "sites",
+    "projectTypes",
+    "projectStatuses",
+    "forms",
+  ]);
   const t = useTranslations("Dashboard.projects");
   const router = useRouter();
   const pathname = usePathname();
@@ -76,8 +99,13 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const [projectClientName, setProjectClientName] = React.useState("");
   const [managerSearchQuery, setManagerSearchQuery] = React.useState("");
   const [managerFallbackLabels, setManagerFallbackLabels] = React.useState<Record<string, string>>({});
+  const managerFallbackLabelsRef = React.useRef(managerFallbackLabels);
+  managerFallbackLabelsRef.current = managerFallbackLabels;
   const [projectTypeOptions, setProjectTypeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [siteFallbackLabels, setSiteFallbackLabels] = React.useState<Record<string, string>>({});
+  const siteFallbackLabelsRef = React.useRef(siteFallbackLabels);
+  siteFallbackLabelsRef.current = siteFallbackLabels;
   const [formOptions, setFormOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [projectStatusOptions, setProjectStatusOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [managerOptions, setManagerOptions] = React.useState<{ value: string; label: string }[]>([]);
@@ -153,7 +181,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       void reloadClients(clientSearchQuery);
     }, 400);
     return () => clearTimeout(t);
-  }, [clientSearchQuery, reloadClients]);
+  }, [clientSearchQuery, reloadClients, catalogEpoch]);
 
   React.useEffect(() => {
     if (!initialManagersLoaded.current) {
@@ -165,19 +193,106 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       void reloadManagers(managerSearchQuery);
     }, 400);
     return () => clearTimeout(t);
-  }, [managerSearchQuery, reloadManagers]);
+  }, [managerSearchQuery, reloadManagers, catalogEpoch]);
 
   const draftReturnTo = React.useMemo(() => {
-    const qs = searchParams.toString();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(QUICK_CREATE_SELECT_PARAM);
+    params.delete(QUICK_CREATE_SELECT_TARGET_PARAM);
+    const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, searchParams]);
 
-  const getFormDraft = React.useCallback(() => getValues(), [getValues]);
+  type ProjectFormDraftBundle = {
+    values: ProjectFormValues;
+    siteLabels?: Record<string, string>;
+    managerLabels?: Record<string, string>;
+  };
+
+  const isProjectFormDraftBundle = (draft: unknown): draft is ProjectFormDraftBundle =>
+    Boolean(draft && typeof draft === "object" && "values" in draft);
+
+  const getFormDraft = React.useCallback((): ProjectFormDraftBundle => {
+    return {
+      values: getValues(),
+      siteLabels: { ...siteFallbackLabelsRef.current },
+      managerLabels: { ...managerFallbackLabelsRef.current },
+    };
+  }, [getValues]);
+
   const restoreFormDraft = React.useCallback(
     (draft: unknown) => {
-      reset(draft as ProjectFormValues, { keepDefaultValues: false });
+      const bundle = isProjectFormDraftBundle(draft)
+        ? draft
+        : { values: draft as ProjectFormValues, siteLabels: undefined, managerLabels: undefined };
+      const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
+      const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
+      const values = { ...bundle.values };
+
+      // Merge quick-create selection into restored values so chips never land empty.
+      if (selectId && /^\d+$/.test(selectId)) {
+        if (selectTarget === "site") {
+          const sites = values.sites ?? [];
+          values.sites = sites.includes(selectId) ? sites : [...sites, selectId];
+        } else if (selectTarget === "client") {
+          values.client = selectId;
+        } else if (selectTarget === "user") {
+          const managers = values.manager_ids ?? [];
+          values.manager_ids = managers.includes(selectId) ? managers : [...managers, selectId];
+        } else if (selectTarget === "form") {
+          const forms = values.form_ids ?? [];
+          values.form_ids = forms.includes(selectId) ? forms : [...forms, selectId];
+        }
+      }
+
+      reset(values, { keepDefaultValues: false });
+
+      if (bundle.siteLabels && Object.keys(bundle.siteLabels).length > 0) {
+        setSiteFallbackLabels((prev) => ({ ...prev, ...bundle.siteLabels }));
+        setSiteOptions((prev) => {
+          const merged = [...prev];
+          for (const [id, label] of Object.entries(bundle.siteLabels ?? {})) {
+            if (!id) continue;
+            const idx = merged.findIndex((opt) => opt.value === id);
+            const next = { value: id, label: label.trim() || `#${id}` };
+            if (idx >= 0) merged[idx] = next;
+            else merged.push(next);
+          }
+          for (const id of values.sites ?? []) {
+            if (merged.some((opt) => opt.value === id)) continue;
+            const label = bundle.siteLabels?.[id]?.trim() || `#${id}`;
+            merged.push({ value: id, label });
+          }
+          return merged;
+        });
+      } else {
+        // Still seed selected site chips so the list is never empty after restore.
+        setSiteOptions((prev) => {
+          const merged = [...prev];
+          for (const id of values.sites ?? []) {
+            if (!id || merged.some((opt) => opt.value === id)) continue;
+            merged.push({ value: id, label: `#${id}` });
+          }
+          return merged;
+        });
+      }
+
+      if (bundle.managerLabels && Object.keys(bundle.managerLabels).length > 0) {
+        setManagerFallbackLabels((prev) => ({ ...prev, ...bundle.managerLabels }));
+        setManagerOptions((prev) => {
+          const merged = [...prev];
+          for (const [id, label] of Object.entries(bundle.managerLabels ?? {})) {
+            if (!id) continue;
+            const idx = merged.findIndex((opt) => opt.value === id);
+            const next = { value: id, label: label.trim() || `#${id}` };
+            if (idx >= 0) merged[idx] = next;
+            else merged.push(next);
+          }
+          return merged;
+        });
+      }
     },
-    [reset],
+    [reset, searchParams],
   );
 
   const urlClientId = searchParams.get(QUICK_CREATE_CLIENT_PARAM);
@@ -187,29 +302,205 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     kind: "client",
     getFormDraft: !isEdit && !lockClient ? getFormDraft : undefined,
     addDisabled: lockClient,
+    returnTo: draftReturnTo,
   });
 
   const clientIdForQuick =
     selectedClient && /^\d+$/.test(selectedClient) ? Number.parseInt(selectedClient, 10) : undefined;
 
+  const siteFetchSeq = React.useRef(0);
   const reloadSites = React.useCallback(async () => {
-    if (!clientIdForQuick || clientIdForQuick <= 0) {
-      setSiteOptions([]);
+    const seq = ++siteFetchSeq.current;
+    // Read client from RHF so quick-create restore is visible before useWatch re-renders.
+    const clientRaw = getValues("client")?.trim() ?? "";
+    const clientId =
+      clientRaw && /^\d+$/.test(clientRaw) ? Number.parseInt(clientRaw, 10) : undefined;
+    const selected = new Set((getValues("sites") ?? []).map(String));
+
+    if (!clientId || clientId <= 0) {
+      // Never wipe selected site chips while client is briefly unset after restore.
+      if (selected.size === 0) setSiteOptions([]);
       return;
     }
     try {
-      const { items } = await fetchSitesPage(1, 20, { client: clientIdForQuick, dropdown: true });
-      setSiteOptions(items.map((s) => ({ value: String(s.id), label: s.site_name })));
+      const { items } = await fetchSitesPage(1, 20, { client: clientId, dropdown: true });
+      if (seq !== siteFetchSeq.current) return;
+      const incoming = items.map((s) => ({
+        value: String(s.id),
+        label: s.site_name?.trim() || `#${s.id}`,
+      }));
+      setSiteOptions((prev) => {
+        const merged = [...incoming];
+        for (const opt of prev) {
+          if (!selected.has(opt.value)) continue;
+          if (merged.some((row) => row.value === opt.value)) continue;
+          merged.push(opt);
+        }
+        for (const id of selected) {
+          if (merged.some((row) => row.value === id)) continue;
+          const fallback = siteFallbackLabelsRef.current[id]?.trim();
+          merged.push({ value: id, label: fallback || `#${id}` });
+        }
+        return merged;
+      });
+      // Refresh fallback labels from loaded options.
+      setSiteFallbackLabels((prev) => {
+        const next = { ...prev };
+        for (const opt of incoming) {
+          if (opt.label.trim()) next[opt.value] = opt.label.trim();
+        }
+        return next;
+      });
     } catch {
-      setSiteOptions([]);
+      // Keep current options so quick-created chips are not wiped on a failed reload.
+      if (seq === siteFetchSeq.current && selected.size === 0) {
+        setSiteOptions([]);
+      }
     }
-  }, [clientIdForQuick]);
+  }, [getValues]);
 
   const siteQuickCreate = useQuickCreate({
     kind: "site",
     clientId: clientIdForQuick,
     addDisabled: !clientIdForQuick,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
   });
+
+  const [projectTypeModalOpen, setProjectTypeModalOpen] = React.useState(false);
+  const [projectStatusModalOpen, setProjectStatusModalOpen] = React.useState(false);
+  const [createProjectFormModalOpen, setCreateProjectFormModalOpen] = React.useState(false);
+
+  const projectTypeQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setProjectTypeModalOpen(true),
+    addLabel: t("placeholders.addProjectType"),
+  });
+  const projectStatusQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setProjectStatusModalOpen(true),
+    addLabel: t("placeholders.addProjectStatus"),
+  });
+  const formsQuickAdd = useSettingsQuickAdd({
+    onOpen: () => setCreateProjectFormModalOpen(true),
+    addLabel: t("placeholders.addForm"),
+    addDisabled: !selectedProjectType,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+  const managersQuickCreate = useQuickCreate({
+    kind: "user",
+    appRole: "manager",
+    fieldTarget: "manager_ids",
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+    returnTo: draftReturnTo,
+  });
+
+  const defaultCreateFormProjectTypeId = React.useMemo(() => {
+    if (!selectedProjectType || !/^\d+$/.test(selectedProjectType)) return null;
+    return Number(selectedProjectType);
+  }, [selectedProjectType]);
+
+  const defaultCreateFormProjectTypeLabel = React.useMemo(() => {
+    if (!selectedProjectType) return null;
+    return projectTypeOptions.find((opt) => opt.value === selectedProjectType)?.label ?? null;
+  }, [selectedProjectType, projectTypeOptions]);
+
+  const continueToCreateProjectForm = React.useCallback(
+    ({ projectTypeId, installationTypeId }: { projectTypeId: number; installationTypeId: number }) => {
+      setCreateProjectFormModalOpen(false);
+      const href = `${routes.dashboard.settingsProjectForms}/${projectTypeId}/create?purpose=create_project_form&installation_type_id=${installationTypeId}`;
+      router.push(buildPathWithStoredBack(href, draftReturnTo));
+    },
+    [router, draftReturnTo],
+  );
+
+  const ensureSiteInOptions = React.useCallback(async (id: number) => {
+    const value = String(id);
+    setSiteFallbackLabels((prev) => ({ ...prev, [value]: prev[value] || `#${id}` }));
+    setSiteOptions((prev) => {
+      if (prev.some((opt) => opt.value === value)) return prev;
+      return [...prev, { value, label: `#${id}` }];
+    });
+    try {
+      const site = await fetchSite(id);
+      const label = site.site_name?.trim() || `#${site.id}`;
+      setSiteFallbackLabels((prev) => ({ ...prev, [value]: label }));
+      setSiteOptions((prev) => {
+        const next = { value, label };
+        const idx = prev.findIndex((opt) => opt.value === value);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = next;
+          return copy;
+        }
+        return [...prev, next];
+      });
+      return value;
+    } catch {
+      setSiteFallbackLabels((prev) => ({ ...prev, [value]: prev[value] || `#${id}` }));
+      return value;
+    }
+  }, []);
+
+  const ensureManagerInOptions = React.useCallback(async (id: number) => {
+    const fallback = String(id);
+    setManagerFallbackLabels((prev) => ({ ...prev, [fallback]: prev[fallback] || `#${id}` }));
+    setManagerOptions((prev) => {
+      if (prev.some((opt) => opt.value === fallback)) return prev;
+      return [...prev, { value: fallback, label: `#${id}` }];
+    });
+    try {
+      const user = await fetchUserProfile(id);
+      const value = String(resolveUserProfileSelectId(user));
+      const label = userProfileSelectLabel(user);
+      setManagerFallbackLabels((prev) => {
+        const next = { ...prev, [value]: label };
+        if (value !== fallback) delete next[fallback];
+        return next;
+      });
+      setManagerOptions((prev) => {
+        const withoutFallback =
+          value === fallback ? prev : prev.filter((opt) => opt.value !== fallback);
+        const idx = withoutFallback.findIndex((opt) => opt.value === value);
+        if (idx >= 0) {
+          const copy = [...withoutFallback];
+          copy[idx] = { value, label };
+          return copy;
+        }
+        return [...withoutFallback, { value, label }];
+      });
+      return value;
+    } catch {
+      return fallback;
+    }
+  }, []);
+
+  const handleProjectTypeCreated = React.useCallback(
+    (row: ProjectType) => {
+      const next = { value: String(row.id), label: formatProjectTypeLabel(row) };
+      setProjectTypeOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("project_type", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
+
+  const handleProjectStatusCreated = React.useCallback(
+    (row: WorkflowColourStatus) => {
+      const next = { value: String(row.id), label: row.status_name?.trim() || `#${row.id}` };
+      setProjectStatusOptions((prev) => {
+        if (prev.some((opt) => opt.value === next.value)) {
+          return prev.map((opt) => (opt.value === next.value ? next : opt));
+        }
+        return [...prev, next];
+      });
+      setValue("project_status", next.value, { shouldDirty: true, shouldValidate: true });
+    },
+    [setValue],
+  );
 
   React.useEffect(() => {
     if (isEdit) return;
@@ -218,13 +509,53 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     setValue("client", presetClient, { shouldDirty: true, shouldValidate: true });
   }, [isEdit, searchParams, setValue]);
 
+  const reloadForms = React.useCallback(async () => {
+    const projectType = getValues("project_type");
+    if (!projectType || !/^\d+$/.test(projectType)) {
+      setFormOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchFormsPage(
+        1,
+        20,
+        { project_type: projectType, dropdown: true, is_published: true },
+        { silent: true },
+      );
+      const next = items
+        .filter((f) => f.is_published !== false)
+        .map((f) => ({ value: String(f.id), label: f.name }));
+      // Keep any selected ids that are not in the page yet (e.g. just quick-created).
+      const selected = getValues("form_ids") ?? [];
+      setFormOptions((prev) => {
+        const merged = [...next];
+        for (const id of selected) {
+          if (merged.some((opt) => opt.value === id)) continue;
+          const prior = prev.find((opt) => opt.value === id);
+          merged.push(prior ?? { value: id, label: `#${id}` });
+        }
+        return merged;
+      });
+    } catch {
+      setFormOptions([]);
+    }
+  }, [getValues]);
+
   useQuickCreateReturn({
+    draftReturnTo,
     restoreFormDraft: !isEdit ? restoreFormDraft : undefined,
+    persistFormDraft: !isEdit
+      ? () => {
+          saveQuickCreateFormDraft(draftReturnTo, getFormDraft());
+        }
+      : undefined,
     onReloadOptions: async () => {
       await reloadClients();
       await reloadSites();
+      await reloadManagers(managerSearchQuery);
+      await reloadForms();
     },
-    onApplySelect: ({ selectTarget, selectId }) => {
+    onApplySelect: async ({ selectTarget, selectId }) => {
       if (selectTarget === "client") {
         if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
@@ -232,7 +563,61 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         return;
       }
       if (selectTarget === "site") {
-        setValue("sites", [selectId], { shouldDirty: true, shouldValidate: true });
+        // Select immediately so chips never show empty while the site is fetched.
+        const current = getValues("sites") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("sites", next, { shouldDirty: true, shouldValidate: true });
+        const siteId = Number.parseInt(selectId, 10);
+        if (Number.isFinite(siteId) && siteId > 0) {
+          await ensureSiteInOptions(siteId);
+        }
+        // Re-hydrate any other selected sites that lost labels across remount.
+        for (const id of next) {
+          if (id === selectId) continue;
+          const n = Number.parseInt(id, 10);
+          if (Number.isFinite(n) && n > 0 && !siteFallbackLabelsRef.current[id]?.trim()) {
+            await ensureSiteInOptions(n);
+          }
+        }
+        return;
+      }
+      if (selectTarget === "form") {
+        const current = getValues("form_ids") ?? [];
+        const next = current.includes(selectId) ? current : [...current, selectId];
+        setValue("form_ids", next, { shouldDirty: true, shouldValidate: true });
+        setFormOptions((prev) => {
+          if (prev.some((opt) => opt.value === selectId)) return prev;
+          return [...prev, { value: selectId, label: `#${selectId}` }];
+        });
+        return;
+      }
+      if (selectTarget === "user") {
+        const userId = Number.parseInt(selectId, 10);
+        setValue(
+          "manager_ids",
+          (() => {
+            const current = getValues("manager_ids") ?? [];
+            return current.includes(selectId) ? current : [...current, selectId];
+          })(),
+          { shouldDirty: true, shouldValidate: true },
+        );
+        const managerValue =
+          Number.isFinite(userId) && userId > 0
+            ? await ensureManagerInOptions(userId)
+            : selectId;
+        if (managerValue !== selectId) {
+          const current = getValues("manager_ids") ?? [];
+          const withoutTemp = current.filter((id) => id !== selectId);
+          const next = withoutTemp.includes(managerValue)
+            ? withoutTemp
+            : [...withoutTemp, managerValue];
+          setValue("manager_ids", next, { shouldDirty: true, shouldValidate: true });
+        }
+        // Keep previously selected sites labeled after manager round-trip.
+        for (const id of getValues("sites") ?? []) {
+          const n = Number.parseInt(id, 10);
+          if (Number.isFinite(n) && n > 0) await ensureSiteInOptions(n);
+        }
       }
     },
   });
@@ -252,7 +637,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogEpoch]);
 
   // Reload forms when the selected project type changes
   React.useEffect(() => {
@@ -272,23 +657,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     // Update the ref after processing
     previousProjectTypeRef.current = selectedProjectType;
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchFormsPage(1, 20, { project_type: selectedProjectType, dropdown: true }, { silent: true });
-        if (!cancelled) {
-          setFormOptions(items.map((f) => ({ value: String(f.id), label: f.name })));
-        }
-      } catch {
-        if (!cancelled) {
-          setFormOptions([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectType, setValue, getValues]);
+    void reloadForms();
+  }, [selectedProjectType, setValue, getValues, catalogEpoch, reloadForms]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -297,7 +667,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         const { items } = await fetchProjectStatusesPage(1, 20, { is_active: true, dropdown: true });
         if (!cancelled) {
           setProjectStatusOptions(items.map((pt) => ({ value: String(pt.id), label: pt.status_name })));
-          if (!isEdit) {
+          if (!isEdit && !getValues("project_status")?.trim()) {
             const defaultStatusId = resolveDefaultProjectStatusId(items);
             if (defaultStatusId != null) {
               setValue("project_status", String(defaultStatusId), { shouldDirty: false });
@@ -311,16 +681,40 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, setValue]);
+  }, [isEdit, setValue, getValues, catalogEpoch]);
 
+  const siteClientRef = React.useRef<string | null>(null);
+  const siteCatalogEpochRef = React.useRef(catalogEpoch);
   React.useEffect(() => {
-    if (!selectedClient || !/^\d+$/.test(selectedClient)) {
-      setSiteOptions([]);
+    const prev = siteClientRef.current;
+    const next = selectedClient ?? "";
+    const epochChanged = siteCatalogEpochRef.current !== catalogEpoch;
+    siteCatalogEpochRef.current = catalogEpoch;
+    // Skip first paint / draft-restore so an empty initial client does not wipe restored sites.
+    if (prev === null) {
+      siteClientRef.current = next;
+      if (next && /^\d+$/.test(next)) void reloadSites();
+      return;
+    }
+    if (prev === next) {
+      // After quick-create, catalog epoch bumps — refresh list without clearing selection.
+      if (epochChanged && next && /^\d+$/.test(next)) void reloadSites();
+      return;
+    }
+    siteClientRef.current = next;
+    siteFetchSeq.current += 1;
+    // Only clear site selection/labels when the client actually changes to another id.
+    if (prev && /^\d+$/.test(prev) && next && /^\d+$/.test(next) && prev !== next) {
+      setSiteFallbackLabels({});
       setValue("sites", []);
+    }
+    if (!next || !/^\d+$/.test(next)) {
+      // Keep chips if draft restore briefly clears client watch before values settle.
+      if ((getValues("sites") ?? []).length === 0) setSiteOptions([]);
       return;
     }
     void reloadSites();
-  }, [selectedClient, setValue, reloadSites]);
+  }, [selectedClient, setValue, reloadSites, catalogEpoch, getValues]);
 
   React.useEffect(() => {
     if (!isEdit || !projectId) return;
@@ -507,12 +901,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         options={projectTypeOptions}
                         value={field.value}
                         emptyLabel={t("placeholders.projectType")}
-                        disabled={saving || noProjectTypes}
+                        disabled={saving}
                         invalid={!!errors.project_type}
                         onBlur={field.onBlur}
-                        onAdd={() => router.push(routes.dashboard.settingsProjectTypes)}
-                        addAriaLabel="Add project type"
-                        addLabel="Add project type"
+                        onAdd={projectTypeQuickAdd.onAdd}
+                        addAriaLabel={projectTypeQuickAdd.addAriaLabel}
+                        addLabel={projectTypeQuickAdd.addLabel}
                         onChange={field.onChange}
                       />
                     )}
@@ -532,12 +926,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         options={projectStatusOptions}
                         value={field.value ?? ""}
                         emptyLabel={t("placeholders.projectStatus")}
-                        disabled={saving || projectStatusOptions.length === 0}
+                        disabled={saving}
                         invalid={!!errors.project_status}
                         onBlur={field.onBlur}
-                        onAdd={() => router.push(routes.dashboard.settingsProjectStatus)}
-                        addAriaLabel="Add project status"
-                        addLabel="Add project status"
+                        onAdd={projectStatusQuickAdd.onAdd}
+                        addAriaLabel={projectStatusQuickAdd.addAriaLabel}
+                        addLabel={projectStatusQuickAdd.addLabel}
                         onChange={field.onChange}
                       />
                     )}
@@ -546,7 +940,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                 </FieldGroup>
               </FormFieldRow>
               <FormFieldRow cols="2" from="md">
-                <FieldGroup label="Forms" htmlFor="project-form-ids">
+                <FieldGroup label={t("fields.forms")} htmlFor="project-form-ids">
                   <Controller
                     control={control}
                     name="form_ids"
@@ -557,15 +951,19 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         values={field.value ?? []}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        disabled={saving || !selectedProjectType || formOptions.length === 0}
-                        placeholder="Select forms..."
-                        listLabel="Forms"
+                        disabled={saving || !selectedProjectType}
+                        placeholder={
+                          selectedProjectType
+                            ? t("placeholders.forms")
+                            : t("placeholders.formsNeedProjectType")
+                        }
+                        listLabel={t("fields.forms")}
+                        onAdd={formsQuickAdd.onAdd}
+                        addAriaLabel={formsQuickAdd.addAriaLabel}
+                        addLabel={formsQuickAdd.addLabel}
                       />
                     )}
                   />
-                  {selectedProjectType && formOptions.length === 0 ? (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No forms found for this project type.</p>
-                  ) : null}
                 </FieldGroup>
                 <FieldGroup label={t("fields.description")} htmlFor="project-description" required>
                   <textarea
@@ -574,8 +972,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                     aria-invalid={errors.description ? true : undefined}
                     aria-describedby={errors.description ? "project-desc-err" : undefined}
                     className={cn(
-                      surfaceInputClassName,
-                      "h-auto min-h-[100px] resize-y overflow-y-auto py-3 leading-5 [field-sizing:fixed]",
+                      surfaceTextareaClassName,
+                      "min-h-[100px] overflow-y-auto [field-sizing:fixed]",
                       errors.description && "border-red-500 dark:border-red-500",
                     )}
                     {...register("description", rhfRegisterOptions("description"))}
@@ -602,11 +1000,12 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onAdd={siteQuickCreate.onAdd}
                         addAriaLabel={siteQuickCreate.addAriaLabel}
                         addLabel={siteQuickCreate.addLabel}
+                        fallbackLabels={siteFallbackLabels}
                       />
                     )}
                   />
                 </FieldGroup>
-                <FieldGroup label="Managers" htmlFor="project-managers">
+                <FieldGroup label={t("fields.manager")} htmlFor="project-managers">
                   <Controller
                     control={control}
                     name="manager_ids"
@@ -618,10 +1017,13 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onChange={field.onChange}
                         onBlur={field.onBlur}
                         disabled={saving}
-                        placeholder="Select managers..."
-                        listLabel="Managers"
+                        placeholder={t("placeholders.managers")}
+                        listLabel={t("fields.manager")}
                         onSearchChange={setManagerSearchQuery}
                         fallbackLabels={managerFallbackLabels}
+                        onAdd={managersQuickCreate.onAdd}
+                        addAriaLabel={managersQuickCreate.addAriaLabel}
+                        addLabel={managersQuickCreate.addLabel}
                       />
                     )}
                   />
@@ -655,6 +1057,29 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
           </>
         )}
       </SurfaceShell>
+
+      <ProjectTypeFormModal
+        open={projectTypeModalOpen}
+        onClose={() => setProjectTypeModalOpen(false)}
+        onSaved={handleProjectTypeCreated}
+      />
+      <WorkflowColourStatusFormModal
+        open={projectStatusModalOpen}
+        onClose={() => setProjectStatusModalOpen(false)}
+        translationNamespace="Dashboard.projectStatus"
+        formTitleId="project-status-quick-create-form"
+        showCategory
+        create={createProjectStatus}
+        onSaved={handleProjectStatusCreated}
+      />
+      <CreateProjectFormTypeModal
+        open={createProjectFormModalOpen}
+        onClose={() => setCreateProjectFormModalOpen(false)}
+        onContinue={continueToCreateProjectForm}
+        defaultProjectTypeId={defaultCreateFormProjectTypeId}
+        defaultProjectTypeLabel={defaultCreateFormProjectTypeLabel}
+        lockProjectType
+      />
     </div>
   );
 }

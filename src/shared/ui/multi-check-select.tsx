@@ -138,18 +138,31 @@ export function MultiCheckSelect({
     return Array.from(byValue.values());
   }, [options, values, fallbackLabels]);
   const selectedOptions = React.useMemo(
-    () => resolvedOptions.filter((o) => selectedMap.has(o.value)),
-    [resolvedOptions, selectedMap],
+    () =>
+      values
+        .map((raw) => {
+          const id = raw.trim();
+          if (!id) return null;
+          const fromList = resolvedOptions.find((o) => o.value === id) ?? options.find((o) => o.value === id);
+          if (fromList) return fromList;
+          const fb = fallbackLabels?.[id]?.trim();
+          if (fb) return { value: id, label: fb };
+          return { value: id, label: `#${id}` };
+        })
+        .filter((o): o is { value: string; label: string } => o != null),
+    [values, resolvedOptions, options, fallbackLabels],
   );
   const filteredOptions = React.useMemo(() => {
+    const labelMatches = (label: string | null | undefined, q: string) =>
+      String(label ?? "").toLowerCase().includes(q);
     if (onSearchChange && query.trim()) {
       const q = query.trim().toLowerCase();
-      return options.filter((o) => o.label.toLowerCase().includes(q));
+      return options.filter((o) => labelMatches(o.label, q));
     }
     if (onSearchChange) return resolvedOptions;
     const q = query.trim().toLowerCase();
     if (!q) return resolvedOptions;
-    return resolvedOptions.filter((o) => o.label.toLowerCase().includes(q));
+    return resolvedOptions.filter((o) => labelMatches(o.label, q));
   }, [resolvedOptions, options, query, onSearchChange]);
 
   const updatePlacement = React.useCallback(() => {
@@ -286,14 +299,14 @@ export function MultiCheckSelect({
           <button
             type="button"
             className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-[color:var(--dash-accent,#111111)] transition hover:bg-slate-50 dark:hover:bg-slate-800"
-            aria-label={addAriaLabel ?? "Add new"}
+            aria-label={addAriaLabel ?? "Create"}
             onClick={() => {
               setOpen(false);
               onAdd?.();
             }}
           >
             <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-            <span>{addLabel ?? addAriaLabel ?? "Add new"}</span>
+            <span>{addLabel ?? addAriaLabel ?? "Create"}</span>
           </button>
         </div>
       ) : null}

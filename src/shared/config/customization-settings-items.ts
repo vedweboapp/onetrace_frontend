@@ -7,6 +7,7 @@ import {
   ListChecks,
   ListTodo,
   MapPin,
+  Percent,
   Plug,
   Ruler,
   Shapes,
@@ -41,6 +42,7 @@ const ICON_BY_ID: Record<CustomizationSettingsItemId, LucideIcon> = {
   paymentModes: CreditCard,
   paymentTerms: CalendarClock,
   title: Text,
+  taxes: Percent,
 };
 
 export const CUSTOMIZATION_SETTINGS_ITEMS: CustomizationSettingsItem[] = CUSTOMIZATION_SETTINGS_HREFS.map(

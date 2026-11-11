@@ -92,53 +92,61 @@ export function AppModal({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         className={cn(
-          "app-modal relative max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-7",
+          "app-modal relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl",
           sizeClass[size],
           "dark:border-slate-700 dark:bg-slate-900",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {showCloseButton ? (
-          <button
-            type="button"
-            className={closeIconButtonClass}
-            aria-label={closeButtonAriaLabel}
-            disabled={isBusy}
-            onClick={onClose}
-          >
-            <X className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-          </button>
-        ) : null}
-        {(title || description) ? (
-          <div className={cn(showCloseButton && "pr-9 sm:pr-10")}>
-            {title ? (
-              <h2
-                id={titleId}
-                className={cn("text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50")}
-              >
-                {title}
-              </h2>
-            ) : null}
-            {description ? (
-              <p
-                id={descriptionId}
-                className={cn(title ? "mt-2" : "", "text-sm text-slate-600 dark:text-slate-400")}
-              >
-                {description}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="relative shrink-0 px-6 pb-0 pt-6 sm:px-7 sm:pt-7">
+          {showCloseButton ? (
+            <button
+              type="button"
+              className={closeIconButtonClass}
+              aria-label={closeButtonAriaLabel}
+              disabled={isBusy}
+              onClick={onClose}
+            >
+              <X className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+            </button>
+          ) : null}
+          {(title || description) ? (
+            <div className={cn(showCloseButton && "pr-9 sm:pr-10")}>
+              {title ? (
+                <h2
+                  id={titleId}
+                  className={cn("text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50")}
+                >
+                  {title}
+                </h2>
+              ) : null}
+              {description ? (
+                <p
+                  id={descriptionId}
+                  className={cn(title ? "mt-2" : "", "text-sm text-slate-600 dark:text-slate-400")}
+                >
+                  {description}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <div
           className={cn(
-            title || description || showCloseButton ? "mt-5" : "",
+            "min-h-0 flex-1 overflow-y-auto px-6 sm:px-7",
+            title || description || showCloseButton ? "mt-5" : "pt-6 sm:pt-7",
             showCloseButton && !title && !description ? "pt-1" : "",
+            footer ? "pb-2" : "pb-6 sm:pb-7",
           )}
         >
           {children}
         </div>
-        {footer ? <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div> : null}
+        {footer ? (
+          <div className="shrink-0 border-t border-slate-100 px-6 py-4 sm:px-7 dark:border-slate-800">
+            <div className="flex flex-wrap justify-end gap-2">{footer}</div>
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,

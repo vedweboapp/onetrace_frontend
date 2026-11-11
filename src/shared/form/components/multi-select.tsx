@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Paperclip } from "lucide-react";
 import { FieldError } from "react-hook-form";
 
 interface Option {
   label: string;
   value: string | number;
+  associated_value_type?: "default" | "color" | "image";
+  associated_value?: string | null;
+  file?: string | null;
+  fileName?: string | null;
 }
 
 interface MultiSelectProps {
@@ -150,6 +154,26 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
           </div>
         </div>
+
+      {selectedOptions.some((o) => o.file) && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {selectedOptions
+            .filter((o) => o.file)
+            .map((o, idx) => (
+              <a
+                key={idx}
+                href={o.file!}
+                download={o.fileName || "download"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                <Paperclip className="size-3" />
+                <span>{o.label}: {o.fileName || "Attached file"}</span>
+              </a>
+            ))}
+        </div>
+      )}
 
         {isOpen && !readOnly && (
           <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">

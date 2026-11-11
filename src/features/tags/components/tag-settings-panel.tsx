@@ -4,9 +4,12 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { cn } from "@/core/utils/http.util";
-import { createTag, deleteTag, fetchTagsPage, updateTag } from "@/features/tags/api/tag.api";
+import { createTag, deleteTag, fetchTag, fetchTagsPage, updateTag } from "@/features/tags/api/tag.api";
 import type { Tag } from "@/features/tags/types/tag.types";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   SettingsDetailActions,
@@ -28,6 +31,7 @@ import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import { routes } from "@/shared/config/routes";
 import {
+  DashboardLoadErrorState,
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
@@ -120,6 +124,10 @@ export function TagSettingsPanel() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState<Tag | null>(null);
+  useOpenSettingsRecord(fetchTag, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(routes.dashboard.settingsTags, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Tag | null>(null);
@@ -167,6 +175,7 @@ export function TagSettingsPanel() {
     setBgColour(DEFAULT_BG);
     setTextColour(DEFAULT_TEXT);
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -177,6 +186,7 @@ export function TagSettingsPanel() {
     setBgColour(bgHex(row));
     setTextColour(textHex(row));
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -200,6 +210,7 @@ export function TagSettingsPanel() {
     }
 
     setErrors({});
+    duplicate.clear();
     const { tag_name: name, bg_colour: bg, text_colour: fg } = parsed.data;
     setSaving(true);
     try {
@@ -214,6 +225,7 @@ export function TagSettingsPanel() {
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -328,7 +340,10 @@ export function TagSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6"><ListPageCardGrid>{Array.from({ length: 6 }, (_, i) => <ListPageCardSkeleton key={i} />)}</ListPageCardGrid></div>
@@ -342,7 +357,6 @@ export function TagSettingsPanel() {
               iconName: "pinStatus",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />
@@ -490,7 +504,15 @@ export function TagSettingsPanel() {
         <div className="flex flex-col gap-4">
           <FieldGroup label={<span>{t("modal.tagName")} <span className="text-red-500">*</span></span>} htmlFor="tag-name">
             <input id="tag-name" value={tagName} onChange={(e) => { setTagName(sanitizeTitleInput(e.target.value)); if (errors.tag_name) setErrors((prev) => ({ ...prev, tag_name: undefined })); }} className={cn(surfaceInputClassName, errors.tag_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")} autoComplete="off" />
-            {errors.tag_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.tag_name}</p> : null}
+            {errors.tag_name ? (
+              <DuplicateEntryFieldError
+                message={errors.tag_name}
+                fieldKey="tag_name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
+            ) : null}
           </FieldGroup>
           <FieldGroup
             label={

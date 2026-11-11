@@ -13,16 +13,20 @@ export function groupLinkedItemDisplayName(entry: GroupItemRef, composite?: Comp
   return abbr ? `${name} (${abbr})` : name;
 }
 
-export function groupLinkedItemStatsLine(composite?: CompositeItem): string {
-  if (!composite) return "";
+export function groupLinkedItemStatsLine(
+  composite?: CompositeItem,
+  entry?: GroupItemRef,
+): string {
   const parts: string[] = [];
-  if (composite.quantity != null) parts.push(`Qty ${composite.quantity}`);
-  const cost = moneyDisplay(composite.cost_price);
+  if (composite?.quantity != null) parts.push(`Qty ${composite.quantity}`);
+  const cost = moneyDisplay(composite?.cost_price);
   if (cost !== "—") parts.push(`Cost ${cost}`);
-  const sell = moneyDisplay(composite.selling_price);
+  const sell = moneyDisplay(
+    entry?.item_selling_price ?? entry?.selling_price ?? composite?.selling_price,
+  );
   if (sell !== "—") parts.push(`Sell ${sell}`);
-  const componentCount = composite.components?.length ?? 0;
-  parts.push(`${componentCount} cmp`);
+  const componentCount = entry?.components?.length ?? composite?.components?.length;
+  if (componentCount != null) parts.push(`${componentCount} cmp`);
   return parts.join(" · ");
 }
 
@@ -44,7 +48,7 @@ export function groupLinkedItemsSummaryText(
   const lines = items.slice(0, limit).map((entry) => {
     const composite = compositeById.get(entry.item);
     const name = groupLinkedItemDisplayName(entry, composite);
-    const stats = groupLinkedItemStatsLine(composite);
+    const stats = groupLinkedItemStatsLine(composite, entry);
     return stats ? `${name} — ${stats}` : name;
   });
   if (items.length > limit) {

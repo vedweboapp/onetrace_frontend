@@ -72,20 +72,44 @@ export function reportLocalFormSubmitApiError(
   options?: {
     /** Map API field keys → local form error keys when names differ. */
     fieldMap?: Record<string, string>;
+    /**
+     * When set, only these form keys count as “shown under fields”.
+     * Unmapped API keys fall through to toast (avoids silent duplicates).
+     */
+    knownFormKeys?: readonly string[];
   },
 ): void {
   const fieldErrors = getApiFieldErrorMap(error);
   const mapped: Record<string, string> = {};
+  const fieldMap = options?.fieldMap;
+  const fieldMapLower = fieldMap
+    ? new Map(Object.entries(fieldMap).map(([k, v]) => [k.toLowerCase(), v]))
+    : null;
 
   for (const [apiKey, message] of Object.entries(fieldErrors)) {
     if (apiKey === "non_field_errors" || apiKey === "detail" || apiKey === "__all__") continue;
-    const formKey = options?.fieldMap?.[apiKey] ?? apiKey;
+    const formKey =
+      fieldMap?.[apiKey] ??
+      fieldMapLower?.get(apiKey.toLowerCase()) ??
+      apiKey;
     const trimmed = message.trim();
     if (trimmed) mapped[formKey] = trimmed;
   }
 
-  if (Object.keys(mapped).length > 0) {
-    applyFieldErrors(mapped);
+  const known = options?.knownFormKeys?.length
+    ? new Set(options.knownFormKeys)
+    : fieldMap
+      ? new Set(Object.values(fieldMap))
+      : null;
+
+  const inline: Record<string, string> = {};
+  for (const [key, message] of Object.entries(mapped)) {
+    if (known && !known.has(key)) continue;
+    inline[key] = message;
+  }
+
+  if (Object.keys(inline).length > 0) {
+    applyFieldErrors(inline);
     markApiErrorToasted(error);
     return;
   }

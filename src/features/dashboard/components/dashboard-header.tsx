@@ -6,14 +6,17 @@ import {
   CalendarDays,
   ClipboardList,
   ClipboardPen,
+  Database,
   FileText,
   FolderKanban,
   Home,
   Layers,
+  LayoutTemplate,
   ListTodo,
   MapPinHouse,
   MonitorSmartphone,
   Package,
+  PackageCheck,
   Palette,
   PanelLeft,
   PanelLeftClose,
@@ -109,6 +112,7 @@ export function DashboardHeader() {
   const quotationProjectHref = routes.dashboard.quotationProject;
   const invoicesHref = routes.dashboard.invoices;
   const purchaseOrdersHref = routes.dashboard.purchaseOrders;
+  const purchaseReceivesHref = routes.dashboard.purchaseReceives;
   const jobsHref = routes.dashboard.jobs;
   const serviceJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.service}`;
   const projectJobHref = `${jobsHref}?job_category=${JOB_CATEGORY.project}`;
@@ -142,11 +146,13 @@ export function DashboardHeader() {
   const checklistTypeHref = routes.dashboard.settingsChecklistTypes;
   const titleHref = routes.dashboard.settingsTitle;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
+  const templatesHref = routes.dashboard.settingsTemplates;
   const usersHref = routes.dashboard.settingsUsers;
   const userGroupsHref = routes.dashboard.settingsUserGroups;
   const rolesHref = routes.dashboard.settingsRoles;
   const profilesHref = routes.dashboard.settingsProfiles;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const dataAdministrationHref = routes.dashboard.settingsDataAdministration;
   const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const homeActive = pathname === homeHref;
@@ -178,6 +184,8 @@ export function DashboardHeader() {
     pathname === invoicesHref || pathname.startsWith(`${invoicesHref}/`);
   const purchaseOrdersActive =
     pathname === purchaseOrdersHref || pathname.startsWith(`${purchaseOrdersHref}/`);
+  const purchaseReceivesActive =
+    pathname === purchaseReceivesHref || pathname.startsWith(`${purchaseReceivesHref}/`);
   const jobsActive = pathname === jobsHref || pathname.startsWith(`${jobsHref}/`);
   const jobCategory = jobsActive ? parseJobCategoryParam(searchParams.get("job_category")) : undefined;
   const serviceJobActive =
@@ -235,6 +243,8 @@ export function DashboardHeader() {
   const titleActive = pathname === titleHref || pathname.startsWith(`${titleHref}/`);
   const projectFormsActive =
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
+  const templatesActive =
+    pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);
@@ -249,6 +259,8 @@ export function DashboardHeader() {
     pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const dataAdministrationActive =
+    pathname === dataAdministrationHref || pathname.startsWith(`${dataAdministrationHref}/`);
   const auditLogsActive =
     pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
@@ -266,6 +278,8 @@ export function DashboardHeader() {
           ? tNav("invoices")
           : purchaseOrdersActive
             ? tNav("purchaseOrders")
+            : purchaseReceivesActive
+              ? tNav("purchaseReceives")
             : clientsActive
               ? tNav("clients")
               : vendorsActive
@@ -342,11 +356,15 @@ export function DashboardHeader() {
                                                                                 ? tSettingsNav("profiles")
                                                                                 : integrationsActive
                                                                                   ? tSettingsNav("integrations")
-                                                                                : auditLogsActive
-                                                                                  ? tSettingsNav("auditLogs")
-                                                                                    : projectFormsActive
-                                                                                      ? tSettingsNav("projectForms")
-                                                                                      : tNav("home");
+                                                                                  : dataAdministrationActive
+                                                                                    ? tSettingsNav("dataAdministration")
+                                                                                    : auditLogsActive
+                                                                                      ? tSettingsNav("auditLogs")
+                                                                                      : projectFormsActive
+                                                                                        ? tSettingsNav("projectForms")
+                                                                                        : templatesActive
+                                                                                          ? tSettingsNav("templates")
+                                                                                          : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -448,11 +466,13 @@ export function DashboardHeader() {
             <TopNavLink href={kioskMachinesHref} label={tSettingsNav("kiosk")} icon={MonitorSmartphone} active={kioskMachinesActive} resolved={resolved} />
             <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
+            <TopNavLink href={templatesHref} label={tSettingsNav("templates")} icon={LayoutTemplate} active={templatesActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
             <TopNavLink href={usersHref} label={tSettingsNav("users")} icon={UserRound} active={usersActive} resolved={resolved} />
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />
             <TopNavLink href={profilesHref} label={tSettingsNav("profiles")} icon={Layers} active={profilesActive} resolved={resolved} />
             <TopNavLink href={integrationsHref} label={tSettingsNav("integrations")} icon={Plug} active={integrationsActive} resolved={resolved} />
+            <TopNavLink href={dataAdministrationHref} label={tSettingsNav("dataAdministration")} icon={Database} active={dataAdministrationActive} resolved={resolved} />
             <TopNavLink href={auditLogsHref} label={tSettingsNav("auditLogs")} icon={ClipboardList} active={auditLogsActive} resolved={resolved} />
           </>
         ) : (
@@ -483,6 +503,7 @@ export function DashboardHeader() {
             />
             <TopNavLink href={invoicesHref} label={tNav("invoices")} icon={Receipt} active={invoicesActive} resolved={resolved} />
             <TopNavLink href={purchaseOrdersHref} label={tNav("purchaseOrders")} icon={ClipboardList} active={purchaseOrdersActive} resolved={resolved} />
+            <TopNavLink href={purchaseReceivesHref} label={tNav("purchaseReceives")} icon={PackageCheck} active={purchaseReceivesActive} resolved={resolved} />
             <TopNavGroup
               label={tNav("jobs")}
               icon={ListTodo}

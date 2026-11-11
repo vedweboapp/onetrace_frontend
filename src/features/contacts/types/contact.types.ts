@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { EntityAddress, EntityAddressPayload } from "@/shared/types/entity-address.types";
 
 export type ContactUserRef = {
@@ -66,6 +67,7 @@ export type Contact = {
   country?: string | null;
   pincode?: string | null;
   is_active: boolean;
+  attachments?: EntityAttachment[] | null;
   created_by: ContactUserRef | number | null;
   modified_by: ContactUserRef | number | null;
   deleted_by: ContactUserRef | number | null;

@@ -1,7 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { AppButton, DashboardEmptyState } from "@/shared/ui";
+import { DashboardLoadErrorState } from "@/shared/ui";
 
 type Props = {
   message: string;
@@ -22,22 +21,16 @@ export function EntityDetailErrorState({
   className,
   title,
 }: Props) {
-  const t = useTranslations("Dashboard.common.detail");
-
   return (
-    <DashboardEmptyState
-      iconName="error"
-      title={title ?? t("loadErrorTitle")}
-      description={message}
+    <DashboardLoadErrorState
+      message={message}
+      title={title}
+      retryLabel={retryLabel}
+      onRetry={onRetry}
       fill={fill}
       viewportFill={fill}
       compact={!fill}
       className={className}
-      action={
-        <AppButton type="button" variant="secondary" size="sm" onClick={onRetry}>
-          {retryLabel}
-        </AppButton>
-      }
     />
   );
 }

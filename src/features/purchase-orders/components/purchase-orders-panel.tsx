@@ -1,6 +1,7 @@
 "use client";
 
 import { getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import { ListPageActionGroup, ModuleImportControl } from "@/shared/import";
 
 import * as React from "react";
 import { Calendar, Pencil, Plus } from "lucide-react";
@@ -33,6 +34,7 @@ import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-st
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import { useListRowHighlight } from "@/shared/hooks/use-list-row-highlight";
 import {
+  DashboardLoadErrorState,
   AddButton,
   AppButton,
   CheckmarkSelect,
@@ -115,7 +117,7 @@ export function PurchaseOrdersPanel() {
     return vendors.map((v) => ({ value: String(v.id), label: v.name }));
   }, []);
 
-  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, fetchVendorOptions);
+  const { options: vendorOptions } = useDeferredListOptions(loadVendorOptions, fetchVendorOptions, 0, ["vendors"]);
 
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
@@ -357,7 +359,16 @@ export function PurchaseOrdersPanel() {
           onViewModeChange={setListViewMode}
           tableViewLabel={tList("tableView")}
           listViewLabel={tList("listView")}
-          action={<AddButton type="button" onClick={openCreate} />}
+          action={
+            <ListPageActionGroup>
+              <ModuleImportControl
+                resource="purchaseOrders"
+                moduleLabel={t("title")}
+                onSuccess={() => setRefreshNonce((n) => n + 1)}
+              />
+              <AddButton type="button" onClick={openCreate} />
+            </ListPageActionGroup>
+          }
           controls={
             <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <ListPageSearchField
@@ -411,7 +422,10 @@ export function PurchaseOrdersPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -433,13 +447,7 @@ export function PurchaseOrdersPanel() {
             onboarding={{
               iconName: "purchaseOrders",
               title: t("emptyTitle"),
-              description: t("emptyDescription"),
-              action: (
-                <AppButton type="button" variant="primary" size="sm" onClick={openCreate}>
-                  <Plus className="size-4" strokeWidth={2.5} aria-hidden />
-                  {t("createPurchaseOrder")}
-                </AppButton>
-              ),
+              description: t("emptyDescription")
             }}
             onClearFilters={() =>
               setUrl({ search: null, status: null, vendor: null, page: null }, { replace: true })

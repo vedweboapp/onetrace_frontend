@@ -1,23 +1,21 @@
 "use client";
 
 import { getApiErrorDisplayMessage, toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
-
 import * as React from "react";
 import { ArrowUpRight, Check, Layers, MapPinned, Pencil, User, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { fetchDrawingsPage, updateDrawingName } from "@/features/projects/api/drawing.api";
+import { fetchDrawingsPage, updateDrawingName, cloneDrawing, fetchDrawingDetail } from "@/features/projects/api/drawing.api";
 import { DrawingFilePreview, DrawingFilePreviewFill } from "@/features/projects/components/drawing-file-preview";
 import { DrawingPinThumbnailOverlay } from "@/features/projects/components/drawing-pin-thumbnail-overlay";
 import { DrawingUploadModal } from "@/features/projects/components/drawing-upload-modal";
-import type { Drawing } from "@/features/projects/types/drawing.types";
+import type { Drawing, DrawingPlot } from "@/features/projects/types/drawing.types";
 import { countDrawingPins } from "@/features/projects/utils/drawing-list-pins.util";
 import type { ListPageViewMode } from "@/shared/hooks/use-list-url-state";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
   detailTabBodyClassName,
-  detailTabErrorClassName,
   detailTabFilterBarClassName,
   detailTabSectionClassName,
   detailTabStandaloneFillClassName,
@@ -26,10 +24,14 @@ import {
 import { cn } from "@/core/utils/http.util";
 import {
   AddButton,
+  AppButton,
+  AppModal,
+  DashboardLoadErrorState,
   DataTablePaginationBar,
   ListPageEmptyStates,
   ListViewModeToggle,
   surfaceInputClassName,
+  surfaceSelectClassName,
 } from "@/shared/ui";
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions, normalizeListPageSize } from "@/shared/utils/list-page-size.util";
@@ -69,6 +71,7 @@ function useDeferredMount(): boolean {
   }, []);
   return ready;
 }
+
 
 function shortFileTypeLabel(mime: string | undefined): string {
   const m = mime?.trim() || "";
@@ -433,7 +436,20 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
   const [refreshNonce, setRefreshNonce] = React.useState(0);
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploadSession, setUploadSession] = React.useState(0);
-
+  const [cloneOpen, setCloneOpen] = React.useState(false);
+  const [cloneDrawings, setCloneDrawings] = React.useState<Drawing[]>([]);
+  const [cloneLoading, setCloneLoading] = React.useState(false);
+  // The takeoff being cloned FROM
+  const [sourceDrawingId, setSourceDrawingId] = React.useState("");
+  // The takeoffs being cloned INTO (checked by user)
+  const [selectedTargetIds, setSelectedTargetIds] = React.useState<Set<string>>(new Set());
+  const [cloneSubmitting, setCloneSubmitting] = React.useState(false);
+  // "select" = step 1, "map" = step 2 (map plots)
+  const [cloneStep, setCloneStep] = React.useState<"select" | "map">("select");
+  const [sourcePlots, setSourcePlots] = React.useState<DrawingPlot[]>([]);
+  const [loadingPlots, setLoadingPlots] = React.useState(false);
+  // Flat plot_mappings: plot id -> new name
+  const [clonePlotMappings, setClonePlotMappings] = React.useState<Record<number | string, string>>({});
   const pageSizeOptions = React.useMemo(() => listPageSizeSelectOptions(), []);
 
   React.useEffect(() => {
@@ -465,7 +481,26 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     };
   }, [projectId, page, pageSize, refreshNonce, t]);
 
-  const suggestedOrder = React.useMemo(() => {
+  React.useEffect(() => {
+    if (!cloneOpen) return;
+    let cancelled = false;
+    setCloneLoading(true);
+    void fetchDrawingsPage(projectId, 1, 100, undefined, { dropdown: true })
+      .then(({ items: drawings }) => {
+        if (!cancelled) setCloneDrawings(drawings);
+      })
+      .catch((error) => {
+        if (!cancelled) toastApiError(error, t("loadError"));
+      })
+      .finally(() => {
+        if (!cancelled) setCloneLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneOpen, projectId, t]);
+
+  const suggestedOrder = React.useMemo(() => {https://192.168.1.12:3002/settings/project-type-forms
     if (items.length === 0) return 1;
     return Math.max(...items.map((i) => i.order)) + 1;
   }, [items]);
@@ -479,13 +514,98 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
     setPage(1);
   }
 
+  function openUpload() {
+    setUploadSession((session) => session + 1);
+    setUploadOpen(true);
+  }
+
+  // When step is "map", load source plots from the selected source drawing
+  React.useEffect(() => {
+    if (cloneStep !== "map") {
+      setSourcePlots([]);
+      return;
+    }
+    if (!sourceDrawingId) {
+      setSourcePlots([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPlots(true);
+    void fetchDrawingDetail(projectId, Number(sourceDrawingId))
+      .then((detail) => {
+        if (!cancelled) setSourcePlots(detail.plots || []);
+      })
+      .catch(() => {
+        const found = cloneDrawings.find((d) => String(d.id) === sourceDrawingId);
+        if (!cancelled) setSourcePlots(found?.plots || []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPlots(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneStep, projectId, sourceDrawingId, cloneDrawings]);
+
+  function handleCloseClone() {
+    if (cloneSubmitting) return;
+    setCloneOpen(false);
+    setSourceDrawingId("");
+    setSelectedTargetIds(new Set());
+    setClonePlotMappings({});
+    setCloneStep("select");
+    setSourcePlots([]);
+  }
+
+  function handleToggleTarget(drawingId: string) {
+    setSelectedTargetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(drawingId)) next.delete(drawingId);
+      else next.add(drawingId);
+      return next;
+    });
+  }
+
+  async function handleCloneSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (cloneSubmitting || !sourceDrawingId || selectedTargetIds.size === 0) return;
+
+    // take_offs is a plain array of numeric drawing ids
+    const take_offs = Array.from(selectedTargetIds).map((id) => Number(id));
+
+    // Build flat plot_mappings array
+    const plot_mappings = sourcePlots.map((plot) => ({
+      id: String(plot.id),
+      name: clonePlotMappings[plot.id]?.trim() || plot.name || `Plot #${plot.id}`,
+    }));
+
+    setCloneSubmitting(true);
+    try {
+      await cloneDrawing(projectId, {
+        drawing_id: sourceDrawingId,
+        take_offs: take_offs as any,
+        plot_mappings: plot_mappings,
+      });
+      toastSuccess(
+        take_offs.length > 1
+          ? `${take_offs.length} takeoffs cloned successfully`
+          : "Takeoff cloned successfully",
+      );
+      handleCloseClone();
+      handleCreated();
+    } catch (error) {
+      toastApiError(error, "Could not clone takeoff. Try again.");
+    } finally {
+      setCloneSubmitting(false);
+    }
+  }
+
   const handleRenamed = React.useCallback((next: Drawing) => {
     setItems((prev) => prev.map((row) => (row.id === next.id ? { ...row, ...next } : row)));
   }, []);
 
   const pageRange = getListPageRange(pagination);
   const isEmpty = !loading && !loadError && items.length === 0;
-
   const emptyState = (
     <div className={detailTabStandaloneFillClassName}>
       <ListPageEmptyStates
@@ -497,10 +617,7 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           action: (
             <AddButton
               type="button"
-              onClick={() => {
-                setUploadSession((s) => s + 1);
-                setUploadOpen(true);
-              }}
+              onClick={openUpload}
             />
           ),
         }}
@@ -568,14 +685,24 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
           <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
           <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
         </div>
-        <AddButton
-          type="button"
-          className="shrink-0"
-          onClick={() => {
-            setUploadSession((s) => s + 1);
-            setUploadOpen(true);
-          }}
-        />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <AppButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={openUpload}
+          >
+            Upload
+          </AppButton>
+          <AppButton
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setCloneOpen(true)}
+          >
+            Clone
+          </AppButton>
+        </div>
       </div>
 
       <div className={cn(detailTabFilterBarClassName, "sm:justify-end")}>
@@ -583,7 +710,10 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
       </div>
 
       {loadError ? (
-        <p className={detailTabErrorClassName}>{loadError}</p>
+        <DashboardLoadErrorState
+          message={loadError}
+          onRetry={() => setRefreshNonce((n) => n + 1)}
+        />
       ) : loading ? (
         listViewMode === "list" ? (
           <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 lg:gap-6">
@@ -673,6 +803,206 @@ export function ProjectDrawingsTab({ projectId }: { projectId: number }) {
         suggestedOrder={suggestedOrder}
         onCreated={handleCreated}
       />
+      <AppModal
+        open={cloneOpen}
+        onClose={handleCloseClone}
+        title={cloneStep === "map" ? "Map Plots" : "Clone Takeoff"}
+        size="md"
+      >
+        {cloneStep === "select" ? (
+          <form
+            onSubmit={(e) => { e.preventDefault(); setCloneStep("map"); }}
+            className="space-y-5"
+          >
+            {/* ── Source takeoff ── */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+              <label
+                htmlFor="clone-source-drawing"
+                className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+              >
+                Source Takeoff
+              </label>
+              <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+                The takeoff you are cloning <span className="font-medium">from</span>.
+              </p>
+              <select
+                id="clone-source-drawing"
+                value={sourceDrawingId}
+                onChange={(e) => {
+                  setSourceDrawingId(e.target.value);
+                  setSelectedTargetIds(new Set());
+                }}
+                disabled={cloneLoading || cloneSubmitting}
+                className={surfaceSelectClassName}
+                required
+              >
+                <option value="">
+                  {cloneLoading ? "Loading takeoffs..." : "Choose a takeoff"}
+                </option>
+                {cloneDrawings.map((drawing) => (
+                  <option key={drawing.id} value={String(drawing.id)}>
+                    {drawing.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Divider ── */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                Clone Into
+              </span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            </div>
+
+            {/* ── Target takeoffs checklist ── */}
+            {sourceDrawingId ? (
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  Select the takeoffs you want to clone <span className="font-medium">into</span>.
+                </p>
+                {cloneLoading ? (
+                  <div className="py-6 text-center text-sm text-slate-400">Loading...</div>
+                ) : (
+                  <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                    {cloneDrawings
+                      .filter((d) => String(d.id) !== sourceDrawingId)
+                      .map((drawing) => {
+                        const id = String(drawing.id);
+                        const checked = selectedTargetIds.has(id);
+                        return (
+                          <label
+                            key={drawing.id}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                              checked
+                                ? "border-emerald-300 bg-emerald-50 dark:border-emerald-700/60 dark:bg-emerald-950/30"
+                                : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-800/60",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => handleToggleTarget(id)}
+                              disabled={cloneSubmitting}
+                              className="size-4 rounded accent-emerald-600"
+                            />
+                            <span className={cn(
+                              "min-w-0 flex-1 truncate text-sm",
+                              checked
+                                ? "font-medium text-emerald-800 dark:text-emerald-300"
+                                : "text-slate-700 dark:text-slate-300",
+                            )}>
+                              {drawing.name}
+                            </span>
+                            {checked && (
+                              <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            )}
+                          </label>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="py-2 text-center text-sm text-slate-400 dark:text-slate-500">
+                Select a source takeoff first.
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleCloseClone}
+                disabled={cloneSubmitting}
+              >
+                Cancel
+              </AppButton>
+              <AppButton
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={
+                  cloneSubmitting ||
+                  cloneLoading ||
+                  !sourceDrawingId ||
+                  selectedTargetIds.size === 0
+                }
+              >
+                Next
+              </AppButton>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleCloneSubmit} className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Optionally rename the plots that will be created in the new takeoff(s).
+            </p>
+
+            {loadingPlots ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                Loading plots...
+              </div>
+            ) : sourcePlots.length === 0 ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                No plots found on the selected takeoff.
+              </div>
+            ) : (
+              <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                <div className="px-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                  Map Plot
+                </div>
+                {sourcePlots.map((plot) => (
+                  <div
+                    key={plot.id}
+                    className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50"
+                  >
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: plot.plot_border || "#10b981" }}
+                    />
+                    <input
+                      type="text"
+                      value={clonePlotMappings[plot.id] ?? plot.name ?? ""}
+                      onChange={(e) =>
+                        setClonePlotMappings((prev) => ({
+                          ...prev,
+                          [plot.id]: e.target.value,
+                        }))
+                      }
+                      placeholder={plot.name ? `e.g. ${plot.name}` : "New plot name"}
+                      className={cn(surfaceInputClassName, "flex-1 text-xs py-1.5")}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCloneStep("select")}
+                disabled={cloneSubmitting}
+              >
+                Back
+              </AppButton>
+              <AppButton
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={cloneSubmitting}
+              >
+                {cloneSubmitting ? "Cloning..." : "Clone"}
+              </AppButton>
+            </div>
+          </form>
+        )}
+      </AppModal>
     </div>
   );
 }

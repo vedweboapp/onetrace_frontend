@@ -29,6 +29,7 @@ import { resolveCityInDataset } from "@/shared/utils/nominatim-address-parse.uti
 import { getListPageRange } from "@/shared/utils/list-pagination-range.util";
 import { listPageSizeSelectOptions } from "@/shared/utils/list-page-size.util";
 import {
+  DashboardLoadErrorState,
   ActiveStatusBadge,
   AddButton,
   AppButton,
@@ -389,7 +390,10 @@ export function KioskMachineSettingsPanel() {
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -413,7 +417,6 @@ export function KioskMachineSettingsPanel() {
               iconName: "kioskMachines",
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />

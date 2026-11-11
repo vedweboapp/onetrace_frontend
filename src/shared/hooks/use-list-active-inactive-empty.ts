@@ -102,7 +102,8 @@ export function useListActiveInactiveEmptyState({
     inactiveCount,
   ]);
 
-  const hideListChrome = emptyStateKind === "onboarding";
+  // Keep search / Import / Add visible on empty onboarding pages.
+  const hideListChrome = false;
 
   const filtersActive = hasActiveFilters || emptyStateKind === "activeOnly";
 

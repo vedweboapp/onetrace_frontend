@@ -45,6 +45,9 @@ export function auditTrailResourceHref(row: AuditTrailEntry): string | null {
     case AUDIT_TRAIL_MODULES.purchaseOrder:
     case "purchaseorders":
       return `${routes.dashboard.purchaseOrders}/${objectId}`;
+    case AUDIT_TRAIL_MODULES.purchaseReceive:
+    case "purchasereceives":
+      return `${routes.dashboard.purchaseReceives}/${objectId}`;
     case AUDIT_TRAIL_MODULES.item:
     case "items":
       return `${routes.dashboard.items}/${objectId}`;

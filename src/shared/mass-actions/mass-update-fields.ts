@@ -490,6 +490,28 @@ export function buildPurchaseOrderMassUpdateFields(
   ];
 }
 
+export type PurchaseReceiveMassUpdateLabels = {
+  vendor: string;
+  status: string;
+  trackingNumber: string;
+  notes: string;
+};
+
+export function buildPurchaseReceiveMassUpdateFields(
+  options: {
+    vendorOptions: CheckmarkSelectOption[];
+    statusOptions: CheckmarkSelectOption[];
+  },
+  labels: PurchaseReceiveMassUpdateLabels,
+): MassUpdateFieldDef[] {
+  return [
+    selectField("vendor", labels.vendor, options.vendorOptions, "number"),
+    selectField("status", labels.status, options.statusOptions),
+    textField("tracking_number", labels.trackingNumber),
+    textareaField("notes", labels.notes),
+  ];
+}
+
 export type QrCodeMassUpdateLabels = {
   status: string;
   assignedTo: string;

@@ -2,6 +2,7 @@
 
 import React, { SelectHTMLAttributes } from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import { Paperclip } from "lucide-react";
 import {
   FieldErrorText,
   FieldGroup,

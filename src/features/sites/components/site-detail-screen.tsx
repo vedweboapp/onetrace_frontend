@@ -8,10 +8,13 @@ import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
-import { fetchSite } from "@/features/sites/api/site.api";
+import { fetchSite, updateSiteAttachments } from "@/features/sites/api/site.api";
+import { SITE_PATHS } from "@/features/sites/api/site.paths";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -20,7 +23,8 @@ import {
 } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
-import { AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 function siteClientId(site: Site): number | null {
   if (typeof site.client === "number" && Number.isFinite(site.client) && site.client > 0) return site.client;
@@ -140,6 +144,8 @@ function SiteDetailBodyWithContacts({
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
+  const tabsStorageKey = useTabOrderStorageKey("siteDetail");
   const [clientNameById, setClientNameById] = React.useState<Record<number, string>>({});
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [activeTab, setActiveTab] = React.useState("details");
@@ -147,9 +153,11 @@ export function SiteDetailScreen({ siteId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: tAudit("tabDetails") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [tAudit],
+    [tAudit, tCommon],
   );
 
   React.useEffect(() => {
@@ -193,10 +201,11 @@ export function SiteDetailScreen({ siteId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="site-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -228,6 +237,16 @@ export function SiteDetailScreen({ siteId }: Props) {
               dateFmt={dateFmt}
               onSaved={retry}
             />
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="sites"
+              updateAttachments={(refs) => updateSiteAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={SITE_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.site}

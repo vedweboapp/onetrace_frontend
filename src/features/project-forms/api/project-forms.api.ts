@@ -1,6 +1,7 @@
 import api from "@/core/api/axios";
 import { assertApiSuccess } from "@/core/types/api.types";
 import { PROJECT_FROM_PATH } from "./project-api.path";
+import { sectionPayloadToFormData } from "@/shared/form/utils/section-form-data.util";
 
 /** POST /api/v1/forms/ */
 export async function createProjectForm(payload: any): Promise<any> {
@@ -17,6 +18,17 @@ export async function updateProjectForm(
   payload: any,
 ): Promise<any> {
   const { data } = await api.put(`forms/${formId}/`, payload, {
+    skipErrorToast: true,
+  });
+  return data?.data ?? data;
+}
+
+/** PATCH /api/v1/forms/{formId}/ */
+export async function patchProjectForm(
+  formId: string | number,
+  payload: any,
+): Promise<any> {
+  const { data } = await api.patch(`forms/${formId}/`, payload, {
     skipErrorToast: true,
   });
   return data?.data ?? data;
@@ -74,18 +86,35 @@ export async function createProjectFormRules(
   // Return merged result or single result
   return results.length > 1 ? results : results[0] || null;
 }
+
+/** DELETE /api/v1/forms/{formId}/rules/ */
+export async function deleteProjectFormRules(
+  formId: string | number,
+  ruleIds: (string | number)[],
+): Promise<any> {
+  if (!ruleIds || ruleIds.length === 0) {
+    return null;
+  }
+
+  const { data } = await api.delete(`forms/${formId}/rules/`, {
+    data: { ids: ruleIds },
+    skipErrorToast: true,
+  });
+  return data?.data ?? data;
+}
+
 /** POST /api/v1/forms/{formId}/sections/ */
 export async function createProjectFormSections(
   formId: string | number,
   sectionsPayload: any,
 ): Promise<any> {
-  const payload = Array.isArray(sectionsPayload)
-    ? { create: sectionsPayload }
-    : sectionsPayload;
+  const formData = sectionPayloadToFormData(sectionsPayload);
   const { data } = await api.post(
     `forms/${formId}/sections/`,
-    payload,
-    { skipErrorToast: true },
+    formData,
+    {
+      skipErrorToast: true,
+    },
   );
   assertApiSuccess(data);
   return data.data;

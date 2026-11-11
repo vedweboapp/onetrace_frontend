@@ -14,11 +14,16 @@ import { useDashboardSidebarStore } from "@/features/dashboard/store/dashboard-s
 import { useDashboardAppearanceStore } from "@/features/settings/personal-profile/store/dashboard-appearance.store";
 import { routes } from "@/shared/config/routes";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { AppTabs } from "@/shared/ui/app-tabs";
+import { AppTabs } from "@/shared/ui";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
 import { useTranslations } from "next-intl";
 import api from "@/core/api/axios";
+import {
+  buildQuickCreateReturnHref,
+  isProjectFormQuickCreateParentBack,
+} from "@/shared/utils/quick-create-navigation.util";
 import FormRenderer, { FormRendererRef } from "./FormRenderer";
+import { ImageOverlapPreviewCard } from "../components/position-selection";
 import FormRuleModal from "./form-rule-modal";
 import RuleTypeModal from "../components/RuleTypeModal";
 import FormAdvancedRuleModal from "./form-advanced-rule-modal";
@@ -28,7 +33,11 @@ import {
   SECTION_RULE_TARGET_PREFIX,
 } from "./form-rules.types";
 import type { RuleFieldOption } from "./rule-field-select";
-import { Edit2, Monitor, Smartphone, Trash2 } from "lucide-react";
+import {
+  useCompositeItemsCatalog,
+  resolveCompositeFieldOptions,
+} from "../utils/composite-items.util";
+import { Edit2, Monitor, Smartphone, Trash2, ChevronDown, X, Save, Check, Globe } from "lucide-react";
 import type { FormBuilderApiHandlers } from "./form-builder.handlers";
 
 interface Field {
@@ -420,13 +429,23 @@ export default function FormBuilderLayout({
   } = useFormStore();
 
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  // Matches dashboard-sidebar.tsx "md:flex" — sidebar is visible only at ≥ 768px.
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const { catalog: compositeCatalog } = useCompositeItemsCatalog(true);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    setIsLargeScreen(media.matches);
-    const listener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+    const lgMedia = window.matchMedia("(min-width: 1024px)");
+    const mdMedia = window.matchMedia("(min-width: 768px)");
+    setIsLargeScreen(lgMedia.matches);
+    setIsSidebarVisible(mdMedia.matches);
+    const lgListener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
+    const mdListener = (e: MediaQueryListEvent) => setIsSidebarVisible(e.matches);
+    lgMedia.addEventListener("change", lgListener);
+    mdMedia.addEventListener("change", mdListener);
+    return () => {
+      lgMedia.removeEventListener("change", lgListener);
+      mdMedia.removeEventListener("change", mdListener);
+    };
   }, []);
 
   const searchParams = useSearchParams();
@@ -436,6 +455,12 @@ export default function FormBuilderLayout({
     : rawPurpose === "edit_project_job_form" || rawPurpose === "edit__project_form"
       ? "edit_project_form"
       : rawPurpose;
+  const nameFieldCopy =
+    purpose === "create_module"
+      ? { label: t("moduleNameLabel"), placeholder: t("moduleNamePlaceholder") }
+      : purpose === "create_layout" || purpose === "edit_layout"
+        ? { label: t("layoutNameLabel"), placeholder: t("layoutNamePlaceholder") }
+        : { label: t("nameLabel"), placeholder: t("namePlaceholder") };
   const installationTypeId = searchParams.get("installation_type_id") || undefined;
   const router = useRouter();
   const params = useParams();
@@ -472,6 +497,39 @@ export default function FormBuilderLayout({
 
   const [activeTab, setActiveTab] = useState<"form" | "preview" | "rules">("form");
   const [previewLayout, setPreviewLayout] = useState<"desktop" | "phone">("desktop");
+  const [previewFormData, setPreviewFormData] = useState<Record<string, any>>({});
+
+  const handlePreviewFieldChange = useCallback((name: string, value: any) => {
+    setPreviewFormData((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const allActiveFields = React.useMemo(() => {
+    return sections
+      .filter((s) => !s.is_deleted)
+      .flatMap((sec) => (sec.fields || []).filter((f) => !f.is_deleted));
+  }, [sections]);
+
+  const positionSelectionFields = React.useMemo(() => {
+    return allActiveFields.filter((f) => f.field_type === "position_selection");
+  }, [allActiveFields]);
+
+  const candidateImageFields = React.useMemo(() => {
+    return allActiveFields.filter((f) => {
+      const t = (f.field_type || f.type || "").toLowerCase().replace(/[-\s]/g, "_");
+      return [
+        "picklist",
+        "select",
+        "multi_select",
+        "radio",
+        "checkbox",
+        "image_upload",
+        "file_upload",
+      ].includes(t);
+    });
+  }, [allActiveFields]);
+
+  const showImageOverlapPreview =
+    positionSelectionFields.length > 0 || candidateImageFields.length >= 2;
 
   const tabs = [
     { id: "form", label: "Form" },
@@ -581,6 +639,12 @@ export default function FormBuilderLayout({
                         : f.properties?.is_public || false,
                     ...(editorType ? { editor_type: editorType } : {}),
                     ...validationRules,
+                    is_composite: f.is_composite !== undefined ? Boolean(f.is_composite) : Boolean(validationRules.isComposite ?? validationRules.is_composite),
+                    composite_items: f.composite_items || validationRules.compositeItems || validationRules.composite_items || [],
+                    defaultValue: f.defaultValue ?? f.default_value ?? validationRules.defaultValue ?? validationRules.default_value,
+                    fill_field: f.fill_field ?? f.fill_field_id ?? validationRules.fillField ?? validationRules.fill_field ?? f.properties?.fill_field ?? f.target_image_field,
+                    fill_field_id: f.fill_field_id ?? f.fill_field ?? validationRules.fillFieldId ?? validationRules.fill_field_id,
+                    target_image_field: f.target_image_field ?? f.fill_field ?? validationRules.targetImageField,
                   };
                 }),
             }));
@@ -787,17 +851,17 @@ export default function FormBuilderLayout({
             ...r,
             field_api_name: r.field_api_name
               ? normalizeRuleTarget(
-                  r.field_api_name,
-                  "field",
-                  r.api_name,
-                  r.section_name,
-                  r.f_id,
-                  r.field_id,
-                  r.s_id,
-                  undefined,
-                  undefined,
-                  initializedSections,
-                )
+                r.field_api_name,
+                "field",
+                r.api_name,
+                r.section_name,
+                r.f_id,
+                r.field_id,
+                r.s_id,
+                undefined,
+                undefined,
+                initializedSections,
+              )
               : r.field_api_name,
             output_fields: (r.output_fields || []).map(normalizeOutput),
             blocks: (r.blocks || []).map(normalizeBlock),
@@ -944,6 +1008,25 @@ export default function FormBuilderLayout({
                     : f.properties?.is_public || false,
                 ...(editorType ? { editor_type: editorType } : {}),
                 ...validationRules,
+                is_composite: f.is_composite !== undefined ? Boolean(f.is_composite) : Boolean(validationRules.isComposite ?? validationRules.is_composite),
+                composite_items: f.composite_items || validationRules.compositeItems || validationRules.composite_items || [],
+                defaultValue: f.defaultValue ?? f.default_value ?? validationRules.defaultValue ?? validationRules.default_value,
+                options:
+                  f.options && f.options.length > 0
+                    ? f.options
+                    : f.associated_options && f.associated_options.length > 0
+                      ? f.associated_options
+                      : [],
+                associated_options: f.associated_options || [],
+                associated_value_type:
+                  f.associated_value_type ||
+                  (f.associated_options && f.associated_options.length > 0
+                    ? (f.associated_options[0]?.file !== undefined || f.associated_options[0]?.image
+                        ? "image"
+                        : (typeof f.associated_options[0]?.value === "string" && (f.associated_options[0].value.startsWith("#") || f.associated_options[0].value.startsWith("rgb")))
+                          ? "color"
+                          : f.associated_options[0]?.associated_value_type || "default")
+                    : "default"),
               };
             }),
         }),
@@ -968,6 +1051,37 @@ export default function FormBuilderLayout({
   const [showAdvancedRuleModal, setShowAdvancedRuleModal] = useState<boolean>(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [closeMenuOpen, setCloseMenuOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const closeMenuRef = useRef<HTMLDivElement>(null);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!closeMenuOpen && !saveMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | PointerEvent) => {
+      const target = e.target as Node;
+      if (closeMenuRef.current && !closeMenuRef.current.contains(target)) {
+        setCloseMenuOpen(false);
+      }
+      if (saveMenuRef.current && !saveMenuRef.current.contains(target)) {
+        setSaveMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCloseMenuOpen(false);
+        setSaveMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenuOpen, saveMenuOpen]);
+
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
 
@@ -1006,12 +1120,17 @@ export default function FormBuilderLayout({
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((field) => {
           const fId = field.f_id ?? (hasPersistedId(field.id) ? field.id : field._uid);
+          const runtimeOptions = field.is_composite
+            ? resolveCompositeFieldOptions(field as any, compositeCatalog)
+            : (field.options || []);
           return {
             value: getFieldRuleTarget(field),
             label: field.field_label || field.api_name || "Untitled Field",
             type: field.field_type,
-            options: field.options,
+            options: runtimeOptions,
             apiName: field.api_name,
+            is_composite: field.is_composite,
+            composite_items: field.composite_items,
             targetType: "field" as const,
             fieldId: hasPersistedId(field.id) ? field.id! : null,
             f_id: fId,
@@ -1026,6 +1145,27 @@ export default function FormBuilderLayout({
 
       return [sectionOption, ...fieldOptions];
     });
+
+  const getRuleDisplayValue = (fieldApiName?: string, val?: any) => {
+    if (!fieldApiName || val === undefined || val === null || val === "") return "";
+    const targetField = ruleFieldOptions.find((f) => f.value === fieldApiName || f.apiName === fieldApiName);
+    const options = targetField?.options;
+    if (!options || !Array.isArray(options) || options.length === 0) {
+      return Array.isArray(val) ? val.join(", ") : String(val);
+    }
+    const valArr = Array.isArray(val) ? val : String(val).split(",").map((s) => s.trim());
+    const labels = valArr.map((v) => {
+      const match = options.find((opt: any) => {
+        const optVal = typeof opt === "object" ? String(opt.value ?? opt.label ?? "") : String(opt);
+        return optVal.toLowerCase() === String(v).toLowerCase();
+      });
+      if (match) {
+        return typeof match === "object" ? (match.label || match.value) : match;
+      }
+      return v;
+    });
+    return labels.join(", ");
+  };
 
   const addFieldToSection = (sectionUid: string, fieldConfig: any) => {
     if (!sectionUid) return;
@@ -1153,7 +1293,7 @@ export default function FormBuilderLayout({
     setDirty(true);
   };
 
-  const handleSave = async (isClose = false) => {
+  const handleSave = async (isClose = false, isPublish = false) => {
     if (!moduleName.trim()) {
       setModuleNameInvalid(true);
       return;
@@ -1162,6 +1302,7 @@ export default function FormBuilderLayout({
 
     try {
       setSaving(true);
+      if (isPublish) setPublishing(true);
       const isNew = !formSchema || formSchema.length === 0;
       let savedFormId: string | number | undefined = undefined;
 
@@ -1181,7 +1322,118 @@ export default function FormBuilderLayout({
 
         if (f.placeholder) fieldPayload.placeholder = f.placeholder;
         if (f.helpText) fieldPayload.help_text = f.helpText;
-        if (f.options && f.options.length > 0) fieldPayload.options = f.options;
+        if (f.is_composite) {
+          fieldPayload.is_composite = true;
+          fieldPayload.options = [];
+        } else if (
+          (f.associated_options && f.associated_options.length > 0) ||
+          (f.options && f.options.length > 0)
+        ) {
+          // Normalize options: always produce plain objects, strip browser-only
+          // fields (fileObject, fileName) that are not JSON-serialisable.
+          const rawOpts =
+            f.options && f.options.length > 0 ? f.options : f.associated_options;
+          const cleaned = (rawOpts as any[]).map((opt: any) => {
+            if (!opt || typeof opt !== "object") {
+              const s = String(opt ?? "");
+              return { label: s, value: s, associated_value_type: "default", associated_value: null };
+            }
+            const { fileObject, fileName, file, ...rest } = opt;
+            const cleanOpt: any = { ...rest };
+            const resolvedFile =
+              fileObject instanceof File
+                ? fileObject
+                : file instanceof File
+                  ? file
+                  : opt.associated_value instanceof File
+                    ? opt.associated_value
+                    : null;
+
+            cleanOpt.fileObject = resolvedFile;
+            cleanOpt.fileName = fileName ?? (resolvedFile ? resolvedFile.name : null);
+            cleanOpt.file = typeof file === "string" ? file : (typeof opt.associated_value === "string" ? opt.associated_value : null);
+            return cleanOpt;
+          });
+
+          // Check if options are NOT default (e.g. colors, images)
+          const isNonDefault =
+            (f.associated_value_type && f.associated_value_type !== "default") ||
+            cleaned.some(
+              (opt: any) =>
+                (opt.associated_value_type && opt.associated_value_type !== "default") ||
+                opt.image ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb"))) ||
+                (typeof opt.color === "string" && (opt.color.startsWith("#") || opt.color.startsWith("rgb"))),
+            );
+
+          if (isNonDefault) {
+            const rawType = String(f.associated_value_type || cleaned[0]?.associated_value_type || "color").toLowerCase();
+            const targetType = rawType === "image" ? "image" : "color";
+            fieldPayload.associated_value_type = targetType;
+            fieldPayload.associated_options = cleaned.map((opt: any) => {
+              const optLabel = String(opt.label ?? opt.value ?? "");
+              const optColor =
+                opt.color ||
+                opt.associated_color ||
+                opt.color_value ||
+                (typeof opt.value === "string" && (opt.value.startsWith("#") || opt.value.startsWith("rgb")) ? opt.value : null) ||
+                (typeof opt.associated_value === "string" && (opt.associated_value.startsWith("#") || opt.associated_value.startsWith("rgb")) ? opt.associated_value : null);
+
+              const isColorOpt = targetType === "color" || opt.associated_value_type === "color" || !!optColor;
+
+              if (isColorOpt) {
+                // Color option: ONLY label (string) and value (the color hex string)
+                return {
+                  label: optLabel,
+                  value: optColor || opt.value || "#3b82f6",
+                };
+              }
+
+              // Image option: ONLY label, value (could be null), and file (null for new files / blobs)
+              const rawFile =
+                opt.file ||
+                opt.image ||
+                (!String(opt.associated_value || "").startsWith("#") ? opt.associated_value : null) ||
+                null;
+
+              const isBlobOrData =
+                typeof rawFile === "string" &&
+                (rawFile.startsWith("blob:") || rawFile.startsWith("data:"));
+
+              const fileUrl =
+                !isBlobOrData && typeof rawFile === "string" && (rawFile.startsWith("http://") || rawFile.startsWith("https://") || rawFile.startsWith("/"))
+                  ? rawFile
+                  : null;
+
+              const cleanImgOpt: any = {
+                label: optLabel,
+                value: opt.value !== undefined ? opt.value : (optLabel || null),
+                file: fileUrl,
+              };
+              if (opt.fileObject instanceof File) {
+                cleanImgOpt.fileObject = opt.fileObject;
+              }
+              return cleanImgOpt;
+            });
+            fieldPayload.options = [];
+          } else {
+            fieldPayload.options = cleaned.map((opt: any) => ({
+              label: String(opt.label ?? opt.value ?? ""),
+              value: String(opt.value ?? opt.label ?? ""),
+            }));
+          }
+        }
+        if (Array.isArray(f.composite_items)) {
+          fieldPayload.composite_items = f.composite_items;
+        }
+        if (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== "") {
+          fieldPayload.default_value = f.defaultValue;
+        }
+        if (f.fill_field != null) {
+          fieldPayload.fill_field = f.fill_field;
+          fieldPayload.fill_field_id = f.fill_field_id ?? f.fill_field;
+          fieldPayload.target_image_field = f.target_image_field ?? f.fill_field;
+        }
 
         const validationRules: any = {};
         const excludeKeys = [
@@ -1200,6 +1452,8 @@ export default function FormBuilderLayout({
           "placeholder",
           "helpText",
           "options",
+          "associated_options",
+          "associated_value_type",
           "required",
           "is_searchable",
           "is_filterable",
@@ -1209,6 +1463,15 @@ export default function FormBuilderLayout({
           "show_tooltip",
           "tool_tip",
           "properties",
+          // These are top-level payload fields — do NOT duplicate into validation_rules
+          "is_composite",
+          "composite_items",
+          "defaultValue",
+          "default_value",
+          "is_custom",
+          "fill_field",
+          "fill_field_id",
+          "target_image_field",
         ];
 
         Object.keys(f).forEach((key) => {
@@ -1479,6 +1742,11 @@ export default function FormBuilderLayout({
         }
       }
 
+      // Mark as published when triggered from "Save and Publish"
+      if (isPublish) {
+        finalPayload.is_published = true;
+      }
+
       if (
         (purpose === "create_project_form" || purpose === "edit_project_form") &&
         apiHandlers
@@ -1511,10 +1779,26 @@ export default function FormBuilderLayout({
           formId &&
           apiHandlers.updateForm
         ) {
-          if (deletedRuleIds.length > 0 && rawPurpose === "edit_project_job_form") {
-            await api.post(`project-forms/${formId}/rules/mass-delete/`, {
-              rule_ids: deletedRuleIds.map((entry) => entry.id),
-            });
+          if (deletedRuleIds.length > 0) {
+            const validDeletedIds = deletedRuleIds
+              .map((entry) => entry.id)
+              .filter((id) => id != null && id !== "")
+              .map((id) => (!isNaN(Number(id)) ? Number(id) : id));
+
+            if (validDeletedIds.length > 0) {
+              if (apiHandlers.deleteRules) {
+                await apiHandlers.deleteRules(formId, validDeletedIds, handlerCtx);
+              } else if (rawPurpose === "edit_project_job_form") {
+                await api.post(`project-forms/${formId}/rules/mass-delete/`, {
+                  rule_ids: validDeletedIds,
+                });
+              } else {
+                await api.delete(`forms/${formId}/rules/`, {
+                  data: { ids: validDeletedIds },
+                  skipErrorToast: true,
+                });
+              }
+            }
           }
           await apiHandlers.updateForm(formId, finalPayload, handlerCtx);
         }
@@ -1561,8 +1845,22 @@ export default function FormBuilderLayout({
       setDirty(false);
       setDeletedRuleIds([]);
 
+      const createdFormIdNum =
+        typeof savedFormId === "number"
+          ? savedFormId
+          : typeof savedFormId === "string" && /^\d+$/.test(savedFormId)
+            ? Number.parseInt(savedFormId, 10)
+            : null;
+      const returnToParentWithForm =
+        purpose === "create_project_form" &&
+        createdFormIdNum != null &&
+        createdFormIdNum > 0 &&
+        isProjectFormQuickCreateParentBack(BackUrl) &&
+        (isClose || isPublish);
+
       const targetFormId = savedFormId || resolvedLayoutId;
-      if (targetFormId && !isClose) {
+      // Skip hydrate when leaving back to the parent entity form with the new form selected.
+      if (targetFormId && !isClose && !returnToParentWithForm) {
         const nextPurpose =
           purpose === "create_project_form" ? "edit_project_form" : purpose;
         await fetchAndHydrateSchema(targetFormId, nextPurpose);
@@ -1583,7 +1881,9 @@ export default function FormBuilderLayout({
 
       toastSuccess(successMessage);
 
-      if (purpose === "create_project_form" && savedFormId && !isClose) {
+      if (returnToParentWithForm && createdFormIdNum != null) {
+        router.push(buildQuickCreateReturnHref(BackUrl, createdFormIdNum, "form"));
+      } else if (purpose === "create_project_form" && savedFormId && !isClose) {
         router.push(
           `${routes.dashboard.settingsProjectForms}/create?purpose=edit_project_form&layout_id=${savedFormId}`,
         );
@@ -1591,7 +1891,7 @@ export default function FormBuilderLayout({
         if (purpose === "create_module") {
           router.push(routes.dashboard.settingsModules);
         } else if (purpose === "create_project_form") {
-          router.back();
+          router.push(BackUrl);
         } else if (purpose === "create_layout" || purpose === "edit_layout") {
           router.push(`${routes.dashboard.settingsModules}/${targetModule}/layout`);
         } else if (BackUrl) {
@@ -1605,6 +1905,7 @@ export default function FormBuilderLayout({
       toastApiError(err);
     } finally {
       setSaving(false);
+      setPublishing(false);
     }
   };
 
@@ -1669,17 +1970,42 @@ export default function FormBuilderLayout({
   const subheaderTop = isHydrogen ? 100 : 56;
   const modulebarTop = isHydrogen ? 156 : 112;
 
+  // Ref used to measure the mobile sub-header height so we can push content below it.
+  const subheaderRef = React.useRef<HTMLDivElement>(null);
+
   // Keep CSS variables in sync with sidebar width & top offset so fixed sub-header and
   // ModuleBar position animate purely via CSS (no React render delay).
   React.useLayoutEffect(() => {
+    // On mobile (< 768px) the sidebar is display:none — use 0 so the sub-header
+    // doesn't inherit the JS-state sidebar width and create a blank left gap.
+    const effectiveLeftW = isSidebarVisible ? leftSidebarW : 0;
+    const effectiveRightW = isSidebarVisible ? rightSidebarW : 0;
+
+    // Always sync all positioning vars — both desktop and mobile fixed sub-header use them.
+    document.documentElement.style.setProperty("--subheader-top", `${subheaderTop}px`);
+    document.documentElement.style.setProperty("--subheader-left-w", `${effectiveLeftW}px`);
+    document.documentElement.style.setProperty("--subheader-right-w", `${effectiveRightW}px`);
+    document.documentElement.style.setProperty("--subheader-sidebar-w", `${effectiveLeftW}px`);
     if (isLargeScreen) {
-      document.documentElement.style.setProperty("--subheader-left-w", `${leftSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-right-w", `${rightSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-sidebar-w", `${leftSidebarW}px`);
-      document.documentElement.style.setProperty("--subheader-top", `${subheaderTop}px`);
       document.documentElement.style.setProperty("--modulebar-top", `${modulebarTop}px`);
     }
-  }, [leftSidebarW, rightSidebarW, subheaderTop, modulebarTop, isLargeScreen]);
+  }, [leftSidebarW, rightSidebarW, subheaderTop, modulebarTop, isLargeScreen, isSidebarVisible]);
+
+  // On mobile/tablet, measure the fixed sub-header height and expose it as a CSS var so
+  // the spacer div and any other elements can avoid being hidden underneath it.
+  React.useLayoutEffect(() => {
+    if (isLargeScreen) return;
+    const el = subheaderRef.current;
+    if (!el) return;
+    const sync = () => {
+      const h = el.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--mobile-subheader-h", `${h}px`);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isLargeScreen]);
 
   const {
     formRef,
@@ -1783,28 +2109,40 @@ export default function FormBuilderLayout({
       }
       {/* Responsive Sub-header */}
       <div
-        className={`z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${isLargeScreen
+        ref={subheaderRef}
+        className={`z-20 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${
+          isLargeScreen
             ? "fixed flex items-center justify-between h-14 px-6"
-            : "relative w-full flex flex-col gap-4 p-4"
-          }`}
+            : "fixed w-full flex flex-col gap-2.5 px-3 py-2.5"
+        }`}
         style={
           isLargeScreen
             ? {
-              top: "var(--subheader-top, 56px)",
-              left: "var(--subheader-left-w, 0px)",
-              width: "calc(100% - var(--subheader-left-w, 0px) - var(--subheader-right-w, 0px))",
-              transition: "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
-            }
-            : undefined
+                top: "var(--subheader-top, 56px)",
+                left: "var(--subheader-left-w, 0px)",
+                width: "calc(100% - var(--subheader-left-w, 0px) - var(--subheader-right-w, 0px))",
+                transition:
+                  "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1), top 300ms cubic-bezier(0.4,0,0.2,1)",
+              }
+            : {
+                // On mobile/tablet: pin the fixed sub-header below the top nav and
+                // start it AFTER the sidebar so it doesn't hide behind it.
+                top: "var(--subheader-top, 56px)",
+                left: "var(--subheader-left-w, 0px)",
+                right: "var(--subheader-right-w, 0px)",
+                transition:
+                  "left 300ms cubic-bezier(0.4,0,0.2,1), right 300ms cubic-bezier(0.4,0,0.2,1)",
+              }
         }
       >
-        <div className="flex items-center gap-3 w-full lg:w-auto">
-          <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
-            <div className="w-4 h-4 bg-white rounded-full opacity-80" />
+        {/* Row 1 (mobile): name input — full-width so it doesn't feel cramped */}
+        <div className="flex items-center gap-2 w-full lg:w-auto min-w-0">
+          <div className="w-7 h-7 shrink-0 bg-black rounded flex items-center justify-center">
+            <div className="w-3.5 h-3.5 bg-white rounded-full opacity-80" />
           </div>
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
             <label htmlFor="form-builder-name" className="sr-only">
-              {t("nameLabel")}
+              {nameFieldCopy.label}
             </label>
             <input
               id="form-builder-name"
@@ -1820,7 +2158,9 @@ export default function FormBuilderLayout({
               aria-invalid={moduleNameInvalid || undefined}
               aria-required="true"
               className={cn(
-                "min-w-[12rem] max-w-[16rem] rounded-md border bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900 outline-none transition",
+                /* Mobile: stretch full width. Desktop (sm+): cap to a comfortable range */
+                "flex-1 min-w-0 sm:w-auto sm:min-w-[12rem] sm:max-w-[16rem] lg:flex-none",
+                "h-9 rounded-md border bg-white px-2.5 text-sm font-semibold text-slate-900 outline-none transition",
                 "placeholder:font-normal placeholder:text-slate-400",
                 "focus:ring-2 focus:ring-[color:var(--dash-accent,#111111)]/20",
                 "dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
@@ -1828,7 +2168,7 @@ export default function FormBuilderLayout({
                   ? "border-red-500 focus:border-red-500 dark:border-red-500"
                   : "border-slate-200 hover:border-slate-300 focus:border-[color:var(--dash-accent,#111111)] dark:border-slate-700 dark:hover:border-slate-600",
               )}
-              placeholder={t("namePlaceholder")}
+              placeholder={nameFieldCopy.placeholder}
             />
             <span className={fieldRequiredMarkClassName} aria-hidden>
               *
@@ -1836,7 +2176,8 @@ export default function FormBuilderLayout({
           </div>
         </div>
 
-        <div className="flex justify-center w-full lg:w-auto lg:flex-1">
+        {/* Row 2 (mobile): tabs centred, Row 2 (desktop): centred flex-1 */}
+        <div className="flex justify-center w-full lg:w-auto lg:flex-1 min-w-0">
           <AppTabs
             tabs={tabs}
             value={activeTab}
@@ -1844,34 +2185,156 @@ export default function FormBuilderLayout({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
-          <Button variant="secondary" onClick={() => router.push(BackUrl)} className="flex-1 lg:flex-initial justify-center">
-            Close
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleSave(true)}
-            disabled={!dirty || saving}
-            className="flex-1 lg:flex-initial justify-center"
-          >
-            Save and Close
-          </Button>
-          <Button
-            onClick={() => handleSave(false)}
-            disabled={!dirty || saving}
-            className="flex-1 lg:flex-initial justify-center"
-          >
-            {saving ? "Saving..." : "Save"}
-          </Button>
+        {/* Row 3: Close Dropdown & Save Dropdown */}
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center lg:gap-2">
+          {/* Close Dropdown */}
+          <div ref={closeMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs w-full lg:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() => router.push(BackUrl)}
+              className="flex-1 lg:flex-none justify-center rounded-r-none border-r-0 px-3 h-9 text-xs sm:text-sm font-medium"
+            >
+              Close
+            </Button>
+            <button
+              type="button"
+              aria-label="More close options"
+              aria-expanded={closeMenuOpen}
+              onClick={() => {
+                setCloseMenuOpen((v) => !v);
+                setSaveMenuOpen(false);
+              }}
+              className={cn(
+                "flex items-center justify-center px-2.5 h-9 rounded-r-md border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 cursor-pointer",
+                "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                closeMenuOpen && "bg-slate-100 dark:bg-slate-800",
+              )}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform duration-150", closeMenuOpen && "rotate-180")} />
+            </button>
+
+            {closeMenuOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-48 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCloseMenuOpen(false);
+                    router.push(BackUrl);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+                >
+                  <X className="size-3.5 text-slate-400" />
+                  <span>Close</span>
+                </button>
+                <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setCloseMenuOpen(false);
+                    handleSave(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Check className="size-3.5 text-blue-500" />
+                  <span>Save and Close</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Save Dropdown */}
+          <div ref={saveMenuRef} className="relative inline-flex items-stretch rounded-md shadow-xs w-full lg:w-auto">
+            <Button
+              onClick={() => handleSave(false)}
+              disabled={!dirty || saving}
+              className="flex-1 lg:flex-none justify-center rounded-r-none border-r border-r-white/20 px-3.5 h-9 text-xs sm:text-sm font-medium"
+            >
+              {publishing ? "Publishing…" : saving ? "Saving…" : "Save"}
+            </Button>
+            <button
+              type="button"
+              aria-label="More save options"
+              aria-expanded={saveMenuOpen}
+              disabled={saving}
+              onClick={() => {
+                setSaveMenuOpen((v) => !v);
+                setCloseMenuOpen(false);
+              }}
+              className={cn(
+                "flex items-center justify-center px-2.5 h-9 rounded-r-md transition cursor-pointer",
+                "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]",
+                "hover:brightness-110 active:brightness-95",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                saveMenuOpen && "brightness-95",
+              )}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform duration-150", saveMenuOpen && "rotate-180")} />
+            </button>
+
+            {saveMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setSaveMenuOpen(false);
+                    handleSave(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Save className="size-3.5 text-slate-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold">Save</div>
+                    <div className="text-[10px] text-slate-400">Save changes and stay here</div>
+                  </div>
+                </button>
+                <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                <button
+                  type="button"
+                  disabled={!dirty || saving}
+                  onClick={() => {
+                    setSaveMenuOpen(false);
+                    handleSave(false, true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left cursor-pointer"
+                >
+                  <Globe className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-emerald-700 dark:text-emerald-400">Save and Publish</div>
+                    <div className="text-[10px] text-slate-400">Publish form for immediate use</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <ModuleBar />
+      {/* Spacer that accounts for ALL fixed bars above the content:
+           - Always: fixed sub-header height (--mobile-subheader-h)
+           - Form tab only: fixed ModuleBar chip row (--mobile-modulebar-h)
+           Desktop doesn't need this — canvas uses marginLeft/marginTop inline style. */}
+      {!isLargeScreen && (
+        <div
+          className="shrink-0 w-full"
+          style={{
+            height: activeTab === "form"
+              ? "calc(var(--mobile-subheader-h, 148px) + var(--mobile-modulebar-h, 68px))"
+              : "var(--mobile-subheader-h, 148px)",
+          }}
+          aria-hidden
+        />
+      )}
+
+      {activeTab === "form" && <ModuleBar />}
 
       {/* Main builder canvas offset past sidebar + ModuleBar */}
       <div
-        className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10"
-        style={isLargeScreen ? { marginLeft: canvasMarginLeft, marginTop: isHydrogen ? 44 : 0 } : { marginLeft: 0 }}
+        className="px-2 py-4 lg:p-6 transition-all duration-300 pt-4 lg:pt-10 max-w-full overflow-x-hidden"
+        style={isLargeScreen && activeTab === "form" ? { marginLeft: canvasMarginLeft, marginTop: isHydrogen ? 44 : 0 } : { marginLeft: 0, marginTop: isLargeScreen && isHydrogen ? 44 : 0 }}
       >
 
         <div className="mx-auto">
@@ -1905,44 +2368,43 @@ export default function FormBuilderLayout({
           )}
 
           {activeTab === "preview" && (
-            <div className="w-full">
+            <div className="w-full max-w-full overflow-x-hidden">
               <div className="mb-3 flex items-center justify-end">
-                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                <div className="inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "desktop"
+                    className={`flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded px-2.5 sm:px-3 text-xs sm:text-sm font-medium transition ${previewLayout === "desktop"
                       ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("desktop")}
                   >
-                    <Monitor className="size-4" />
+                    <Monitor className="size-3.5 sm:size-4" />
                     Desktop
                   </button>
                   <button
                     type="button"
-                    className={`flex h-9 items-center gap-2 rounded px-3 text-sm transition ${previewLayout === "phone"
+                    className={`flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded px-2.5 sm:px-3 text-xs sm:text-sm font-medium transition ${previewLayout === "phone"
                       ? "bg-[color:var(--dash-accent,#111111)] text-[color:var(--dash-on-accent,#ffffff)]"
                       : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       }`}
                     onClick={() => setPreviewLayout("phone")}
                   >
-                    <Smartphone className="size-4" />
+                    <Smartphone className="size-3.5 sm:size-4" />
                     Phone
                   </button>
                 </div>
               </div>
-              <div className="flex w-full justify-center">
+              <div className="flex flex-col lg:flex-row w-full items-start justify-center gap-6 px-1 sm:px-2">
                 <div
-                  className={`bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm ${previewLayout === "phone"
-                      ? "rounded-sm p-2 sm:p-4"
-                      : "w-full rounded-sm p-3 sm:p-8"
-                    }`}
-                  style={
+                  className={cn(
+                    "bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-x-hidden",
                     previewLayout === "phone"
-                      ? { width: 390, maxWidth: "100%" }
-                      : undefined
-                  }
+                      ? "w-[390px] max-w-full rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-slate-300 dark:border-slate-700"
+                      : showImageOverlapPreview
+                        ? "flex-1 min-w-0 max-w-4xl rounded-lg p-3 sm:p-6 lg:p-8"
+                        : "w-full rounded-lg p-3 sm:p-6 lg:p-8",
+                  )}
                 >
                   <FormRenderer
                     key={previewLayout}
@@ -1952,8 +2414,39 @@ export default function FormBuilderLayout({
                     )}
                     rules={rules}
                     renderMode={previewLayout}
+                    onFieldChange={handlePreviewFieldChange}
                   />
                 </div>
+
+                {/* Image Overlap Preview: placed on the RIGHT side outside form sections, only in Form Builder Preview */}
+                {showImageOverlapPreview && (
+                  <div className="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-4 space-y-4">
+                    {positionSelectionFields.length > 0 ? (
+                      positionSelectionFields.map((posField, idx) => (
+                        <ImageOverlapPreviewCard
+                          key={posField.api_name || posField._uid || idx}
+                          positionField={posField}
+                          allFields={allActiveFields}
+                          formData={previewFormData}
+                          candidateFields={candidateImageFields}
+                        />
+                      ))
+                    ) : (
+                      <ImageOverlapPreviewCard
+                        key="candidate-overlap-preview"
+                        positionField={{
+                          field_label: "Image Overlap Preview",
+                          first_field: candidateImageFields[0]?.api_name,
+                          second_field: candidateImageFields[1]?.api_name,
+                          default_position: "center",
+                        }}
+                        allFields={allActiveFields}
+                        formData={previewFormData}
+                        candidateFields={candidateImageFields}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end mt-4">
                 <Button onClick={handleFormSubmit} disabled={isSubmitting}>
@@ -1999,7 +2492,7 @@ export default function FormBuilderLayout({
                                 <p key={block._uid} className="text-sm text-slate-500 dark:text-slate-400">
                                   <strong className="text-xs text-slate-400">Block #{bIdx + 1}:</strong>
                                   <br />
-                                  <strong>If</strong> {ruleFieldOptions.find(f => f.value === block.field_api_name)?.label || block.field_api_name} {block.condition.replace(/_/g, ' ')} {block.value ? (Array.isArray(block.value) ? block.value.join(', ') : block.value) : ''}
+                                  <strong>If</strong> {ruleFieldOptions.find(f => f.value === block.field_api_name)?.label || block.field_api_name} {block.condition.replace(/_/g, ' ')} {getRuleDisplayValue(block.field_api_name, block.value)}
                                   <br />
                                   <strong>Then</strong> {block.output_fields.length} action(s) applied.
                                 </p>
@@ -2007,7 +2500,7 @@ export default function FormBuilderLayout({
                             </div>
                           ) : (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value) : ''}
+                              <strong>If</strong> {ruleFieldOptions.find(f => f.value === rule.field_api_name)?.label || rule.field_api_name} {rule.condition?.replace(/_/g, ' ') || ''} {getRuleDisplayValue(rule.field_api_name, rule.value)}
                               <br />
                               <strong>Then</strong> {rule.output_fields?.length || 0} action(s) applied.
                             </p>
@@ -2052,6 +2545,7 @@ export default function FormBuilderLayout({
         <FieldConfigModal
           fieldType={showModal?.type}
           initialConfig={showModal?.config || null}
+          sections={sections}
           onSave={(config: any) => {
             if (showModal._fieldUid) {
               updateFieldInSection(

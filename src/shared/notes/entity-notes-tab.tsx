@@ -1,0 +1,569 @@
+"use client";
+
+import * as React from "react";
+import { Check, Paperclip, Pencil, Trash2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
+import {
+  NOTE_MAX_BYTES,
+  NOTE_MAX_FILES,
+  createEntityNote,
+  deleteEntityNote,
+  fetchEntityNotes,
+  updateEntityNote,
+  type EntityNote,
+} from "@/shared/notes/entity-notes.api";
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
+import {
+  resolveEntityAttachmentLabel,
+  resolveEntityAttachmentUrl,
+} from "@/shared/attachments/entity-attachment-display.util";
+import { toastApiError, toastSuccess } from "@/shared/feedback/app-toast";
+import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format";
+import { AppButton, ConfirmDialog } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
+
+type DraftFile = {
+  key: string;
+  file: File;
+};
+
+type ComposerMode = { kind: "create" } | { kind: "edit"; note: EntityNote };
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function plainText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function noteTime(note: EntityNote): string | null {
+  const raw = note.modified_at || note.created_at;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : raw;
+}
+
+function noteDeleteHighlight(note: EntityNote | null): string | undefined {
+  if (!note) return undefined;
+  const title = note.title?.trim();
+  if (title) return title;
+  const preview = plainText(note.content ?? "");
+  if (preview) return preview.length > 48 ? `${preview.slice(0, 48)}…` : preview;
+  return undefined;
+}
+
+function sortNotes(rows: EntityNote[]): EntityNote[] {
+  return [...rows].sort((a, b) => {
+    const aTime = Date.parse(a.created_at ?? "") || 0;
+    const bTime = Date.parse(b.created_at ?? "") || 0;
+    return bTime - aTime;
+  });
+}
+
+export function EntityNotesTab({ detailPath }: { detailPath: string }) {
+  const t = useTranslations("Dashboard.common.notesTab");
+  const tActions = useTranslations("Dashboard.common.actions");
+  const dateFmt = useDashboardDateFormat();
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inlineEditRef = React.useRef<HTMLLIElement>(null);
+  const [notes, setNotes] = React.useState<EntityNote[]>([]);
+  const [mode, setMode] = React.useState<ComposerMode>({ kind: "create" });
+  const [title, setTitle] = React.useState("");
+  const [content, setContent] = React.useState("");
+  const [files, setFiles] = React.useState<DraftFile[]>([]);
+  const [keptAttachments, setKeptAttachments] = React.useState<EntityAttachment[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = React.useState<number[]>([]);
+  const [saving, setSaving] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<EntityNote | null>(null);
+  const [editorKey, setEditorKey] = React.useState(0);
+
+  const usedBytes =
+    files.reduce((sum, row) => sum + row.file.size, 0) +
+    keptAttachments.reduce((sum, file) => sum + (typeof file.file_size === "number" ? file.file_size : 0), 0);
+  const fileCount = files.length + keptAttachments.length;
+  const isEditing = mode.kind === "edit";
+  const editingNoteId = mode.kind === "edit" ? mode.note.id : null;
+
+  const loadNotes = React.useCallback(async () => {
+    try {
+      setNotes(sortNotes(await fetchEntityNotes(detailPath)));
+    } catch {
+      setNotes([]);
+    }
+  }, [detailPath]);
+
+  React.useEffect(() => {
+    void loadNotes();
+  }, [loadNotes]);
+
+  React.useEffect(() => {
+    if (!isEditing) return;
+    inlineEditRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [isEditing, editingNoteId, editorKey]);
+
+  function resetComposerFields() {
+    setTitle("");
+    setContent("");
+    setFiles([]);
+    setKeptAttachments([]);
+    setRemovedAttachmentIds([]);
+    setEditorKey((key) => key + 1);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function resetToCreate() {
+    setMode({ kind: "create" });
+    resetComposerFields();
+  }
+
+  function openEdit(note: EntityNote) {
+    setMode({ kind: "edit", note });
+    setTitle(note.title?.trim() ?? "");
+    setContent(note.content ?? "");
+    setFiles([]);
+    setKeptAttachments(note.attachments ?? []);
+    setRemovedAttachmentIds([]);
+    setEditorKey((key) => key + 1);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function addFiles(list: FileList | null) {
+    if (!list?.length) return;
+    const incoming = Array.from(list);
+    if (inputRef.current) inputRef.current.value = "";
+    setFiles((current) => {
+      const next = [...current];
+      const keptCount = keptAttachments.length;
+      for (const file of incoming) {
+        if (keptCount + next.length >= NOTE_MAX_FILES) {
+          toastApiError(new Error(t("tooManyFiles", { max: NOTE_MAX_FILES })), t("tooManyFiles", { max: NOTE_MAX_FILES }));
+          break;
+        }
+        const nextBytes =
+          keptAttachments.reduce((sum, item) => sum + (typeof item.file_size === "number" ? item.file_size : 0), 0) +
+          next.reduce((sum, row) => sum + row.file.size, 0) +
+          file.size;
+        if (nextBytes > NOTE_MAX_BYTES) {
+          toastApiError(new Error(t("tooLarge", { max: "20 MB" })), t("tooLarge", { max: "20 MB" }));
+          break;
+        }
+        next.push({ key: `${file.name}-${file.size}-${file.lastModified}-${next.length}`, file });
+      }
+      return next;
+    });
+  }
+
+  const composerProps = {
+    title,
+    content,
+    files,
+    keptAttachments,
+    fileCount,
+    usedBytes,
+    saving,
+    editorKey,
+    inputRef,
+    onTitleChange: setTitle,
+    onContentChange: setContent,
+    onAddFiles: addFiles,
+    onRemoveFile: (key: string) => setFiles((current) => current.filter((item) => item.key !== key)),
+    onRemoveKept: (file: EntityAttachment) => {
+      setKeptAttachments((current) => current.filter((item) => item !== file));
+      if (typeof file.id === "number") {
+        setRemovedAttachmentIds((current) => (current.includes(file.id!) ? current : [...current, file.id!]));
+      }
+    },
+    onCancel: resetToCreate,
+    onSave: () => void saveNote(),
+  };
+
+  async function saveNote() {
+    const trimmedTitle = title.trim();
+    const body = plainText(content);
+    if (!trimmedTitle && !body && fileCount === 0) {
+      toastApiError(new Error(t("required")), t("required"));
+      return;
+    }
+    setSaving(true);
+    try {
+      if (mode.kind === "edit" && mode.note.id != null) {
+        await updateEntityNote(detailPath, mode.note.id, {
+          title: trimmedTitle,
+          content,
+          files: files.map((row) => row.file),
+          deletedAttachmentIds: removedAttachmentIds,
+        });
+        toastSuccess(t("updatedToast"));
+      } else {
+        await createEntityNote(detailPath, {
+          title: trimmedTitle,
+          content,
+          files: files.map((row) => row.file),
+        });
+        toastSuccess(t("savedToast"));
+      }
+      resetToCreate();
+      await loadNotes();
+    } catch (error) {
+      toastApiError(error, t("saveError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    const noteId = pendingDelete?.id;
+    if (noteId == null) return;
+    setDeletingId(noteId);
+    try {
+      await deleteEntityNote(detailPath, noteId);
+      if (mode.kind === "edit" && mode.note.id === noteId) resetToCreate();
+      toastSuccess(t("deletedToast"));
+      setPendingDelete(null);
+      await loadNotes();
+    } catch (error) {
+      toastApiError(error, t("deleteError"));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <div className="min-w-0 space-y-5 px-4 py-4 sm:px-6">
+      {!isEditing ? (
+        <NoteComposer {...composerProps} variant="create" titleInputId="entity-note-title-create" />
+      ) : (
+        <p className="rounded-lg border border-dashed border-slate-200 px-3.5 py-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          {t("editingInline")}
+        </p>
+      )}
+
+      {notes.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("empty")}</p>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            {t("allNotes", { count: notes.length })}
+          </p>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            {notes.map((note, index) => {
+              const editingThis = mode.kind === "edit" && mode.note.id === note.id;
+              if (editingThis) {
+                return (
+                  <li key={note.id ?? `note-${index}`} ref={inlineEditRef} className="py-3">
+                    <NoteComposer
+                      {...composerProps}
+                      variant="edit"
+                      titleInputId={`entity-note-title-edit-${note.id ?? index}`}
+                    />
+                  </li>
+                );
+              }
+
+              const noteTitle = note.title?.trim() || "";
+              const when = noteTime(note);
+              const bodyHtml = note.content && plainText(note.content) ? note.content : "";
+              const attachments = note.attachments?.filter(Boolean) ?? [];
+              const canChange = note.id != null;
+              return (
+                <li
+                  key={note.id ?? `note-${index}`}
+                  className={cn(
+                    "group relative -mx-2 rounded-lg px-2 py-3.5 transition-colors",
+                    isEditing
+                      ? "opacity-50"
+                      : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {noteTitle ? (
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{noteTitle}</p>
+                      ) : null}
+
+                      {note.author || when ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {[note.author, when ? dateFmt.format(new Date(when)) : null].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+
+                      {bodyHtml ? (
+                        <div
+                          className={cn(
+                            "prose prose-sm max-w-none text-slate-600 dark:prose-invert dark:text-slate-300",
+                            "[&_p]:my-0 [&_p+p]:mt-1.5",
+                          )}
+                          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                        />
+                      ) : !noteTitle && attachments.length === 0 ? (
+                        <p className="text-sm italic text-slate-400 dark:text-slate-500">{t("noContent")}</p>
+                      ) : null}
+
+                      {attachments.length > 0 ? (
+                        <ul className="flex flex-wrap gap-1.5 pt-0.5">
+                          {attachments.map((file, fileIndex) => {
+                            const name = resolveEntityAttachmentLabel(file);
+                            const href = resolveEntityAttachmentUrl(file);
+                            return (
+                              <li key={`${name}-${fileIndex}`}>
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                                  >
+                                    <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                                    <span className="truncate">{name}</span>
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                                    <span className="truncate">{name}</span>
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+
+                    {canChange && !isEditing ? (
+                      <div
+                        className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                        aria-label={t("noteActions")}
+                      >
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                          aria-label={t("editAria")}
+                          title={t("edit")}
+                          onClick={() => openEdit(note)}
+                        >
+                          <Pencil className="size-3.5" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                          aria-label={t("deleteAria")}
+                          title={t("delete")}
+                          onClick={() => setPendingDelete(note)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onClose={() => {
+          if (deletingId == null) setPendingDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title={t("deleteTitle")}
+        body={t("deleteBody")}
+        highlight={noteDeleteHighlight(pendingDelete)}
+        confirmLabel={t("delete")}
+        cancelLabel={tActions("cancel")}
+        isBusy={deletingId != null}
+      />
+    </div>
+  );
+}
+
+function NoteComposer({
+  title,
+  content,
+  files,
+  keptAttachments,
+  fileCount,
+  usedBytes,
+  saving,
+  editorKey,
+  inputRef,
+  variant,
+  titleInputId,
+  onTitleChange,
+  onContentChange,
+  onAddFiles,
+  onRemoveFile,
+  onRemoveKept,
+  onCancel,
+  onSave,
+}: {
+  title: string;
+  content: string;
+  files: DraftFile[];
+  keptAttachments: EntityAttachment[];
+  fileCount: number;
+  usedBytes: number;
+  saving: boolean;
+  editorKey: number;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  variant: "create" | "edit";
+  titleInputId: string;
+  onTitleChange: (value: string) => void;
+  onContentChange: (value: string) => void;
+  onAddFiles: (list: FileList | null) => void;
+  onRemoveFile: (key: string) => void;
+  onRemoveKept: (file: EntityAttachment) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const t = useTranslations("Dashboard.common.notesTab");
+  const isEditing = variant === "edit";
+  const hasDraft =
+    Boolean(title.trim()) || Boolean(plainText(content)) || files.length > 0 || keptAttachments.length > 0 || isEditing;
+  const hasFiles = keptAttachments.length > 0 || files.length > 0;
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg border bg-white dark:bg-slate-950",
+        isEditing
+          ? "border-slate-300 shadow-sm dark:border-slate-600"
+          : "border-slate-200 dark:border-slate-700",
+      )}
+    >
+      {isEditing ? (
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3.5 py-2 dark:border-slate-800">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("edit")}</p>
+        </div>
+      ) : null}
+
+      <div className="px-3.5 pt-3">
+        <label className="sr-only" htmlFor={titleInputId}>
+          {t("noteTitle")}
+        </label>
+        <input
+          id={titleInputId}
+          value={title}
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder={t("titlePlaceholder")}
+          disabled={saving}
+          autoFocus={isEditing}
+          className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 dark:text-slate-50"
+        />
+      </div>
+
+      <div className="px-2 [&_.ProseMirror]:min-h-[5.5rem] [&_.ProseMirror]:px-1.5 [&_.ProseMirror]:py-1">
+        <RichTextEditor
+          key={editorKey}
+          value={content}
+          onChange={onContentChange}
+          placeholder={t("contentPlaceholder")}
+          readOnly={saving}
+          chrome="plain"
+          toolbarPlacement="bottom"
+          between={
+            hasFiles ? (
+              <div className="space-y-2 border-t border-dashed border-slate-100 px-2.5 py-2.5 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">{t("attachments")}</span>
+                  <span>{t("filesUploaded", { count: fileCount, max: NOTE_MAX_FILES })}</span>
+                  <span>{t("storageUsed", { used: formatBytes(usedBytes), max: "20 MB" })}</span>
+                </div>
+                <ul className="flex flex-wrap gap-1.5">
+                  {keptAttachments.map((file, index) => {
+                    const name = resolveEntityAttachmentLabel(file);
+                    return (
+                      <li
+                        key={`kept-${file.id ?? index}`}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                        <span className="truncate">{name}</span>
+                        <button
+                          type="button"
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                          aria-label={t("removeFile", { name })}
+                          onClick={() => onRemoveKept(file)}
+                        >
+                          <X className="size-3.5" aria-hidden />
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {files.map((row) => (
+                    <li
+                      key={row.key}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <Paperclip className="size-3 shrink-0 text-slate-400" aria-hidden />
+                      <span className="truncate">
+                        {row.file.name} ({formatBytes(row.file.size)})
+                      </span>
+                      <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                        aria-label={t("removeFile", { name: row.file.name })}
+                        onClick={() => onRemoveFile(row.key)}
+                      >
+                        <X className="size-3.5" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-2.5 py-2 dark:border-slate-800">
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="sr-only"
+            disabled={saving || fileCount >= NOTE_MAX_FILES}
+            onChange={(event) => onAddFiles(event.target.files)}
+          />
+          <button
+            type="button"
+            disabled={saving || fileCount >= NOTE_MAX_FILES}
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
+            aria-label={t("addFiles")}
+            title={t("addFiles")}
+          >
+            <Paperclip className="size-4" aria-hidden />
+          </button>
+          {!hasFiles ? (
+            <span className="hidden text-xs text-slate-400 sm:inline">{t("attachHint")}</span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {hasDraft ? (
+            <AppButton type="button" variant="secondary" size="sm" disabled={saving} onClick={onCancel}>
+              {t("cancel")}
+            </AppButton>
+          ) : null}
+          <AppButton type="button" variant="primary" size="sm" loading={saving} onClick={onSave}>
+            {t("save")}
+          </AppButton>
+        </div>
+      </div>
+    </div>
+  );
+}

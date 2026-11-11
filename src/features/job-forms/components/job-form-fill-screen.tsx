@@ -40,6 +40,12 @@ import type { FormRule } from "@/shared/form/formbuilder/form-rules.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
 import { toastError, toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
+import {
+  clearJobFormBackHref,
+  loadJobFormBackHref,
+  pickPreferredJobFormBackHref,
+  saveJobFormBackHref,
+} from "@/features/job-forms/utils/job-form-navigation.util";
 import { resolveFormBackUrl } from "@/shared/utils/quick-create-navigation.util";
 import { AppButton, SurfaceShell } from "@/shared/ui";
 import normalizeRules from "@/shared/form/utility/normalizerule";
@@ -69,7 +75,18 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
     jobFormId != null && jobFormId > 0 ? jobFormId : resolvedFormId;
 
   const jobDetailHref = `${routes.dashboard.jobs}/${jobId}`;
-  const safeBack = resolveFormBackUrl(searchParams.get("back"), "jobs", jobDetailHref);
+  const preferredBack = pickPreferredJobFormBackHref(
+    searchParams.get("back"),
+    loadJobFormBackHref(jobId),
+  );
+  const safeBack = resolveFormBackUrl(preferredBack, "jobs", jobDetailHref);
+
+  // Keep session back in sync so submit / next-form navigation retains quote ?tab=.
+  React.useEffect(() => {
+    if (safeBack && safeBack !== jobDetailHref) {
+      saveJobFormBackHref(jobId, safeBack);
+    }
+  }, [jobId, safeBack, jobDetailHref]);
 
   const [job, setJob] = React.useState<Job | null>(null);
   const [downloadingPdf, setDownloadingPdf] = React.useState(false);
@@ -292,7 +309,10 @@ export function JobFormFillScreen({ jobId, formId, jobFormId, formNameHint }: Pr
         await submitJobForm(jobId, fd, resolvedFormId);
         toastSuccess(t("submittedToast"));
       }
-      router.replace(safeBack);
+      const returnTo =
+        pickPreferredJobFormBackHref(safeBack, loadJobFormBackHref(jobId)) ?? safeBack;
+      clearJobFormBackHref(jobId);
+      router.replace(returnTo);
     } catch (error) {
       toastApiError(error, t("submitError"));
     }

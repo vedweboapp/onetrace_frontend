@@ -1,3 +1,4 @@
+import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { MaterialRequestExtraDispatchItem } from "./material-request-dispatch.types";
 
 export type MaterialRequestUserRef = {
@@ -120,6 +121,7 @@ export type MaterialRequestDetail = MaterialRequestListItem & {
   extra_dispatch_items?: MaterialRequestExtraDispatchItem[];
   dispatch_ids?: number[];
   restocked_quantity?: Record<string, number>;
+  attachments?: EntityAttachment[] | null;
 };
 
 export type MaterialRequestJobPayload = {

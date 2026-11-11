@@ -6,6 +6,8 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useState,
+  useMemo,
 } from "react";
 import { useForm, Controller } from "react-hook-form";
 import Input from "../components/input";
@@ -20,6 +22,7 @@ import RadioGroup from "../components/radio-group";
 import FormCheckbox from "../components/form-checkbox";
 import SignaturePad from "../components/signature-pad";
 import VideoRecorder from "../components/VideoRecorder";
+import QRScanner from "../components/QRScanner";
 import UsersSelect from "../components/users-select";
 import ImageUploadField from "../components/image-upload-field";
 import MultiImageUploadField from "../components/multi-image-upload-field";
@@ -28,11 +31,17 @@ import CountrySelect from "../components/CountrySelect";
 import StateSelect from "../components/StateSelect";
 import CitySelect from "../components/CitySelect";
 import RichTextEditor from "../components/rich-text-editor";
+import PositionSelection from "../components/position-selection";
 import { FormRule, SECTION_RULE_TARGET_PREFIX, FIELD_RULE_TARGET_PREFIX } from "./form-rules.types";
 import { buildFieldRuleState, FieldRuleState, RuleTargetGroups } from "./form-rules-engine";
 import { surfaceInputClassName, FieldGroup, FieldErrorText } from "@/shared/ui";
 import { signatureDataUrlToFileSync } from "@/shared/utils/signature-to-file.util";
 import { cn } from "@/core/utils/http.util";
+import {
+  useCompositeItemsCatalog,
+  resolveCompositeFieldOptions,
+  type CompositeItemEntry,
+} from "../utils/composite-items.util";
 
 interface Field {
   api_name: string;
@@ -69,6 +78,7 @@ interface FormRendererProps {
   onFieldChange?: (name: string, value: any) => void;
   rules?: FormRule[];
   renderMode?: "desktop" | "phone";
+  isPreview?: boolean;
 }
 
 export interface FormRendererRef {
@@ -173,10 +183,12 @@ const FIELD_COMPONENTS: Record<string, any> = {
   ),
   signature: SignaturePad,
   video_recorder: VideoRecorder,
+  qr_scanner: QRScanner,
   user: UsersSelect,
   country: CountrySelect,
   state: Input,
   city: Input,
+  position_selection: PositionSelection,
 };
 
 const deepEqual = (a: any, b: any): boolean => {
@@ -425,6 +437,9 @@ const FormField: React.FC<{
   ruleState?: FieldRuleState;
   forceSingleColumn?: boolean;
   fieldName?: string;
+  compositeCatalog?: CompositeItemEntry[];
+  allFields?: Field[];
+  isPreview?: boolean;
 }> = ({
   field,
   control,
@@ -439,6 +454,9 @@ const FormField: React.FC<{
   ruleState,
   forceSingleColumn = false,
   fieldName,
+  compositeCatalog = [],
+  allFields = [],
+  isPreview = false,
 }) => {
   if (!field || !field.api_name) return null;
 
@@ -446,6 +464,11 @@ const FormField: React.FC<{
 
   const normType = getNormalizedType(field.field_type);
   const Component = FIELD_COMPONENTS[normType] || Input;
+  const runtimeOptions = field.is_composite
+    ? resolveCompositeFieldOptions(field, compositeCatalog || [])
+    : field.options && field.options.length > 0
+      ? field.options
+      : field.associated_options || [];
 
   let extraProps: any = {};
   if (normType === "state") {
@@ -532,7 +555,7 @@ const FormField: React.FC<{
         ? "md:col-span-3"
         : "md:col-span-1";
 
-  const fieldShellClass = colSpanClass;
+  const fieldShellClass = cn(colSpanClass, "w-full min-w-0 max-w-full");
 
   if (normType === "phone" || normType === "mobile") {
     return (
@@ -621,8 +644,37 @@ const FormField: React.FC<{
     );
   }
 
+  if (normType === "position_selection") {
+    const defaultPos = field.default_position || field.defaultValue || "center";
+    return (
+      <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
+        <Controller
+          name={field.api_name}
+          control={control}
+          rules={validations}
+          defaultValue={defaultPos}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <PositionSelection
+              label={cleanLabel}
+              fieldRequired={isRequired}
+              name={field.api_name}
+              value={value || defaultPos}
+              onChange={onChange}
+              onBlur={onBlur}
+              errors={getError(field.api_name)}
+              readOnly={isReadOnly}
+              disabled={isDisabled}
+              defaultPosition={defaultPos}
+              options={field.options}
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
   // Use Controller for complex components
-  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "user", "currency"].includes(normType)) {
+  if (["file_upload", "image_upload", "multi_image_upload", "multi_select", "signature", "video_recorder", "qr_scanner", "user", "currency"].includes(normType)) {
     const currencyDefault = buildCurrencyFieldDefault(field);
     return (
       <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
@@ -655,7 +707,7 @@ const FormField: React.FC<{
                 errors={getError(field.api_name)}
                 readOnly={isReadOnly}
                 disabled={isDisabled}
-                options={field.options || []}
+                options={runtimeOptions}
                 placeholder={field.placeholder}
                 properties={field.properties}
                 defaultCurrency={normType === "currency" ? getFieldCurrencyDefault(field as Record<string, unknown>) : undefined}
@@ -681,8 +733,8 @@ const FormField: React.FC<{
   }
 
   // Use Controller for picklist / select so the native <select> is fully
-  // controlled (value prop). The uncontrolled register+defaultValue combo
-  // can silently swallow user changes in React 19.
+  // controlled (value prop). Color-fill picklists (associated_value_type==="color")
+  // also render as a normal dropdown - color overlay only appears in the Image Overlap Preview.
   if (["picklist", "select"].includes(normType)) {
     return (
       <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
@@ -691,7 +743,6 @@ const FormField: React.FC<{
           control={control}
           rules={validations}
           render={({ field: { onChange, onBlur, value } }) => {
-            // Coerce to scalar string – prevents React warning when value is object/array
             const scalarValue = (value != null && typeof value === "object")
               ? (Array.isArray(value) ? String(value[0] ?? "") : String((value as any).id ?? ""))
               : (value ?? "");
@@ -706,7 +757,7 @@ const FormField: React.FC<{
               errors={getError(field.api_name)}
               readOnly={isReadOnly}
               disabled={isDisabled}
-              options={field.options || []}
+              options={runtimeOptions}
               placeholder={field.placeholder}
               className="w-full"
             />
@@ -733,7 +784,7 @@ const FormField: React.FC<{
 
   return (
     <div className={fieldShellClass} data-field-name={fieldName ?? field.api_name}>
-      <Component {...commonProps} options={field.options || []} />
+      <Component {...commonProps} options={runtimeOptions} />
     </div>
   );
 };
@@ -943,16 +994,17 @@ const buildDefaultValuesFromSchema = (
             ? f.defaultValue
             : null;
       } else if (["multi_select", "user"].includes(normType)) {
-        formData[f.api_name] = Array.isArray(f.defaultValue)
-          ? f.defaultValue
-          : [];
+        const rawDv = f.defaultValue ?? f.default_value ?? f.properties?.validation_rules?.default_value;
+        formData[f.api_name] = Array.isArray(rawDv)
+          ? rawDv.map(String)
+          : (rawDv !== undefined && rawDv !== null && rawDv !== "" ? [String(rawDv)] : []);
       } else {
         // Use defaultValue (picklist, select, radio, single_line, etc.) if set.
         // Guard against plain objects ({}) which break components like react-phone-number-input.
-        const dv = f.defaultValue;
+        const dv = f.defaultValue ?? f.default_value ?? f.properties?.validation_rules?.default_value;
         formData[f.api_name] =
           dv !== undefined && dv !== null && dv !== "" && typeof dv !== "object"
-            ? dv
+            ? String(dv)
             : "";
       }
     });
@@ -1019,12 +1071,14 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
             f.defaultValue === true ||
             f.defaultValue === "true";
         } else if (
-          f.defaultValue !== undefined &&
-          f.defaultValue !== null &&
-          f.defaultValue !== ""
+          (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== "") ||
+          (f.default_value !== undefined && f.default_value !== null && f.default_value !== "")
         ) {
           // Honour the default value configured in the field builder
-          formData[f.api_name] = f.defaultValue;
+          const fallbackVal = f.defaultValue ?? f.default_value;
+          formData[f.api_name] = normType === "multi_select"
+            ? (Array.isArray(fallbackVal) ? fallbackVal.map(String) : [String(fallbackVal)])
+            : (typeof fallbackVal === "object" ? "" : String(fallbackVal));
         } else {
           formData[f.api_name] = "";
         }
@@ -1036,9 +1090,17 @@ const mapDataToFormFields = (data: any, schema: Section[], defaultValues = {}) =
 };
 
 const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
-  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [], renderMode = "desktop" }, ref) => {
+  ({ schema, defaultValues = {}, autoPopulateData = null, onFieldChange, rules = [], renderMode = "desktop", isPreview = false }, ref) => {
     const forceSingleColumn = renderMode === "phone";
     const formContainerRef = useRef<HTMLDivElement>(null);
+
+    const hasCompositeFields = React.useMemo(() => {
+      return (schema || []).some((sec) =>
+        (sec.fields || []).some((f) => f.is_composite)
+      );
+    }, [schema]);
+
+    const { catalog: compositeCatalog } = useCompositeItemsCatalog(hasCompositeFields);
     const initialValuesRef = useRef<Record<string, unknown>>(
       Array.isArray(schema) && schema.length > 0
         ? autoPopulateData
@@ -1066,14 +1128,26 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
 
     useEffect(() => {
       if (!onFieldChange) return;
-      const sub = watch((v, { name }) => {
-          if (name) {
-              // name is the api_name (now guaranteed to be unique via numbering system)
+      // Emit initial values once on mount only
+      try {
+        const initial = getValues();
+        if (initial && typeof initial === "object") {
+          Object.entries(initial).forEach(([k, v]) => {
+            if (v !== undefined && v !== "") {
+              onFieldChange(k, v);
+            }
+          });
+        }
+      } catch {}
+      // Subscribe to future changes only (not initial)
+      const sub = watch((v, { name, type }) => {
+          if (name && type === "change") {
               onFieldChange(name, (v as any)[name]);
           }
       });
       return () => sub.unsubscribe();
-    }, [watch, onFieldChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onFieldChange]); // only re-run if onFieldChange identity changes (stable via useCallback)
 
     useEffect(() => {
       if (!Array.isArray(schema) || schema.length === 0) return;
@@ -1271,8 +1345,20 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
         </div>
       );
 
+    const allSchemaFields = React.useMemo(
+      () => (schema || []).flatMap((sec) => sec.fields || []),
+      [schema],
+    );
+
     return (
-      <div ref={formContainerRef} className="form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700">
+      <div
+        ref={formContainerRef}
+        data-render-mode={renderMode}
+        className={cn(
+          "form-renderer animate-in fade-in slide-in-from-bottom-2 duration-700 w-full min-w-0 max-w-full overflow-x-hidden",
+          renderMode === "phone" && "render-mode-phone",
+        )}
+      >
         {[...schema]
           .map((section, index) => ({ section, index }))
           .sort((a, b) => {
@@ -1364,6 +1450,9 @@ const FormRenderer = forwardRef<FormRendererRef, FormRendererProps>(
                       ruleState={mergeRuleStates(fieldRuleState.get(getFieldRuntimeId(f)), sectionRuleState)}
                       forceSingleColumn={forceSingleColumn}
                       fieldName={f?.api_name}
+                      compositeCatalog={compositeCatalog}
+                      allFields={allSchemaFields}
+                      isPreview={isPreview}
                     />
                   ))}
               </div>

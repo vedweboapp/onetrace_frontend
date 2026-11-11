@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "react-phone-number-input/style.css";
 
+
 /* Number fields: type to enter only — no spinner arrows. */
 input[type="number"] {
   -moz-appearance: textfield;
@@ -238,11 +239,12 @@ html[data-font-size] .text-\[12px\],
 }
 
 /*
- * Forms + detail — Zoho-style side labels (Appearance left / right):
- * - Fixed label column so every input/value starts on one vertical line
- * - Left placement: labels are right-aligned (end words line up before the gutter)
- * - Right placement: mirrored (label column after the control)
- * - Top placement: unchanged (label above control)
+ * Forms + detail — Zoho-style side labels (Appearance left / right / top):
+ * - Left: fixed label column, text end-aligned so endings share one vertical line
+ * - Right: mirrored (control | label); keep order so it never looks like left
+ * - Top: label stacked above control
+ * - Medium: collapse 2-col rows via form-fields host (not per-field) so side
+ *   labels keep alignment; only stack to top on very narrow hosts / phones.
  * Labels pin to the control top so FieldErrorText never shifts the input upward.
  */
 .dash-appearance-scope {
@@ -292,7 +294,11 @@ html[data-font-size] .text-\[12px\],
   align-items: start;
 }
 
-@container form-fields (max-width: 48rem) {
+/*
+ * Collapse 2-col form rows before each half is too narrow for a fixed label column.
+ * (Side labels need ~9.5rem label + control; two halves need ~56rem+ host width.)
+ */
+@container form-fields (max-width: 56rem) {
   .form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -305,28 +311,30 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-/* Narrow form hosts (modals, drawers, phones): stack label above control. */
-@container form-fields (max-width: 32rem) {
+/* Truly narrow hosts only: stack label above control (left/right behave like top). */
+@container form-fields (max-width: 24rem) {
   .form-field-row .field-group:not(.detail-field) {
     display: flex !important;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.375rem;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
     grid-template-columns: none !important;
   }
 
-  .form-field-row .field-group:not(.detail-field) .field-label,
-  .form-field-row .field-group:not(.detail-field) .field-control-wrap {
+  .form-field-row .field-group:not(.detail-field) > .field-label {
     grid-column: auto;
     order: 0 !important;
     width: 100%;
-  }
-
-  .form-field-row .field-group:not(.detail-field) .field-label {
     padding-top: 0 !important;
     margin-bottom: 0;
     text-align: left !important;
     white-space: normal;
+  }
+
+  .form-field-row .field-group:not(.detail-field) > .field-control-wrap {
+    grid-column: auto;
+    order: 1 !important;
+    width: 100%;
   }
 }
 
@@ -339,18 +347,20 @@ html[data-font-size] .text-\[12px\],
   grid-template-columns: none !important;
 }
 
-.form-field-row--label-top .field-group:not(.detail-field) .field-label,
-.form-field-row--label-top .field-group:not(.detail-field) .field-control-wrap {
+.form-field-row--label-top .field-group:not(.detail-field) > .field-label {
   grid-column: auto;
   order: 0 !important;
   width: 100%;
-}
-
-.form-field-row--label-top .field-group:not(.detail-field) .field-label {
   padding-top: 0 !important;
   margin-bottom: 0;
   text-align: left !important;
   white-space: normal;
+}
+
+.form-field-row--label-top .field-group:not(.detail-field) > .field-control-wrap {
+  grid-column: auto;
+  order: 1 !important;
+  width: 100%;
 }
 
 /* Optional host used by settings pages (same Zoho side-label behavior). */
@@ -361,7 +371,7 @@ html[data-font-size] .text-\[12px\],
   min-width: 0;
 }
 
-@container settings-fields (max-width: 48rem) {
+@container settings-fields (max-width: 56rem) {
   .settings-aligned-fields .form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -372,37 +382,33 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-@container settings-fields (max-width: 32rem) {
+@container settings-fields (max-width: 24rem) {
   .settings-aligned-fields .field-group:not(.detail-field) {
     display: flex !important;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.375rem;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
     grid-template-columns: none !important;
   }
 
-  .settings-aligned-fields .field-group:not(.detail-field) .field-label,
-  .settings-aligned-fields .field-group:not(.detail-field) .field-control-wrap {
+  .settings-aligned-fields .field-group:not(.detail-field) > .field-label {
     grid-column: auto;
     order: 0 !important;
     width: 100%;
-  }
-
-  .settings-aligned-fields .field-group:not(.detail-field) .field-label {
     padding-top: 0 !important;
     text-align: left !important;
+  }
+
+  .settings-aligned-fields .field-group:not(.detail-field) > .field-control-wrap {
+    grid-column: auto;
+    order: 1 !important;
+    width: 100%;
   }
 }
 
 .dash-appearance-scope .field-group {
   width: 100%;
   min-width: 0;
-}
-
-/* Form fields measure their own cell width (2-col grids / modal halves). */
-.dash-appearance-scope .field-group:not(.detail-field) {
-  container-type: inline-size;
-  container-name: form-field;
 }
 
 /* Default + left: fixed label col, Zoho right-aligned labels, control fills the rest. */
@@ -426,12 +432,32 @@ html[data-font-size] .text-\[12px\],
   row-gap: 0.25rem;
 }
 
-.dash-appearance-scope[data-form-label="top"] .field-group {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.375rem;
+.dash-appearance-scope[data-form-label="top"] .field-group,
+.render-mode-phone .field-group:not(.detail-field),
+[data-render-mode="phone"] .field-group:not(.detail-field) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.375rem !important;
+  grid-template-columns: none !important;
 }
+
+.render-mode-phone .field-group:not(.detail-field) > .field-label,
+[data-render-mode="phone"] .field-group:not(.detail-field) > .field-label {
+  padding-top: 0 !important;
+  text-align: left !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+  order: 0 !important;
+}
+
+.render-mode-phone .field-group:not(.detail-field) > .field-control-wrap,
+[data-render-mode="phone"] .field-group:not(.detail-field) > .field-control-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  order: 1 !important;
+}
+
 .dash-appearance-scope[data-form-label="top"] .field-group > .field-label {
   margin-bottom: 0;
   text-align: left;
@@ -449,13 +475,14 @@ html[data-font-size] .text-\[12px\],
   margin-bottom: 0;
   padding-right: 0;
   /* Zoho: end of each label lines up; short labels leave space on the start side. */
-  text-align: right;
+  text-align: right !important;
   white-space: normal;
   overflow-wrap: break-word;
   hyphens: auto;
   line-height: 1.35;
   align-self: start;
   justify-self: stretch;
+  order: 0;
   /* Optically center with the control; stays put when error text appears below. */
   padding-top: calc((var(--form-control-height, 2.75rem) - 1.35em) / 2);
 }
@@ -557,19 +584,19 @@ html[data-font-size] .text-\[12px\],
   margin-bottom: 0;
   padding-left: 0;
   /* Mirrored Zoho: label sits after the control, start-aligned toward the field. */
-  text-align: left;
+  text-align: left !important;
   white-space: normal;
   overflow-wrap: break-word;
   hyphens: auto;
   line-height: 1.35;
-  order: 2;
+  order: 2 !important;
   align-self: start;
   justify-self: stretch;
   padding-top: calc((var(--form-control-height, 2.75rem) - 1.35em) / 2);
 }
 
 .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) > .field-control-wrap {
-  order: 1;
+  order: 1 !important;
   min-width: 0;
 }
 
@@ -648,7 +675,7 @@ html[data-font-size] .text-\[12px\],
   }
 }
 
-@container form-fields (max-width: 32rem) {
+@container form-fields (max-width: 24rem) {
   .form-field-row > div:has(> .field-group + p[role="alert"]) {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -659,32 +686,10 @@ html[data-font-size] .text-\[12px\],
 }
 
 /*
- * Per-field stack when a 2-col cell / modal half is too narrow for side labels
- * (label above control — works for Appearance left / right / top).
- */
-@container form-field (max-width: 24rem) {
-  .field-label,
-  .field-control-wrap {
-    grid-column: 1 / -1 !important;
-    order: 0 !important;
-    width: 100%;
-  }
-
-  .field-label {
-    padding-top: 0 !important;
-    margin-bottom: 0;
-    text-align: left !important;
-    white-space: normal;
-  }
-}
-
-/*
  * Detail pages: same Appearance label placement as forms (left / right / top).
  * Left/right keep a fixed label column so values line up in a section (Zoho).
  */
 .dash-appearance-scope .detail-field.field-group {
-  container-type: inline-size;
-  container-name: detail-field;
   row-gap: 0;
 }
 
@@ -704,25 +709,56 @@ html[data-font-size] .text-\[12px\],
   column-gap: var(--detail-label-gap, 0.75rem);
 }
 
+/* Top: same stacked layout as add/edit forms — label full-width, left-aligned above value. */
 .dash-appearance-scope[data-form-label="top"] .detail-field.field-group {
-  display: block;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.375rem !important;
+  grid-template-columns: none !important;
 }
 
 .dash-appearance-scope[data-form-label="top"] .detail-field .field-label {
-  margin-bottom: 0.125rem;
-  padding-top: 0;
-  text-align: left;
+  margin-bottom: 0;
+  padding-top: 0 !important;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: left !important;
   white-space: normal;
+  width: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch;
+  order: 0 !important;
+}
+
+.dash-appearance-scope[data-form-label="top"] .detail-field .field-control-wrap {
+  width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+  order: 1 !important;
+}
+
+/* Flush single-line value text under the label (forms have no inset mismatch).
+ * Bordered description textareas keep their own padding via .detail-textarea-box. */
+.dash-appearance-scope[data-form-label="top"] .detail-field .detail-value-surface:not(textarea):not(.detail-textarea-box) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Description / notes boxes always keep inner padding (view + edit). */
+.dash-appearance-scope .detail-field textarea.detail-textarea-box,
+.dash-appearance-scope .detail-field .detail-textarea-box {
+  padding: 0.75rem 0.875rem !important;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
-  order: 2;
-  text-align: left;
+  order: 2 !important;
+  text-align: left !important;
   justify-self: stretch;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-control-wrap {
-  order: 1;
+  order: 1 !important;
   min-width: 0;
 }
 
@@ -737,8 +773,9 @@ html[data-font-size] .text-\[12px\],
 
 .dash-appearance-scope:not([data-form-label]) .detail-field .field-label,
 .dash-appearance-scope[data-form-label="left"] .detail-field .field-label {
-  text-align: right;
+  text-align: right !important;
   white-space: normal;
+  order: 0;
 }
 
 .dash-appearance-scope[data-form-label="right"] .detail-field .field-label {
@@ -774,28 +811,33 @@ html[data-font-size] .text-\[12px\],
 }
 
 /* Beside a map / narrow pane: one field per row until the pane is wide enough. */
-@container detail-metrics (max-width: 48rem) {
+@container detail-metrics (max-width: 56rem) {
   .detail-metrics-grid.form-field-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
-/* Narrow detail panes / modal-sized metrics: stack label above value. */
-@container detail-metrics (max-width: 26rem) {
+/* Truly narrow detail panes: stack label above value (Appearance left/right → top). */
+@container detail-metrics (max-width: 24rem) {
   .detail-metrics-grid > .detail-field.field-group {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .detail-metrics-grid > .detail-field.field-group .field-label,
-  .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
-    grid-column: 1 / -1;
-    order: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.25rem !important;
+    grid-template-columns: none !important;
   }
 
   .detail-metrics-grid > .detail-field.field-group .field-label {
     padding-top: 0 !important;
     margin-bottom: 0.125rem;
     text-align: left !important;
+    order: 0 !important;
+    width: 100% !important;
+  }
+
+  .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+    order: 1 !important;
+    width: 100% !important;
   }
 }
 
@@ -807,35 +849,19 @@ html[data-font-size] .text-\[12px\],
 }
 
 /*
- * Stack label above value when a detail field cell is too narrow for side labels.
- * Threshold sits under a typical 2-col half-width so columns collapse first when possible.
+ * Side-by-side detail rows only: vertically center label + value.
+ * Must NOT apply when labels are on top — align-self:center would
+ * horizontally center short labels above left-aligned values.
  */
-@container detail-field (max-width: 22rem) {
-  .field-label {
-    grid-column: 1 / -1;
-    padding-top: 0 !important;
-    margin-bottom: 0.25rem;
-    text-align: left !important;
-    white-space: normal;
-    order: 0 !important;
-  }
-
-  .field-control-wrap {
-    grid-column: 1 / -1;
-    order: 0 !important;
-  }
-}
-
-/* Single-line detail rows: vertically center label + value. */
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group {
   align-items: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-label {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-label {
   align-self: center;
 }
 
-.dash-appearance-scope .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
+.dash-appearance-scope:not([data-form-label="top"]) .detail-metrics-grid > .detail-field.field-group .field-control-wrap {
   align-self: stretch;
 }
 
@@ -900,45 +926,52 @@ html[data-font-size] .text-\[12px\],
   padding-bottom: 0;
 }
 
-@media (max-width: 639px) {
-  /* Phone: stack form labels above controls (Zoho mobile). Respect Appearance "top" too. */
-  .dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field),
-  .dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field),
-  .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.375rem;
-    grid-template-columns: none;
-  }
-  .dash-appearance-scope:not([data-form-label]) .field-group:not(.detail-field) .field-label,
-  .dash-appearance-scope[data-form-label="left"] .field-group:not(.detail-field) .field-label,
-  .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) .field-label {
-    padding-top: 0;
-    margin-bottom: 0;
-    text-align: left;
-    order: 0;
-    white-space: normal;
-  }
-  .dash-appearance-scope[data-form-label="right"] .field-group:not(.detail-field) .field-control-wrap {
-    order: 0;
+/*
+ * Phone only: stack side labels above controls when the viewport is truly narrow.
+ * Medium+ keeps Appearance left/right (Zoho end-aligned / mirrored). Top is always stacked.
+ */
+@media (max-width: 480px) {
+  .dash-appearance-scope:not([data-form-label="top"]) .field-group:not(.detail-field) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+    grid-template-columns: none !important;
   }
 
-  /* Detail: stack label above value on phone */
-  .dash-appearance-scope:not([data-form-label]) .detail-field.field-group,
-  .dash-appearance-scope[data-form-label="left"] .detail-field.field-group,
-  .dash-appearance-scope[data-form-label="right"] .detail-field.field-group {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .dash-appearance-scope .detail-field .field-label,
-  .dash-appearance-scope .detail-field .field-control-wrap {
-    grid-column: 1 / -1;
+  .dash-appearance-scope:not([data-form-label="top"]) .field-group:not(.detail-field) > .field-label {
+    padding-top: 0 !important;
+    margin-bottom: 0 !important;
+    text-align: left !important;
+    width: 100% !important;
     order: 0 !important;
   }
-  .dash-appearance-scope .detail-field .field-label {
-    padding-top: 0;
+
+  .dash-appearance-scope:not([data-form-label="top"]) .field-group:not(.detail-field) > .field-control-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    order: 1 !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label="top"]) .detail-field.field-group {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.25rem !important;
+    grid-template-columns: none !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label="top"]) .detail-field .field-label {
+    padding-top: 0 !important;
     margin-bottom: 0.125rem;
-    text-align: left;
+    text-align: left !important;
+    order: 0 !important;
+    width: 100% !important;
+  }
+
+  .dash-appearance-scope:not([data-form-label="top"]) .detail-field .field-control-wrap {
+    order: 1 !important;
+    width: 100% !important;
   }
 }
 

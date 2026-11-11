@@ -1,5 +1,6 @@
 import { Country, State } from "country-state-city";
 import type { FieldValues, Path, PathValue, UseFormSetValue } from "react-hook-form";
+import { FIELD_MAX_LENGTH } from "@/shared/form/field-max-length.util";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
 
 export type AddressSearchContext = {
@@ -28,6 +29,37 @@ export function buildAddressSearchContext(input: {
     state: stateName,
     country: countryName,
     pincode: input.pincode.trim(),
+  };
+}
+
+/**
+ * Site-name search: keep only the place's main name, and put the remaining
+ * address (everything after that name) on address line 1 and line 2.
+ */
+export function placeNamedSelection(
+  mainName: string,
+  fullAddress: string,
+  place: PlaceSuggestion,
+): { name: string; place: PlaceSuggestion } {
+  const source = fullAddress.trim() || place.label.trim();
+  const name = (mainName.trim() || source.split(",")[0] || place.line1).trim().slice(0, FIELD_MAX_LENGTH.TITLE);
+  let rest = source;
+  if (name && rest.toLowerCase().startsWith(name.toLowerCase())) {
+    rest = rest.slice(name.length).replace(/^[\s,]+/, "");
+  }
+  const parts = rest
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    name,
+    place: {
+      ...place,
+      label: source || place.label,
+      line1: (parts[0] ?? "").slice(0, FIELD_MAX_LENGTH.ADDRESS_LINE),
+      line2: parts.slice(1).join(", ").slice(0, FIELD_MAX_LENGTH.ADDRESS_LINE),
+    },
   };
 }
 

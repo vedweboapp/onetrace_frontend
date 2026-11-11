@@ -7,7 +7,8 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchContact, updateContact } from "@/features/contacts/api/contact.api";
+import { fetchContact, updateContact, updateContactAttachments } from "@/features/contacts/api/contact.api";
+import { CONTACT_PATHS } from "@/features/contacts/api/contact.paths";
 import { ContactDetailBody } from "@/features/contacts/components/contact-detail-body";
 import type { Contact } from "@/features/contacts/types/contact.types";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/features/contacts/utils/contact-nested-fields.util";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
+import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -26,8 +28,10 @@ import {
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
 import { routes } from "@/shared/config/routes";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { buildCurrentPageBackHref, mergeUrlQueryParam } from "@/shared/utils/detail-from-list.util";
-import { AppButton, AppTabs, type AppTabItem } from "@/shared/ui";
+import { useTabOrderStorageKey } from "@/shared/hooks/use-tab-order-storage-key";
+import { AppButton, CustomizableAppTabs, type AppTabItem } from "@/shared/ui";
 
 type Props = {
   contactId: number;
@@ -36,9 +40,11 @@ type Props = {
 export function ContactDetailScreen({ contactId }: Props) {
   const t = useTranslations("Dashboard.contacts");
   const tAudit = useTranslations("Dashboard.auditTrails");
+  const tCommon = useTranslations("Dashboard.common");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tabsStorageKey = useTabOrderStorageKey("contactDetail");
   const [clientNames, setClientNames] = React.useState<Record<number, string>>({});
   const [vendorNames, setVendorNames] = React.useState<Record<number, string>>({});
   const [togglingActive, setTogglingActive] = React.useState(false);
@@ -47,9 +53,11 @@ export function ContactDetailScreen({ contactId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: tAudit("tabDetails") },
+      { id: "attachments", label: tCommon("attachmentsTab.title") },
+      { id: "notes", label: tCommon("notesTab.title") },
       { id: "timeline", label: tAudit("tabTimeline") },
     ],
-    [tAudit],
+    [tAudit, tCommon],
   );
 
   React.useEffect(() => {
@@ -138,10 +146,11 @@ export function ContactDetailScreen({ contactId }: Props) {
         retry: t("detail.retry"),
       }}
       headerExtension={
-        <AppTabs
+        <CustomizableAppTabs
           tabs={detailTabs}
           value={activeTab}
           onValueChange={setActiveTab}
+          storageKey={tabsStorageKey}
           ariaLabel={tAudit("tabTimeline")}
           panelIdPrefix="contact-detail-tab"
           className="-mx-1 px-1 sm:-mx-0 sm:px-0"
@@ -205,6 +214,16 @@ export function ContactDetailScreen({ contactId }: Props) {
                 />
               );
             })()
+          ) : detail && activeTab === "attachments" ? (
+            <EntityAttachmentsTab
+              entityId={detail.id}
+              attachments={detail.attachments}
+              emptyIconName="contacts"
+              updateAttachments={(refs) => updateContactAttachments(detail.id, refs)}
+              onSaved={retry}
+            />
+          ) : detail && activeTab === "notes" ? (
+            <EntityNotesTab detailPath={CONTACT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
             <EntityAuditTimeline
               module={AUDIT_TRAIL_MODULES.contact}

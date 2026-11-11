@@ -7,6 +7,9 @@ import { z } from "zod";
 import type { createWorkflowColourStatusApi } from "@/shared/api/create-workflow-colour-status.api";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import { reportLocalFormSubmitApiError, zHexColour6, zTrimmedNonEmpty } from "@/shared/form";
+import { DuplicateEntryFieldError } from "@/shared/form/components/duplicate-entry-field-error";
+import { useDuplicateEntryConflict } from "@/shared/form/hooks/use-duplicate-entry-conflict";
+import { settingsRecordHref, useOpenSettingsRecord } from "@/shared/form/settings-record-query";
 import { toastSuccess, toastApiError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { EntityDataTable, entityCol } from "@/shared/components/entity";
 import {
@@ -26,6 +29,7 @@ import { useDashboardDateFormat } from "@/shared/hooks/use-dashboard-date-format
 import { useSimpleListEmptyState } from "@/shared/hooks/use-simple-list-empty-state";
 import { hasListActiveFilters, useListUrlState } from "@/shared/hooks/use-list-url-state";
 import {
+  DashboardLoadErrorState,
   AddButton, AppButton,
   AppModal,
   ConfirmDialog,
@@ -106,12 +110,15 @@ export type WorkflowColourStatusSettingsConfig = {
   translationNamespace: WorkflowColourStatusMessagesNamespace;
   emptyStateIconName: DashboardEmptyStateIconName;
   formTitleId: string;
-  api: ReturnType<typeof createWorkflowColourStatusApi>;
+  listPath: string;
+  api: ReturnType<typeof createWorkflowColourStatusApi> & {
+    fetch: (id: number) => Promise<WorkflowColourStatus>;
+  };
   showCategory?: boolean;
 };
 
 export function WorkflowColourStatusSettingsPanel({ config }: { config: WorkflowColourStatusSettingsConfig }) {
-  const { translationNamespace, emptyStateIconName, formTitleId, api, showCategory } = config;
+  const { translationNamespace, emptyStateIconName, formTitleId, api, showCategory, listPath } = config;
   const t = useTranslations(translationNamespace);
   const tList = useTranslations("Dashboard.list");
   const tCustomization = useTranslations("Dashboard.settingsNav.customization");
@@ -152,6 +159,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
   const [detailRow, setDetailRow] = React.useState<WorkflowColourStatus | null>(null);
+  useOpenSettingsRecord(api.fetch, setDetailRow);
+  const duplicate = useDuplicateEntryConflict({
+    getDetailHref: (existingId) => settingsRecordHref(listPath, existingId),
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<WorkflowColourStatus | null>(null);
@@ -179,6 +190,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setTextColour(normalizeHex(row.text_colour));
     setCategory(row.category ?? "");
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }, []);
 
@@ -217,6 +229,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
     setTextColour(DEFAULT_TEXT);
     setCategory("");
     setErrors({});
+    duplicate.clear();
     setFormOpen(true);
   }
 
@@ -277,6 +290,7 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
       if (!editing) setUrl({ page: null });
       setRefreshNonce((n) => n + 1);
     } catch (error) {
+      if (!editing) duplicate.capture(error);
       reportLocalFormSubmitApiError(
         error,
         (fieldErrors) => setErrors((prev) => ({ ...prev, ...fieldErrors })),
@@ -369,7 +383,10 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
 
       <SurfaceShell className={listPageSurfaceShellClassName(hideListChrome)}>
         {loadError ? (
-          <p className="p-8 text-center text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <DashboardLoadErrorState
+            message={loadError}
+            onRetry={() => setRefreshNonce((n) => n + 1)}
+          />
         ) : listLoading ? (
           listViewMode === "list" ? (
             <div className="p-4 sm:p-6">
@@ -393,7 +410,6 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               iconName: emptyStateIconName,
               title: t("emptyTitle"),
               description: t("emptyDescription"),
-              action: <AddButton type="button" onClick={openCreate} />,
             }}
             onClearFilters={() => setUrl({ search: null, page: null }, { replace: true })}
           />
@@ -571,7 +587,15 @@ export function WorkflowColourStatusSettingsPanel({ config }: { config: Workflow
               className={cn(surfaceInputClassName, errors.status_name && "border-red-500 focus:border-red-500 focus:ring-red-500/20")}
               autoComplete="off"
             />
-            {errors.status_name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.status_name}</p> : null}
+            {errors.status_name ? (
+              <DuplicateEntryFieldError
+                message={errors.status_name}
+                fieldKey="status_name"
+                conflict={duplicate.conflict}
+                existingHref={duplicate.existingHref}
+                linkOnDuplicate
+              />
+            ) : null}
           </FieldGroup>
           <FieldGroup
             label={

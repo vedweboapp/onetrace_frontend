@@ -17,6 +17,7 @@ export function navigateToLoginIfBrowser() {
 /**
  * Clear session and send user to login when access token is expired/invalid.
  * Safe to call multiple times (only redirects once).
+ * Uses a full navigation to /login so in-memory dropdown caches are discarded with the page.
  */
 export function forceSessionExpiredLogout() {
   if (typeof window === "undefined") return;

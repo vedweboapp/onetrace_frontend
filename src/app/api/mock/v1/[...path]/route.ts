@@ -15,6 +15,28 @@ function apiPath(req: NextRequest): string {
 
 async function readBody(req: NextRequest): Promise<unknown> {
   if (req.method === "GET" || req.method === "HEAD" || req.method === "DELETE") return null;
+  const contentType = req.headers.get("content-type") || "";
+  if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+    try {
+      const formData = await req.formData();
+      const obj: Record<string, unknown> = {};
+      const files: { name: string; size: number; type: string }[] = [];
+      formData.forEach((value, key) => {
+        if (typeof value === "object" && value !== null && "size" in value && "name" in value) {
+          const f = value as File;
+          files.push({ name: f.name, size: f.size, type: f.type });
+        } else {
+          obj[key] = value;
+        }
+      });
+      if (files.length > 0) {
+        obj.files = files;
+      }
+      return obj;
+    } catch {
+      return null;
+    }
+  }
   try {
     return await req.json();
   } catch {

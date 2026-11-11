@@ -1,5 +1,5 @@
 import api from "@/core/api/axios";
-import { ApiBusinessError } from "@/core/errors/api-business-error";
+import { assertApiSuccess, type ApiEnvelope } from "@/core/types/api.types";
 import {
   applyDropdownListParam,
   DROPDOWN_LIST_PAGE_SIZE,
@@ -9,17 +9,110 @@ import {
 import { AUDIT_TRAIL_PATHS } from "./audit-trail.paths";
 import type { AuditTrailEntry, AuditTrailListResponse } from "../types/audit-trail.types";
 
-function assertEnvelopeSuccess(envelope: { success: boolean; message?: string }) {
-  if (!envelope.success) {
-    const msg = typeof envelope.message === "string" ? envelope.message : "Request failed";
-    throw new ApiBusinessError(msg);
+export type AuditTrailFilterOption = {
+  value: string;
+  label: string;
+};
+
+function humanizeFilterToken(raw: string): string {
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function pickTrimmedString(...candidates: unknown[]): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (trimmed) return trimmed;
   }
+  return null;
+}
+
+/** Normalize `modules/names/` / `audit/actions/` rows into select options. */
+function normalizeFilterOptions(raw: unknown): AuditTrailFilterOption[] {
+  const envelope = asRecord(raw);
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(envelope?.data)
+      ? (envelope.data as unknown[])
+      : Array.isArray(envelope?.results)
+        ? (envelope.results as unknown[])
+        : Array.isArray(envelope?.actions)
+          ? (envelope.actions as unknown[])
+          : Array.isArray(envelope?.modules)
+            ? (envelope.modules as unknown[])
+            : [];
+
+  const seen = new Set<string>();
+  const options: AuditTrailFilterOption[] = [];
+
+  for (const row of list) {
+    if (typeof row === "string") {
+      const value = row.trim();
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      options.push({ value, label: humanizeFilterToken(value) });
+      continue;
+    }
+
+    const rec = asRecord(row);
+    if (!rec) continue;
+
+    const value = pickTrimmedString(
+      rec.value,
+      rec.api_name,
+      rec.module,
+      rec.action,
+      rec.name,
+      rec.key,
+      rec.code,
+      rec.slug,
+    );
+    if (!value || seen.has(value)) continue;
+
+    const label =
+      pickTrimmedString(rec.label, rec.singular_label, rec.display_name, rec.title) ??
+      humanizeFilterToken(value);
+
+    seen.add(value);
+    options.push({ value, label });
+  }
+
+  return options;
+}
+
+async function fetchAuditFilterOptions(path: string): Promise<AuditTrailFilterOption[]> {
+  const { data } = await api.get<ApiEnvelope<unknown> | unknown>(path, {
+    skipErrorToast: true,
+  });
+  const envelope = asRecord(data);
+  if (envelope && typeof envelope.success === "boolean") {
+    assertApiSuccess(envelope as ApiEnvelope<unknown>);
+  }
+  return normalizeFilterOptions(data);
+}
+
+/** Settings Audit Logs — module filter options (`GET modules/names/`). */
+export async function fetchAuditModuleNameOptions(): Promise<AuditTrailFilterOption[]> {
+  return fetchAuditFilterOptions(AUDIT_TRAIL_PATHS.moduleNames);
+}
+
+/** Settings Audit Logs — action filter options (`GET audit/actions/`). */
+export async function fetchAuditActionOptions(): Promise<AuditTrailFilterOption[]> {
+  return fetchAuditFilterOptions(AUDIT_TRAIL_PATHS.actions);
 }
 
 export type AuditTrailListFilters = {
   /** Required for record timelines; optional for Settings “all logs” view. */
   module?: string;
   object_id?: number;
+  /** Optional mass-action scope (single id or comma-separated list). */
+  mass_action_ids?: number | number[] | string;
   search?: string;
   action?: string;
   actor?: string | number;
@@ -29,6 +122,21 @@ export type AuditTrailListFilters = {
   page_size?: number;
   dropdown?: boolean;
 };
+
+function normalizeMassActionIds(
+  value: AuditTrailListFilters["mass_action_ids"],
+): string | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    return value > 0 ? String(value) : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  const ids = value.filter((id) => Number.isFinite(id) && id > 0);
+  return ids.length > 0 ? ids.join(",") : null;
+}
 
 export async function fetchAuditTrailsPage(
   page = 1,
@@ -44,6 +152,8 @@ export async function fetchAuditTrailsPage(
   if (filters.object_id != null && filters.object_id > 0) {
     params.object_id = filters.object_id;
   }
+  const massActionIds = normalizeMassActionIds(filters.mass_action_ids);
+  if (massActionIds) params.mass_action_ids = massActionIds;
   const search = filters.search?.trim();
   if (search) params.search = search;
   const action = filters.action?.trim();

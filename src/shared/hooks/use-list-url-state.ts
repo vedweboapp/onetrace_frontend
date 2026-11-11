@@ -46,8 +46,10 @@ export function hasListActiveFilters(args: {
   categoryParam?: string | null;
   quoteCategoryParam?: string | null;
   jobCategoryParam?: string | null;
+  itemTypeParam?: string | null;
 }): boolean {
   if (args.search.trim() !== "") return true;
+  if (args.itemTypeParam != null && args.itemTypeParam.trim() !== "") return true;
   if (args.groupParam != null && args.groupParam.trim() !== "") return true;
   if (args.clientParam != null && args.clientParam.trim() !== "") return true;
   if (args.vendorParam != null && args.vendorParam.trim() !== "") return true;
