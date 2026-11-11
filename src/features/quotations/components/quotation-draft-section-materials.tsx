@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Check, ChevronLeft, ChevronRight, FolderTree } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fetchItemsPage } from "@/features/items/api/item.api";
 import type { Item } from "@/features/items/types/item.types";
@@ -11,7 +12,8 @@ import {
 } from "@/features/items/utils/item-selling-price.util";
 import { resolveItemType } from "@/features/items/utils/item-type.util";
 import { fetchGroup, fetchGroupsPage } from "@/features/groups/api/group.api";
-import type { Group, GroupItemRef } from "@/features/groups/types/group.types";
+import type { Group, GroupItemRef, GroupSubgroup } from "@/features/groups/types/group.types";
+import { isSelectableParentGroup } from "@/features/groups/utils/group-parent-payload.util";
 import type { QuotationDraftLine } from "@/features/quotations/types/quotation-draft.types";
 import {
   QuotationDraftCompositeLines,
@@ -22,7 +24,7 @@ import { draftPinTotal } from "@/features/quotations/utils/quotation-draft-compu
 import { resolveQuotationDraftLineGroup } from "@/features/quotations/utils/quotation-draft-line-group.util";
 import { newQuotationDraftId } from "@/features/quotations/utils/quotation-draft-id.util";
 import { AppButton, CheckmarkSelect, MoneyInput, NumericInput } from "@/shared/ui";
-import type { CheckmarkSelectOption } from "@/shared/ui";
+import { cn } from "@/core/utils/http.util";
 
 type Props = {
   pins: QuotationDraftLine[];
@@ -33,10 +35,31 @@ type Props = {
   showAddForm?: boolean;
 };
 
+type PickerLevel =
+  | { kind: "root" }
+  | { kind: "group"; group: Group }
+  | { kind: "subgroup"; group: Group; subgroup: GroupSubgroup };
+
 function parseQty(raw: string): number {
   const n = Number.parseFloat(String(raw).trim());
   if (!Number.isFinite(n) || n <= 0) return 1;
   return n;
+}
+
+function itemLabel(ref: GroupItemRef, catalog?: Item): string {
+  return (
+    (typeof ref.item_name === "string" && ref.item_name.trim()) ||
+    catalog?.name?.trim() ||
+    `#${ref.item}`
+  );
+}
+
+function itemUnitPrice(ref: GroupItemRef, catalog?: Item, override?: string): number {
+  const fromOverride = parseItemSellingPrice(override);
+  if (fromOverride > 0) return fromOverride;
+  const fromGroup = parseItemSellingPrice(ref.item_selling_price ?? ref.selling_price);
+  if (fromGroup > 0) return fromGroup;
+  return catalogSellingPriceNumber(catalog);
 }
 
 export function QuotationDraftSectionMaterials({
@@ -54,9 +77,10 @@ export function QuotationDraftSectionMaterials({
 
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [itemRows, setItemRows] = React.useState<Item[]>([]);
-  const [groupItemsByGroupId, setGroupItemsByGroupId] = React.useState<Record<string, GroupItemRef[]>>({});
   const [groupId, setGroupId] = React.useState("");
-  const [compositeId, setCompositeId] = React.useState("");
+  const [level, setLevel] = React.useState<PickerLevel>({ kind: "root" });
+  const [loadingGroup, setLoadingGroup] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
   const [quantity, setQuantity] = React.useState("1");
   const [unitPrice, setUnitPrice] = React.useState("");
   const pinsRef = React.useRef(pins);
@@ -89,33 +113,29 @@ export function QuotationDraftSectionMaterials({
     };
   }, [readOnly]);
 
-  const groupOptions = React.useMemo(
-    () => [{ value: "", label: tDraw("allGroups") }, ...groups.map((g) => ({ value: String(g.id), label: g.name }))],
-    [groups, tDraw],
+  const parentGroups = React.useMemo(
+    () => groups.filter((g) => isSelectableParentGroup(g)),
+    [groups],
   );
 
-  const compositeOptions = React.useMemo((): CheckmarkSelectOption[] => {
-    if (!groupId) {
-      return [{ value: "", label: t("selectItem") }, ...itemRows.map((ci) => ({ value: String(ci.id), label: ci.name }))];
-    }
-    const entries = groupItemsByGroupId[groupId];
-    if (entries === undefined) return [{ value: "", label: t("selectItem") }];
-    const itemNameById: Record<number, string> = {};
-    for (const ci of itemRows) itemNameById[ci.id] = ci.name;
-    const uniqueByItem = new Map<number, CheckmarkSelectOption>();
-    for (const ref of entries) {
-      if (uniqueByItem.has(ref.item)) continue;
-      const name =
-        (typeof ref.item_name === "string" && ref.item_name.trim()) ||
-        itemNameById[ref.item] ||
-        null;
-      uniqueByItem.set(ref.item, {
-        value: String(ref.item),
-        label: name ?? `#${ref.item}`,
-      });
-    }
-    return [{ value: "", label: t("selectItem") }, ...Array.from(uniqueByItem.values())];
-  }, [groupId, groupItemsByGroupId, itemRows, t]);
+  const groupOptions = React.useMemo(
+    () => [
+      { value: "", label: tDraw("allGroups") },
+      ...parentGroups.map((g) => ({ value: String(g.id), label: g.name })),
+    ],
+    [parentGroups, tDraw],
+  );
+
+  const currentItems: GroupItemRef[] = React.useMemo(() => {
+    if (level.kind === "group") return level.group.items ?? [];
+    if (level.kind === "subgroup") return level.subgroup.items ?? [];
+    return [];
+  }, [level]);
+
+  const currentSubgroups: GroupSubgroup[] = React.useMemo(() => {
+    if (level.kind === "group") return level.group.subgroups ?? [];
+    return [];
+  }, [level]);
 
   const labels = React.useMemo<CompositeLineLabels>(
     () => ({
@@ -129,72 +149,150 @@ export function QuotationDraftSectionMaterials({
   );
 
   const materialsTotal = pins.reduce((acc, ln) => acc + draftPinTotal(ln), 0);
-  const saveDisabled =
-    !compositeId || compositeOptions.length <= 1 || (Boolean(groupId) && groupItemsByGroupId[groupId] === undefined);
+  const catalogMode = !groupId;
+  const saveDisabled = saving || selectedIds.size === 0;
 
-  function groupItemRefFor(itemId: string): GroupItemRef | undefined {
-    if (!groupId) return undefined;
-    return (groupItemsByGroupId[groupId] ?? []).find((ref) => String(ref.item) === itemId);
-  }
-
-  function handleGroupChange(g: string) {
-    setGroupId(g);
-    setCompositeId("");
-    setUnitPrice("");
-    if (!g) return;
-    void fetchGroup(Number.parseInt(g, 10))
-      .then((row) => setGroupItemsByGroupId((cur) => ({ ...cur, [g]: row.items ?? [] })))
-      .catch(() => setGroupItemsByGroupId((cur) => ({ ...cur, [g]: [] })));
-  }
-
-  function handleCompositeChange(c: string) {
-    setCompositeId(c);
-    const fromCatalog = catalogSellingPriceString(itemRows.find((r) => String(r.id) === c));
-    if (fromCatalog) {
-      setUnitPrice(fromCatalog);
-      return;
-    }
-    const groupRef = groupItemRefFor(c);
-    const raw = groupRef?.item_selling_price ?? groupRef?.selling_price;
-    const n = parseItemSellingPrice(raw);
-    setUnitPrice(n > 0 ? String(n) : "");
-  }
-
-  function addLine() {
-    const id = Number.parseInt(compositeId, 10);
-    if (!Number.isFinite(id) || id <= 0) return;
-    const picked = itemRows.find((r) => r.id === id);
-    const groupRef = groupItemRefFor(compositeId);
-    const label =
-      picked?.name?.trim() ||
-      (typeof groupRef?.item_name === "string" && groupRef.item_name.trim()) ||
-      compositeOptions.find((o) => o.value === compositeId)?.label ||
-      `Item ${id}`;
-    const fromRow = parseItemSellingPrice(unitPrice);
-    const fromGroup = parseItemSellingPrice(groupRef?.item_selling_price ?? groupRef?.selling_price);
-    const unit = fromRow > 0 ? fromRow : catalogSellingPriceNumber(picked) || fromGroup;
-    const qty = parseQty(quantity);
-    const group = resolveQuotationDraftLineGroup(groupId, {
-      groups,
-      optionLabelById: Object.fromEntries(groupOptions.filter((o) => o.value).map((o) => [o.value, o.label])),
-    });
-    onChangeRef.current([
-      ...pinsRef.current,
-      {
-        id: newQuotationDraftId("line"),
-        pin_id: null,
-        composite_item_id: id,
-        name: label,
-        quantity: qty,
-        selling_price: unit,
-        is_composite: false,
-        ...group,
-        pin_count: 1,
-      },
-    ]);
-    setCompositeId("");
+  function resetSelection() {
+    setSelectedIds(new Set());
     setUnitPrice("");
     setQuantity("1");
+  }
+
+  async function handleGroupChange(nextId: string) {
+    setGroupId(nextId);
+    resetSelection();
+    if (!nextId) {
+      setLevel({ kind: "root" });
+      return;
+    }
+    setLoadingGroup(true);
+    try {
+      const detail = await fetchGroup(Number.parseInt(nextId, 10));
+      setLevel({ kind: "group", group: detail });
+    } catch {
+      setLevel({ kind: "root" });
+    } finally {
+      setLoadingGroup(false);
+    }
+  }
+
+  function toggleItem(itemId: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+    const ref = currentItems.find((row) => row.item === itemId);
+    const catalog = itemRows.find((row) => row.id === itemId);
+    if (ref) {
+      const price = itemUnitPrice(ref, catalog);
+      if (price > 0) setUnitPrice(String(price));
+    } else if (catalog) {
+      const fromCatalog = catalogSellingPriceString(catalog);
+      if (fromCatalog) setUnitPrice(fromCatalog);
+    }
+  }
+
+  function openSubgroup(subgroup: GroupSubgroup) {
+    if (level.kind !== "group") return;
+    resetSelection();
+    setLevel({ kind: "subgroup", group: level.group, subgroup });
+  }
+
+  function goBack() {
+    resetSelection();
+    if (level.kind === "subgroup") {
+      setLevel({ kind: "group", group: level.group });
+      return;
+    }
+    setGroupId("");
+    setLevel({ kind: "root" });
+  }
+
+  function addSelectedLines() {
+    const qty = parseQty(quantity);
+    const groupLookup = resolveQuotationDraftLineGroup(
+      level.kind === "subgroup"
+        ? String(level.subgroup.id)
+        : level.kind === "group"
+          ? String(level.group.id)
+          : groupId,
+      {
+        groups: [
+          ...groups,
+          ...(level.kind === "group" || level.kind === "subgroup"
+            ? [{ id: level.group.id, name: level.group.name }]
+            : []),
+          ...(level.kind === "subgroup"
+            ? [{ id: level.subgroup.id, name: level.subgroup.name }]
+            : []),
+        ],
+        optionLabelById: Object.fromEntries(groupOptions.filter((o) => o.value).map((o) => [o.value, o.label])),
+      },
+    );
+
+    const nextLines: QuotationDraftLine[] = [];
+
+    if (catalogMode) {
+      for (const id of selectedIds) {
+        const picked = itemRows.find((row) => row.id === id);
+        if (!picked) continue;
+        const unit =
+          selectedIds.size === 1 && parseItemSellingPrice(unitPrice) > 0
+            ? parseItemSellingPrice(unitPrice)
+            : catalogSellingPriceNumber(picked);
+        nextLines.push({
+          id: newQuotationDraftId("line"),
+          pin_id: null,
+          composite_item_id: id,
+          name: picked.name?.trim() || `Item ${id}`,
+          quantity: qty,
+          selling_price: unit,
+          is_composite: false,
+          group_id: null,
+          group_name: null,
+          pin_count: 1,
+        });
+      }
+    } else {
+      for (const id of selectedIds) {
+        const ref = currentItems.find((row) => row.item === id);
+        if (!ref) continue;
+        const catalog = itemRows.find((row) => row.id === id);
+        const unit =
+          selectedIds.size === 1
+            ? itemUnitPrice(ref, catalog, unitPrice)
+            : itemUnitPrice(ref, catalog);
+        nextLines.push({
+          id: newQuotationDraftId("line"),
+          pin_id: null,
+          composite_item_id: id,
+          name: itemLabel(ref, catalog),
+          quantity: qty,
+          selling_price: unit,
+          is_composite: false,
+          ...groupLookup,
+          pin_count: 1,
+        });
+      }
+    }
+
+    if (nextLines.length === 0) return;
+    onChangeRef.current([...pinsRef.current, ...nextLines]);
+    resetSelection();
+  }
+
+  function toggleCatalogItem(itemId: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+    const catalog = itemRows.find((row) => row.id === itemId);
+    const fromCatalog = catalogSellingPriceString(catalog);
+    if (fromCatalog) setUnitPrice(fromCatalog);
   }
 
   if (!showAddForm && pins.length === 0) return null;
@@ -202,9 +300,9 @@ export function QuotationDraftSectionMaterials({
   return (
     <div className="space-y-3">
       {!readOnly && showAddForm ? (
-        <div className="w-full min-w-0 space-y-1.5">
-          <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-center gap-2">
-            <div className="min-w-0 flex-1 sm:min-w-[11rem]">
+        <div className="w-full min-w-0 space-y-3">
+          <div className="flex max-w-4xl min-w-0 flex-row flex-wrap items-end gap-2">
+            <div className="min-w-0 flex-1 sm:min-w-[14rem]">
               <CheckmarkSelect
                 id={`${formId}-group`}
                 portaled
@@ -213,22 +311,8 @@ export function QuotationDraftSectionMaterials({
                 options={groupOptions}
                 value={groupId}
                 emptyLabel={tDraw("allGroups")}
-                disabled={saving}
-                onChange={handleGroupChange}
-                className="w-full"
-              />
-            </div>
-            <div className="min-w-0 flex-[1.25] sm:min-w-[12rem]">
-              <CheckmarkSelect
-                id={`${formId}-item`}
-                portaled
-                searchable
-                listLabel={`${t("chooseItem")} *`}
-                options={compositeOptions}
-                value={compositeId}
-                emptyLabel={t("selectItem")}
-                disabled={compositeOptions.length <= 1 || saving}
-                onChange={handleCompositeChange}
+                disabled={saving || loadingGroup}
+                onChange={(value) => void handleGroupChange(value)}
                 className="w-full"
               />
             </div>
@@ -248,7 +332,7 @@ export function QuotationDraftSectionMaterials({
                 size="sm"
                 value={unitPrice}
                 onChange={(e) => setUnitPrice(e.target.value)}
-                disabled={saving || !compositeId}
+                disabled={saving || selectedIds.size !== 1}
                 aria-label={t("unitPrice")}
                 placeholder={t("unitPrice")}
                 className="w-full"
@@ -256,13 +340,154 @@ export function QuotationDraftSectionMaterials({
                 step="0.01"
               />
             </div>
-            <AppButton type="button" variant="secondary" size="sm" disabled={saveDisabled || saving} onClick={addLine}>
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saveDisabled || selectedIds.size === 0}
+              onClick={addSelectedLines}
+            >
               {t("saveComposite")}
             </AppButton>
           </div>
-          {itemRows.length === 0 ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t("noItems")}</p>
-          ) : null}
+
+          {catalogMode ? (
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+              {itemRows.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">{t("noItems")}</p>
+              ) : (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {itemRows.map((row) => {
+                    const checked = selectedIds.has(row.id);
+                    return (
+                      <li key={row.id}>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => toggleCatalogItem(row.id)}
+                          className={cn(
+                            "flex w-full items-center gap-3 px-3 py-2.5 text-left transition",
+                            checked
+                              ? "bg-slate-50 dark:bg-slate-900/60"
+                              : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex size-4 shrink-0 items-center justify-center rounded border",
+                              checked
+                                ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                                : "border-slate-300 dark:border-slate-600",
+                            )}
+                            aria-hidden
+                          >
+                            {checked ? <Check className="size-3" /> : null}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {row.name}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/50">
+                {level.kind !== "root" ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-7 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    onClick={goBack}
+                    aria-label={t("groupPickerBack")}
+                    title={t("groupPickerBack")}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                  </button>
+                ) : null}
+                <FolderTree className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                <p className="min-w-0 truncate text-xs font-medium text-slate-600 dark:text-slate-300">
+                  {level.kind === "subgroup"
+                    ? `${level.group.name} / ${level.subgroup.name}`
+                    : level.kind === "group"
+                      ? level.group.name
+                      : tDraw("chooseGroup")}
+                </p>
+              </div>
+
+              {loadingGroup ? (
+                <div className="space-y-2 p-3">
+                  <div className="h-9 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
+                  <div className="h-9 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {currentSubgroups.map((subgroup) => (
+                    <li key={subgroup.id}>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => openSubgroup(subgroup)}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                      >
+                        <FolderTree className="size-4 shrink-0 text-slate-400" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {subgroup.name}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {t("groupPickerSubgroupItems", { count: subgroup.items?.length ?? 0 })}
+                        </span>
+                        <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+
+                  {currentItems.map((ref) => {
+                    const checked = selectedIds.has(ref.item);
+                    return (
+                      <li key={`${ref.id ?? "x"}-${ref.item}`}>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => toggleItem(ref.item)}
+                          className={cn(
+                            "flex w-full items-center gap-3 px-3 py-2.5 text-left transition",
+                            checked
+                              ? "bg-slate-50 dark:bg-slate-900/60"
+                              : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex size-4 shrink-0 items-center justify-center rounded border",
+                              checked
+                                ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                                : "border-slate-300 dark:border-slate-600",
+                            )}
+                            aria-hidden
+                          >
+                            {checked ? <Check className="size-3" /> : null}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {itemLabel(ref, itemRows.find((row) => row.id === ref.item))}
+                            {ref.abbreviation?.trim() ? (
+                              <span className="font-normal text-slate-500"> ({ref.abbreviation.trim()})</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+
+                  {!loadingGroup && currentSubgroups.length === 0 && currentItems.length === 0 ? (
+                    <li className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">{t("noItems")}</li>
+                  ) : null}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       ) : null}
 

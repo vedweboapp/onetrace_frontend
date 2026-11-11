@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { deleteGroup, fetchGroup, updateGroupAttachments } from "@/features/groups/api/group.api";
 import { GROUP_PATHS } from "@/features/groups/api/group.paths";
 import { GroupDetailBody } from "@/features/groups/components/group-detail-body";
+import { GroupSubgroupsTab } from "@/features/groups/components/group-subgroups-tab";
 import type { Group } from "@/features/groups/types/group.types";
 import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
@@ -50,10 +51,11 @@ export function GroupDetailScreen({ groupId }: Props) {
   const detailTabs = React.useMemo<AppTabItem[]>(
     () => [
       { id: "details", label: tAudit("tabDetails") },
+      { id: "subgroups", label: t("detail.tabSubgroups") },
       { id: "attachments", label: tCommon("attachmentsTab.title") },
       { id: "notes", label: tCommon("notesTab.title") },
     ],
-    [tAudit, tCommon],
+    [t, tAudit, tCommon],
   );
 
   return (
@@ -107,7 +109,9 @@ export function GroupDetailScreen({ groupId }: Props) {
       }
     >
       {({ detail, dateFmt, retry }) =>
-        activeTab === "attachments" ? (
+        activeTab === "subgroups" ? (
+          <GroupSubgroupsTab detail={detail} />
+        ) : activeTab === "attachments" ? (
           <EntityAttachmentsTab
             entityId={detail.id}
             attachments={detail.attachments}

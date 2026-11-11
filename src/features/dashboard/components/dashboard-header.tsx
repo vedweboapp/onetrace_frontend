@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ClipboardList,
   ClipboardPen,
+  Database,
   FileText,
   FolderKanban,
   Home,
@@ -151,6 +152,7 @@ export function DashboardHeader() {
   const rolesHref = routes.dashboard.settingsRoles;
   const profilesHref = routes.dashboard.settingsProfiles;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const dataAdministrationHref = routes.dashboard.settingsDataAdministration;
   const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const homeActive = pathname === homeHref;
@@ -257,6 +259,8 @@ export function DashboardHeader() {
     pathname === profilesHref || pathname.startsWith(`${profilesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const dataAdministrationActive =
+    pathname === dataAdministrationHref || pathname.startsWith(`${dataAdministrationHref}/`);
   const auditLogsActive =
     pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
@@ -352,13 +356,15 @@ export function DashboardHeader() {
                                                                                 ? tSettingsNav("profiles")
                                                                                 : integrationsActive
                                                                                   ? tSettingsNav("integrations")
-                                                                                : auditLogsActive
-                                                                                  ? tSettingsNav("auditLogs")
-                                                                                    : projectFormsActive
-                                                                                      ? tSettingsNav("projectForms")
-                                                                                      : templatesActive
-                                                                                        ? tSettingsNav("templates")
-                                                                                        : tNav("home");
+                                                                                  : dataAdministrationActive
+                                                                                    ? tSettingsNav("dataAdministration")
+                                                                                    : auditLogsActive
+                                                                                      ? tSettingsNav("auditLogs")
+                                                                                      : projectFormsActive
+                                                                                        ? tSettingsNav("projectForms")
+                                                                                        : templatesActive
+                                                                                          ? tSettingsNav("templates")
+                                                                                          : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
     <button
@@ -466,6 +472,7 @@ export function DashboardHeader() {
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />
             <TopNavLink href={profilesHref} label={tSettingsNav("profiles")} icon={Layers} active={profilesActive} resolved={resolved} />
             <TopNavLink href={integrationsHref} label={tSettingsNav("integrations")} icon={Plug} active={integrationsActive} resolved={resolved} />
+            <TopNavLink href={dataAdministrationHref} label={tSettingsNav("dataAdministration")} icon={Database} active={dataAdministrationActive} resolved={resolved} />
             <TopNavLink href={auditLogsHref} label={tSettingsNav("auditLogs")} icon={ClipboardList} active={auditLogsActive} resolved={resolved} />
           </>
         ) : (

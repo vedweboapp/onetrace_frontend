@@ -60,6 +60,7 @@ export const DEFAULT_TAB_LAYOUTS: TabLayoutsMap = {
   usersSettings: { order: ["users", "groups"], hidden: [] },
   personalProfile: { order: ["profile", "appearance"], hidden: [] },
   companySettings: { order: ["organization", "currencies", "schedule"], hidden: [] },
+  dataAdministration: { order: ["import", "export"], hidden: [] },
   zohoConnection: { order: ["help", "configure", "webhook", "history"], hidden: [] },
   schedulingDayAgenda: { order: ["jobs", "timeoff"], hidden: [] },
   formBuilder: { order: ["form", "rules", "preview"], hidden: [] },

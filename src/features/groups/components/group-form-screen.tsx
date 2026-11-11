@@ -33,7 +33,12 @@ import {
 import { checkmarkOptionsExcludingUsed } from "@/shared/utils/checkmark-options-excluding.util";
 import { sanitizeTitleInput } from "@/shared/form/field-input.util";
 import { cn } from "@/core/utils/http.util";
-import type { Group, GroupCreatePayload } from "@/features/groups/types/group.types";
+import type { GroupCreatePayload } from "@/features/groups/types/group.types";
+import {
+  buildGroupParentPayload,
+  isSelectableParentGroup,
+  resolveParentGroupId,
+} from "@/features/groups/utils/group-parent-payload.util";
 import {
   AppButton,
   CheckmarkSelect,
@@ -55,14 +60,6 @@ type CompositeRow = { id: string; item: string; abbreviation: string };
 
 function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function resolveParentGroupId(parent: Group["parent"]): string {
-  if (typeof parent === "number" && Number.isFinite(parent) && parent > 0) return String(parent);
-  if (parent && typeof parent === "object" && typeof parent.id === "number" && parent.id > 0) {
-    return String(parent.id);
-  }
-  return "";
 }
 
 const COMPOSITE_ITEMS_GRID =
@@ -126,13 +123,13 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     () => compositeOptions.map((opt) => ({ value: String(opt.id), label: opt.name })),
     [compositeOptions],
   );
-  const parentSelectOptions = React.useMemo(
-    () =>
-      isEdit && groupId
-        ? groupOptions.filter((opt) => opt.value !== String(groupId))
-        : groupOptions,
-    [groupOptions, groupId, isEdit],
-  );
+  const parentSelectOptions = React.useMemo(() => {
+    const excludeId = isEdit && groupId ? groupId : undefined;
+    return groupOptions.filter((opt) => {
+      if (excludeId != null && opt.value === String(excludeId)) return false;
+      return true;
+    });
+  }, [groupOptions, groupId, isEdit]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -210,7 +207,11 @@ export function GroupFormScreen({ mode, groupId }: Props) {
         setCompositeLoadError(tModal("compositeLoadError"));
       }
       if (groupsResult.status === "fulfilled") {
-        setGroupOptions(groupsResult.value.items.map((g) => ({ value: String(g.id), label: g.name })));
+        setGroupOptions(
+          groupsResult.value.items
+            .filter((g) => isSelectableParentGroup(g, isEdit ? groupId : undefined))
+            .map((g) => ({ value: String(g.id), label: g.name })),
+        );
       } else {
         setParentLoadError(tModal("parentLoadError"));
       }
@@ -218,7 +219,7 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [tModal]);
+  }, [groupId, isEdit, tModal]);
 
   React.useEffect(() => {
     if (!isEdit || !groupId) return;
@@ -295,20 +296,18 @@ export function GroupFormScreen({ mode, groupId }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
-    const parentId = Number(parent);
-    const payload: GroupCreatePayload = { name: name.trim(), items: compositeItems };
-    if (Number.isFinite(parentId) && parentId > 0) {
-      payload.parent = parentId;
-    }
+    const parentFields = buildGroupParentPayload(parent, isEdit ? "update" : "create");
+    const payload: GroupCreatePayload = {
+      name: name.trim(),
+      items: compositeItems,
+      ...parentFields,
+    };
 
     setSubmitting(true);
     try {
       const saved =
         isEdit && groupId
-          ? await updateGroup(groupId, {
-              ...payload,
-              parent: Number.isFinite(parentId) && parentId > 0 ? parentId : null,
-            })
+          ? await updateGroup(groupId, payload)
           : await createGroup(payload);
       toastSuccess(isEdit ? tModal("updatedToast") : tModal("createdToast"));
       duplicate.clear();
