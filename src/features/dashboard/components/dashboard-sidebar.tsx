@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, PackageCheck, Plug, Settings, FileText, FolderKanban, Home, Layers, LayoutTemplate, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
+import { BookUser, Building2, CalendarDays, ShieldCheck, ChevronRight, ClipboardList, ClipboardPen, Database, PackageCheck, Plug, Settings, FileText, FolderKanban, Home, Layers, LayoutTemplate, ListTodo, MapPinHouse, MonitorSmartphone, Package, Palette, QrCode, Receipt, RotateCcw, Store, Truck, UserRound } from "lucide-react";
 import { isCustomizationSettingsPath } from "@/shared/config/customization-settings-nav";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -745,6 +745,7 @@ function DashboardSettingsSidebar({
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const templatesHref = routes.dashboard.settingsTemplates;
   const integrationsHref = routes.dashboard.settingsIntegrations;
+  const dataAdministrationHref = routes.dashboard.settingsDataAdministration;
   const auditLogsHref = routes.dashboard.settingsAuditLogs;
 
   const customizationActive = isCustomizationSettingsPath(pathname);
@@ -770,6 +771,8 @@ function DashboardSettingsSidebar({
   const templatesActive = pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
+  const dataAdministrationActive =
+    pathname === dataAdministrationHref || pathname.startsWith(`${dataAdministrationHref}/`);
   const auditLogsActive =
     pathname === auditLogsHref || pathname.startsWith(`${auditLogsHref}/`);
 
@@ -884,6 +887,14 @@ function DashboardSettingsSidebar({
           active={integrationsActive}
           label={t("integrations")}
           icon={Plug}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={dataAdministrationHref}
+          active={dataAdministrationActive}
+          label={t("dataAdministration")}
+          icon={Database}
           expanded={expanded}
           resolved={resolved}
         />

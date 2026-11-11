@@ -6,6 +6,11 @@ import { useRouter } from "@/i18n/navigation";
 import { createGroup, fetchGroupsPage, updateGroup } from "@/features/groups/api/group.api";
 import type { Group } from "@/features/groups/types/group.types";
 import {
+  buildGroupParentPayload,
+  isSelectableParentGroup,
+  resolveParentGroupId,
+} from "@/features/groups/utils/group-parent-payload.util";
+import {
   validateGroupCompositeRows,
   normalizeGroupAbbreviation,
   GROUP_ABBREVIATION_MAX_LENGTH,
@@ -46,14 +51,6 @@ type CompositeRow = { id: string; item: string; abbreviation: string };
 
 function nextRowId(): string {
   return `group-comp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function resolveParentGroupId(parent: Group["parent"]): string {
-  if (typeof parent === "number" && Number.isFinite(parent) && parent > 0) return String(parent);
-  if (parent && typeof parent === "object" && typeof parent.id === "number" && parent.id > 0) {
-    return String(parent.id);
-  }
-  return "";
 }
 
 const COMPOSITE_ITEMS_GRID =
@@ -113,7 +110,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
       mode === "edit" && group
         ? groupOptions.filter((opt) => opt.value !== String(group.id))
         : groupOptions,
-    [groupOptions, group, mode],
+    [group, groupOptions, mode],
   );
 
   const compositeQuickCreate = useQuickCreate({
@@ -149,7 +146,12 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
         setCompositeLoadError(t("compositeLoadError"));
       }
       if (groupsResult.status === "fulfilled") {
-        setGroupOptions(groupsResult.value.items.map((g) => ({ value: String(g.id), label: g.name })));
+        const excludeId = mode === "edit" && group ? group.id : undefined;
+        setGroupOptions(
+          groupsResult.value.items
+            .filter((g) => isSelectableParentGroup(g, excludeId))
+            .map((g) => ({ value: String(g.id), label: g.name })),
+        );
       } else {
         setParentLoadError(t("parentLoadError"));
       }
@@ -157,7 +159,7 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, t]);
+  }, [group, mode, open, t]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -219,9 +221,6 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
     setRowErrors(errors);
     if (compositeItems == null) return;
 
-    const parentId = Number(parent);
-    const hasParent = Number.isFinite(parentId) && parentId > 0;
-
     setSubmitting(true);
     try {
       const saved =
@@ -229,12 +228,12 @@ export function GroupFormModal({ open, onClose, mode, group, onSaved }: Props) {
           ? await updateGroup(group.id, {
               name: name.trim(),
               items: compositeItems,
-              parent: hasParent ? parentId : null,
+              ...buildGroupParentPayload(parent, "update"),
             })
           : await createGroup({
               name: name.trim(),
               items: compositeItems,
-              ...(hasParent ? { parent: parentId } : {}),
+              ...buildGroupParentPayload(parent, "create"),
             });
       toastSuccess(mode === "edit" ? t("updatedToast") : t("createdToast"));
       onSaved();

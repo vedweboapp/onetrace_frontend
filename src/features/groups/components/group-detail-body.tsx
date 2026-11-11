@@ -98,6 +98,9 @@ export function GroupDetailBody({
             <DetailMetricCard label={t("table.itemCount")}>
               <span className="tabular-nums">{linkedItems.length}</span>
             </DetailMetricCard>
+            <DetailMetricCard label={t("detail.subgroupCount")}>
+              <span className="tabular-nums">{detail.subgroups?.length ?? 0}</span>
+            </DetailMetricCard>
           </DetailMetricsGrid>
         </DetailPanelCard>
 

@@ -83,6 +83,7 @@ export const routes = {
     settingsModules: "/settings/modules",
     settingsProjectForms: "/settings/project-type-forms",
     settingsIntegrations: "/settings/integrations",
+    settingsDataAdministration: "/settings/data-administration",
     settingsAuditLogs: "/settings/audit-logs",
     settingsZohoCallback: "/settings/integrations/zoho/callback",
     settingsZohoKeyMapping: "/settings/integrations/zoho/key-mapping",
