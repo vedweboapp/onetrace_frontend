@@ -9,8 +9,11 @@ import {
 import { parseListApiPage } from "@/shared/utils/list-dropdown-fetch.util";
 import { DATA_ADMINISTRATION_PATHS } from "./data-administration.paths";
 import type {
+  DataAdministrationExportFormat,
   DataAdministrationListResponse,
   DataAdministrationLog,
+  DataAdministrationLogId,
+  DataAdministrationPagination,
 } from "../types/data-administration.types";
 
 async function parseBlobError(blob: Blob): Promise<string | null> {
@@ -25,39 +28,34 @@ async function parseBlobError(blob: Blob): Promise<string | null> {
   return null;
 }
 
-export async function fetchImportHistoryPage(page = 1, pageSize = 20) {
-  const { data } = await api.get<DataAdministrationListResponse>(DATA_ADMINISTRATION_PATHS.importHistory, {
-    params: { page, page_size: pageSize },
-  });
-  return parseListApiPage<DataAdministrationLog>(data, pageSize);
-}
-
-export async function fetchExportHistoryPage(page = 1, pageSize = 20) {
-  const { data } = await api.get<DataAdministrationListResponse>(DATA_ADMINISTRATION_PATHS.exportHistory, {
-    params: { page, page_size: pageSize },
-  });
-  return parseListApiPage<DataAdministrationLog>(data, pageSize);
-}
-
-export async function undoDataAdministrationLog(logId: number): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(DATA_ADMINISTRATION_PATHS.undo(logId));
-  if (data && typeof data === "object" && "success" in data) {
-    assertApiSuccess(data as ApiEnvelope<unknown>);
+function normalizeHistoryPage(
+  data: unknown,
+  pageSize: number,
+): { items: DataAdministrationLog[]; pagination: DataAdministrationPagination } {
+  if (Array.isArray(data)) {
+    const items = data as DataAdministrationLog[];
+    return {
+      items,
+      pagination: {
+        total_records: items.length,
+        total_pages: 1,
+        current_page: 1,
+        page_size: pageSize,
+        next: null,
+        previous: null,
+      },
+    };
   }
-}
-
-export async function redoDataAdministrationLog(logId: number): Promise<void> {
-  const { data } = await api.post<ApiEnvelope<unknown>>(DATA_ADMINISTRATION_PATHS.redo(logId));
-  if (data && typeof data === "object" && "success" in data) {
-    assertApiSuccess(data as ApiEnvelope<unknown>);
-  }
+  return parseListApiPage<DataAdministrationLog>(data, pageSize);
 }
 
 async function downloadDataAdministrationFile(
   path: string,
+  exportFormat: DataAdministrationExportFormat,
   fallbackFilename: string,
 ): Promise<void> {
   const response = await api.get<Blob>(path, {
+    params: { export_format: exportFormat },
     responseType: "blob",
     skipErrorToast: true,
   });
@@ -68,20 +66,54 @@ async function downloadDataAdministrationFile(
     throw new ApiBusinessError(message ?? "Download failed");
   }
   const disposition = response.headers["content-disposition"] as string | undefined;
-  const filename = filenameFromContentDisposition(disposition, fallbackFilename);
+  const filename = filenameFromContentDisposition(
+    disposition,
+    `${fallbackFilename}.${exportFormat}`,
+  );
   triggerBlobDownload(blob, filename);
 }
 
-export async function downloadDataAdministrationOriginal(logId: number): Promise<void> {
+export async function fetchImportHistoryPage(page = 1, pageSize = 20) {
+  const { data } = await api.get<DataAdministrationListResponse | DataAdministrationLog[]>(
+    DATA_ADMINISTRATION_PATHS.importHistory,
+    { params: { page, page_size: pageSize } },
+  );
+  return normalizeHistoryPage(data, pageSize);
+}
+
+export async function fetchExportHistoryPage(page = 1, pageSize = 20) {
+  const { data } = await api.get<DataAdministrationListResponse | DataAdministrationLog[]>(
+    DATA_ADMINISTRATION_PATHS.exportHistory,
+    { params: { page, page_size: pageSize } },
+  );
+  return normalizeHistoryPage(data, pageSize);
+}
+
+export async function undoDataAdministrationLog(logId: DataAdministrationLogId): Promise<void> {
+  const { data } = await api.post<ApiEnvelope<unknown>>(DATA_ADMINISTRATION_PATHS.undo(logId));
+  if (data && typeof data === "object" && "success" in data) {
+    assertApiSuccess(data as ApiEnvelope<unknown>);
+  }
+}
+
+export async function downloadDataAdministrationSkipped(
+  logId: DataAdministrationLogId,
+  exportFormat: DataAdministrationExportFormat,
+): Promise<void> {
   await downloadDataAdministrationFile(
-    DATA_ADMINISTRATION_PATHS.downloadOriginal(logId),
-    `import-${logId}-original`,
+    DATA_ADMINISTRATION_PATHS.downloadSkipped(logId),
+    exportFormat,
+    `data-admin-${logId}-skipped`,
   );
 }
 
-export async function downloadDataAdministrationSkipped(logId: number): Promise<void> {
+export async function downloadDataAdministrationOriginal(
+  logId: DataAdministrationLogId,
+  exportFormat: DataAdministrationExportFormat,
+): Promise<void> {
   await downloadDataAdministrationFile(
-    DATA_ADMINISTRATION_PATHS.downloadSkipped(logId),
-    `import-${logId}-skipped`,
+    DATA_ADMINISTRATION_PATHS.downloadOriginal(logId),
+    exportFormat,
+    `data-admin-${logId}-original`,
   );
 }
