@@ -67,14 +67,12 @@ export type GroupCreatePayload = {
   items?: GroupItemRef[];
   /** Optional parent group id. */
   parent?: number;
-  is_parent?: boolean;
 };
 
 export type GroupUpdatePayload = {
   name?: string;
   items?: GroupItemRef[];
   parent?: number | null;
-  is_parent?: boolean;
 };
 
 export type GroupListResponse = {

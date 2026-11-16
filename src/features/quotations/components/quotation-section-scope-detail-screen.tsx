@@ -6,7 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import type { QuotationDraft, QuotationDraftSection } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftSectionServices } from "@/features/quotations/components/quotation-draft-section-services";
-import { QuotationDraftSectionMaterials } from "@/features/quotations/components/quotation-draft-section-materials";
+import {
+  QuotationDraftSectionMaterials,
+  type MaterialsPickerTrail,
+} from "@/features/quotations/components/quotation-draft-section-materials";
 import { QuotationDraftPriceTotalBar } from "@/features/quotations/components/quotation-draft-composite-lines";
 import { draftSectionTotal } from "@/features/quotations/utils/quotation-draft-compute.util";
 import { normalizeQuotationScopeBackHref } from "@/features/quotations/utils/quotation-block-scope.util";
@@ -30,6 +33,7 @@ type ScopeInnerTab = "labour" | "materials";
 
 export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
+  const tFormTabs = useTranslations("Dashboard.quotations.formTabs");
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
   const router = useRouter();
@@ -50,6 +54,7 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
   const [sectionId, setSectionId] = React.useState("");
   const [readOnly, setReadOnly] = React.useState(false);
   const [innerTab, setInnerTab] = React.useState<ScopeInnerTab>("labour");
+  const [materialsTrail, setMaterialsTrail] = React.useState<MaterialsPickerTrail>(null);
 
   const draftRef = React.useRef(draft);
   draftRef.current = draft;
@@ -233,13 +238,63 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
           </div>
 
           <DetailPanelCard title={t("sectionLabourMaterials")}>
+            {innerTab === "materials" && materialsTrail ? (
+              <nav
+                aria-label={t("groupPickerBreadcrumbAria")}
+                className="mb-3 flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400"
+              >
+                <button
+                  type="button"
+                  onClick={materialsTrail.onGoRoot}
+                  className="truncate transition hover:text-slate-800 hover:underline dark:hover:text-slate-100"
+                >
+                  {tFormTabs("pricing")}
+                </button>
+                <span className="text-slate-400" aria-hidden>
+                  /
+                </span>
+                {materialsTrail.onGoGroup ? (
+                  <button
+                    type="button"
+                    onClick={materialsTrail.onGoGroup}
+                    className="truncate transition hover:text-slate-800 hover:underline dark:hover:text-slate-100"
+                  >
+                    {materialsTrail.groupName}
+                  </button>
+                ) : (
+                  <span
+                    className="truncate font-medium text-slate-700 dark:text-slate-200"
+                    aria-current="page"
+                  >
+                    {materialsTrail.groupName}
+                  </span>
+                )}
+                {materialsTrail.subgroupName ? (
+                  <>
+                    <span className="text-slate-400" aria-hidden>
+                      /
+                    </span>
+                    <span
+                      className="truncate font-medium text-slate-700 dark:text-slate-200"
+                      aria-current="page"
+                    >
+                      {materialsTrail.subgroupName}
+                    </span>
+                  </>
+                ) : null}
+              </nav>
+            ) : null}
             <AppTabs
               tabs={[
                 { id: "labour", label: t("sectionLabourTab") },
                 { id: "materials", label: t("sectionMaterialsTab") },
               ]}
               value={innerTab}
-              onValueChange={(id) => setInnerTab(id === "materials" ? "materials" : "labour")}
+              onValueChange={(id) => {
+                const next = id === "materials" ? "materials" : "labour";
+                setInnerTab(next);
+                if (next !== "materials") setMaterialsTrail(null);
+              }}
               ariaLabel={t("sectionInnerTabsAria")}
               panelIdPrefix="quotation-section-scope"
             />
@@ -259,6 +314,7 @@ export function QuotationSectionScopeDetailScreen({ defaultBackHref }: Props) {
                   readOnly={readOnly}
                   showAddForm
                   onChange={(section_pins) => patchSection({ section_pins })}
+                  onTrailChange={setMaterialsTrail}
                 />
               )}
               <QuotationDraftPriceTotalBar

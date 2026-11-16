@@ -24,6 +24,13 @@ import { formatMoneyDisplay } from "@/features/quotations/utils/quotation-level-
 import { AppButton, CheckmarkSelect, MoneyInput, NumericInput } from "@/shared/ui";
 import { cn } from "@/core/utils/http.util";
 
+export type MaterialsPickerTrail = {
+  groupName: string;
+  subgroupName?: string;
+  onGoRoot: () => void;
+  onGoGroup?: () => void;
+} | null;
+
 type Props = {
   pins: QuotationDraftLine[];
   readOnly?: boolean;
@@ -31,6 +38,8 @@ type Props = {
   onChange: (next: QuotationDraftLine[]) => void;
   /** When false, only the added goods lines are shown. */
   showAddForm?: boolean;
+  /** Breadcrumb trail for the parent section header (between heading and tabs). */
+  onTrailChange?: (trail: MaterialsPickerTrail) => void;
 };
 
 type PickerLevel =
@@ -60,45 +69,20 @@ function itemUnitPrice(ref: GroupItemRef, catalog?: Item, override?: string): nu
   return catalogSellingPriceNumber(catalog);
 }
 
-function CrumbLink({
-  label,
-  onClick,
-  current,
-}: {
-  label: string;
-  onClick?: () => void;
-  current?: boolean;
-}) {
-  if (current || !onClick) {
-    return (
-      <span className="truncate font-medium text-slate-700 dark:text-slate-200" aria-current="page">
-        {label}
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="truncate text-slate-500 transition hover:text-slate-800 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
-    >
-      {label}
-    </button>
-  );
-}
-
 export function QuotationDraftSectionMaterials({
   pins,
   readOnly = false,
   saving = false,
   onChange,
   showAddForm = true,
+  onTrailChange,
 }: Props) {
   const t = useTranslations("Dashboard.quotations.draft");
-  const tTabs = useTranslations("Dashboard.quotations.formTabs");
   const locale = useLocale();
   const loc = locale === "es" ? "es" : "en";
   const formId = React.useId();
+  const onTrailChangeRef = React.useRef(onTrailChange);
+  onTrailChangeRef.current = onTrailChange;
 
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [groupId, setGroupId] = React.useState("");
@@ -209,18 +193,44 @@ export function QuotationDraftSectionMaterials({
     setLevel({ kind: "subgroup", group: level.group, subgroup });
   }
 
-  function goToRoot() {
-    resetItemForm();
+  const goToRoot = React.useCallback(() => {
+    setPickedItemId("");
+    setUnitPrice("");
+    setQuantity("1");
     setGroupId("");
     setLevel({ kind: "root" });
-  }
+  }, []);
 
-  function goToGroup() {
-    if (level.kind === "subgroup") {
-      resetItemForm();
-      setLevel({ kind: "group", group: level.group });
+  const goToGroup = React.useCallback(() => {
+    setPickedItemId("");
+    setUnitPrice("");
+    setQuantity("1");
+    setLevel((current) => {
+      if (current.kind !== "subgroup") return current;
+      return { kind: "group", group: current.group };
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const report = onTrailChangeRef.current;
+    if (!report) return;
+    if (level.kind === "root") {
+      report(null);
+      return;
     }
-  }
+    report({
+      groupName: level.group.name,
+      subgroupName: level.kind === "subgroup" ? level.subgroup.name : undefined,
+      onGoRoot: goToRoot,
+      onGoGroup: level.kind === "subgroup" ? goToGroup : undefined,
+    });
+  }, [level, goToRoot, goToGroup]);
+
+  React.useEffect(() => {
+    return () => {
+      onTrailChangeRef.current?.(null);
+    };
+  }, []);
 
   function handlePickItem(nextId: string) {
     setPickedItemId(nextId);
@@ -299,25 +309,6 @@ export function QuotationDraftSectionMaterials({
             <p className="text-sm text-slate-500 dark:text-slate-400">{t("groupPickerSelectGroupHint")}</p>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-              <nav
-                aria-label={t("groupPickerBreadcrumbAria")}
-                className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/50"
-              >
-                <CrumbLink label={tTabs("pricing")} onClick={goToRoot} />
-                <ChevronRight className="size-3 shrink-0 text-slate-400" aria-hidden />
-                <CrumbLink
-                  label={level.group.name}
-                  onClick={level.kind === "subgroup" ? goToGroup : undefined}
-                  current={level.kind === "group"}
-                />
-                {level.kind === "subgroup" ? (
-                  <>
-                    <ChevronRight className="size-3 shrink-0 text-slate-400" aria-hidden />
-                    <CrumbLink label={level.subgroup.name} current />
-                  </>
-                ) : null}
-              </nav>
-
               {loadingGroup ? (
                 <div className="space-y-2 p-3">
                   <div className="h-9 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
