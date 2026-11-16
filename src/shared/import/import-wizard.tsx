@@ -259,14 +259,27 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
     }
   }
 
-  async function pollImportStatus(taskId: string, signal: AbortSignal) {
+  async function pollImportStatus(
+    taskId: string,
+    importLogId: string | undefined,
+    signal: AbortSignal,
+  ) {
     while (!signal.aborted) {
       const status = await fetchModuleImportStatus(config.apiSegment, taskId);
       if (signal.aborted) return;
       setProgress(status);
 
       if (isImportStatusTerminal(status.state)) {
-        finishWithResult({ ...status, task_id: taskId }, !isImportStatusSuccess(status.state));
+        const statusLogId =
+          typeof status.import_log_id === "string" ? status.import_log_id.trim() : "";
+        finishWithResult(
+          {
+            ...status,
+            task_id: taskId,
+            import_log_id: statusLogId || importLogId || undefined,
+          },
+          !isImportStatusSuccess(status.state),
+        );
         return;
       }
 
@@ -292,6 +305,9 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
         return;
       }
 
+      const importLogId =
+        typeof queued.import_log_id === "string" ? queued.import_log_id.trim() : "";
+
       setStep("progress");
       setProgress({
         state: queued.status || "PROCESSING",
@@ -299,11 +315,12 @@ export function ImportWizard({ open, onClose, config, onSuccess }: Props) {
         status: queued.message || t("processing"),
         inserted_count: 0,
         skipped_count: 0,
+        import_log_id: importLogId || undefined,
       });
 
       const controller = new AbortController();
       pollAbortRef.current = controller;
-      await pollImportStatus(queued.task_id, controller.signal);
+      await pollImportStatus(queued.task_id, importLogId || undefined, controller.signal);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setImporting(false);
@@ -874,8 +891,8 @@ function ImportResultSummary({
   const total =
     result.total_records
     ?? inserted + skipped + updated + failedCount + notImported;
-  const taskId = result.task_id?.trim() || "";
-  const canDownloadSkipped = skipped > 0 && Boolean(taskId);
+  const importLogId = result.import_log_id?.trim() || "";
+  const canDownloadSkipped = skipped > 0 && Boolean(importLogId);
 
   const stats: Array<{
     key: string;
@@ -913,7 +930,7 @@ function ImportResultSummary({
     if (!canDownloadSkipped || downloadingSkipped) return;
     setDownloadingSkipped(true);
     try {
-      await downloadModuleImportSkipped(apiSegment, taskId, format);
+      await downloadModuleImportSkipped(apiSegment, importLogId, format);
       toastSuccess(t("skippedDownload.successToast"));
     } catch (err) {
       toastApiError(err, t("skippedDownload.errorToast"));

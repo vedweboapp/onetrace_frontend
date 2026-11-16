@@ -112,17 +112,17 @@ function skippedDownloadExt(format: ImportSkippedExportFormat): string {
 }
 
 /**
- * GET `{segment}/download-skipped/{taskId}/?export_format=csv|xlsx|zip|xls`
- * Downloads skipped rows from a completed import task.
+ * GET `{segment}/download-skipped/{import_log_id}/?export_format=csv|xlsx|zip|xls`
+ * Downloads skipped rows for a completed import log.
  */
 export async function downloadModuleImportSkipped(
   apiSegment: string,
-  taskId: string,
+  importLogId: string,
   exportFormat: ImportSkippedExportFormat = "csv",
 ): Promise<void> {
   const segment = normalizeSegment(apiSegment);
-  const id = encodeURIComponent(taskId.trim());
-  if (!id) throw new ApiBusinessError("Missing import task id.");
+  const id = encodeURIComponent(importLogId.trim());
+  if (!id) throw new ApiBusinessError("Missing import log id.");
 
   const response = await api.get<Blob>(`${segment}/download-skipped/${id}/`, {
     params: { export_format: exportFormat },
