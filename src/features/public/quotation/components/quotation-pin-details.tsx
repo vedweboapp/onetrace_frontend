@@ -1081,8 +1081,6 @@ function prepareQuotationHtml(html: string): string {
 
 function HtmlQuotationDocument({
   html,
-  pageWidth,
-  pageHeight,
 }: {
   html: string;
   pageWidth?: string | null;
@@ -1092,10 +1090,10 @@ function HtmlQuotationDocument({
 
   return (
     <div
-      className="quotation-rendered-html w-full bg-white shadow-xl border border-slate-200 p-8 sm:p-12 transition-all duration-200 overflow-x-auto"
+      className="quotation-rendered-html w-full bg-white shadow-xl border border-slate-200 p-8 sm:p-12 transition-all duration-200"
       style={{
-        maxWidth: pageWidth || "8.27in",
-        minHeight: pageHeight || "11.69in",
+        maxWidth: "850px",
+        minHeight: "11in",
         margin: "0 auto",
       }}
     >
@@ -1106,21 +1104,35 @@ function HtmlQuotationDocument({
           line-height: 1.5;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
           -webkit-font-smoothing: antialiased;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
         .quotation-rendered-html *,
         .quotation-rendered-html *::before,
         .quotation-rendered-html *::after {
-          box-sizing: border-box;
+          box-sizing: border-box !important;
+          max-width: 100% !important;
+        }
+        .quotation-rendered-html p,
+        .quotation-rendered-html div,
+        .quotation-rendered-html span,
+        .quotation-rendered-html li {
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
         }
         .quotation-rendered-html table {
-          width: 100%;
-          border-collapse: collapse;
+          width: 100% !important;
+          max-width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
         }
         .quotation-rendered-html table.pcs-itemtable {
-          width: 100%;
-          border-collapse: collapse;
+          width: 100% !important;
+          max-width: 100% !important;
+          border-collapse: collapse !important;
           margin-top: 15px;
           font-size: 12px;
+          table-layout: fixed !important;
         }
         .quotation-rendered-html table.pcs-itemtable th {
           background-color: #3c3d3a;
@@ -1141,6 +1153,7 @@ function HtmlQuotationDocument({
         .quotation-rendered-html table:has(td[colwidth]),
         .quotation-rendered-html table:has(th[colwidth]) {
           width: 100% !important;
+          max-width: 100% !important;
           border-collapse: collapse !important;
           border: none !important;
           margin: 0.5rem 0 !important;
@@ -1160,6 +1173,7 @@ function HtmlQuotationDocument({
         }
         .quotation-rendered-html .container-box-block {
           box-sizing: border-box !important;
+          max-width: 100% !important;
         }
         .quotation-rendered-html strong,
         .quotation-rendered-html b {
@@ -1169,28 +1183,33 @@ function HtmlQuotationDocument({
           list-style-type: decimal !important;
           margin: 0.75em 0 !important;
           padding-left: 28px !important;
+          max-width: 100% !important;
         }
         .quotation-rendered-html ul {
           list-style-type: disc !important;
           margin: 0.75em 0 !important;
           padding-left: 28px !important;
+          max-width: 100% !important;
         }
         .quotation-rendered-html li {
           display: list-item !important;
           margin-bottom: 0.35em !important;
           line-height: 1.5 !important;
+          max-width: 100% !important;
         }
         .quotation-rendered-html p {
           margin: 0 0 0.5em 0;
+          max-width: 100% !important;
         }
         .quotation-rendered-html img {
-          max-width: 100%;
-          height: auto;
+          max-width: 100% !important;
+          height: auto !important;
           display: block;
         }
         .quotation-rendered-html td img,
         .quotation-rendered-html th img {
           display: block;
+          max-width: 100% !important;
         }
       `}</style>
       <div dangerouslySetInnerHTML={{ __html: processedHtml }} />
@@ -1219,7 +1238,7 @@ function PdfColumn({
 
   if (htmlContent) {
     return (
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex justify-center w-full">
         <HtmlQuotationDocument
           html={htmlContent}
           pageWidth={detail.page_width}
@@ -1230,7 +1249,7 @@ function PdfColumn({
   }
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 flex justify-center w-full">
       {/* Progress bar while generating snapshots */}
       {snapStatus === "generating" && (
         <SnapshotProgressBar completed={snapProgress.completed} total={snapProgress.total} />
@@ -1246,7 +1265,7 @@ function PdfColumn({
 
       {/* Document — renders at full natural height so the PAGE scrolls */}
       <div
-        className="w-full bg-white shadow-xl border border-slate-200"
+        className="w-full max-w-[850px] mx-auto bg-white shadow-xl border border-slate-200"
         style={{ display: snapStatus === "success" || snapStatus === "error" || snapStatus === "idle" ? "block" : "none" }}
       >
         <DocumentBody data={detail} pinSnapshots={pinSnapshots} sections={sections} onPinClick={onPinClick} />
@@ -1741,8 +1760,8 @@ export function QuotationPinDetails({ initialToken }: { initialToken?: string } 
   return (
     <div className="min-h-screen bg-slate-100">
       {/* ── Top nav bar — sticky ── */}
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-10">
-        <div className="flex items-center gap-3 h-14">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1500px] flex items-center gap-3 h-14">
           <div className="border border-slate-700 px-2.5 py-1.5 rounded shrink-0 bg-black">
             <span className="text-slate-400 font-bold text-base tracking-tight leading-none">
               RED<span className="text-white">5</span>
@@ -1764,8 +1783,8 @@ export function QuotationPinDetails({ initialToken }: { initialToken?: string } 
       </header>
 
       {/* ── Page body — page scrolls naturally ── */}
-      <div className="px-4 sm:px-6 lg:px-10 pt-6 pb-32 sm:pb-28">
-        <div className="flex gap-6 items-start">
+      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8 pt-6 pb-32 sm:pb-28">
+        <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
 
           {/* Left: Quotation PDF — full natural height, PAGE scrolls */}
           <PdfColumn
@@ -1823,8 +1842,8 @@ export function QuotationPinDetails({ initialToken }: { initialToken?: string } 
       )}
 
       {/* ── Footer ── */}
-      <footer className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1500px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-center text-xs text-slate-400 sm:text-left">
             This is a secure, read-only quotation review link issued by{" "}
             <span className="font-semibold text-slate-600">Red 05 Limited</span>.
