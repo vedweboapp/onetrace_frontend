@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import {
   FileSpreadsheet,
   Receipt,
-  ShoppingCart,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +45,7 @@ interface TemplateVariablesSidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   moduleName?: string;
+  formId?: string | number | null;
   onOpenPinsListModal?: () => void;
   onOpenHeaderModal?: () => void;
   /** Called whenever the variable list for the active module is loaded/reloaded */
@@ -55,13 +56,17 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   editor,
   collapsed,
   onToggleCollapse,
+  moduleName,
+  formId,
   onOpenPinsListModal,
   onOpenHeaderModal,
   onVariablesLoaded,
 }: TemplateVariablesSidebarProps) {
-  // Options & variables in the sidebar are independent of the template's module.
-  // The user can freely toggle between "quotations" and "orders" to browse and insert variables.
-  const [activeModule, setActiveModule] = useState<"quotations" | "orders">("quotations");
+  const searchParams = useSearchParams();
+  const urlModuleName = searchParams?.get("module_name") || searchParams?.get("module");
+  const urlFormId = searchParams?.get("form_id") || searchParams?.get("id");
+  const effectiveFormId = formId || urlFormId || null;
+  const activeModule = (urlModuleName || moduleName || "quotations").trim();
   const [activeTab, setActiveTab] = useState<SidebarTab>("variables");
 
   const [moduleData, setModuleData] = useState<ModuleVariablesData>({
@@ -86,46 +91,41 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   const [subformModalOpen, setSubformModalOpen] = useState(false);
   const [expandedFields, setExpandedFields] = useState<Record<string, boolean>>({});
 
-  const loadVariables = useCallback(async (targetModule: string) => {
-    try {
-      setLoading(true);
-      setLoadError(null);
-      const data = await fetchModuleVariables(targetModule);
-      setModuleData(data);
-      onVariablesLoaded?.(data.allVariables);
-    } catch (err: any) {
-      console.warn(`Could not load variables for ${targetModule}:`, err);
-      const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        err?.message ||
-        `Failed to load ${targetModule} variables from API`;
-      setLoadError(typeof msg === "string" ? msg : "Error loading variables");
-      setModuleData({
-        moduleName: targetModule,
-        primaryKeys: [],
-        relatedModules: {},
-        allVariables: [],
-        multivalueModules: {},
-        singleModules: {},
-        relatedModulesMeta: {},
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadVariables = useCallback(
+    async (targetModule: string, targetFormId?: string | number | null) => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        const data = await fetchModuleVariables(targetModule, targetFormId);
+        setModuleData(data);
+        onVariablesLoaded?.(data.allVariables);
+      } catch (err: any) {
+        console.warn(`Could not load variables for ${targetModule}:`, err);
+        const msg =
+          err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          err?.message ||
+          `Failed to load ${targetModule} variables from API`;
+        setLoadError(typeof msg === "string" ? msg : "Error loading variables");
+        setModuleData({
+          moduleName: targetModule,
+          primaryKeys: [],
+          relatedModules: {},
+          allVariables: [],
+          multivalueModules: {},
+          singleModules: {},
+          relatedModulesMeta: {},
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onVariablesLoaded],
+  );
 
   useEffect(() => {
-    void loadVariables(activeModule);
-  }, [activeModule, loadVariables]);
-
-  const handleSwitchModule = (target: "quotations" | "orders") => {
-    if (activeModule === target) return;
-    setActiveModule(target);
-    setSelectedModuleFilter("all"); // Always default to "All Variables"
-    setSearch("");
-    // Components tab stays visible for both modules (signature is always available)
-  };
+    void loadVariables(activeModule, effectiveFormId);
+  }, [activeModule, effectiveFormId, loadVariables]);
 
   const toggleSectionCollapse = (sectionKey: string) => {
     setCollapsedSections((prev) => ({
@@ -148,7 +148,13 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
           item.label.toLowerCase().includes(q) ||
           item.tag.toLowerCase().includes(q) ||
           item.key.toLowerCase().includes(q) ||
-          (item.description && item.description.toLowerCase().includes(q)),
+          (item.description && item.description.toLowerCase().includes(q)) ||
+          (item.hasChildren && item.children?.some(
+            (child) =>
+              child.label.toLowerCase().includes(q) ||
+              child.tag.toLowerCase().includes(q) ||
+              child.key.toLowerCase().includes(q),
+          )),
       );
     };
 
@@ -183,7 +189,9 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
         if (filteredRelated.length > 0 || !q) {
           sections.push({
             key: relKey,
-            title: formatFieldLabel(relName),
+            title: relKey === "form_template" && moduleData.formTemplateName
+              ? moduleData.formTemplateName
+              : formatFieldLabel(relName),
             isPrimary: false,
             items: filteredRelated,
           });
@@ -293,9 +301,9 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={() => void loadVariables(activeModule)}
+            onClick={() => void loadVariables(activeModule, effectiveFormId)}
             disabled={loading}
-            title={`Reload from API (listmodules?module_name=${activeModule})`}
+            title={`Reload from API (listmodules?module_name=${activeModule}${activeModule === "project_forms" && effectiveFormId ? `&id=${effectiveFormId}` : ""})`}
             className="p-1 rounded text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition disabled:opacity-40"
           >
             <RotateCw size={13} className={cn(loading && "animate-spin text-blue-500")} />
@@ -311,29 +319,8 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
         </div>
       </div>
 
-      {/* ── Module Switcher Buttons (always visible) ── */}
+      {/* ── Search & Tabs (always visible) ── */}
       <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 shrink-0 space-y-2.5 bg-slate-50/40 dark:bg-slate-900/40">
-        <div className="grid grid-cols-2 gap-2">
-          <AppButton
-            variant={activeModule === "quotations" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => handleSwitchModule("quotations")}
-            className="w-full justify-center"
-          >
-            <Receipt className="size-3.5" />
-            <span>Quotation</span>
-          </AppButton>
-          <AppButton
-            variant={activeModule === "orders" ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => handleSwitchModule("orders")}
-            className="w-full justify-center"
-          >
-            <ShoppingCart className="size-3.5" />
-            <span>Orders</span>
-          </AppButton>
-        </div>
-
         {/* ── Search (always visible) ── */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
@@ -375,7 +362,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
             </span>
             <button
               type="button"
-              onClick={() => void loadVariables(activeModule)}
+              onClick={() => void loadVariables(activeModule, effectiveFormId)}
               className="underline font-semibold shrink-0 cursor-pointer hover:text-amber-700"
             >
               Retry
@@ -469,7 +456,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                 ) : (
                   <button
                     type="button"
-                    onClick={() => void loadVariables(activeModule)}
+                    onClick={() => void loadVariables(activeModule, effectiveFormId)}
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer"
                   >
                     <RotateCw size={11} />
@@ -493,8 +480,8 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         {section.isPrimary ? (
-                          activeModule === "orders" ? (
-                            <ShoppingCart size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                          activeModule === "project_forms" ? (
+                            <FileSpreadsheet size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
                           ) : (
                             <Receipt size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
                           )

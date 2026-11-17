@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import api from "@/core/api/axios";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { deleteJob } from "@/features/jobs/api/job.api";
@@ -42,6 +43,7 @@ import {
   massSelectionColumn,
   useEntityListMassActions,
 } from "@/shared/mass-actions";
+import { triggerBlobDownload } from "@/shared/mass-actions/mass-action.util";
 import {
   CheckmarkSelect,
   ConfirmDialog,
@@ -65,6 +67,57 @@ import {
   mergeUrlQueryParam,
 } from "@/shared/utils/detail-from-list.util";
 import { formatFlexibleApiDate } from "@/shared/utils/api-date-parse.util";
+
+async function downloadPdfFromUrl(pdfUrl: string, fallbackFilename: string) {
+  let filename = fallbackFilename;
+  try {
+    const urlObj = new URL(pdfUrl, typeof window !== "undefined" ? window.location.href : undefined);
+    const pathnameParts = urlObj.pathname.split("/").filter(Boolean);
+    const lastPart = pathnameParts[pathnameParts.length - 1];
+    if (lastPart && lastPart.toLowerCase().endsWith(".pdf")) {
+      filename = decodeURIComponent(lastPart);
+    }
+  } catch {
+    // keep fallbackFilename
+  }
+
+  const candidateUrls: string[] = [];
+  try {
+    const parsed = new URL(pdfUrl, typeof window !== "undefined" ? window.location.href : undefined);
+    if (parsed.pathname.startsWith("/backend/media/") || parsed.pathname.startsWith("/media/")) {
+      candidateUrls.push(`${parsed.pathname}${parsed.search}`);
+    }
+  } catch {
+    // ignore
+  }
+  candidateUrls.push(pdfUrl);
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        triggerBlobDownload(blob, filename);
+        return;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  try {
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.download = filename;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch {
+    window.open(pdfUrl, "_blank");
+  }
+}
 
 type Props = {
   projectId: number;
@@ -129,6 +182,36 @@ export function ProjectJobsTab({ projectId }: Props) {
   const [deletingJob, setDeletingJob] = React.useState<ProjectJobListItem | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [fetchMassOptions, setFetchMassOptions] = React.useState(false);
+  const [exportingPdf, setExportingPdf] = React.useState(false);
+
+  const handleExportForms = async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const response = await api.post<{
+        success?: boolean;
+        message?: string;
+        data?: { pdf_url?: string; url?: string; [key: string]: unknown };
+      }>("door-survey/export-pdf/", {
+        project_id: projectId,
+      });
+      const respData = response?.data;
+      if (respData && respData.success === false) {
+        throw new Error(respData.message || "Failed to export forms");
+      }
+      const pdfUrl = respData?.data?.pdf_url || respData?.data?.url;
+      if (!pdfUrl) {
+        throw new Error(respData?.message || "PDF URL not found in server response");
+      }
+      const fallbackName = `project_${projectId}_forms.pdf`;
+      await downloadPdfFromUrl(pdfUrl, fallbackName);
+      toastSuccess(respData?.message || "Forms exported successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to export forms");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const listFilters = React.useMemo(
     () => ({
@@ -441,8 +524,26 @@ export function ProjectJobsTab({ projectId }: Props) {
   return (
     <div className={detailTabSectionClassName}>
       <div className={detailTabTitleClassName}>
-        <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
-        <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h2>
+            <p className="mt-0.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{t("subtitle")}</p>
+          </div>
+          <button
+            type="button"
+            disabled={exportingPdf}
+            onClick={() => void handleExportForms()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            title="Export all forms as PDF"
+          >
+            {exportingPdf ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            <span>{exportingPdf ? "Exporting..." : "Export Forms"}</span>
+          </button>
+        </div>
       </div>
 
       <div className={detailTabFilterBarClassName}>

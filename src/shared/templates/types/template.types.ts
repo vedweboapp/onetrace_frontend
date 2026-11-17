@@ -16,6 +16,7 @@ export interface Template {
   category?: string;
   module?: string;
   module_name?: string;
+  form_id?: string | number | null;
   created_at: string;
   updated_at: string;
   is_default?: boolean;
@@ -27,4 +28,4 @@ export interface Template {
   attachments?: TemplateAttachment[];
 }
 
-export type TemplateCategory = "all" | "quotations" | "orders" | "invoice" | "email";
+export type TemplateCategory = "all" | "quotations" | "orders" | "forms" | "project_forms" | "invoice" | "email";

@@ -7,6 +7,7 @@ import {
   Plus,
   FileText,
   Pencil,
+  Copy,
   Trash2,
   MoreVertical,
   Clock,
@@ -26,8 +27,9 @@ import {
   ListPageSearchField,
   listPageRootClassName,
 } from "@/shared/ui";
-import { getTemplates, deleteTemplate, setPrimaryTemplate } from "../api/template.api";
+import { getTemplates, deleteTemplate, setPrimaryTemplate, cloneTemplate } from "../api/template.api";
 import { toastSuccess, toastApiError } from "@/shared/feedback/app-toast";
+import { SelectProjectFormModal } from "./select-project-form-modal";
 
 // ─── Module options (for the create modal) ───────────────────────────────────
 const MODULE_OPTIONS = [
@@ -52,6 +54,17 @@ const MODULE_OPTIONS = [
     border: "border-emerald-200 dark:border-emerald-800",
     hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-500",
     activeBg: "bg-emerald-100 dark:bg-emerald-900/50",
+  },
+  {
+    id: "project_forms",
+    label: "Forms",
+    description: "Templates for project forms and door surveys.",
+    icon: FileText,
+    color: "text-teal-500",
+    bg: "bg-teal-50 dark:bg-teal-950/40",
+    border: "border-teal-200 dark:border-teal-800",
+    hoverBorder: "hover:border-teal-400 dark:hover:border-teal-500",
+    activeBg: "bg-teal-100 dark:bg-teal-900/50",
   },
   {
     id: "invoice",
@@ -168,6 +181,7 @@ const CATEGORY_TABS: AppTabItem[] = [
   { id: "all", label: "All Templates" },
   { id: "quotations", label: "Quotations" },
   { id: "orders", label: "Orders" },
+  { id: "project_forms", label: "Forms" },
   { id: "invoice", label: "Invoice" },
   { id: "email", label: "Email" },
 ];
@@ -175,6 +189,8 @@ const CATEGORY_TABS: AppTabItem[] = [
 const CATEGORY_COLORS: Record<string, string> = {
   quotations: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
   orders: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  project_forms: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+  forms: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   invoice: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
   email: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
 };
@@ -182,15 +198,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 function TemplateCard({
   template,
   onEdit,
+  onDuplicate,
   onDelete,
   onSetPrimary,
 }: {
   template: Template;
   onEdit: (t: Template) => void;
+  onDuplicate: (t: Template) => Promise<void>;
   onDelete: (t: Template) => void;
   onSetPrimary: (t: Template) => Promise<void>;
 }) {
   const [settingPrimary, setSettingPrimary] = React.useState(false);
+  const [duplicating, setDuplicating] = React.useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -260,6 +279,28 @@ function TemplateCard({
             >
               <Pencil size={13} className="text-slate-500" />
               Edit template
+            </button>
+
+            {/* Duplicate */}
+            <div className="mx-3 h-px bg-slate-100 dark:bg-slate-700" />
+            <button
+              type="button"
+              disabled={duplicating}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                setDuplicating(true);
+                await onDuplicate(template);
+                setDuplicating(false);
+              }}
+            >
+              {duplicating ? (
+                <Loader2 size={13} className="animate-spin text-slate-500" />
+              ) : (
+                <Copy size={13} className="text-slate-500" />
+              )}
+              Duplicate
             </button>
 
             {/* Set as Primary */}
@@ -401,7 +442,14 @@ function NewTemplateCard({ onClick }: { onClick: () => void }) {
 
 // ─── Main listing component ───────────────────────────────────────────────────
 
-const VALID_MODULES: TemplateCategory[] = ["quotations", "orders", "invoice", "email"];
+const VALID_MODULES: TemplateCategory[] = [
+  "quotations",
+  "orders",
+  "project_forms",
+  "forms",
+  "invoice",
+  "email",
+];
 
 export default function TemplatesListing() {
   const router = useRouter();
@@ -422,6 +470,8 @@ export default function TemplatesListing() {
   const [loading, setLoading] = useState(true);
   // Controls the module-select modal visibility (only for "All Templates" tab)
   const [showModuleModal, setShowModuleModal] = useState(false);
+  // Controls the project form picker modal before creating a form template
+  const [showFormSelectModal, setShowFormSelectModal] = useState(false);
 
   // Sync tab → URL whenever activeCategory changes
   const handleCategoryChange = useCallback(
@@ -510,13 +560,31 @@ export default function TemplatesListing() {
   const filtered = templates.filter((t) => {
     // Match against either module or category field
     const moduleOrCat = (t.module ?? t.category ?? "").toLowerCase();
-    const matchesCategory =
-      activeCategory === "all" || moduleOrCat === activeCategory.toLowerCase();
-    return matchesCategory;
+    if (activeCategory === "all") return true;
+    if (activeCategory === "project_forms" || activeCategory === "forms") {
+      return moduleOrCat === "project_forms" || moduleOrCat === "forms";
+    }
+    return moduleOrCat === activeCategory.toLowerCase();
   });
 
   const handleEdit = (t: Template) => {
-    router.push(`${routes.dashboard.settingsTemplates}/${t.id}/edit`);
+    const mod = (t.module || t.module_name || t.category || (activeCategory !== "all" ? activeCategory : "")).trim();
+    const formId = t.form_id;
+    const queryParams: string[] = [];
+    if (mod) queryParams.push(`module=${encodeURIComponent(mod)}`);
+    if (formId) queryParams.push(`form_id=${encodeURIComponent(String(formId))}`);
+    const queryStr = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
+    router.push(`${routes.dashboard.settingsTemplates}/${t.id}/edit${queryStr}`);
+  };
+
+  const handleDuplicate = async (t: Template) => {
+    try {
+      await cloneTemplate(t.id);
+      toastSuccess(`"${t.name}" duplicated successfully.`);
+      await loadTemplates();
+    } catch (err) {
+      toastApiError(err, "Failed to duplicate template");
+    }
   };
 
   const handleDelete = async (t: Template) => {
@@ -540,6 +608,9 @@ export default function TemplatesListing() {
     if (activeCategory === "all") {
       // Show modal on listing page first — navigate only after module is chosen
       setShowModuleModal(true);
+    } else if (activeCategory === "project_forms" || activeCategory === "forms") {
+      // Open form picker modal before creating
+      setShowFormSelectModal(true);
     } else {
       // Module is already known from the active tab — go directly to the editor
       router.push(`${routes.dashboard.settingsTemplates}/create?module=${activeCategory}`);
@@ -548,7 +619,18 @@ export default function TemplatesListing() {
 
   const handleModuleConfirm = (module: ModuleId) => {
     setShowModuleModal(false);
-    router.push(`${routes.dashboard.settingsTemplates}/create?module=${module}`);
+    if (module === "project_forms") {
+      setShowFormSelectModal(true);
+    } else {
+      router.push(`${routes.dashboard.settingsTemplates}/create?module=${module}`);
+    }
+  };
+
+  const handleFormSelect = (formId: number | string) => {
+    setShowFormSelectModal(false);
+    router.push(
+      `${routes.dashboard.settingsTemplates}/create?module=project_forms&form_id=${formId}`
+    );
   };
 
   return (
@@ -558,6 +640,15 @@ export default function TemplatesListing() {
         <ModuleSelectModal
           onConfirm={handleModuleConfirm}
           onCancel={() => setShowModuleModal(false)}
+        />
+      )}
+
+      {/* Project form selection modal — shown before creating form template */}
+      {showFormSelectModal && (
+        <SelectProjectFormModal
+          open={showFormSelectModal}
+          onClose={() => setShowFormSelectModal(false)}
+          onSelect={handleFormSelect}
         />
       )}
 
@@ -609,6 +700,7 @@ export default function TemplatesListing() {
                 key={t.id}
                 template={t}
                 onEdit={handleEdit}
+                onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
                 onSetPrimary={handleSetPrimary}
               />
