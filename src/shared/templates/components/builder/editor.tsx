@@ -958,7 +958,7 @@ const HEADING_OPTIONS = [
   { label: "Heading 3", value: "h3" },
 ];
 
-function TableFloatingActions({ editor }: { editor: Editor | null }) {
+const TableFloatingActions = React.memo(function TableFloatingActions({ editor }: { editor: Editor | null }) {
   const [coords, setCoords] = useState<{ top: number; left: number; isColumns: boolean } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -974,6 +974,7 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
     const dom = editor.view.dom;
     dom.addEventListener("mousedown", handleEditorMouseDown);
 
+    let rafId: number | null = null;
     const update = () => {
       if (!editor.isActive("table")) {
         setCoords(null);
@@ -1046,10 +1047,19 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
           visualLeft = anchorRect.left;
         }
 
-        setCoords({
-          top: Math.max(8, visualTop - containerRect.top - 28),
-          left: Math.max(8, visualLeft - containerRect.left),
-          isColumns,
+        const nextTop = Math.max(8, visualTop - containerRect.top - 28);
+        const nextLeft = Math.max(8, visualLeft - containerRect.left);
+
+        setCoords((prev) => {
+          if (
+            prev &&
+            Math.abs(prev.top - nextTop) < 1 &&
+            Math.abs(prev.left - nextLeft) < 1 &&
+            prev.isColumns === isColumns
+          ) {
+            return prev;
+          }
+          return { top: nextTop, left: nextLeft, isColumns };
         });
       } catch {
         setCoords(null);
@@ -1057,25 +1067,33 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
       }
     };
 
+    const scheduleUpdate = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        update();
+      });
+    };
+
     const scrollContainer = dom.closest(".overflow-y-auto");
     if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", update, { passive: true });
+      scrollContainer.addEventListener("scroll", scheduleUpdate, { passive: true });
     }
-    window.addEventListener("resize", update, { passive: true });
+    window.addEventListener("resize", scheduleUpdate, { passive: true });
 
-    editor.on("selectionUpdate", update);
-    editor.on("transaction", update);
-    editor.on("focus", update);
+    // Only update on selection changes or focus; DO NOT listen to raw "transaction" on every keypress
+    editor.on("selectionUpdate", scheduleUpdate);
+    editor.on("focus", scheduleUpdate);
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       dom.removeEventListener("mousedown", handleEditorMouseDown);
       if (scrollContainer) {
-        scrollContainer.removeEventListener("scroll", update);
+        scrollContainer.removeEventListener("scroll", scheduleUpdate);
       }
-      window.removeEventListener("resize", update);
-      editor.off("selectionUpdate", update);
-      editor.off("transaction", update);
-      editor.off("focus", update);
+      window.removeEventListener("resize", scheduleUpdate);
+      editor.off("selectionUpdate", scheduleUpdate);
+      editor.off("focus", scheduleUpdate);
     };
   }, [editor]);
 
@@ -1196,7 +1214,7 @@ function TableFloatingActions({ editor }: { editor: Editor | null }) {
       )}
     </div>
   );
-}
+});
 
 const TemplateDocStyles = React.memo(function TemplateDocStyles() {
   return (
@@ -1303,7 +1321,8 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
       /* ── Template variable pills (truncates with ... and expands on click) ── */
       .template-doc-editor .ProseMirror .template-var-pill {
         display: inline-block;
-        max-width: 175px;
+        max-width: min(100%, 200px);
+        box-sizing: border-box;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1345,6 +1364,27 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         background-color: #1e3a5f;
         border-color: #3b82f6;
         color: #93c5fd;
+      }
+
+      /* ── Variable pills inside table cells: strictly auto shrink visually with ellipsis (...) ── */
+      .template-doc-editor .ProseMirror td .template-var-pill,
+      .template-doc-editor .ProseMirror th .template-var-pill {
+        display: inline-block !important;
+        max-width: 110px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        vertical-align: -2px !important;
+        box-sizing: border-box !important;
+        font-size: 0.8em !important;
+        padding: 0 4px !important;
+        margin: 0 !important;
+      }
+      .template-doc-editor .ProseMirror td .template-var-pill.is-expanded,
+      .template-doc-editor .ProseMirror th .template-var-pill.is-expanded {
+        max-width: 100% !important;
+        white-space: normal !important;
+        word-break: break-all !important;
       }
 
       .template-doc-editor .ProseMirror p.is-editor-empty:first-child::before {
@@ -1390,28 +1430,42 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         outline: 2px solid #3b82f6;
         outline-offset: 2px;
       }
+      .template-doc-editor .ProseMirror table {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .template-doc-editor .tableWrapper {
+        padding: 0;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
       .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) {
         border-collapse: collapse;
-        width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
         margin: 0.75rem 0;
-        table-layout: fixed;
-        overflow: visible !important;
-      }
-      .template-doc-editor .ProseMirror table {
-        overflow: visible !important;
-      }
-      .template-doc-editor .ProseMirror td,
-      .template-doc-editor .ProseMirror th {
-        overflow: visible !important;
+        table-layout: fixed !important;
+        box-sizing: border-box !important;
       }
       .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) td,
       .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         border: 1px solid #cbd5e1;
-        padding: 6px 10px;
-        min-width: 60px;
+        padding: 6px 8px;
+        min-width: 24px;
+        max-width: 0;
         vertical-align: top;
         position: relative;
         box-sizing: border-box;
+        overflow: hidden !important;
+        word-break: break-word;
+      }
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) td > p,
+      .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th > p {
+        margin: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .template-doc-editor .ProseMirror table:not(.pins-preview-table):not(.subform-preview-table) th {
         background: #f1f5f9;
@@ -1428,13 +1482,30 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         background: #1e293b;
         color: #94a3b8;
       }
-      /* ── Borderless / Side-by-side column layout tables ─────────────────
-         PaginationPlus injects display:contents + display:table + display:grid
-         on ALL .rm-with-pagination tables, which completely breaks the side-by-side
-         column layout. Override those injected rules specifically for borderless tables
-         so they always render as a standard table with proper column widths. */
 
-      /* 1. Restore standard table display (override PaginationPlus display:contents) */
+      /* ── Override PaginationPlus injected display:contents/table/grid on ALL tables ── */
+      .template-doc-editor .ProseMirror.rm-with-pagination table {
+        display: table !important;
+        table-layout: fixed !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-collapse: collapse !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+      }
+      .template-doc-editor .ProseMirror.rm-with-pagination table tbody {
+        display: table-row-group !important;
+        max-height: none !important;
+        overflow: visible !important;
+        width: 100% !important;
+      }
+      .template-doc-editor .ProseMirror.rm-with-pagination table tr {
+        display: table-row !important;
+        min-width: unset !important;
+        width: 100% !important;
+      }
+
+      /* ── Borderless / Side-by-side column layout tables ───────────────── */
       .template-doc-editor .ProseMirror.rm-with-pagination table.borderless-table,
       .template-doc-editor .ProseMirror.rm-with-pagination table[data-borderless="true"],
       .template-doc-editor .ProseMirror.rm-with-pagination table:has(td.borderless-cell) {
@@ -1448,7 +1519,7 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         box-sizing: border-box !important;
       }
 
-      /* 2. Restore standard tbody display (override PaginationPlus display:table on tbody) */
+      /* 2. Restore standard tbody display for borderless tables */
       .template-doc-editor .ProseMirror.rm-with-pagination table.borderless-table tbody,
       .template-doc-editor .ProseMirror.rm-with-pagination table[data-borderless="true"] tbody,
       .template-doc-editor .ProseMirror.rm-with-pagination table:has(td.borderless-cell) tbody {
@@ -1596,7 +1667,7 @@ interface TemplateEditorRibbonProps {
   hasGlobalHeader?: boolean;
 }
 
-function TemplateEditorRibbon({
+const TemplateEditorRibbon = React.memo(function TemplateEditorRibbon({
   editor,
   variablesSidebarCollapsed,
   onToggleVariablesSidebar,
@@ -1611,24 +1682,21 @@ function TemplateEditorRibbon({
   useEffect(() => {
     if (!editor) return;
 
-    // Selection changes update button active states instantly
-    editor.on("selectionUpdate", rerender);
-
-    // Throttle transaction updates (undo/redo enable states) using requestAnimationFrame
+    // Throttle selection updates so cursor moves/typing don't cause thrashing
     let rafId: number | null = null;
-    const onTransaction = () => {
+    const throttledRerender = () => {
       if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         rafId = null;
         rerender();
       });
     };
-    editor.on("transaction", onTransaction);
+
+    editor.on("selectionUpdate", throttledRerender);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      editor.off("selectionUpdate", rerender);
-      editor.off("transaction", onTransaction);
+      editor.off("selectionUpdate", throttledRerender);
     };
   }, [editor]);
 
@@ -2058,7 +2126,7 @@ function TemplateEditorRibbon({
       </ToolbarButton>
     </div>
   );
-}
+});
 
 // ── Main TemplateDocEditor ───────────────────────────────────────────────────
 interface TemplateEditorProps {
@@ -2068,6 +2136,7 @@ interface TemplateEditorProps {
   readOnly?: boolean;
   autoFocus?: boolean;
   moduleName?: string;
+  formId?: string | number | null;
 }
 
 export function preserveSpacesInHtml(html: string): string {
@@ -2187,6 +2256,12 @@ const CustomTable = Table.extend({
     if (!existingStyle.includes("width:") && !existingStyle.includes("width :")) {
       updatedStyle = existingStyle ? `width: 100%; ${existingStyle}` : "width: 100%;";
     }
+    if (!updatedStyle.includes("max-width:") && !updatedStyle.includes("max-width :")) {
+      updatedStyle = `${updatedStyle} max-width: 100%;`.trim();
+    }
+    if (!updatedStyle.includes("box-sizing:") && !updatedStyle.includes("box-sizing :")) {
+      updatedStyle = `${updatedStyle} box-sizing: border-box;`.trim();
+    }
     if (!updatedStyle.includes("border-collapse:") && !updatedStyle.includes("border-collapse :")) {
       updatedStyle = `${updatedStyle} border-collapse: collapse;`.trim();
     }
@@ -2258,8 +2333,8 @@ const CustomTableCell = TableCell.extend({
       HTMLAttributes["data-borderless"] === "true";
 
     const baseStyle = isBorderless
-      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle;"
-      : "border: 1px solid #cbd5e1; padding: 6px 10px; vertical-align: top;";
+      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle; box-sizing: border-box; overflow: hidden; word-break: break-word;"
+      : "border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: top; box-sizing: border-box; overflow: hidden; word-break: break-word;";
 
     const finalStyle = style ? `${baseStyle} ${style}`.trim() : baseStyle;
 
@@ -2292,8 +2367,8 @@ const CustomTableHeader = TableHeader.extend({
       HTMLAttributes["data-borderless"] === "true";
 
     const baseStyle = isBorderless
-      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle;"
-      : "border: 1px solid #cbd5e1; padding: 6px 10px; background-color: #f1f5f9; font-weight: 600; text-align: left; color: #475569; vertical-align: top;";
+      ? "border: none; outline: none; padding: 4px 10px; vertical-align: middle; box-sizing: border-box; overflow: hidden; word-break: break-word;"
+      : "border: 1px solid #cbd5e1; padding: 6px 8px; background-color: #f1f5f9; font-weight: 600; text-align: left; color: #475569; vertical-align: top; box-sizing: border-box; overflow: hidden; word-break: break-word;";
 
     const finalStyle = style ? `${baseStyle} ${style}`.trim() : baseStyle;
 
@@ -2312,6 +2387,7 @@ export default function TemplateDocEditor({
   readOnly = false,
   autoFocus = false,
   moduleName = "quotations",
+  formId,
 }: TemplateEditorProps) {
   const uploadedFilesRef = useRef<Map<string, File>>(new Map());
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -2403,16 +2479,15 @@ export default function TemplateDocEditor({
     editable: !readOnly,
     autofocus: autoFocus,
     onUpdate: ({ editor: ed }) => {
-      // Debounce expensive getHTML serialization so typing is 0ms latency
+      // Debounce expensive getHTML serialization and global header sync so typing is 0ms latency
       if (updateTimerRef.current) {
         clearTimeout(updateTimerRef.current);
       }
       updateTimerRef.current = setTimeout(() => {
         const html = preserveSpacesInHtml(ed.getHTML());
         onChangeRef.current?.(html, Array.from(uploadedFilesRef.current.values()));
-      }, 200);
-      // Keep global-header indicator in sync
-      syncGlobalHeaderState(ed);
+        syncGlobalHeaderState(ed);
+      }, 250);
     },
     editorProps: {
       handleDOMEvents: {
@@ -2630,6 +2705,12 @@ export default function TemplateDocEditor({
     [editor, flushChange],
   );
 
+  const handleToggleVariablesSidebar = useCallback(() => setVariablesSidebarCollapsed((v) => !v), []);
+  const handleOpenImageModal = useCallback(() => setImageModalOpen(true), []);
+  const handleOpenPinsModal = useCallback(() => setPinsModalOpen(true), []);
+  const handleOpenHeaderModal = useCallback(() => setHeaderModalOpen(true), []);
+  const handleVariablesLoaded = useCallback((vars: VariableItem[]) => setTemplateVariables(vars), []);
+
   return (
     <div className="flex flex-col w-full h-full min-h-0">
       <TemplateDocStyles />
@@ -2639,10 +2720,10 @@ export default function TemplateDocEditor({
         <TemplateEditorRibbon
           editor={editor}
           variablesSidebarCollapsed={variablesSidebarCollapsed}
-          onToggleVariablesSidebar={() => setVariablesSidebarCollapsed((v) => !v)}
-          onOpenImageModal={() => setImageModalOpen(true)}
-          onOpenPinsListModal={() => setPinsModalOpen(true)}
-          onOpenHeaderModal={() => setHeaderModalOpen(true)}
+          onToggleVariablesSidebar={handleToggleVariablesSidebar}
+          onOpenImageModal={handleOpenImageModal}
+          onOpenPinsListModal={handleOpenPinsModal}
+          onOpenHeaderModal={handleOpenHeaderModal}
           hasGlobalHeader={hasGlobalHeader}
         />
       )}
@@ -2653,11 +2734,12 @@ export default function TemplateDocEditor({
           <TemplateVariablesSidebar
             editor={editor}
             collapsed={variablesSidebarCollapsed}
-            onToggleCollapse={() => setVariablesSidebarCollapsed((v) => !v)}
-            onOpenPinsListModal={() => setPinsModalOpen(true)}
-            onOpenHeaderModal={() => setHeaderModalOpen(true)}
+            onToggleCollapse={handleToggleVariablesSidebar}
+            onOpenPinsListModal={handleOpenPinsModal}
+            onOpenHeaderModal={handleOpenHeaderModal}
             moduleName={moduleName}
-            onVariablesLoaded={(vars) => setTemplateVariables(vars)}
+            formId={formId}
+            onVariablesLoaded={handleVariablesLoaded}
           />
         )}
 

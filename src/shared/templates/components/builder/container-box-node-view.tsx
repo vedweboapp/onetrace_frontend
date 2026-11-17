@@ -102,6 +102,7 @@ export function ContainerBoxNodeView({
   useEffect(() => {
     if (!editor) return;
 
+    let rafId: number | null = null;
     const checkActive = () => {
       try {
         if (typeof getPos !== "function") {
@@ -115,21 +116,30 @@ export function ContainerBoxNodeView({
         }
         const { from, to } = editor.state.selection;
         const inside = from >= pos && to <= pos + node.nodeSize;
-        setIsFocused(inside);
+        setIsFocused((prev) => (prev !== inside ? inside : prev));
       } catch {
         setIsFocused(false);
       }
     };
 
-    checkActive();
-    editor.on("selectionUpdate", checkActive);
-    editor.on("focus", checkActive);
-    editor.on("blur", checkActive);
+    const scheduleCheckActive = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        checkActive();
+      });
+    };
+
+    scheduleCheckActive();
+    editor.on("selectionUpdate", scheduleCheckActive);
+    editor.on("focus", scheduleCheckActive);
+    editor.on("blur", scheduleCheckActive);
 
     return () => {
-      editor.off("selectionUpdate", checkActive);
-      editor.off("focus", checkActive);
-      editor.off("blur", checkActive);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      editor.off("selectionUpdate", scheduleCheckActive);
+      editor.off("focus", scheduleCheckActive);
+      editor.off("blur", scheduleCheckActive);
     };
   }, [editor, getPos, node.nodeSize]);
 

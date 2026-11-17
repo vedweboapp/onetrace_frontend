@@ -20,13 +20,24 @@ function normalizeTemplate(raw: unknown): Template {
   if (!raw || typeof raw !== "object") return raw as Template;
   const item = raw as Record<string, unknown>;
   const name = (item.name as string) || (item.template_name as string) || "";
-  const module = (item.module as string) || (item.module_name as string) || "";
+  const module =
+    (item.module as string) ||
+    (item.module_name as string) ||
+    (item.category as string) ||
+    "";
+  const form_id =
+    item.form_id ??
+    (item as any).formId ??
+    (item as any).form ??
+    null;
   return {
     ...item,
     name,
     template_name: (item.template_name as string) || name,
     module,
     module_name: (item.module_name as string) || module,
+    category: (item.category as string) || module,
+    form_id,
   } as Template;
 }
 
@@ -62,12 +73,20 @@ export async function getTemplateById(id: string): Promise<Template | null> {
 
 // ─── POST /settings/templates ─────────────────────────────────────────────────
 export async function createTemplate(formData: FormData): Promise<Template> {
+  const mod = (formData.get("module_name") || formData.get("module") || "").toString().toLowerCase().trim();
+  if (mod !== "project_forms") {
+    formData.delete("form_id");
+  }
   const { data } = await api.post("settings/templates", formData);
   return normalizeTemplate(unwrap<Template>(data));
 }
 
 // ─── PUT /settings/templates/:id ─────────────────────────────────────────────
 export async function updateTemplate(id: string, formData: FormData): Promise<Template> {
+  const mod = (formData.get("module_name") || formData.get("module") || "").toString().toLowerCase().trim();
+  if (mod !== "project_forms") {
+    formData.delete("form_id");
+  }
   const { data } = await api.put(`settings/templates/${id}`, formData);
   return normalizeTemplate(unwrap<Template>(data));
 }
@@ -82,6 +101,12 @@ export async function saveTemplate(
   const id = templateId || (formData.get("id") as string | null);
   if (id) return updateTemplate(id, formData);
   return createTemplate(formData);
+}
+
+// ─── POST /settings/templates/:id/clone/ ─────────────────────────────────────
+export async function cloneTemplate(id: string | number): Promise<Template> {
+  const { data } = await api.post(`settings/templates/${id}/clone/`);
+  return normalizeTemplate(unwrap<Template>(data));
 }
 
 // ─── DELETE /settings/templates/:id ──────────────────────────────────────────

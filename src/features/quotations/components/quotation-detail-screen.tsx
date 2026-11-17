@@ -23,7 +23,6 @@ import {
   resolveQuotationQuoteCategory,
 } from "@/features/quotations/constants/quotation-category";
 import { QuotationDetailBody } from "@/features/quotations/components/quotation-detail-body";
-import { QuotationExportDropdown } from "@/features/quotations/components/quotation-export-dropdown";
 import { QuotationJobsTab } from "@/features/quotations/components/quotation-jobs-tab";
 import { QuotationJobsTableTab } from "@/features/quotations/components/quotation-jobs-table-tab";
 import { QuotationAttachmentsTab } from "@/features/quotations/components/quotation-attachments-tab";
@@ -797,7 +796,6 @@ function QuotationDetailActions({
         quoteName={detail.quote_name}
         onClose={() => setPreviewOpen(false)}
       />
-      <QuotationExportDropdown quotationId={quotationId} quoteName={detail.quote_name} />
       <EntityDetailEditButton
         label={t("edit")}
         listBack={listBack}

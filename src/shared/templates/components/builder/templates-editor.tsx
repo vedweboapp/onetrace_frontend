@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Save,
@@ -26,6 +27,7 @@ interface TemplatesEditorProps {
   ) => Promise<void>;
   backUrl?: string;
   moduleName?: string;
+  formId?: string | number | null;
 }
 
 function hydrateContentWithAttachments(
@@ -101,11 +103,24 @@ export default function TemplatesEditor({
   onSave,
   backUrl = "/settings/templates",
   moduleName = "quotations",
+  formId: propFormId,
 }: TemplatesEditorProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = !template;
 
-  const resolvedModuleName = template?.module || template?.module_name || moduleName;
+  const urlFormId = searchParams?.get("form_id") || searchParams?.get("id");
+  const urlModule = searchParams?.get("module_name") || searchParams?.get("module");
+  const effectiveFormId = propFormId || urlFormId || template?.form_id || null;
+
+  const resolvedModuleName = (
+    urlModule ||
+    template?.module ||
+    template?.module_name ||
+    template?.category ||
+    moduleName ||
+    "quotations"
+  ).trim();
   const [name, setName] = useState(template?.name || template?.template_name || "Untitled Template");
 
   // Hydrate the initial content: replace bare filenames with full attachment URLs and table signatures with preview divs
@@ -181,7 +196,9 @@ export default function TemplatesEditor({
       /data-is-global-header=["']true["']/i.test(contentRef.current) ||
       /data-copy-to-whole=["']true["']/i.test(contentRef.current);
 
-    const templateData = {
+    const isProjectForms = resolvedModuleName.toLowerCase().trim() === "project_forms";
+
+    const templateData: any = {
       name: name.trim(),
       content: contentRef.current,
       moduleName: resolvedModuleName,
@@ -190,6 +207,7 @@ export default function TemplatesEditor({
       ...(template?.category ? { category: template.category } : {}),
       ...(template?.description ? { description: template.description } : {}),
       ...(template?.id ? { id: template.id } : {}),
+      ...(isProjectForms && effectiveFormId ? { form_id: effectiveFormId } : {}),
     };
 
     const payload = buildTemplateSavePayload(templateData);
@@ -287,6 +305,7 @@ export default function TemplatesEditor({
           onChange={handleContentChange}
           autoFocus={isNew}
           moduleName={resolvedModuleName}
+          formId={effectiveFormId}
         />
       </div>
     </div>

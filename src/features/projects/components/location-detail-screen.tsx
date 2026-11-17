@@ -20,11 +20,9 @@ import {
   enrichSectionsWithSubmissionFiles,
   synthesizeFormSectionsFromSubmission,
 } from "@/features/job-forms/utils/job-form-schema.util";
-import { mapSubmissionValuesToFormDefaults } from "@/features/job-forms/utils/job-form-values.util";
 import {
-  generateAndDownloadFormPdf,
-  generatePinCropDataUrl,
-} from "@/features/job-forms/utils/generate-form-pdf.util";
+  mapSubmissionValuesToFormDefaults,
+} from "@/features/job-forms/utils/job-form-values.util";
 import { fetchJob } from "@/features/jobs/api/job.api";
 import {
   parseJobCategoryParam,
@@ -34,6 +32,7 @@ import {
 import { jobFormEntries } from "@/features/jobs/utils/job-nested-fields.util";
 import type { Job } from "@/features/jobs/types/job.types";
 import { DrawingPinPreviewModal } from "@/features/projects/components/drawing-pin-preview-modal";
+import { DoorSurveyPdfPreviewModal } from "@/features/projects/components/door-survey-pdf-preview-modal";
 import { fetchDrawingDetail, fetchPinDetail, updateDrawingPlots } from "@/features/projects/api/drawing.api";
 import { fetchCompositeItemsPage } from "@/features/composite-items/api/composite-item.api";
 import { fetchPinStatusesPage } from "@/features/pin-status/api/pin-status.api";
@@ -690,7 +689,48 @@ export function LocationDetailScreen({ pinId, jobId, projectId, drawingIdHint }:
     [rawSections],
   );
 
-  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
+  const resolveNumericId = (val: unknown): number | null => {
+    if (typeof val === "number" && Number.isFinite(val) && val > 0) return val;
+    if (typeof val === "string" && /^\d+$/.test(val.trim())) {
+      const num = Number.parseInt(val.trim(), 10);
+      return num > 0 ? num : null;
+    }
+    if (val && typeof val === "object" && "id" in val) {
+      return resolveNumericId((val as any).id);
+    }
+    return null;
+  };
+
+  const targetProjectId =
+    resolveNumericId(projectId) ??
+    resolveNumericId(context?.projectId) ??
+    resolveNumericId(job?.project) ??
+    resolveNumericId((context?.pin as any)?.project) ??
+    resolveNumericId((context?.pin as any)?.project_id) ??
+    resolveNumericId(searchParams.get("projectId")) ??
+    resolveNumericId(searchParams.get("project_id"));
+
+  const targetSubmissionId =
+    resolveNumericId(submission?.id) ??
+    resolveNumericId((submission as any)?.submission_id) ??
+    resolveNumericId(submissionId) ??
+    resolveNumericId(createdSubmissionId) ??
+    resolveNumericId((context?.pin as any)?.submission_id) ??
+    resolveNumericId((context?.pin as any)?.submitted_form_id) ??
+    resolveNumericId((context?.pin?.project_form as any)?.submission_id) ??
+    resolveNumericId((context?.pin?.project_form as any)?.submitted_form_id) ??
+    resolveNumericId(searchParams.get("submission_id")) ??
+    resolveNumericId(searchParams.get("submissionId"));
+
+  const [previewPdfModalOpen, setPreviewPdfModalOpen] = React.useState(false);
+
+  const handleOpenPdfPreview = () => {
+    if (!targetProjectId || !targetSubmissionId) {
+      toastError("Missing project or submission ID for PDF export");
+      return;
+    }
+    setPreviewPdfModalOpen(true);
+  };
 
   const title =
     context?.pin != null
@@ -746,100 +786,6 @@ export function LocationDetailScreen({ pinId, jobId, projectId, drawingIdHint }:
   const snapshotState = context?.drawingId
     ? levelSnapshots.get(context.drawingId)
     : levelSnapshots.get(1);
-
-  const handleDownloadPdf = async () => {
-    if (downloadingPdf) return;
-    setDownloadingPdf(true);
-    try {
-      const pin = context?.pin;
-      const locationText = pin?.location ? String(pin.location) : String(pin?.id ?? "");
-      const prodName =
-        pin?.item_detail?.name ||
-        pin?.group_detail?.name ||
-        (pin?.item != null ? `#${pin.item}` : "-");
-      const parentPlot =
-        context?.plots?.find((p) => p.pins.some((pinItem) => pinItem.id === pin?.id)) ||
-        context?.plots?.[0];
-      const plotName = parentPlot?.name || "-";
-      const levelName = context?.drawingName || "-";
-      const statusName =
-        pin?.status_detail?.status_name || (pin?.status_detail as any)?.name || "Pending";
-      const statusColor = pin?.status_detail?.bg_colour || "#10b981";
-      const statusTextColor = pin?.status_detail?.text_colour || "#ffffff";
-      const formLabel =
-        resolvedFormName ||
-        context?.formMeta?.label ||
-        "-";
-
-      const pinAttachments =
-        pin?.attachments?.map((att, idx) => ({
-          name: att.file_name ?? att.name ?? `Attachment #${att.id || idx + 1}`,
-          url: att.file_url ?? att.url ?? (typeof att.file === "string" ? att.file : ""),
-        })) ?? [];
-
-      let previewImageUrl: string | null = null;
-      const rawDrawing =
-        (snapshotState?.status === "ready" && snapshotState.snapshot?.objectUrl) ||
-        context?.drawingFile ||
-        null;
-
-      if (rawDrawing && pin?.x_coordinate != null && pin?.y_coordinate != null) {
-        const resolvedDrawing =
-          rawDrawing.startsWith("blob:") || rawDrawing.startsWith("data:")
-            ? rawDrawing
-            : resolveDrawingFileUrl(rawDrawing);
-
-        previewImageUrl = await generatePinCropDataUrl(
-          resolvedDrawing,
-          pin.x_coordinate,
-          pin.y_coordinate,
-          statusColor,
-          `#${locationText}`,
-          levelName,
-        );
-      }
-
-      const currentValues = {
-        ...defaultValues,
-        ...(formRef.current?.getFormData?.() ?? {}),
-      };
-
-      await generateAndDownloadFormPdf({
-        formTitle: resolvedFormName,
-        formId: projectFormId,
-        locationText,
-        productName: prodName,
-        plotName,
-        levelName,
-        statusName,
-        submittedAt: submission?.submitted_at ? new Date(submission.submitted_at).toLocaleString() : null,
-        sections: rawSections,
-        defaultValues: currentValues,
-        submission,
-        rules,
-        pinDetails: {
-          location: locationText,
-          productName: prodName,
-          quantity: pin?.quantity ?? 1,
-          statusName,
-          statusColor,
-          statusTextColor,
-          plotName,
-          levelName,
-          description: pin?.description || "-",
-          formName: formLabel,
-          variation: pin?.variation ? "Yes" : "No",
-          previewImageUrl,
-          attachments: pinAttachments,
-        },
-      });
-      toastSuccess("PDF downloaded successfully");
-    } catch (err) {
-      toastApiError(err, "Failed to generate PDF");
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
 
   // Derive previous/next pin navigation
   const currentIndex = React.useMemo(() => {
@@ -978,17 +924,12 @@ export function LocationDetailScreen({ pinId, jobId, projectId, drawingIdHint }:
                     {isFormSubmitted ? (
                       <button
                         type="button"
-                        disabled={downloadingPdf || loadingForm || rawSections.length === 0}
-                        onClick={handleDownloadPdf}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        onClick={handleOpenPdfPreview}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors"
                         title="Download Form PDF"
                       >
-                        {downloadingPdf ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-                        ) : (
-                          <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                        )}
-                        <span>{downloadingPdf ? "Generating..." : "Download PDF"}</span>
+                        <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                        <span>Download PDF</span>
                       </button>
                     ) : null}
                   </div>
@@ -1065,7 +1006,20 @@ export function LocationDetailScreen({ pinId, jobId, projectId, drawingIdHint }:
         )}
       </DetailPagePadding>
 
-
+      {targetProjectId && targetSubmissionId ? (
+        <DoorSurveyPdfPreviewModal
+          open={previewPdfModalOpen}
+          onClose={() => setPreviewPdfModalOpen(false)}
+          projectId={targetProjectId}
+          submissionId={targetSubmissionId}
+          formName={resolvedFormName}
+          locationLabel={
+            context?.pin?.location
+              ? String(context.pin.location)
+              : String(context?.pin?.id ?? pinId)
+          }
+        />
+      ) : null}
     </div>
   );
 }

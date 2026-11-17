@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Check, FileText, Loader2, Send } from "lucide-react";
+import { Check, Download, FileText, Loader2, Send } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import {
+  downloadQuotationPdf,
   fetchQuotation,
   fetchQuotationTemplatesDropdown,
   sendQuotation,
@@ -38,6 +39,7 @@ export function QuotationSendClientModal({
   const [loadingInitial, setLoadingInitial] = React.useState(false);
   const [updatingTemplate, setUpdatingTemplate] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
   // Load initial templates and current quotation details on modal open
@@ -52,6 +54,7 @@ export function QuotationSendClientModal({
       setLoadingInitial(false);
       setUpdatingTemplate(false);
       setSending(false);
+      setDownloading(false);
       return;
     }
 
@@ -161,8 +164,21 @@ export function QuotationSendClientModal({
     }
   }
 
+  // Handle downloading PDF
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadQuotationPdf(quotationId, quoteName);
+      toastSuccess("Quotation PDF downloaded successfully");
+    } catch (err) {
+      toastApiError(err, "Failed to download quotation PDF");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-  const busy = loadingInitial || updatingTemplate || sending;
+  const busy = loadingInitial || updatingTemplate || sending || downloading;
 
   // Process the raw html string off the critical render path.
   // We defer the heavy regex work into a setTimeout so the UI stays responsive.
@@ -189,21 +205,33 @@ export function QuotationSendClientModal({
 
       const sharedStyles = `
     *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0;
+    html {
+      margin: 0;
+      padding: 0;
+      background-color: #f8fafc;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
       background-color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #0f172a;
       -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
     }
     .page-sheet {
-      margin: 20px auto;
+      margin: 0 auto;
       background: #ffffff;
       box-shadow: 0 4px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
       border-radius: 4px;
+      width: 100%;
       max-width: ${width};
       min-height: ${minHeight};
       padding: 40px;
+      box-sizing: border-box;
       line-height: 1.5;
     }
     table { width: 100%; border-collapse: collapse; }
@@ -255,7 +283,7 @@ export function QuotationSendClientModal({
   <style>${sharedStyles}</style>
 </head>
 <body>
-  <div class="page-sheet">${rawHtml}</div>
+  <div>${rawHtml}</div>
 </body>
 </html>`;
 
@@ -304,6 +332,19 @@ export function QuotationSendClientModal({
             >
               <Send className="size-3.5" />
               <span>Send to Client</span>
+            </AppButton>
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={downloading}
+              disabled={busy}
+              onClick={() => void handleDownload()}
+              className="inline-flex items-center gap-1.5"
+              title="Download PDF"
+            >
+              <Download className="size-3.5" />
+              <span>Download</span>
             </AppButton>
           </div>
         </div>

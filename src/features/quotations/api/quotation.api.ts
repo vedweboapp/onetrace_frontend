@@ -365,6 +365,76 @@ export async function exportQuotation(
   }
 }
 
+/**
+ * GET `documents/quotations/:id/download-pdf` — downloads the quotation PDF document.
+ */
+export async function downloadQuotationPdf(
+  id: number,
+  quoteName?: string,
+): Promise<void> {
+  const res = await api.get<Blob>(QUOTATION_PATHS.downloadPdf(id), {
+    responseType: "blob",
+    skipErrorToast: true,
+    headers: {
+      Accept: "*/*",
+    },
+  });
+  const blob = res.data;
+  const rawContentType = res.headers["content-type"];
+  const contentType = (typeof rawContentType === "string" ? rawContentType : "").toLowerCase();
+  if (contentType.includes("application/json")) {
+    const text = await blob.text();
+    try {
+      const parsed = JSON.parse(text) as {
+        success?: boolean;
+        message?: string;
+        data?: { url?: string; file?: string };
+        url?: string;
+        file?: string;
+      };
+      if (parsed && typeof parsed === "object") {
+        const fileUrl = parsed.data?.url || parsed.data?.file || parsed.url || parsed.file;
+        if (fileUrl && typeof fileUrl === "string") {
+          window.open(fileUrl, "_blank");
+          return;
+        }
+        const msg = typeof parsed.message === "string" ? parsed.message : "Download failed";
+        throw new ApiBusinessError(msg);
+      }
+    } catch (e) {
+      if (e instanceof ApiBusinessError) throw e;
+    }
+    throw new ApiBusinessError("Download failed");
+  }
+
+  const rawDisposition = res.headers["content-disposition"];
+  const fromHeader = parseFilenameFromContentDisposition(
+    typeof rawDisposition === "string" ? rawDisposition : undefined,
+  );
+  const raw = quoteName?.trim() ?? "";
+  const safe =
+    raw.length > 0
+      ? raw
+          .replace(/[/\\?%*:|"<>]/g, "")
+          .replace(/\s+/g, "-")
+          .slice(0, 80) || `quotation-${id}`
+      : `quotation-${id}`;
+  const filename = fromHeader ?? `${safe}.pdf`;
+
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export type SendQuotationPayload =
   | {
       notification_send_to: "client";

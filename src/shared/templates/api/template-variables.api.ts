@@ -1,4 +1,4 @@
-﻿import api from "@/core/api/axios";
+import api from "@/core/api/axios";
 
 export interface VariableItem {
   key: string;
@@ -29,6 +29,7 @@ export interface ModuleVariablesData {
   multivalueModules: Record<string, VariableItem[]>;
   singleModules: Record<string, VariableItem[]>;
   relatedModulesMeta: Record<string, RelatedModuleMeta>;
+  formTemplateName?: string;
 }
 
 export function formatFieldLabel(key: string): string {
@@ -254,6 +255,66 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     }
   }
 
+  // 3. Process form_template if present (project_forms module)
+  const formTemplateRaw = payload.form_template ?? payload.formTemplate;
+  let formTemplateName: string | undefined;
+  if (formTemplateRaw && typeof formTemplateRaw === "object") {
+    formTemplateName = formTemplateRaw.name || formTemplateRaw.api_name || "Form Template";
+    const ftSections = Array.isArray(formTemplateRaw.sections) ? formTemplateRaw.sections : [];
+    const formTemplateItems: VariableItem[] = [];
+
+    for (const ftSection of ftSections) {
+      const sectionName = ftSection.name || `Section ${ftSection.sequence || ""}`;
+      const sectionFields = Array.isArray(ftSection.fields) ? ftSection.fields : [];
+      const children: VariableItem[] = [];
+
+      for (const field of sectionFields) {
+        const apiName = field.api_name;
+        if (!apiName) continue;
+        const tag = buildTag("form_template", apiName, true);
+        if (seenTags.has(tag)) continue;
+        seenTags.add(tag);
+
+        const child: VariableItem = {
+          key: `form_template.${apiName}`,
+          label: field.field_label || formatFieldLabel(apiName),
+          tag,
+          category: "form_template",
+          categoryLabel: formTemplateName!,
+          parentModule: "form_template",
+          isRelated: true,
+          description: field.field_type ? `Type: ${field.field_type}` : undefined,
+        };
+        children.push(child);
+        allVariables.push(child);
+      }
+
+      if (children.length > 0) {
+        formTemplateItems.push({
+          key: `form_template.section.${ftSection.s_id || ftSection.id || ftSection.sequence}`,
+          label: sectionName,
+          tag: `${children.length} fields`,
+          category: "form_template",
+          categoryLabel: formTemplateName!,
+          parentModule: "form_template",
+          isRelated: true,
+          hasChildren: true,
+          children,
+        });
+      }
+    }
+
+    if (formTemplateItems.length > 0) {
+      singleModules["form_template"] = formTemplateItems;
+      relatedModules["form_template"] = formTemplateItems;
+      relatedModulesMeta["form_template"] = {
+        type: "single",
+        modelName: formTemplateName!,
+        fields: formTemplateItems.flatMap((s) => s.children || []),
+      };
+    }
+  }
+
   return {
     moduleName,
     primaryKeys,
@@ -262,6 +323,7 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
     multivalueModules,
     singleModules,
     relatedModulesMeta,
+    formTemplateName,
   };
 }
 
@@ -271,10 +333,15 @@ export function parseModuleVariables(raw: unknown, defaultModuleName = "quotatio
  */
 export async function fetchModuleVariables(
   moduleName = "quotations",
+  formId?: string | number | null,
 ): Promise<ModuleVariablesData> {
   try {
+    const params: Record<string, string | number> = { module_name: moduleName };
+    if (formId && moduleName.toLowerCase() === "project_forms") {
+      params.id = formId;
+    }
     const { data } = await api.get("listmodules", {
-      params: { module_name: moduleName },
+      params,
       skipErrorToast: true,
     });
     return parseModuleVariables(data, moduleName);
