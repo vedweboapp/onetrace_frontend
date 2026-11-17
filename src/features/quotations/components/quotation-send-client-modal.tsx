@@ -205,20 +205,33 @@ export function QuotationSendClientModal({
 
       const sharedStyles = `
     *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0;
+    html {
+      margin: 0;
+      padding: 0;
+      background-color: #f8fafc;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
       background-color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #0f172a;
       -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
     }
     .page-sheet {
-     
+      margin: 0 auto;
       background: #ffffff;
       box-shadow: 0 4px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
       border-radius: 4px;
+      width: 100%;
       max-width: ${width};
       min-height: ${minHeight};
+      padding: 40px;
+      box-sizing: border-box;
       line-height: 1.5;
     }
     table { width: 100%; border-collapse: collapse; }
