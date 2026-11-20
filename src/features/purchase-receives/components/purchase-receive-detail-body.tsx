@@ -146,7 +146,9 @@ export function PurchaseReceiveDetailBody({
           <MetaRow label={t("fields.totalQuantityReceived")}>
             {detail.total_quantity_received != null ? String(detail.total_quantity_received) : "—"}
           </MetaRow>
-          <MetaRow label={t("fields.notes")}>{detail.notes?.trim() || "—"}</MetaRow>
+          <MetaRow label={t("fields.notes")}>
+            {typeof detail.notes === "string" && detail.notes.trim() ? detail.notes.trim() : "—"}
+          </MetaRow>
         </dl>
       </section>
 

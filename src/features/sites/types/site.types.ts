@@ -49,6 +49,7 @@ export type SiteUpsertPayload = {
   what3words?: string;
   latitude?: number | null;
   longitude?: number | null;
+  parent_site?: number | null;
   contacts?: SiteContactPersonPayload[];
 };
 
@@ -65,6 +66,7 @@ export type Site = {
   is_deleted: boolean;
   site_name: string;
   client: number | SiteClientRef;
+  parent_site?: number | { id: number; site_name?: string | null; name?: string | null } | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

@@ -20,4 +20,6 @@ export const PROJECT_PATHS = {
   projectLocation: (id: number | string) => `project/${id}/level/`,
   createJobFromLocation: "jobs/",
   massUpdate: (projectId: number | string) => `project/${projectId}/level/operation/mass_update/`,
+  folders: (id: number) => `project/${id}/folders/`,
+  folderDetail: (entityId: number, folderId: number) => `project/${entityId}/folders/${folderId}/`,
 } as const;

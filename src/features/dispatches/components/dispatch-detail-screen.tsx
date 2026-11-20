@@ -6,7 +6,7 @@ import { fetchDispatch, updateDispatchAttachments } from "@/features/dispatches/
 import { DISPATCH_PATHS } from "@/features/dispatches/api/dispatch.paths";
 import { DispatchDetailBody } from "@/features/dispatches/components/dispatch-detail-body";
 import type { DispatchDetail } from "@/features/dispatches/types/dispatch.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { DispatchAttachmentsTab } from "./dispatch-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -69,13 +69,7 @@ export function DispatchDetailScreen({ dispatchId }: Props) {
     >
       {({ detail, dateFmt, retry }) =>
         activeTab === "attachments" ? (
-          <EntityAttachmentsTab
-            entityId={detail.id}
-            attachments={detail.attachments}
-            emptyIconName="dispatches"
-            updateAttachments={(refs) => updateDispatchAttachments(detail.id, refs)}
-            onSaved={retry}
-          />
+          <DispatchAttachmentsTab detail={detail} onSaved={retry} />
         ) : activeTab === "notes" ? (
           <EntityNotesTab detailPath={DISPATCH_PATHS.detail(detail.id)} />
         ) : (

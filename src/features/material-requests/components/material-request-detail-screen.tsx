@@ -11,7 +11,7 @@ import { MaterialRequestDetailBody } from "@/features/material-requests/componen
 import { MaterialRequestDispatchesTab } from "@/features/material-requests/components/material-request-dispatches-tab";
 import type { MaterialRequestDetail } from "@/features/material-requests/types/material-request.types";
 import { loadTechnicianOptions } from "@/features/jobs/utils/load-technician-options.util";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { MaterialRequestAttachmentsTab } from "./material-request-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-epoch";
 import { useMaterialStatusCatalog } from "@/features/material-status/hooks/use-material-status-catalog";
@@ -163,13 +163,7 @@ export function MaterialRequestDetailScreen({ materialRequestId }: Props) {
           ) : detail && activeTab === "dispatches" ? (
             <MaterialRequestDispatchesTab materialRequestId={detail.id} />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="materialRequests"
-              updateAttachments={(refs) => updateMaterialRequestAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <MaterialRequestAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={MATERIAL_REQUEST_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

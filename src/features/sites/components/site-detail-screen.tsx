@@ -13,7 +13,7 @@ import { SITE_PATHS } from "@/features/sites/api/site.paths";
 import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { SiteAttachmentsTab } from "./site-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailEditButton,
@@ -238,13 +238,7 @@ export function SiteDetailScreen({ siteId }: Props) {
               onSaved={retry}
             />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="sites"
-              updateAttachments={(refs) => updateSiteAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <SiteAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={SITE_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

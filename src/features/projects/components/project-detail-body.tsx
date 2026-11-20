@@ -87,6 +87,46 @@ function projectManagerRows(detail: Project): { id: number; label: string }[] {
   return rows;
 }
 
+function projectContactPersonRows(detail: Project): {
+  id?: number;
+  titleName: string;
+  name: string;
+  email: string;
+  phone: string;
+}[] {
+  const raw =
+    detail.contacts ??
+    detail.project_contact_persons ??
+    detail.contact_persons ??
+    [];
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((entry) => {
+    // Flat API shape: contact_name / contact_email / contact_phone / title_name
+    const flatName = entry.contact_name ?? null;
+    const flatEmail = entry.contact_email ?? null;
+    const flatPhone = entry.contact_phone ?? null;
+    const flatTitleName = entry.title_name ?? null;
+
+    // Nested shape: entry.contact is a ref object
+    const ref =
+      entry.contact && typeof entry.contact === "object"
+        ? (entry.contact as import("@/features/projects/types/project.types").ProjectContactPersonContactRef)
+        : null;
+
+    const name =
+      flatName ||
+      (ref
+        ? `${ref.first_name ?? ""} ${ref.last_name ?? ""}`.trim() || ref.name?.trim() || ""
+        : "");
+    const email = flatEmail || ref?.email || "";
+    const phone = flatPhone || ref?.phone || "";
+    const titleName = flatTitleName || (typeof entry.title === "string" ? entry.title : "") || "";
+
+    return { id: entry.id, titleName, name, email, phone };
+  });
+}
+
 function resolveProjectStatusId(detail: Project): string {
   const status = detail.project_status;
   if (typeof status === "object" && status !== null && typeof status.id === "number") {
@@ -178,6 +218,7 @@ export function ProjectDetailBody({
   const end = detail.end_date?.slice(0, 10) ?? "";
   const siteRows = projectSiteListRows(detail, t("fields.site"));
   const managerRows = projectManagerRows(detail);
+  const contactPersonRows = projectContactPersonRows(detail);
 
   const managerSelectOptions = React.useMemo(() => {
     const options = [...managerOptions];
@@ -214,7 +255,14 @@ export function ProjectDetailBody({
   );
 
   return (
+    <>
+    <div>
+      <img src={detail?.project_image ?? undefined} alt="" />
+    </div>
     <DetailPagePadding>
+      {/* <div className= "p-2">
+      <img src={detail?.project_image} alt="" className="h-full w-full object-cover " />
+    </div> */}
       <div className={detailPageStackClassName}>
         <DetailPanelCard title={t("detail.sectionOverview")}>
           <DetailMetricsGrid>
@@ -384,6 +432,39 @@ export function ProjectDetailBody({
           </DetailEditableField>
         </DetailPanelCard>
 
+        <DetailPanelCard title={t("detail.panelContactPersons")}>
+          {contactPersonRows.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t("detail.contactPersonsEmpty")}
+            </p>
+          ) : (
+            <div className="w-full">
+              {/* Rows */}
+              {contactPersonRows.map((row, idx) => (
+                <div key={row.id ?? idx} className="w-full flex px-10">
+                  <div
+                    className="grid items-baseline gap-x-6 gap-y-0 py-2 text-sm text-slate-700 dark:text-slate-300 w-full"
+                    style={{ gridTemplateColumns: "auto 1fr 1fr 1fr" }}
+                  >
+                  <span className="w-fit rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold leading-none text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    {row.titleName || "—"}
+                  </span>
+                  <span className="truncate leading-none">
+                    {row.name || "—"}
+                  </span>
+                  <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                    {row.email || "—"}
+                  </span>
+                  <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                    {row.phone || "—"}
+                  </span>
+                </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DetailPanelCard>
+
         <DetailSystemMetadataSection
           createdAt={detail.created_at}
           modifiedAt={detail.modified_at}
@@ -401,5 +482,6 @@ export function ProjectDetailBody({
         />
       </div>
     </DetailPagePadding>
+     </>
   );
 }

@@ -11,7 +11,7 @@ import { updateItemAttachments } from "@/features/items/api/item.api";
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import type { CompositeItem } from "@/features/composite-items/types/composite-item.types";
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { CompositeItemAttachmentsTab } from "./composite-item-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
@@ -111,13 +111,7 @@ export function CompositeItemDetailScreen({ itemId }: Props) {
     >
       {({ detail, dateFmt, retry }) =>
         activeTab === "attachments" ? (
-          <EntityAttachmentsTab
-            entityId={detail.id}
-            attachments={detail.attachments}
-            emptyIconName="compositeItems"
-            updateAttachments={(refs) => updateItemAttachments(detail.id, refs)}
-            onSaved={retry}
-          />
+          <CompositeItemAttachmentsTab detail={detail} onSaved={retry} />
         ) : activeTab === "notes" ? (
           <EntityNotesTab detailPath={ITEM_PATHS.detail(detail.id)} />
         ) : (

@@ -93,11 +93,41 @@ export async function updateVendor(id: number, body: VendorUpdatePayload): Promi
   return data.data;
 }
 
+import type { VendorFolder } from "@/features/vendors/types/vendor-folder.types";
+
+export async function fetchVendorFolders(id: number): Promise<VendorFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<VendorFolder[]> | VendorFolder[]>(VENDOR_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createVendorFolder(entityId: number, name: string): Promise<VendorFolder> {
+  const { data } = await api.post<ApiEnvelope<VendorFolder> | VendorFolder>(VENDOR_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as VendorFolder;
+}
+
+export async function updateVendorFolder(entityId: number, folderId: number, name: string): Promise<VendorFolder> {
+  const { data } = await api.patch<ApiEnvelope<VendorFolder> | VendorFolder>(VENDOR_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as VendorFolder;
+}
+
+export async function deleteVendorFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(VENDOR_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateVendorAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Vendor> {
-  return updateEntityAttachments<Vendor>(VENDOR_PATHS.detail(id), refs);
+  return updateEntityAttachments<Vendor>(VENDOR_PATHS.detail(id), refs, options);
 }
 
 export async function deleteVendor(id: number): Promise<void> {

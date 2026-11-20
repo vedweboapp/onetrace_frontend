@@ -1,6 +1,7 @@
 /** File attached to an entity (`attachments` on read / multipart write). */
 export type EntityAttachment = {
   id?: number;
+  folder?: number | { id: number; name?: string } | string | null;
   /** Absolute or relative media URL from the API. */
   file?: string | null;
   file_name?: string | null;
@@ -16,4 +17,4 @@ export type EntityAttachment = {
 
 export type EntityAttachmentWriteRef =
   | { id: number; is_deleted: true }
-  | { file: File };
+  | { file: File; folder?: number | null };

@@ -29,6 +29,7 @@ import type { JobChecklistItem } from "@/features/jobs/types/job.types";
 import { JobChecklistsSection } from "@/features/jobs/components/job-checklists-section";
 import { JobDetailWorkScopeEditor } from "@/features/jobs/components/job-detail-work-scope-editor";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
+import type { ProjectContactPerson, ProjectContactPersonContactRef } from "@/features/projects/types/project.types";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import { DetailMultiValue, DetailMultiValueItem } from "@/shared/components/layout/detail-multi-value";
 import { useDetailPatch } from "@/shared/hooks/use-entity-detail-screen";
@@ -538,6 +539,69 @@ function PlotPinsBlock({
         )}
       </div>
     </div>
+  );
+}
+
+function resolveContactRoleRows(
+  contacts: ProjectContactPerson[] | null | undefined,
+): { id?: number; titleName: string; name: string; email: string; phone: string }[] {
+  if (!Array.isArray(contacts)) return [];
+  return contacts.map((entry) => {
+    const flatName = entry.contact_name ?? null;
+    const flatEmail = entry.contact_email ?? null;
+    const flatPhone = entry.contact_phone ?? null;
+    const flatTitleName = entry.title_name ?? null;
+    const ref =
+      entry.contact && typeof entry.contact === "object"
+        ? (entry.contact as ProjectContactPersonContactRef)
+        : null;
+    const name =
+      flatName ||
+      (ref ? `${ref.first_name ?? ""} ${ref.last_name ?? ""}`.trim() || ref.name?.trim() || "" : "");
+    const email = flatEmail || ref?.email || "";
+    const phone = flatPhone || ref?.phone || "";
+    const titleName = flatTitleName || (typeof entry.title === "string" ? entry.title : "") || "";
+    return { id: entry.id, titleName, name, email, phone };
+  });
+}
+
+function ContactRolesPanel({
+  rows,
+  title,
+  emptyLabel,
+}: {
+  rows: { id?: number; titleName: string; name: string; email: string; phone: string }[];
+  title: string;
+  emptyLabel: string;
+}) {
+  return (
+    <DetailPanelCard title={title}>
+      {rows.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{emptyLabel}</p>
+      ) : (
+        <div className="w-full">
+          {rows.map((row, idx) => (
+            <div key={row.id ?? idx} className="w-full flex px-10">
+              <div
+                className="grid items-baseline gap-x-6 gap-y-0 py-2 text-sm text-slate-700 dark:text-slate-300 w-full"
+                style={{ gridTemplateColumns: "auto 1fr 1fr 1fr" }}
+              >
+                <span className="w-fit rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold leading-none text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                  {row.titleName || "—"}
+                </span>
+                <span className="truncate leading-none">{row.name || "—"}</span>
+                <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                  {row.email || "—"}
+                </span>
+                <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                  {row.phone || "—"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </DetailPanelCard>
   );
 }
 
@@ -1068,6 +1132,17 @@ export function JobDetailBody({
             </div>
           </DetailPanelCard>
         )}
+
+        <ContactRolesPanel
+          rows={resolveContactRoleRows(
+            detail.contacts ??
+              (detail as any).job_contact_persons ??
+              (detail as any).project_contact_persons ??
+              (detail as any).contact_persons,
+          )}
+          title={t("detail.panelContactRoles")}
+          emptyLabel={t("detail.contactRolesEmpty")}
+        />
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}

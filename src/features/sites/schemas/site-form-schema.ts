@@ -10,6 +10,7 @@ export type SiteFormMessages = {
   state: string;
   city: string;
   pincode: string;
+  parentSite?: string;
   contactPersonTitle: string;
   contactPerson: string;
   contactPersonDuplicate: string;
@@ -24,6 +25,7 @@ export function createSiteFormSchema(messages: SiteFormMessages) {
         .trim()
         .regex(/^\d+$/, messages.client)
         .refine((s) => Number.parseInt(s, 10) > 0, { message: messages.client }),
+      parent_site: z.string().optional(),
       address_line_1: zTrimmedNonEmpty(messages.addressLine1),
       address_line_2: z.string(),
       country_iso: z

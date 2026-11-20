@@ -6,6 +6,9 @@ export type QuotationFormMessages = {
   customer: string;
   sites: string;
   project: string;
+  contactPersonTitle?: string;
+  contactPerson?: string;
+  contactPersonDuplicate?: string;
 };
 
 export function createQuotationFormSchema(
@@ -45,6 +48,42 @@ export function createQuotationFormSchema(
     description: z.string(),
     select_all_levels: z.boolean(),
     level_ids: z.array(z.number()),
+    contacts: z
+      .array(
+        z.object({
+          title: z.string().trim().min(1, messages.contactPersonTitle ?? "Select a title."),
+          contact: z
+            .string()
+            .trim()
+            .regex(/^\d+$/, messages.contactPerson ?? "Select a contact person.")
+            .refine((s) => Number.parseInt(s, 10) > 0, {
+              message: messages.contactPerson ?? "Select a contact person.",
+            }),
+        }),
+      )
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    const contacts = data.contacts ?? [];
+    const pairToFirstIndex = new Map<string, number>();
+    for (let i = 0; i < contacts.length; i++) {
+      const title = contacts[i]?.title?.trim() ?? "";
+      const contact = contacts[i]?.contact?.trim() ?? "";
+      if (!title || !contact) continue;
+      const pairKey = `${title}\0${contact}`;
+      const firstIndex = pairToFirstIndex.get(pairKey);
+      if (firstIndex !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["contacts", i, "contact"],
+          message:
+            messages.contactPersonDuplicate ??
+            "This title and contact person combination is already added.",
+        });
+      } else {
+        pairToFirstIndex.set(pairKey, i);
+      }
+    }
   });
 }
 

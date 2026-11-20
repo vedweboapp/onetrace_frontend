@@ -10,7 +10,7 @@ import { PurchaseReceiveDetailBody } from "@/features/purchase-receives/componen
 import type { PurchaseReceiveDetail } from "@/features/purchase-receives/types/purchase-receive.types";
 import { normalizePurchaseReceiveStatus } from "@/features/purchase-receives/utils/purchase-receive-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { PurchaseReceiveAttachmentsTab } from "@/features/purchase-receives/components/purchase-receive-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
@@ -127,11 +127,8 @@ export function PurchaseReceiveDetailScreen({ purchaseReceiveId }: Props) {
               aria-labelledby={`purchase-receive-detail-tab-trigger-${activeTab}`}
               className={entityDetailTabPanelClassName}
             >
-              <EntityAttachmentsTab
-                entityId={detail.id}
-                attachments={detail.attachments}
-                emptyIconName="purchaseReceives"
-                updateAttachments={(refs) => updatePurchaseReceiveAttachments(detail.id, refs)}
+              <PurchaseReceiveAttachmentsTab
+                detail={detail}
                 onSaved={retry}
               />
             </div>

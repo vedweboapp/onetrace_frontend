@@ -12,7 +12,7 @@ import { PurchaseOrderDetailBody } from "@/features/purchase-orders/components/p
 import type { PurchaseOrderContactRef, PurchaseOrderDetail } from "@/features/purchase-orders/types/purchase-order.types";
 import { nestedId, normalizePurchaseOrderStatus } from "@/features/purchase-orders/utils/purchase-order-nested-fields.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { PurchaseOrderAttachmentsTab } from "./purchase-order-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
@@ -162,13 +162,7 @@ export function PurchaseOrderDetailScreen({ purchaseOrderId }: Props) {
               aria-labelledby={`purchase-order-detail-tab-trigger-${activeTab}`}
               className={entityDetailTabPanelClassName}
             >
-              <EntityAttachmentsTab
-                entityId={detail.id}
-                attachments={detail.attachments}
-                emptyIconName="purchaseOrders"
-                updateAttachments={(refs) => updatePurchaseOrderAttachments(detail.id, refs)}
-                onSaved={retry}
-              />
+              <PurchaseOrderAttachmentsTab detail={detail} onSaved={retry} />
             </div>
           );
         }

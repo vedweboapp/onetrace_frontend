@@ -1,6 +1,7 @@
 import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
 import type { WorkflowColourStatus } from "@/shared/types/workflow-colour-status.types";
 import type { QualityAssuranceRecord } from "./quality-assurance.types";
+import type { ProjectContactPerson, ProjectContactPersonPayload } from "@/features/projects/types/project.types";
 
 export type JobUserRef = {
   id: number;
@@ -191,12 +192,15 @@ export type JobCreatePayload = {
   forms?: number[];
   job_status?: number;
   client?: number;
+  contact_person?: number;
+  contact?: number;
   project?: number;
   site?: number;
   job_category?: string;
   job_meta?: JobMetaPayload;
   checklists?: number[];
   pin_ids?: number[];
+  contacts?: ProjectContactPersonPayload[];
 };
 
 /** Backend creates a job from a quotation (minimal body). */
@@ -244,6 +248,8 @@ export type Job = {
   forms?: number | number[] | JobFormRef | JobFormRef[];
   checklists?: JobChecklistItem[] | JobChecklistApiRow[] | JobChecklistsBlock;
   client?: number | JobClientRef;
+  contact_person?: number | { id: number; name?: string; first_name?: string; last_name?: string; email?: string } | null;
+  contact?: number | { id: number; name?: string; first_name?: string; last_name?: string; email?: string } | null;
   project?: number | JobProjectRef;
   site?: number | JobSiteRef;
   qr_code?: JobQrCodeRef | null;
@@ -251,6 +257,7 @@ export type Job = {
   job_meta?: JobMetaPayload | JobMetaLegacyPayload | null;
   job_quality_assurance?: QualityAssuranceRecord | null;
   attachments?: EntityAttachment[] | null;
+  contacts?: ProjectContactPerson[] | null;
 };
 
 export type JobPagination = {

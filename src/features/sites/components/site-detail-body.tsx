@@ -3,7 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { updateSite } from "@/features/sites/api/site.api";
+import { fetchSitesPage, updateSite } from "@/features/sites/api/site.api";
 import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
 import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
@@ -66,6 +66,47 @@ export function SiteDetailBody({
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
+
+  const parentSiteId =
+    typeof detail.parent_site === "number"
+      ? detail.parent_site
+      : typeof detail.parent_site?.id === "number"
+        ? detail.parent_site.id
+        : null;
+
+  const parentSiteName =
+    typeof detail.parent_site === "object" && detail.parent_site
+      ? detail.parent_site.site_name || detail.parent_site.name
+      : null;
+
+  const [parentSiteOptions, setParentSiteOptions] = React.useState<CheckmarkSelectOption[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { items } = await fetchSitesPage(1, 100, { dropdown: true });
+        if (cancelled) return;
+        const filtered = items.filter((s) => s.id !== detail.id);
+        const options: CheckmarkSelectOption[] = filtered.map((s) => ({
+          value: String(s.id),
+          label: s.site_name,
+        }));
+        if (parentSiteId != null && !options.some((o) => o.value === String(parentSiteId))) {
+          options.unshift({
+            value: String(parentSiteId),
+            label: parentSiteName || `#${parentSiteId}`,
+          });
+        }
+        setParentSiteOptions(options);
+      } catch {
+        if (!cancelled) setParentSiteOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id, parentSiteId, parentSiteName]);
 
   const clientSelectOptions = React.useMemo(() => {
     const list = [...clientOptions];
@@ -158,6 +199,32 @@ export function SiteDetailBody({
                 </DetailEntityLink>
               ) : (
                 <span>{clientName ?? "—"}</span>
+              )}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("fields.parentSite")}
+              value={parentSiteId != null ? String(parentSiteId) : ""}
+              kind="select"
+              options={parentSiteOptions}
+              selectSearchable
+              empty="—"
+              editAriaLabel={tActions("edit")}
+              onSave={async (next) => {
+                const nextId = next ? Number.parseInt(next, 10) : null;
+                await patchSiteField({
+                  parent_site: nextId && Number.isFinite(nextId) && nextId > 0 ? nextId : null,
+                });
+              }}
+            >
+              {parentSiteId ? (
+                <DetailEntityLink
+                  href={`${routes.dashboard.sites}/${parentSiteId}`}
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  {parentSiteName || `#${parentSiteId}`}
+                </DetailEntityLink>
+              ) : (
+                <span>—</span>
               )}
             </DetailEditableField>
           </DetailMetricsGrid>

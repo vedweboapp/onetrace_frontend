@@ -10,11 +10,19 @@ import type { EntityAttachmentWriteRef } from "./entity-attachment.types";
 export async function updateEntityAttachments<T>(
   detailPath: string,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<T> {
   const fd = new FormData();
+  let folderAppended = false;
   for (const ref of refs) {
     if ("file" in ref && ref.file instanceof File) {
       fd.append("attachments", ref.file, ref.file.name);
+      const targetFolder = ref.folder !== undefined ? ref.folder : options?.folderId;
+      if (targetFolder != null && !folderAppended) {
+        fd.append("folder_id", String(targetFolder));
+        fd.append("folder", String(targetFolder));
+        folderAppended = true;
+      }
     } else if ("id" in ref && ref.is_deleted === true) {
       fd.append("deleted_attachment_ids", String(ref.id));
     }

@@ -8,7 +8,7 @@ import { GROUP_PATHS } from "@/features/groups/api/group.paths";
 import { GroupDetailBody } from "@/features/groups/components/group-detail-body";
 import { GroupSubgroupsTab } from "@/features/groups/components/group-subgroups-tab";
 import type { Group } from "@/features/groups/types/group.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { GroupAttachmentsTab } from "./group-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
@@ -112,13 +112,7 @@ export function GroupDetailScreen({ groupId }: Props) {
         activeTab === "subgroups" ? (
           <GroupSubgroupsTab detail={detail} />
         ) : activeTab === "attachments" ? (
-          <EntityAttachmentsTab
-            entityId={detail.id}
-            attachments={detail.attachments}
-            emptyIconName="groups"
-            updateAttachments={(refs) => updateGroupAttachments(detail.id, refs)}
-            onSaved={retry}
-          />
+          <GroupAttachmentsTab detail={detail} onSaved={retry} />
         ) : activeTab === "notes" ? (
           <EntityNotesTab detailPath={GROUP_PATHS.detail(detail.id)} />
         ) : (

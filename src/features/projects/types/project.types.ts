@@ -6,6 +6,34 @@ export type ProjectUserRef = {
   username: string;
 };
 
+export type ProjectContactPersonPayload = {
+  title: string;
+  contact: number;
+};
+
+export type ProjectContactPersonContactRef = {
+  id: number;
+  first_name?: string | null;
+  last_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+export type ProjectContactPerson = {
+  id?: number;
+  /** Numeric ID or nested ref when sent back from the API. */
+  contact: number | ProjectContactPersonContactRef;
+  /** Flat fields returned by the detail API. */
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  /** Title ID (string key) */
+  title: string;
+  /** Human-readable title label returned by the API. */
+  title_name?: string | null;
+};
+
 export type ProjectUpsertPayload = {
   organization?: number;
   name: string;
@@ -18,6 +46,8 @@ export type ProjectUpsertPayload = {
   end_date?: string | null;
   project_status?: number;
   manager_ids?: number[];
+  project_image?: File | string | null;
+  contacts?: ProjectContactPersonPayload[];
 };
 
 export type ProjectCreatePayload = ProjectUpsertPayload;
@@ -105,6 +135,10 @@ export type Project = {
   organization: number;
   deleted_by: unknown;
   attachments?: EntityAttachment[] | null;
+  project_image?: string | null;
+  contacts?: ProjectContactPerson[] | null;
+  project_contact_persons?: ProjectContactPerson[] | null;
+  contact_persons?: ProjectContactPerson[] | null;
 };
 export type Location = {
   [key: string]: any

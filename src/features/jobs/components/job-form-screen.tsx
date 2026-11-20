@@ -9,9 +9,12 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchClient, fetchClientsPage } from "@/features/clients/api/client.api";
 import { clientToSelectOption, clientsToSelectOptions } from "@/features/clients/utils/client-select-options.util";
+import { fetchContactsPage } from "@/features/contacts/api/contact.api";
+import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { fetchFormsPage } from "@/features/forms/api/forms.api";
 import { fetchJobStatusesPage } from "@/features/job-status/api/job-status.api";
 import { createJob, fetchJob, updateJob } from "@/features/jobs/api/job.api";
+import { JobContactPersonsFields } from "@/features/jobs/components/job-contact-persons-fields";
 import { JobFormLevelsSection } from "@/features/jobs/components/job-form-levels-section";
 import { createJobFormSchema, type JobFormValues } from "@/features/jobs/schemas/job-form-schema";
 import { fetchChecklistTypesPage } from "@/features/checklist-types/api/checklist-type.api";
@@ -110,8 +113,11 @@ export function JobFormScreen({ mode, jobId }: Props) {
   const [formOptions, setFormOptions] = React.useState<Option[]>([]);
   const [jobStatusOptions, setJobStatusOptions] = React.useState<Option[]>([]);
   const [clientOptions, setClientOptions] = React.useState<Option[]>([]);
+  const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
   const [projectOptions, setProjectOptions] = React.useState<Option[]>([]);
   const [siteOptions, setSiteOptions] = React.useState<Option[]>([]);
+  const pendingContactRowRef = React.useRef<number | null>(null);
+  const [contactsRefreshKey, setContactsRefreshKey] = React.useState(0);
   const [groupOptions, setGroupOptions] = React.useState<Option[]>([]);
   const [itemOptions, setItemOptions] = React.useState<Option[]>([]);
   const [itemPriceById, setItemPriceById] = React.useState<Map<number, number>>(new Map());
@@ -142,6 +148,9 @@ export function JobFormScreen({ mode, jobId }: Props) {
         optionalId: t("validation.optionalId"),
         compositeQuantity: t("validation.compositeQuantity"),
         requiredChecklist: t("validation.requiredChecklist"),
+        contactPersonTitle: t("validation.contactPersonTitle"),
+        contactPerson: t("validation.contactPerson"),
+        contactPersonDuplicate: t("validation.contactPersonDuplicate"),
       }),
     [t],
   );
@@ -224,6 +233,12 @@ export function JobFormScreen({ mode, jobId }: Props) {
     addDisabled: !clientId,
     getFormDraft: !isEdit ? getFormDraft : undefined,
   });
+  const contactQuickCreate = useQuickCreate({
+    kind: "contact",
+    clientId,
+    addDisabled: !clientId,
+    getFormDraft: !isEdit ? getFormDraft : undefined,
+  });
   const groupQuickCreate = useQuickCreate({
     kind: "group",
     getFormDraft: !isEdit ? getFormDraft : undefined,
@@ -287,6 +302,34 @@ export function JobFormScreen({ mode, jobId }: Props) {
     }
   }, []);
 
+  const contactFetchSeq = React.useRef(0);
+  const reloadContacts = React.useCallback(async () => {
+    const seq = ++contactFetchSeq.current;
+    if (!clientId || clientId <= 0) {
+      setContactOptions([]);
+      return;
+    }
+    try {
+      const { items } = await fetchContactsPage(1, 50, { client: clientId, is_active: true, dropdown: true });
+      if (seq !== contactFetchSeq.current) return;
+      setContactOptions(items.map((c) => ({ value: String(c.id), label: formatContactOptionLabel(c) })));
+    } catch {
+      if (seq === contactFetchSeq.current) setContactOptions([]);
+    }
+  }, [clientId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!clientId || clientId <= 0) {
+      setContactOptions([]);
+      return;
+    }
+    void reloadContacts();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, reloadContacts, catalogEpoch]);
+
   const ensureSiteInOptions = React.useCallback(async (id: number) => {
     const value = String(id);
     setSiteOptions((prev) => {
@@ -337,7 +380,6 @@ export function JobFormScreen({ mode, jobId }: Props) {
       return value;
     }
   }, []);
-
 
   const checklistFetchSeq = React.useRef(0);
   const fetchChecklistOptions = React.useCallback(async (searchTerm?: string) => {
@@ -572,6 +614,26 @@ export function JobFormScreen({ mode, jobId }: Props) {
         setValue("site", selectId, { shouldDirty: true, shouldValidate: true });
         const id = Number.parseInt(selectId, 10);
         if (Number.isFinite(id) && id > 0) await ensureSiteInOptions(id);
+        return;
+      }
+      if (selectTarget === "contact") {
+        setContactsRefreshKey((k) => k + 1);
+        const rowIndex = pendingContactRowRef.current;
+        if (rowIndex != null) {
+          setValue(`contacts.${rowIndex}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
+        } else {
+          const current = getValues("contacts") ?? [];
+          const emptyIdx = current.findIndex((r) => !r.contact?.trim());
+          if (emptyIdx >= 0) {
+            setValue(`contacts.${emptyIdx}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
+          } else {
+            setValue("contacts", [...current, { title: "", contact: selectId }], {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }
+        }
+        pendingContactRowRef.current = null;
         return;
       }
       if (selectTarget === "group") {
@@ -962,6 +1024,7 @@ export function JobFormScreen({ mode, jobId }: Props) {
                           field.onChange(v);
                           setValue("project", "");
                           setValue("site", "");
+                          setValue("contact_person", "");
                         }}
                         emptyLabel={t("placeholders.client")}
                         disabled={saving}
@@ -1031,6 +1094,35 @@ export function JobFormScreen({ mode, jobId }: Props) {
                   />
                 )}
               </FormFieldRow>
+
+              {!isProjectJob && (
+                <FormFieldRow cols="2">
+                  <Controller
+                    control={control}
+                    name="job_status"
+                    render={({ field }) => (
+                      <FieldGroup label={t("fields.jobStatus")} htmlFor="job-status">
+                        <CheckmarkSelect
+                          id="job-status"
+                          options={jobStatusOptions}
+                          value={field.value}
+                          onChange={field.onChange}
+                          emptyLabel={t("placeholders.jobStatus")}
+                          disabled={saving || jobStatusOptions.length === 0}
+                          invalid={!!errors.job_status}
+                          listLabel={t("fields.jobStatus")}
+                          portaled
+                          searchable
+                          onAdd={openJobStatusSettings}
+                          addAriaLabel="Create job status"
+                          addLabel="Create"
+                        />
+                        <FieldErrorText>{errors.job_status?.message}</FieldErrorText>
+                      </FieldGroup>
+                    )}
+                  />
+                </FormFieldRow>
+              )}
 
               {isProjectJob ? (
                 <FormFieldRow cols="2">
@@ -1416,6 +1508,16 @@ export function JobFormScreen({ mode, jobId }: Props) {
                 />
               </section>
             ) : null}
+
+            <JobContactPersonsFields
+              control={control}
+              setValue={setValue}
+              errors={errors}
+              disabled={saving}
+              pendingContactRowRef={pendingContactRowRef}
+              contactsRefreshKey={contactsRefreshKey}
+              getFormDraft={!isEdit ? getFormDraft : undefined}
+            />
           </form>
         )}
       </SurfaceShell>

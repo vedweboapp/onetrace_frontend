@@ -84,11 +84,41 @@ export async function updateClient(
   return data.data;
 }
 
+import type { ClientFolder } from "@/features/clients/types/client-folder.types";
+
+export async function fetchClientFolders(id: number): Promise<ClientFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<ClientFolder[]> | ClientFolder[]>(CLIENT_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createClientFolder(entityId: number, name: string): Promise<ClientFolder> {
+  const { data } = await api.post<ApiEnvelope<ClientFolder> | ClientFolder>(CLIENT_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ClientFolder;
+}
+
+export async function updateClientFolder(entityId: number, folderId: number, name: string): Promise<ClientFolder> {
+  const { data } = await api.patch<ApiEnvelope<ClientFolder> | ClientFolder>(CLIENT_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ClientFolder;
+}
+
+export async function deleteClientFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(CLIENT_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateClientAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Client> {
-  return updateEntityAttachments<Client>(CLIENT_PATHS.detail(id), refs);
+  return updateEntityAttachments<Client>(CLIENT_PATHS.detail(id), refs, options);
 }
 
 export async function deleteClient(id: number): Promise<void> {

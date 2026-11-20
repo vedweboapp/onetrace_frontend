@@ -9,6 +9,9 @@ export type JobFormMessages = {
   optionalId: string;
   compositeQuantity: string;
   requiredChecklist: string;
+  contactPersonTitle?: string;
+  contactPerson?: string;
+  contactPersonDuplicate?: string;
 };
 
 const optionalPositiveId = (message: string) =>
@@ -55,6 +58,7 @@ export function createJobFormSchema(
         .refine((v) => /^\d+$/.test(v) && Number.parseInt(v, 10) > 0, {
           message: messages.client,
         }),
+      contact_person: optionalPositiveId(messages.optionalId),
       project: optionalPositiveId(messages.optionalId),
       site: optionalPositiveId(messages.optionalId),
       job_category: z.string().optional(),
@@ -73,6 +77,20 @@ export function createJobFormSchema(
           }),
         )
         .min(1),
+      contacts: z
+        .array(
+          z.object({
+            title: z.string().trim().min(1, messages.contactPersonTitle ?? "Select a title."),
+            contact: z
+              .string()
+              .trim()
+              .regex(/^\d+$/, messages.contactPerson ?? "Select a contact person.")
+              .refine((s) => Number.parseInt(s, 10) > 0, {
+                message: messages.contactPerson ?? "Select a contact person.",
+              }),
+          }),
+        )
+        .optional(),
     })
     .superRefine((data, ctx) => {
       data.job_meta_items.forEach((row, index) => {
@@ -97,6 +115,27 @@ export function createJobFormSchema(
           });
         }
       });
+
+      const contacts = data.contacts ?? [];
+      const pairToFirstIndex = new Map<string, number>();
+      for (let i = 0; i < contacts.length; i++) {
+        const title = contacts[i]?.title?.trim() ?? "";
+        const contact = contacts[i]?.contact?.trim() ?? "";
+        if (!title || !contact) continue;
+        const pairKey = `${title}\0${contact}`;
+        const firstIndex = pairToFirstIndex.get(pairKey);
+        if (firstIndex !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["contacts", i, "contact"],
+            message:
+              messages.contactPersonDuplicate ??
+              "This title and contact person combination is already added.",
+          });
+        } else {
+          pairToFirstIndex.set(pairKey, i);
+        }
+      }
     });
 }
 

@@ -1,3 +1,5 @@
+import type { ProjectContactPerson, ProjectContactPersonPayload } from "@/features/projects/types/project.types";
+
 export type QuotationUserRef = {
   id: number;
   email: string;
@@ -224,6 +226,7 @@ export type QuotationSiteSnapshot = {
 /** File attached to a quotation (`attachments` on read/write). */
 export type QuotationAttachment = {
   id?: number;
+  folder?: number | { id: number; name?: string } | string | null;
   /** Absolute or relative media URL from the API. */
   file?: string | null;
   file_name?: string | null;
@@ -242,6 +245,8 @@ export type QuotationCreatePayload = {
   sites: number[];
   quote_name: string;
   primary_customer_contact?: number | null;
+  contact_person?: number | null;
+  contact?: number | null;
   /** Contact ids selected as additional customer contacts, e.g. `[5, 6, 7]`. */
   additional_customer_contact: number[];
   tags: number[];
@@ -266,6 +271,7 @@ export type QuotationCreatePayload = {
   attachments?: Array<{ id: number; is_deleted?: boolean }> | null;
   /** Template ID associated with this quotation. */
   template?: number | null;
+  contacts?: ProjectContactPersonPayload[];
 };
 
 export type QuotationUpdatePayload = Partial<QuotationCreatePayload>;
@@ -427,6 +433,7 @@ export type QuotationDetail = QuotationListItem & {
   orientation?: string | null;
   template_type?: string | null;
   template_type_formatted?: string | null;
+  contacts?: ProjectContactPerson[] | null;
 };
 
 export type QuotationPagination = {
