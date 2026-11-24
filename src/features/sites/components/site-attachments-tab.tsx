@@ -30,6 +30,8 @@ import {
   updateSiteAttachments,
   updateSiteFolder,
 } from "@/features/sites/api/site.api";
+import { moveEntityAttachment } from "@/shared/attachments/move-entity-attachment.util";
+import { SITE_PATHS } from "@/features/sites/api/site.paths";
 import type { SiteFolder } from "@/features/sites/types/site-folder.types";
 import type { Site } from "@/features/sites/types/site.types";
 import type { EntityAttachment } from "@/shared/attachments/entity-attachment.types";
@@ -390,10 +392,33 @@ export function SiteAttachmentsTab({ detail, onSaved }: SiteAttachmentsTabProps)
     }
   }
 
+  const [movingAttachmentId, setMovingAttachmentId] = React.useState<number | null>(null);
+
+  const handleMoveAttachment = React.useCallback(
+    async (attachmentId: number, targetFolderId: number | null) => {
+      if (movingAttachmentId != null) return;
+      setMovingAttachmentId(attachmentId);
+      try {
+        await moveEntityAttachment(
+          SITE_PATHS.detail(detail.id),
+          attachmentId,
+          targetFolderId,
+        );
+        toastSuccess(t("attachmentsTab.movedToast"));
+        await onSaved();
+      } catch (error) {
+        toastApiError(error, t("attachmentsTab.moveError"));
+      } finally {
+        setMovingAttachmentId(null);
+      }
+    },
+    [detail.id, movingAttachmentId, onSaved, t],
+  );
+
   const handleContainerDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     dragCounterRef.current += 1;
-    if (e.dataTransfer.types.includes("Files")) {
+    if (e.dataTransfer.types.includes("Files") || e.dataTransfer.types.includes("application/json")) {
       setIsDraggingOver(true);
     }
   };
@@ -431,7 +456,7 @@ export function SiteAttachmentsTab({ detail, onSaved }: SiteAttachmentsTabProps)
   const handleFolderDragOver = (e: React.DragEvent, folderId: number) => {
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.dropEffect = "move";
     if (dragOverFolderId !== folderId) {
       setDragOverFolderId(folderId);
     }
@@ -451,6 +476,21 @@ export function SiteAttachmentsTab({ detail, onSaved }: SiteAttachmentsTabProps)
     dragCounterRef.current = 0;
     setIsDraggingOver(false);
     setDragOverFolderId(null);
+
+    // Inward move: internal attachment drag → into folder
+    const rawData = e.dataTransfer.getData("application/json");
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData) as { attachmentId?: unknown };
+        if (typeof parsed.attachmentId === "number") {
+          void handleMoveAttachment(parsed.attachmentId, folderId);
+          return;
+        }
+      } catch {
+        // Not an internal drag — fall through to file upload
+      }
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       void handleFileUpload(e.dataTransfer.files, folderId);
     }
@@ -909,11 +949,27 @@ function AttachmentRowItem({
   }
 
   return (
-    <div className="group flex items-center justify-between gap-3 border-b border-slate-200/80 px-2 py-2 transition-colors hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-800/40">
+    <div
+      draggable={attachment.id != null}
+      onDragStart={(e) => {
+        if (attachment.id != null) {
+          e.dataTransfer.setData(
+            "application/json",
+            JSON.stringify({ attachmentId: attachment.id }),
+          );
+          e.dataTransfer.effectAllowed = "move";
+        }
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-3 border-b border-slate-200/80 px-2 py-2 transition-colors hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-800/40",
+        attachment.id != null && "cursor-grab active:cursor-grabbing",
+      )}
+    >
       <div className="flex min-w-0 items-center gap-2.5">
         {getFileIcon(attachment.content_type_value, name)}
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
           <a
+            draggable={false}
             href={url}
             target="_blank"
             rel="noopener noreferrer"

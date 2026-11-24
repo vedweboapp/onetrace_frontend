@@ -43,6 +43,8 @@ export type AppModalProps = {
   /** Accessible name for the close control (translate in forms if needed). */
   closeButtonAriaLabel?: string;
   className?: string;
+  containerClassName?: string;
+  zIndex?: number;
 };
 
 /**
@@ -63,6 +65,8 @@ export function AppModal({
   showCloseButton = true,
   closeButtonAriaLabel = "Close",
   className,
+  containerClassName,
+  zIndex,
 }: AppModalProps) {
   const autoTitleId = React.useId();
   const autoDescId = React.useId();
@@ -82,7 +86,11 @@ export function AppModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]"
+      className={cn(
+        "fixed inset-0 z-[9999999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[1px]",
+        containerClassName,
+      )}
+      style={zIndex != null ? { zIndex } : undefined}
       role="presentation"
       onClick={() => (closeOnBackdrop && !isBusy ? onClose() : undefined)}
     >

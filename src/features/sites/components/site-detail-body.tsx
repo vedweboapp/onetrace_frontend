@@ -67,16 +67,17 @@ export function SiteDetailBody({
         ? detail.client.id
         : null;
 
+  const rawParent = detail.parent ?? detail.parent_site;
   const parentSiteId =
-    typeof detail.parent_site === "number"
-      ? detail.parent_site
-      : typeof detail.parent_site?.id === "number"
-        ? detail.parent_site.id
+    typeof rawParent === "number"
+      ? rawParent
+      : typeof rawParent?.id === "number"
+        ? rawParent.id
         : null;
 
   const parentSiteName =
-    typeof detail.parent_site === "object" && detail.parent_site
-      ? detail.parent_site.site_name || detail.parent_site.name
+    typeof rawParent === "object" && rawParent
+      ? rawParent.site_name || rawParent.name
       : null;
 
   const [parentSiteOptions, setParentSiteOptions] = React.useState<CheckmarkSelectOption[]>([]);

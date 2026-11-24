@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewWrapper } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
+import { FloatingPortalToolbar } from "./floating-portal-toolbar";
 import {
   Image as ImageIcon,
   Trash2,
@@ -216,25 +217,25 @@ export function ImageLayoutNodeView({
       ? "Single Image"
       : layout === "two"
       ? "Two Images"
-      : "Three Images";
+      : "Three Images"; 
 
   const gapNum = parseInt(gap) || 12;
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   return (
+    <div ref={wrapperRef} className="image-layout-node-view-root">
     <NodeViewWrapper
       className={`image-layout-node-view my-3 group/layout relative rounded-xl border-2 transition-colors ${
         selected
-          ? "border-blue-500 shadow-lg shadow-blue-500/20"
-          : "border-transparent hover:border-slate-300 dark:hover:border-slate-700"
+          ? "border-blue-500 shadow-lg shadow-blue-500/20 z-50"
+          : "border-transparent hover:border-slate-300 dark:hover:border-slate-700 z-10"
       }`}
+      style={{ zIndex: selected ? 50 : 10 }}
       data-drag-handle
     >
       {/* ── Toolbar ── */}
-      <div
-        className={`absolute -top-8 left-0 flex items-center gap-1.5 z-20 transition-opacity ${
-          selected ? "opacity-100" : "opacity-0 group-hover/layout:opacity-100"
-        }`}
-      >
+      <FloatingPortalToolbar anchorRef={wrapperRef} open={selected}>
+        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl px-1.5 py-1">
         <span className="flex items-center gap-1 bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
           <ImageIcon className="size-3" />
           {layoutLabel}
@@ -267,7 +268,8 @@ export function ImageLayoutNodeView({
         >
           <GripVertical className="size-3.5" />
         </div>
-      </div>
+        </div>
+      </FloatingPortalToolbar>
 
       {/* ── Settings popup panel ── */}
       {showSettings && (
@@ -400,5 +402,6 @@ export function ImageLayoutNodeView({
           document.body,
         )}
     </NodeViewWrapper>
+    </div>
   );
 }

@@ -191,18 +191,126 @@ export function ProjectJobsTab({ projectId }: Props) {
       const response = await api.post<{
         success?: boolean;
         message?: string;
-        data?: { pdf_url?: string; url?: string; [key: string]: unknown };
+        mode?: string;
+        task_id?: string;
+        status?: string;
+        total_doors?: number;
+        data?: {
+          pdf_url?: string;
+          url?: string;
+          mode?: string;
+          task_id?: string;
+          status?: string;
+          [key: string]: unknown;
+        };
       }>("door-survey/export-pdf/", {
         project_id: projectId,
       });
+
       const respData = response?.data;
       if (respData && respData.success === false) {
         throw new Error(respData.message || "Failed to export forms");
       }
-      const pdfUrl = respData?.data?.pdf_url || respData?.data?.url;
+
+      // 1. Direct synchronous URL in response (legacy or small exports)
+      let pdfUrl =
+        respData?.data?.pdf_url ||
+        respData?.data?.url ||
+        (respData as any)?.pdf_url ||
+        (respData as any)?.url;
+
+      // 2. Asynchronous task flow: mode === 'async' or task_id present
+      const taskId =
+        respData?.task_id ||
+        respData?.data?.task_id ||
+        (respData as any)?.taskId;
+
+      if (!pdfUrl && taskId) {
+        // Poll export-status endpoint until status is COMPLETED or SUCCESS
+        const pollInterval = 2500;
+        const maxAttempts = 120; // 5 minutes max
+        let attempts = 0;
+
+        while (!pdfUrl && attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+          attempts += 1;
+
+          try {
+            const statusRes = await api.get<{
+              success?: boolean;
+              status?: string;
+              progress?: number;
+              pdf_url?: string;
+              url?: string;
+              message?: string;
+              result?: {
+                status?: string;
+                total_doors?: number;
+                pdf_url?: string;
+                url?: string;
+                file_url?: string;
+                [key: string]: unknown;
+              };
+              data?: {
+                status?: string;
+                pdf_url?: string;
+                url?: string;
+                file_url?: string;
+                result?: {
+                  pdf_url?: string;
+                  url?: string;
+                  [key: string]: unknown;
+                };
+                [key: string]: unknown;
+              };
+            }>(`door-survey/export-status/${taskId}/`);
+
+            const statusData = statusRes?.data;
+            const currentStatus = (
+              statusData?.status ||
+              statusData?.result?.status ||
+              statusData?.data?.status ||
+              ""
+            ).toUpperCase();
+
+            pdfUrl =
+              statusData?.result?.pdf_url ||
+              statusData?.result?.url ||
+              statusData?.result?.file_url ||
+              statusData?.pdf_url ||
+              statusData?.url ||
+              statusData?.data?.result?.pdf_url ||
+              statusData?.data?.result?.url ||
+              statusData?.data?.pdf_url ||
+              statusData?.data?.url ||
+              statusData?.data?.file_url;
+
+            if (currentStatus === "FAILED" || currentStatus === "ERROR") {
+              throw new Error(
+                statusData?.message || "PDF export processing failed on the server",
+              );
+            }
+
+            if (pdfUrl || currentStatus === "COMPLETED" || currentStatus === "SUCCESS") {
+              break;
+            }
+          } catch (pollErr: any) {
+            // If the status endpoint reported an explicit error, propagate it
+            if (
+              pollErr?.message &&
+              pollErr.message.includes("processing failed")
+            ) {
+              throw pollErr;
+            }
+            // Otherwise, continue polling until timeout
+          }
+        }
+      }
+
       if (!pdfUrl) {
         throw new Error(respData?.message || "PDF URL not found in server response");
       }
+
       const fallbackName = `project_${projectId}_forms.pdf`;
       await downloadPdfFromUrl(pdfUrl, fallbackName);
       toastSuccess(respData?.message || "Forms exported successfully");

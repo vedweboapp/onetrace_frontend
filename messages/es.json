@@ -314,7 +314,9 @@
         "download": "Descargar",
         "downloadAria": "Descargar {name}",
         "remove": "Eliminar",
-        "removeAria": "Eliminar {name}"
+        "removeAria": "Eliminar {name}",
+        "movedToast": "Archivo movido con éxito",
+        "moveError": "No se pudo mover el archivo."
       },
       "notesTab": {
         "title": "Notas",
@@ -3382,7 +3384,9 @@
         "download": "Descargar",
         "downloadAria": "Descargar {name}",
         "remove": "Eliminar",
-        "removeAria": "Eliminar {name}"
+        "removeAria": "Eliminar {name}",
+        "movedToast": "Archivo movido con éxito",
+        "moveError": "No se pudo mover el archivo."
       },
       "folders": {
         "title": "Carpetas",

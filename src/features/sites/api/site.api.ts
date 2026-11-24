@@ -67,14 +67,31 @@ export async function fetchSite(id: number): Promise<Site> {
   return data.data;
 }
 
+function normalizeSitePayload<T extends SiteCreatePayload | SiteUpdatePayload>(body: T): T {
+  const result: Record<string, unknown> = { ...body };
+  const parentVal =
+    "parent" in body && body.parent !== undefined
+      ? body.parent
+      : "parent_site" in body && body.parent_site !== undefined
+        ? body.parent_site
+        : undefined;
+
+  if (parentVal !== undefined) {
+    result.parent = parentVal;
+  }
+  return result as T;
+}
+
 export async function createSite(body: SiteCreatePayload): Promise<Site> {
-  const { data } = await api.post<ApiEnvelope<Site>>(SITE_PATHS.list, body);
+  const payload = normalizeSitePayload(body);
+  const { data } = await api.post<ApiEnvelope<Site>>(SITE_PATHS.list, payload);
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function updateSite(id: number, body: SiteUpdatePayload): Promise<Site> {
-  const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), body);
+  const payload = normalizeSitePayload(body);
+  const { data } = await api.patch<ApiEnvelope<Site>>(SITE_PATHS.detail(id), payload);
   assertApiSuccess(data);
   return data.data;
 }

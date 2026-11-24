@@ -16,7 +16,7 @@ export function DocumentHeaderNodeView({
   return (
     <NodeViewWrapper
       as="header"
-      className="document-header-block relative group"
+      className="document-header-block relative group z-0"
       style={{
         display: "block",
         width: "100%",
@@ -24,6 +24,7 @@ export function DocumentHeaderNodeView({
         marginBottom: "2px",
         borderBottom: "2px solid #cbd5e1",
         boxSizing: "border-box",
+        zIndex: 0,
       }}
       onClick={() => setIsActive(true)}
       onBlur={() => setIsActive(false)}
@@ -32,7 +33,7 @@ export function DocumentHeaderNodeView({
       <div
         contentEditable={false}
         className={cn(
-          "absolute top-0 right-0 z-20 flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm px-1.5 py-0.5 transition-opacity duration-150 select-none",
+          "absolute top-0 right-0 z-10 flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm px-1.5 py-0.5 transition-opacity duration-150 select-none",
           isActive ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
         onMouseDown={(e) => e.preventDefault()}

@@ -31,6 +31,8 @@ import {
   updateQuotationFolder,
 } from "@/features/quotations/api/quotation-folder.api";
 import { updateQuotationAttachments } from "@/features/quotations/api/quotation.api";
+import { moveEntityAttachment } from "@/shared/attachments/move-entity-attachment.util";
+import { QUOTATION_PATHS } from "@/features/quotations/api/quotation.paths";
 import type { QuotationFolder } from "@/features/quotations/types/quotation-folder.types";
 import type { QuotationAttachment, QuotationDetail } from "@/features/quotations/types/quotation.types";
 import {
@@ -335,10 +337,33 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
     }
   }
 
+  const [movingAttachmentId, setMovingAttachmentId] = React.useState<number | null>(null);
+
+  const handleMoveAttachment = React.useCallback(
+    async (attachmentId: number, targetFolderId: number | null) => {
+      if (movingAttachmentId != null) return;
+      setMovingAttachmentId(attachmentId);
+      try {
+        await moveEntityAttachment(
+          QUOTATION_PATHS.detail(detail.id),
+          attachmentId,
+          targetFolderId,
+        );
+        toastSuccess(t("attachmentsTab.movedToast"));
+        await onSaved();
+      } catch (error) {
+        toastApiError(error, t("attachmentsTab.moveError"));
+      } finally {
+        setMovingAttachmentId(null);
+      }
+    },
+    [detail.id, movingAttachmentId, onSaved, t],
+  );
+
   const handleContainerDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     dragCounterRef.current += 1;
-    if (e.dataTransfer.types.includes("Files")) {
+    if (e.dataTransfer.types.includes("Files") || e.dataTransfer.types.includes("application/json")) {
       setIsDraggingOver(true);
     }
   };
@@ -354,7 +379,7 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
 
   const handleContainerDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleContainerDrop = (e: React.DragEvent) => {
@@ -362,6 +387,20 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
     dragCounterRef.current = 0;
     setIsDraggingOver(false);
     setDragOverFolderId(null);
+
+    const rawData = e.dataTransfer.getData("application/json");
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (typeof parsed.attachmentId === "number") {
+          void handleMoveAttachment(parsed.attachmentId, activeFolderId);
+          return;
+        }
+      } catch {
+        // Ignore JSON parse error and continue to file drop
+      }
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       void handleFileUpload(e.dataTransfer.files, activeFolderId);
     }
@@ -376,7 +415,7 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
   const handleFolderDragOver = (e: React.DragEvent, folderId: number) => {
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.dropEffect = "move";
     if (dragOverFolderId !== folderId) {
       setDragOverFolderId(folderId);
     }
@@ -396,6 +435,20 @@ export function QuotationAttachmentsTab({ detail, onSaved }: QuotationAttachment
     dragCounterRef.current = 0;
     setIsDraggingOver(false);
     setDragOverFolderId(null);
+
+    const rawData = e.dataTransfer.getData("application/json");
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (typeof parsed.attachmentId === "number") {
+          void handleMoveAttachment(parsed.attachmentId, folderId);
+          return;
+        }
+      } catch {
+        // Ignore JSON parse error and continue to file drop
+      }
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       void handleFileUpload(e.dataTransfer.files, folderId);
     }
@@ -933,11 +986,27 @@ function AttachmentRowItem({
   }
 
   return (
-    <div className="group flex items-center justify-between gap-3 border-b border-slate-200/80 px-2 py-2 transition-colors hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-800/40">
+    <div
+      draggable={attachment.id != null}
+      onDragStart={(e) => {
+        if (attachment.id != null) {
+          e.dataTransfer.setData(
+            "application/json",
+            JSON.stringify({ attachmentId: attachment.id, name }),
+          );
+          e.dataTransfer.effectAllowed = "move";
+        }
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-3 border-b border-slate-200/80 px-2 py-2 transition-colors hover:bg-slate-50/70 dark:border-slate-800/80 dark:hover:bg-slate-800/40",
+        attachment.id != null && "cursor-grab active:cursor-grabbing",
+      )}
+    >
       <div className="flex min-w-0 items-center gap-2.5">
         {getFileIcon(attachment.content_type_value, name)}
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5">
           <a
+            draggable={false}
             href={url}
             target="_blank"
             rel="noopener noreferrer"

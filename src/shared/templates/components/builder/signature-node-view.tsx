@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { FloatingPortalToolbar } from "./floating-portal-toolbar";
 import {
   PenLine,
   Trash2,
@@ -159,9 +160,10 @@ export function SignatureNodeView({
   return (
     <NodeViewWrapper
       ref={containerRef}
-      className="my-4 select-none outline-none"
+      className={cn("my-4 select-none outline-none relative", isSelected ? "z-50" : "z-10")}
       style={{
         display: "flex",
+        zIndex: isSelected ? 50 : 10,
         justifyContent:
           alignment === "center"
             ? "center"
@@ -176,20 +178,16 @@ export function SignatureNodeView({
         contentEditable={false}
         className={cn(
           "relative group overflow-visible rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col items-center justify-center min-h-[110px] p-5 transition-all select-none",
-          isSelected && "border-blue-500 dark:border-blue-500",
+          isSelected && "border-blue-500 dark:border-blue-500 z-50",
         )}
         style={{
           width: typeof width === "number" ? `${width}px` : width,
           maxWidth: "100%",
         }}
       >
-        {/* ── Floating toolbar — visible on hover or when selected ── */}
-        <div
-          className={cn(
-            "absolute -top-9 left-0 z-40 flex items-center gap-1 transition-opacity duration-150",
-            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-          )}
-        >
+        {/* Floating toolbar - visible on hover or when selected */}
+        <FloatingPortalToolbar anchorRef={cardRef} open={isSelected}>
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-xl px-1.5 py-1 text-xs select-none">
           {/* Drag Handle */}
           <div
             data-drag-handle
@@ -322,7 +320,8 @@ export function SignatureNodeView({
           >
             <Trash2 className="size-3.5" />
           </button>
-        </div>
+          </div>
+        </FloatingPortalToolbar>
 
         {/* ── Configuration Panel (drops down below toolbar, above card) ── */}
         {isConfiguring && (
@@ -437,4 +436,3 @@ export function SignatureNodeView({
     </NodeViewWrapper>
   );
 }
-

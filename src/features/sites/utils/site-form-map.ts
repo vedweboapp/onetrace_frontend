@@ -37,10 +37,13 @@ export function mapSiteFormToPayload(values: SiteFormValues): SiteUpsertPayload 
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
 
+  const parentSiteVal = Number.isFinite(parentSiteId) && parentSiteId > 0 ? parentSiteId : null;
+
   return {
     site_name: values.site_name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
-    parent_site: Number.isFinite(parentSiteId) && parentSiteId > 0 ? parentSiteId : null,
+    parent: parentSiteVal,
+    parent_site: parentSiteVal,
     address_line_1: values.address_line_1.trim(),
     address_line_2: values.address_line_2.trim(),
     city: cityPayload,
@@ -130,11 +133,12 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
         ? site.client.id
         : 0;
 
+  const rawParent = site.parent ?? site.parent_site;
   const parentSiteId =
-    typeof site.parent_site === "number"
-      ? site.parent_site
-      : typeof site.parent_site?.id === "number"
-        ? site.parent_site.id
+    typeof rawParent === "number"
+      ? rawParent
+      : typeof rawParent?.id === "number"
+        ? rawParent.id
         : 0;
 
   return {

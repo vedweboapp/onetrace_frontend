@@ -38,7 +38,7 @@ export interface PinColumnOption {
   width?: string;
 }
 
-export const REQUIRED_COLUMN_IDS = new Set<string>(["quantity", "unit_price", "total_price"]);
+export const REQUIRED_COLUMN_IDS = new Set<string>([]);
 
 export const PIN_COLUMNS: PinColumnOption[] = [
   {
@@ -114,7 +114,6 @@ export const PIN_COLUMNS: PinColumnOption[] = [
     tag: "<pins.quantity>",
     sampleValue: "2",
     defaultSelected: true,
-    required: true,
     align: "center",
     width: "80px",
   },
@@ -125,7 +124,6 @@ export const PIN_COLUMNS: PinColumnOption[] = [
     tag: "<pins.unit_price>",
     sampleValue: "£45.00",
     defaultSelected: true,
-    required: true,
     align: "right",
     width: "90px",
   },
@@ -136,7 +134,6 @@ export const PIN_COLUMNS: PinColumnOption[] = [
     tag: "<pins.total_price>",
     sampleValue: "£90.00",
     defaultSelected: true,
-    required: true,
     align: "right",
     width: "95px",
   },
@@ -214,7 +211,7 @@ export function PinsListModal({
 
   const [includeHeading, setIncludeHeading] = useState(true);
   const [headingText, setHeadingText] = useState("Pins List");
-  const [rowCount, setRowCount] = useState<number>(2);
+  const [rowCount, setRowCount] = useState<number>(1);
   const [aggregateColumns, setAggregateColumns] = useState<AggregateColumn[]>([]);
   const [taxesList, setTaxesList] = useState<Tax[]>([]);
   const [loadingTaxes, setLoadingTaxes] = useState(false);
@@ -291,7 +288,7 @@ export function PinsListModal({
   };
 
   const deselectAll = () => {
-    setSelectedColIds(new Set(REQUIRED_COLUMN_IDS));
+    setSelectedColIds(new Set());
   };
 
   const resetToDefault = () => {
@@ -300,7 +297,7 @@ export function PinsListModal({
     setSelectedColIds(defaultSet);
     setIncludeHeading(true);
     setHeadingText("Pins List");
-    setRowCount(2);
+    setRowCount(1);
     setAggregateColumns([]);
   };
 

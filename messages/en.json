@@ -320,7 +320,9 @@
         "download": "Download",
         "downloadAria": "Download {name}",
         "remove": "Remove",
-        "removeAria": "Remove {name}"
+        "removeAria": "Remove {name}",
+        "movedToast": "File moved successfully",
+        "moveError": "Could not move file."
       },
       "notesTab": {
         "title": "Notes",
@@ -3393,7 +3395,9 @@
         "download": "Download",
         "downloadAria": "Download {name}",
         "remove": "Remove",
-        "removeAria": "Remove {name}"
+        "removeAria": "Remove {name}",
+        "movedToast": "File moved successfully",
+        "moveError": "Could not move file."
       },
       "folders": {
         "title": "Folders",
