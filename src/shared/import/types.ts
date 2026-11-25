@@ -29,6 +29,8 @@ export type ModuleImportConfig = {
 /** Immediate response from `POST {segment}/import/` (background queue). */
 export type ModuleImportQueueResult = {
   task_id: string;
+  /** Id used for `GET {segment}/download-skipped/{import_log_id}/`. */
+  import_log_id?: string;
   status?: string;
   message?: string;
 };
@@ -59,12 +61,16 @@ export type ModuleImportStatusResult = {
   not_imported_count?: number;
   not_imported_records?: unknown[];
   is_permission?: boolean;
+  /** Present on some status payloads; prefer over task_id for skipped download. */
+  import_log_id?: string;
 };
 
 /** Final result shown in the wizard (status payload after SUCCESS / FAILURE). */
 export type ModuleImportResult = ModuleImportStatusResult & {
   task_id?: string;
+  import_log_id?: string;
 };
 
-/** Query `export_format` for `GET {segment}/download-skipped/{taskId}/`. */
+/** Query `export_format` for `GET {segment}/download-skipped/{import_log_id}/`. */
 export type ImportSkippedExportFormat = "csv" | "xlsx" | "zip" | "xls";
+

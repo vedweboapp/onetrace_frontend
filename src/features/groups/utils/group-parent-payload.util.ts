@@ -11,18 +11,17 @@ export function resolveParentGroupId(parent: Group["parent"]): string {
 
 type GroupParentCreateFields = {
   parent?: number;
-  is_parent: boolean;
 };
 
 type GroupParentUpdateFields = {
   parent?: number | null;
-  is_parent: boolean;
 };
 
 /**
  * Parent field → payload:
- * - parent selected → `parent: <id>` + `is_parent: true`
- * - no parent → `is_parent: true` (top-level parent group); clear `parent` on update
+ * - parent selected → `parent: <id>`
+ * - no parent on create → omit `parent`
+ * - no parent on update → `parent: null`
  */
 export function buildGroupParentPayload(
   parentValue: string,
@@ -39,18 +38,16 @@ export function buildGroupParentPayload(
   const parentId = Number(parentValue);
   const hasParent = Number.isFinite(parentId) && parentId > 0;
   if (hasParent) {
-    return { parent: parentId, is_parent: true };
+    return { parent: parentId };
   }
   if (mode === "update") {
-    return { parent: null, is_parent: true };
+    return { parent: null };
   }
-  return { is_parent: true };
+  return {};
 }
 
-/** Prefer true parent groups in the parent picker. */
+/** Prefer top-level groups (no parent) in the parent picker. */
 export function isSelectableParentGroup(group: Group, excludeId?: number): boolean {
   if (excludeId != null && group.id === excludeId) return false;
-  if (group.is_parent === true) return true;
-  if (group.is_parent === false) return false;
   return !resolveParentGroupId(group.parent);
 }
