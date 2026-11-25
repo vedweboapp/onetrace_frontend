@@ -69,6 +69,7 @@ export type Site = {
   client: number | SiteClientRef;
   parent?: number | { id: number; site_name?: string | null; name?: string | null } | null;
   parent_site?: number | { id: number; site_name?: string | null; name?: string | null } | null;
+  subsites?: Array<{ id: number; site_name: string; is_active?: boolean; city?: string | null }> | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

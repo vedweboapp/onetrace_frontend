@@ -310,6 +310,23 @@ export function SiteDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
+        {Array.isArray(detail.subsites) && detail.subsites.length > 0 ? (
+          <DetailPanelCard title="Subsites">
+            <ul className="divide-y divide-slate-200/80 dark:divide-slate-800">
+              {detail.subsites.map((sub) => (
+                <li key={sub.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <DetailEntityLink href={`${routes.dashboard.sites}/${sub.id}`}>
+                    {sub.site_name}
+                  </DetailEntityLink>
+                  {sub.city?.trim() ? (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{sub.city}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </DetailPanelCard>
+        ) : null}
+
         <DetailSystemMetadataSection
           createdAt={detail.created_at}
           modifiedAt={detail.modified_at}
