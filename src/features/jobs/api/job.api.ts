@@ -156,11 +156,41 @@ export async function updateJob(id: number, body: JobUpdatePayload): Promise<Job
   return data.data;
 }
 
+import type { JobFolder } from "@/features/jobs/types/job-folder.types";
+
+export async function fetchJobFolders(id: number): Promise<JobFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<JobFolder[]> | JobFolder[]>(JOB_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createJobFolder(entityId: number, name: string): Promise<JobFolder> {
+  const { data } = await api.post<ApiEnvelope<JobFolder> | JobFolder>(JOB_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as JobFolder;
+}
+
+export async function updateJobFolder(entityId: number, folderId: number, name: string): Promise<JobFolder> {
+  const { data } = await api.patch<ApiEnvelope<JobFolder> | JobFolder>(JOB_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as JobFolder;
+}
+
+export async function deleteJobFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(JOB_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateJobAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Job> {
-  return updateEntityAttachments<Job>(JOB_PATHS.detail(id), refs);
+  return updateEntityAttachments<Job>(JOB_PATHS.detail(id), refs, options);
 }
 
 export async function updateJobChecklists(

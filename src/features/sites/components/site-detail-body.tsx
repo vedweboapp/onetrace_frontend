@@ -3,9 +3,8 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { updateSite } from "@/features/sites/api/site.api";
-import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
-import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
+import { fetchSitesPage, updateSite } from "@/features/sites/api/site.api";
+import type { Site, SiteUpdatePayload } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
@@ -44,16 +43,12 @@ export function SiteDetailBody({
   dateFmt,
   clientName,
   clientOptions = [],
-  contactNameById = {},
-  titleNameById = {},
   onSaved,
 }: {
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
   clientOptions?: CheckmarkSelectOption[];
-  contactNameById?: Record<number, string>;
-  titleNameById?: Record<string, string>;
   /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
 }) {
@@ -66,6 +61,51 @@ export function SiteDetailBody({
       : typeof detail.client?.id === "number"
         ? detail.client.id
         : null;
+
+  const rawParent = detail.parent ?? detail.parent_site;
+  const parentSiteId =
+    typeof rawParent === "number"
+      ? rawParent
+      : typeof rawParent?.id === "number"
+        ? rawParent.id
+        : null;
+
+  const parentSiteName =
+    typeof rawParent === "object" && rawParent
+      ? rawParent.site_name || rawParent.name
+      : null;
+
+  const [parentSiteOptions, setParentSiteOptions] = React.useState<CheckmarkSelectOption[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { items } = await fetchSitesPage(1, 100, { dropdown: true });
+        if (cancelled) return;
+        const filtered = items.filter((s) => s.id !== detail.id);
+        const options: CheckmarkSelectOption[] = [
+          { value: "", label: t("placeholders.parentSite") },
+          ...filtered.map((s) => ({
+            value: String(s.id),
+            label: s.site_name,
+          })),
+        ];
+        if (parentSiteId != null && !options.some((o) => o.value === String(parentSiteId))) {
+          options.unshift({
+            value: String(parentSiteId),
+            label: parentSiteName || `#${parentSiteId}`,
+          });
+        }
+        setParentSiteOptions(options);
+      } catch {
+        if (!cancelled) setParentSiteOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.id, parentSiteId, parentSiteName]);
 
   const clientSelectOptions = React.useMemo(() => {
     const list = [...clientOptions];
@@ -142,10 +182,8 @@ export function SiteDetailBody({
               onSave={async (next) => {
                 const nextId = Number.parseInt(next, 10);
                 if (!Number.isFinite(nextId) || nextId <= 0) return;
-                // Changing client clears contact persons (same as create/edit form).
                 await patchSiteField({
                   client: nextId,
-                  ...(clientId !== nextId ? { contacts: [] as SiteContactPersonPayload[] } : {}),
                 });
               }}
             >
@@ -158,6 +196,32 @@ export function SiteDetailBody({
                 </DetailEntityLink>
               ) : (
                 <span>{clientName ?? "—"}</span>
+              )}
+            </DetailEditableField>
+            <DetailEditableField
+              label={t("fields.parentSite")}
+              value={parentSiteId != null ? String(parentSiteId) : ""}
+              kind="select"
+              options={parentSiteOptions}
+              selectSearchable
+              empty="—"
+              editAriaLabel={tActions("edit")}
+              onSave={async (next) => {
+                const nextId = next ? Number.parseInt(next, 10) : null;
+                await patchSiteField({
+                  parent_site: nextId && Number.isFinite(nextId) && nextId > 0 ? nextId : null,
+                });
+              }}
+            >
+              {parentSiteId ? (
+                <DetailEntityLink
+                  href={`${routes.dashboard.sites}/${parentSiteId}`}
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  {parentSiteName || `#${parentSiteId}`}
+                </DetailEntityLink>
+              ) : (
+                <span>—</span>
               )}
             </DetailEditableField>
           </DetailMetricsGrid>
@@ -246,13 +310,22 @@ export function SiteDetailBody({
           </DetailMetricsGrid>
         </DetailPanelCard>
 
-        <SiteDetailContactPersonsEditor
-          title={t("contactPerson.sectionTitle")}
-          detail={detail}
-          contactNameById={contactNameById}
-          titleNameById={titleNameById}
-          onSaveContacts={(contacts) => patchSiteField({ contacts })}
-        />
+        {Array.isArray(detail.subsites) && detail.subsites.length > 0 ? (
+          <DetailPanelCard title="Subsites">
+            <ul className="divide-y divide-slate-200/80 dark:divide-slate-800">
+              {detail.subsites.map((sub) => (
+                <li key={sub.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <DetailEntityLink href={`${routes.dashboard.sites}/${sub.id}`}>
+                    {sub.site_name}
+                  </DetailEntityLink>
+                  {sub.city?.trim() ? (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{sub.city}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </DetailPanelCard>
+        ) : null}
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}

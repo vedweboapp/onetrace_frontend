@@ -7,7 +7,7 @@ import { deleteItem, fetchItem, updateItemAttachments } from "@/features/items/a
 import { ITEM_PATHS } from "@/features/items/api/item.paths";
 import { ItemDetailBody } from "@/features/items/components/item-detail-body";
 import type { Item } from "@/features/items/types/item.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { ItemAttachmentsTab } from "./item-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
@@ -108,13 +108,7 @@ export function ItemDetailScreen({ itemId }: Props) {
     >
       {({ detail, dateFmt, retry }) =>
         activeTab === "attachments" ? (
-          <EntityAttachmentsTab
-            entityId={detail.id}
-            attachments={detail.attachments}
-            emptyIconName="items"
-            updateAttachments={(refs) => updateItemAttachments(detail.id, refs)}
-            onSaved={retry}
-          />
+          <ItemAttachmentsTab detail={detail} onSaved={retry} />
         ) : activeTab === "notes" ? (
           <EntityNotesTab detailPath={ITEM_PATHS.detail(detail.id)} />
         ) : (

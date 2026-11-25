@@ -104,7 +104,7 @@ export function MaterialRequestDetailBody({
     getMaterialRequestStatusId(detail.status) ??
     (statusRow && statusRow.id > 0 ? statusRow.id : null);
   const statusValue = statusId != null ? String(statusId) : "";
-  const notes = detail.notes?.trim() ?? "";
+  const notes = typeof detail.notes === "string" ? detail.notes.trim() : "";
 
   const patchField = useDetailPatch(
     (body: Parameters<typeof updateMaterialRequest>[1]) => updateMaterialRequest(detail.id, body),

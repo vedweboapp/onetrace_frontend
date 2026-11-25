@@ -5,11 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Controller, useForm } from "react-hook-form";
-import { createSite, updateSite } from "@/features/sites/api/site.api";
+import { createSite, fetchSitesPage, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
 import type { Site } from "@/features/sites/types/site.types";
 import {
   emptySiteFormDefaults,
+  getSiteLocationDefaults,
   mapSiteFormToPayload,
   siteToFormDefaults,
 } from "@/features/sites/utils/site-form-map";
@@ -17,7 +18,6 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import { SiteNamePlaceField } from "@/features/sites/components/site-name-place-field";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
@@ -62,6 +62,8 @@ export function SiteFormModal({
   const t = useTranslations("Dashboard.sites");
   const router = useRouter();
   const [saving, setSaving] = React.useState(false);
+  const [parentSiteOptions, setParentSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [parentSitesList, setParentSitesList] = React.useState<Site[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -96,6 +98,32 @@ export function SiteFormModal({
   });
 
   const applyPlaceRef = React.useRef<((place: PlaceSuggestion) => void) | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { items } = await fetchSitesPage(1, 100, { dropdown: true });
+        if (cancelled) return;
+        const currentSiteId = mode === "edit" && site ? site.id : undefined;
+        const filtered = currentSiteId ? items.filter((s) => s.id !== currentSiteId) : items;
+        setParentSitesList(filtered);
+        setParentSiteOptions([
+          { value: "", label: t("placeholders.parentSite") },
+          ...filtered.map((s) => ({ value: String(s.id), label: s.site_name })),
+        ]);
+      } catch {
+        if (!cancelled) {
+          setParentSitesList([]);
+          setParentSiteOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, mode, site]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -141,7 +169,6 @@ export function SiteFormModal({
   const noClients = !lockClient && localClientOptions.length === 0;
 
   const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
-  const pendingContactRowRef = React.useRef<number | null>(null);
 
   return (
     <AppModal
@@ -178,58 +205,132 @@ export function SiteFormModal({
           disabled={saving}
           applyPlaceRef={applyPlaceRef}
           leading={
-            <FormFieldRow cols="2">
-              <SiteNamePlaceField
-                control={control}
-                setValue={setValue}
-                error={errors.site_name?.message}
-                disabled={saving}
-                onPlaceSelected={(place) => applyPlaceRef.current?.(place)}
-              />
-              {lockClient ? (
-                <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
-                  <CheckmarkSelect
-                    id="site-client"
-                    portaled
-                    listLabel={t("fields.client")}
-                    options={localClientOptions}
-                    value={initialClientId ?? ""}
-                    emptyLabel={t("placeholders.client")}
-                    locked
-                    onChange={() => undefined}
-                  />
-                </FieldGroup>
-              ) : (
-                <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+            <div className="space-y-6">
+              <FormFieldRow cols="2">
+                <FieldGroup
+                  label={t("fields.parentSite")}
+                  htmlFor="site-modal-parent-site"
+                >
+                  <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                    {t("fields.parentSiteHint")}
+                  </p>
                   <Controller
                     control={control}
-                    name="client"
+                    name="parent_site"
                     render={({ field }) => (
                       <CheckmarkSelect
-                        id="site-client"
+                        id="site-modal-parent-site"
                         portaled
                         searchable
-                        listLabel={t("fields.client")}
-                        options={localClientOptions}
-                        value={field.value}
-                        emptyLabel={t("placeholders.client")}
-                        disabled={saving || noClients}
-                        invalid={!!errors.client}
+                        listLabel={t("fields.parentSite")}
+                        options={parentSiteOptions}
+                        value={field.value ?? ""}
+                        emptyLabel={t("placeholders.parentSite")}
+                        disabled={saving}
+                        invalid={!!errors.parent_site}
                         onBlur={field.onBlur}
                         onChange={(v) => {
-                          field.onChange(v);
-                          setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
+                          setValue("parent_site", v, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          if (v) {
+                            const selectedParent = parentSitesList.find((s) => String(s.id) === v);
+                            if (selectedParent) {
+                              setValue("site_name", selectedParent.site_name, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              const loc = getSiteLocationDefaults(selectedParent);
+                              if (loc.country_iso) {
+                                setValue("country_iso", loc.country_iso, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.state_iso) {
+                                setValue("state_iso", loc.state_iso, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.city) {
+                                setValue("city", loc.city, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.pincode) {
+                                setValue("pincode", loc.pincode, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.address_line_1) {
+                                setValue("address_line_1", loc.address_line_1, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.address_line_2) {
+                                setValue("address_line_2", loc.address_line_2, { shouldDirty: true, shouldValidate: true });
+                              }
+                              window.setTimeout(() => {
+                                const el = document.getElementById("site-name") as HTMLInputElement | null;
+                                if (el) {
+                                  el.focus();
+                                  const len = el.value.length;
+                                  el.setSelectionRange(len, len);
+                                }
+                              }, 50);
+                            }
+                          }
                         }}
-                        onAdd={clientQuickCreate.onAdd}
-                        addAriaLabel={clientQuickCreate.addAriaLabel}
-                        addLabel={clientQuickCreate.addLabel}
                       />
                     )}
                   />
-                  <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                  <FieldErrorText>{errors.parent_site?.message}</FieldErrorText>
                 </FieldGroup>
-              )}
-            </FormFieldRow>
+              </FormFieldRow>
+
+              <FormFieldRow cols="2">
+                <SiteNamePlaceField
+                  control={control}
+                  setValue={setValue}
+                  error={errors.site_name?.message}
+                  disabled={saving}
+                  onPlaceSelected={(place) => applyPlaceRef.current?.(place)}
+                />
+                {lockClient ? (
+                  <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+                    <CheckmarkSelect
+                      id="site-client"
+                      portaled
+                      listLabel={t("fields.client")}
+                      options={localClientOptions}
+                      value={initialClientId ?? ""}
+                      emptyLabel={t("placeholders.client")}
+                      locked
+                      onChange={() => undefined}
+                    />
+                  </FieldGroup>
+                ) : (
+                  <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+                    <Controller
+                      control={control}
+                      name="client"
+                      render={({ field }) => (
+                        <CheckmarkSelect
+                          id="site-client"
+                          portaled
+                          searchable
+                          listLabel={t("fields.client")}
+                          options={localClientOptions}
+                          value={field.value}
+                          emptyLabel={t("placeholders.client")}
+                          disabled={saving || noClients}
+                          invalid={!!errors.client}
+                          onBlur={field.onBlur}
+                          onChange={(v) => {
+                            field.onChange(v);
+                          }}
+                          onAdd={clientQuickCreate.onAdd}
+                          addAriaLabel={clientQuickCreate.addAriaLabel}
+                          addLabel={clientQuickCreate.addLabel}
+                        />
+                      )}
+                    />
+                    <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                  </FieldGroup>
+                )}
+              </FormFieldRow>
+            </div>
           }
           afterAddress={
             <FormFieldRow cols="2">
@@ -244,15 +345,6 @@ export function SiteFormModal({
                 />
               </FieldGroup>
             </FormFieldRow>
-          }
-          trailing={
-            <SiteContactPersonsFields
-              control={control}
-              setValue={setValue}
-              errors={errors}
-              disabled={saving}
-              pendingContactRowRef={pendingContactRowRef}
-            />
           }
         />
       </form>

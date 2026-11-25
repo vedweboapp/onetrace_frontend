@@ -99,11 +99,41 @@ export async function updateItem(
   return data.data;
 }
 
+import type { ItemFolder } from "@/features/items/types/item-folder.types";
+
+export async function fetchItemFolders(id: number): Promise<ItemFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<ItemFolder[]> | ItemFolder[]>(ITEM_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createItemFolder(entityId: number, name: string): Promise<ItemFolder> {
+  const { data } = await api.post<ApiEnvelope<ItemFolder> | ItemFolder>(ITEM_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ItemFolder;
+}
+
+export async function updateItemFolder(entityId: number, folderId: number, name: string): Promise<ItemFolder> {
+  const { data } = await api.patch<ApiEnvelope<ItemFolder> | ItemFolder>(ITEM_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ItemFolder;
+}
+
+export async function deleteItemFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(ITEM_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateItemAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Item> {
-  return updateEntityAttachments<Item>(ITEM_PATHS.detail(id), refs);
+  return updateEntityAttachments<Item>(ITEM_PATHS.detail(id), refs, options);
 }
 
 export async function deleteItem(id: number): Promise<void> {

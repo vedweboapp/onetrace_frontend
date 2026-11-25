@@ -505,13 +505,6 @@ export function extractTemplateKeys(
       columnsList = ["snapshot", "location", "item_name", "variation", "quantity", "unit_price", "total_price"];
     }
 
-    // Rule: Quantity and Price cannot be omitted
-    const colSet = new Set(columnsList);
-    colSet.add("quantity");
-    colSet.add("unit_price");
-    colSet.add("total_price");
-    columnsList = Array.from(colSet);
-
     // Extract tax_id from data-tax-id attribute
     const taxIdMatch = attrsStr.match(/\bdata-tax-id=["']([^"']*)['"]/i);
     const taxId = taxIdMatch?.[1]
@@ -772,11 +765,7 @@ export function hydrateTablesFromKeys(
       matchedKeyItem?.columns ||
       ["snapshot", "location", "item_name", "variation", "quantity", "unit_price", "total_price"];
 
-    const colSet = new Set(rawCols);
-    colSet.add("quantity");
-    colSet.add("unit_price");
-    colSet.add("total_price");
-    const cols = Array.from(colSet);
+    const cols = Array.from(new Set(rawCols));
 
     const key = matchedKeyItem?.Key || sigKey || "items_table";
     const type = matchedKeyItem?.Type || "item_table";

@@ -71,11 +71,41 @@ export async function updateInvoice(id: number, body: InvoiceUpdatePayload): Pro
   return data.data;
 }
 
+import type { InvoiceFolder } from "@/features/invoices/types/invoice-folder.types";
+
+export async function fetchInvoiceFolders(id: number): Promise<InvoiceFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<InvoiceFolder[]> | InvoiceFolder[]>(INVOICE_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createInvoiceFolder(entityId: number, name: string): Promise<InvoiceFolder> {
+  const { data } = await api.post<ApiEnvelope<InvoiceFolder> | InvoiceFolder>(INVOICE_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as InvoiceFolder;
+}
+
+export async function updateInvoiceFolder(entityId: number, folderId: number, name: string): Promise<InvoiceFolder> {
+  const { data } = await api.patch<ApiEnvelope<InvoiceFolder> | InvoiceFolder>(INVOICE_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as InvoiceFolder;
+}
+
+export async function deleteInvoiceFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(INVOICE_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateInvoiceAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<InvoiceDetail> {
-  return updateEntityAttachments<InvoiceDetail>(INVOICE_PATHS.detail(id), refs);
+  return updateEntityAttachments<InvoiceDetail>(INVOICE_PATHS.detail(id), refs, options);
 }
 
 export async function deleteInvoice(id: number): Promise<void> {

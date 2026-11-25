@@ -16,6 +16,7 @@ import { createProjectFormSchema, type ProjectFormValues } from "@/features/proj
 import type { Project } from "@/features/projects/types/project.types";
 import {
   emptyProjectFormDefaults,
+  mapProjectFormToDirtyPayload,
   mapProjectFormToPayload,
   projectToFormDefaults,
 } from "@/features/projects/utils/project-form-map";
@@ -44,6 +45,8 @@ import {
   surfaceInputClassName,
   surfaceTextareaClassName,
 } from "@/shared/ui";
+import ImageUploadField from "@/shared/form/components/image-upload-field";
+import { ProjectContactPersonsFields } from "@/features/projects/components/project-contact-persons-fields";
 
 const FORM_DOM_ID = "project-upsert-form";
 
@@ -97,6 +100,9 @@ export function ProjectFormModal({
         startDate: t("validation.startDate"),
         endDate: t("validation.endDate"),
         dateOrder: t("validation.dateOrder"),
+        contactPersonTitle: t("validation.contactPersonTitle"),
+        contactPerson: t("validation.contactPerson"),
+        contactPersonDuplicate: t("validation.contactPersonDuplicate"),
       }),
     [t],
   );
@@ -109,7 +115,7 @@ export function ProjectFormModal({
     getValues,
     setError,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyProjectFormDefaults(),
@@ -186,6 +192,7 @@ export function ProjectFormModal({
     if (!selectedClient || !/^\d+$/.test(selectedClient)) {
       setSiteOptions([]);
       setValue("sites", []);
+      setValue("contacts", []);
       return;
     }
     const t = setTimeout(() => {
@@ -281,7 +288,8 @@ export function ProjectFormModal({
     setSaving(true);
     try {
       if (mode === "edit" && project) {
-        await updateProject(project.id, payload);
+        const dirtyPayload = mapProjectFormToDirtyPayload(values, dirtyFields);
+        await updateProject(project.id, dirtyPayload);
         toastSuccess(t("updatedToast"));
         onSaved();
         onClose();
@@ -467,7 +475,11 @@ export function ProjectFormModal({
                   disabled={saving || noClients}
                   invalid={!!errors.client}
                   onBlur={field.onBlur}
-                  onChange={field.onChange}
+                  onChange={(v) => {
+                    field.onChange(v);
+                    setValue("sites", []);
+                    setValue("contacts", []);
+                  }}
                   onAdd={clientQuickCreate.onAdd}
                   addAriaLabel={clientQuickCreate.addAriaLabel}
                   addLabel={clientQuickCreate.addLabel}
@@ -598,6 +610,29 @@ export function ProjectFormModal({
             <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
           </FieldGroup>
         </FormFieldRow>
+
+        <FormFieldRow cols="2" from="md">
+          <FieldGroup label={t("fields.projectImage")} htmlFor="project-image">
+            <Controller
+              control={control}
+              name="project_image"
+              render={({ field }) => (
+                <ImageUploadField
+                  image={field.value}
+                  setImage={(img) => field.onChange(img)}
+                  readOnly={saving}
+                />
+              )}
+            />
+            <FieldErrorText id="project-image-err">{errors.project_image?.message as string}</FieldErrorText>
+          </FieldGroup>
+        </FormFieldRow>
+        <ProjectContactPersonsFields
+          control={control}
+          setValue={setValue}
+          errors={errors}
+          disabled={saving}
+        />
       </form>
       </>
     </AppModal>

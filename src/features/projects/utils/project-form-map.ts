@@ -1,5 +1,5 @@
 import type { ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
-import type { Project, ProjectUpsertPayload } from "@/features/projects/types/project.types";
+import type { Project, ProjectUpdatePayload, ProjectUpsertPayload } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 
@@ -15,6 +15,15 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
   const manager_ids = (values.manager_ids ?? [])
     .map((raw) => Number.parseInt(raw, 10))
     .filter((id) => Number.isFinite(id) && id > 0);
+  const contacts = (values.contacts ?? [])
+    .map((row) => {
+      const contactId = Number.parseInt(row.contact, 10);
+      if (!row.title?.trim() || !Number.isFinite(contactId) || contactId <= 0) {
+        return null;
+      }
+      return { title: row.title.trim(), contact: contactId };
+    })
+    .filter((row): row is NonNullable<typeof row> => row != null);
   return {
     name: values.name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
@@ -26,7 +35,24 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
     start_date: values.start_date.trim(),
     end_date: values.end_date?.trim() ? values.end_date.trim() : null,
     project_status: values.project_status ? Number.parseInt(values.project_status, 10) : undefined,
+    project_image: values.project_image ?? null,
+    contacts,
   };
+}
+
+/** Returns only the fields marked dirty in react-hook-form for partial PATCH updates. */
+export function mapProjectFormToDirtyPayload(
+  values: ProjectFormValues,
+  dirtyFields: Partial<Record<keyof ProjectFormValues, unknown>>,
+): ProjectUpdatePayload {
+  const full = mapProjectFormToPayload(values);
+  const partial: ProjectUpdatePayload = {};
+  for (const key of Object.keys(full) as Array<keyof ProjectUpsertPayload>) {
+    if ((dirtyFields as Record<string, unknown>)[key]) {
+      (partial as Record<string, unknown>)[key] = full[key];
+    }
+  }
+  return partial;
 }
 
 export function emptyProjectFormDefaults(): ProjectFormValues {
@@ -41,6 +67,8 @@ export function emptyProjectFormDefaults(): ProjectFormValues {
     end_date: "",
     project_status: "",
     manager_ids: [],
+    project_image: null,
+    contacts: [],
   };
 }
 
@@ -97,5 +125,24 @@ export function projectToFormDefaults(project: Project): ProjectFormValues {
     end_date: end,
     project_status: projectStatusId ? String(projectStatusId) : "",
     manager_ids: managerIds,
+    project_image: project.project_image ?? null,
+    contacts: Array.isArray(
+      project.contacts ??
+        (project as any).project_contact_persons ??
+        (project as any).contact_persons,
+    )
+      ? (
+          project.contacts ??
+          (project as any).project_contact_persons ??
+          (project as any).contact_persons
+        ).map((row: any) => {
+          const contactId =
+            typeof row?.contact === "number" ? row.contact : row?.contact?.id;
+          return {
+            title: String(row?.title ?? ""),
+            contact: contactId ? String(contactId) : "",
+          };
+        })
+      : [],
   };
 }

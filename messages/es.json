@@ -314,7 +314,9 @@
         "download": "Descargar",
         "downloadAria": "Descargar {name}",
         "remove": "Eliminar",
-        "removeAria": "Eliminar {name}"
+        "removeAria": "Eliminar {name}",
+        "movedToast": "Archivo movido con éxito",
+        "moveError": "No se pudo mover el archivo."
       },
       "notesTab": {
         "title": "Notas",
@@ -3147,6 +3149,7 @@
       "detailLoadError": "No se pudieron cargar los detalles del sitio. Inténtalo de nuevo.",
       "placeholders": {
         "client": "Seleccionar cliente",
+        "parentSite": "Seleccionar sitio principal (opcional)",
         "country": "Seleccionar país",
         "state": "Seleccionar estado / provincia",
         "city": "Seleccionar o escribir ciudad",
@@ -3155,6 +3158,8 @@
       "fields": {
         "siteName": "Nombre del sitio",
         "client": "Cliente",
+        "parentSite": "Sitio principal",
+        "parentSiteHint": "Elíjalo si el sitio es un subsitio",
         "addressLine1": "Línea de dirección 1",
         "addressLine2": "Línea de dirección 2",
         "country": "País",
@@ -3183,7 +3188,7 @@
         "editSubtitle": "Actualiza los datos del sitio y guarda los cambios."
       },
       "contactPerson": {
-        "sectionTitle": "Personas de contacto",
+        "sectionTitle": "Título y Contactos",
         "add": "Crear persona de contacto",
         "remove": "Quitar persona de contacto",
         "titleLabel": "Título",
@@ -3318,6 +3323,8 @@
         "createJobModalDescription": "Selecciona formularios y lista de verificación para el trabajo creado desde “{title}”.",
         "sectionOverview": "Resumen",
         "sectionPeople": "Personas y roles",
+        "panelContactRoles": "Título y Contactos",
+        "contactRolesEmpty": "Aún no hay títulos y contactos vinculados a esta cotización.",
         "sectionProject": "Proyecto y niveles",
         "sectionRecord": "Registro",
         "sectionSiteLocation": "Ubicación del sitio",
@@ -3377,7 +3384,30 @@
         "download": "Descargar",
         "downloadAria": "Descargar {name}",
         "remove": "Eliminar",
-        "removeAria": "Eliminar {name}"
+        "removeAria": "Eliminar {name}",
+        "movedToast": "Archivo movido con éxito",
+        "moveError": "No se pudo mover el archivo."
+      },
+      "folders": {
+        "title": "Carpetas",
+        "newFolder": "Nueva Carpeta",
+        "createFolder": "Crear Carpeta",
+        "folderName": "Nombre de la carpeta",
+        "folderNamePlaceholder": "ej. Planos, Contratos",
+        "renameFolder": "Renombrar Carpeta",
+        "deleteFolder": "Eliminar Carpeta",
+        "deleteConfirm": "¿Estás seguro de que deseas eliminar esta carpeta?",
+        "createdToast": "Carpeta creada exitosamente",
+        "updatedToast": "Carpeta renombrada exitosamente",
+        "deletedToast": "Carpeta eliminada exitosamente",
+        "emptyFolder": "Aún no hay archivos en esta carpeta.",
+        "emptyAll": "Aún no hay carpetas ni archivos.",
+        "rootFiles": "Archivos",
+        "allFolders": "Todas las carpetas",
+        "backToFolders": "Volver a carpetas",
+        "filesCount": "{count, plural, =0 {0 archivos} =1 {1 archivo} other {# archivos}}",
+        "uploadToFolder": "Subir a esta carpeta",
+        "uploadFiles": "Subir archivos"
       },
       "selectedSiteMapTitle": "Dirección del sitio y mapa",
       "mapNoStructuredAddress": "No hay dirección estructurada para este sitio. El mapa intentará ubicarlo con los datos disponibles.",
@@ -3580,6 +3610,7 @@
         "what3words": "what3words",
         "project": "Proyecto",
         "primaryContact": "Contacto principal",
+        "contactPerson": "Persona de contacto",
         "additionalContact": "Contacto adicional",
         "additionalContacts": "Contactos adicionales",
         "siteContact": "Contacto del sitio",
@@ -3634,13 +3665,35 @@
         "prevToDetails": "Anterior: Datos",
         "nextToPricing": "Siguiente: Alcance y precios"
       },
+      "contactPerson": {
+        "sectionTitle": "Título y Contactos",
+        "add": "Agregar persona de contacto",
+        "addAnother": "Agregar otra persona de contacto",
+        "remove": "Eliminar persona de contacto",
+        "titleLabel": "Cargo / Título",
+        "titlePlaceholder": "Seleccionar título",
+        "contactLabel": "Persona de contacto",
+        "contactPlaceholder": "Seleccionar contacto",
+        "selectClientFirst": "Selecciona un cliente primero para agregar personas de contacto.",
+        "empty": "No se han agregado personas de contacto aún.",
+        "loadingContacts": "Cargando contactos…",
+        "noContactsForClient": "No hay contactos para este cliente",
+        "titles": {
+          "site_contact": "Contacto de obra",
+          "finance": "Finanzas",
+          "emergency": "Emergencia"
+        }
+      },
       "validation": {
         "quoteName": "Introduce un nombre para la cotización.",
         "customer": "Selecciona un cliente.",
         "site": "Selecciona un sitio.",
         "sites": "Selecciona al menos un sitio.",
         "project": "Selecciona un proyecto.",
-        "requiredOnTab": "Faltan campos obligatorios en la pestaña {tab}. Complétalos para guardar."
+        "requiredOnTab": "Faltan campos obligatorios en la pestaña {tab}. Complétalos para guardar.",
+        "contactPersonTitle": "Selecciona un título.",
+        "contactPerson": "Selecciona una persona de contacto.",
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está agregada."
       }
     },
     "invoices": {
@@ -4774,6 +4827,8 @@
         "sectionDescription": "Descripción",
         "statusUnknown": "Sin definir",
         "notCompleted": "Sin completar",
+        "panelContactRoles": "Título y Contactos",
+        "contactRolesEmpty": "Aún no hay títulos y contactos vinculados a este trabajo.",
         "qrCodeId": "ID del código QR",
         "colCompositeItem": "Ítem compuesto",
         "colUnitPrice": "Precio unitario",
@@ -4983,6 +5038,25 @@
         "save": "Guardar",
         "saveChanges": "Guardar cambios"
       },
+      "contactPerson": {
+        "sectionTitle": "Título y Contactos",
+        "add": "Agregar persona de contacto",
+        "addAnother": "Agregar otra persona de contacto",
+        "remove": "Eliminar persona de contacto",
+        "titleLabel": "Cargo / Título",
+        "titlePlaceholder": "Seleccionar título",
+        "contactLabel": "Persona de contacto",
+        "contactPlaceholder": "Seleccionar contacto",
+        "selectClientFirst": "Selecciona un cliente primero para agregar personas de contacto.",
+        "empty": "No se han agregado personas de contacto aún.",
+        "loadingContacts": "Cargando contactos…",
+        "noContactsForClient": "No hay contactos para este cliente",
+        "titles": {
+          "site_contact": "Contacto de obra",
+          "finance": "Finanzas",
+          "emergency": "Emergencia"
+        }
+      },
       "validation": {
         "title": "Introduce un título.",
         "client": "Selecciona un cliente.",
@@ -4992,7 +5066,10 @@
         "endBeforeStart": "La fecha de fin debe ser igual o posterior al inicio.",
         "optionalId": "Elige una opción válida.",
         "compositeQuantity": "Introduce una cantidad mayor que cero cuando haya un ítem compuesto.",
-        "requiredChecklist": "Por favor seleccione al menos un elemento de la lista de verificación."
+        "requiredChecklist": "Por favor seleccione al menos un elemento de la lista de verificación.",
+        "contactPersonTitle": "Selecciona un título.",
+        "contactPerson": "Selecciona una persona de contacto.",
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está agregada."
       }
     },
     "home": {
@@ -5145,6 +5222,8 @@
         "panelTimeline": "Cronología",
         "panelSites": "Sitios",
         "sitesEmpty": "Aún no hay sitios vinculados a este proyecto.",
+        "panelContactPersons": "Título y Contactos",
+        "contactPersonsEmpty": "Aún no hay títulos y contactos vinculados a este proyecto.",
         "panelSystemActivity": "Actividad del sistema",
         "tabsAria": "Secciones del proyecto",
         "tabs": {
@@ -5439,7 +5518,8 @@
         "updatedAt": "Última actualización",
         "createdBy": "Creado por",
         "projectStatus": "Estado del proyecto",
-        "manager": "Gerentes"
+        "manager": "Gerentes",
+        "projectImage": "Imagen del proyecto"
       },
       "hints": {
         "sitesMultiSelect": "Selecciona uno o más sitios para este proyecto."
@@ -5457,6 +5537,26 @@
         "editTitle": "Editar",
         "editSubtitle": "Actualiza los datos del proyecto y guarda los cambios."
       },
+      "contactPerson": {
+        "sectionTitle": "Título y Contactos",
+        "sectionHint": "Vincula personas del cliente seleccionado a este proyecto.",
+        "add": "Crear persona de contacto",
+        "addAnother": "Añadir otra persona de contacto",
+        "remove": "Eliminar persona de contacto",
+        "titleLabel": "Título",
+        "titlePlaceholder": "Seleccionar título",
+        "contactLabel": "Persona de contacto",
+        "contactPlaceholder": "Seleccionar contacto",
+        "selectClientFirst": "Selecciona primero un cliente para añadir personas de contacto.",
+        "empty": "Aún no se han añadido personas de contacto.",
+        "loadingContacts": "Cargando contactos…",
+        "noContactsForClient": "No hay contactos para este cliente",
+        "titles": {
+          "site_contact": "Contacto de sitio",
+          "finance": "Finanzas",
+          "emergency": "Emergencia"
+        }
+      },
       "validation": {
         "name": "Introduce el nombre del proyecto.",
         "client": "Selecciona un cliente.",
@@ -5464,7 +5564,10 @@
         "description": "Introduce una descripción.",
         "startDate": "Elige la fecha de inicio.",
         "endDate": "Elige la fecha de fin.",
-        "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio."
+        "dateOrder": "La fecha de fin debe ser igual o posterior a la de inicio.",
+        "contactPersonTitle": "Selecciona un título.",
+        "contactPerson": "Selecciona una persona de contacto.",
+        "contactPersonDuplicate": "Esta combinación de título y persona de contacto ya está añadida."
       }
     },
     "groups": {

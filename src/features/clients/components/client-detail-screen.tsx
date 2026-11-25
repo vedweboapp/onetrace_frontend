@@ -12,7 +12,7 @@ import { ClientContactsTab } from "@/features/clients/components/client-contacts
 import { ClientDetailBody } from "@/features/clients/components/client-detail-body";
 import { ClientProjectsTab } from "@/features/clients/components/client-projects-tab";
 import { ClientSitesTab } from "@/features/clients/components/client-sites-tab";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { ClientAttachmentsTab } from "./client-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailEditButton,
@@ -146,13 +146,7 @@ export function ClientDetailScreen({ clientId, className }: Props) {
           ) : detail && activeTab === "projects" ? (
             <ClientProjectsTab clientId={detail.id} />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="clients"
-              updateAttachments={(refs) => updateClientAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <ClientAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={CLIENT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (
@@ -167,6 +161,5 @@ export function ClientDetailScreen({ clientId, className }: Props) {
     />
   );
 }
-
 
 

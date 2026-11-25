@@ -18,7 +18,7 @@ import {
 } from "@/features/contacts/utils/contact-nested-fields.util";
 import { formatContactName } from "@/features/contacts/utils/contact-name.util";
 import { fetchVendorsPage } from "@/features/vendors/api/vendor.api";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { ContactAttachmentsTab } from "./contact-attachments-tab";
 import {
   EntityDetailEditButton,
   EntityDetailErrorState,
@@ -215,13 +215,7 @@ export function ContactDetailScreen({ contactId }: Props) {
               );
             })()
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="contacts"
-              updateAttachments={(refs) => updateContactAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <ContactAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={CONTACT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

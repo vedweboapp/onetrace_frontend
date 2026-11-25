@@ -77,6 +77,8 @@ export function mapQuotationFormToPayload(
     sites,
     quote_name: sanitizeTitleInput(values.quote_name.trim()),
     primary_customer_contact: parseOptionalId(values.primary_customer_contact),
+    contact_person: parseOptionalId(values.primary_customer_contact),
+    contact: parseOptionalId(values.primary_customer_contact),
     additional_customer_contact: quotationAdditionalContactIdsForApi(values.additional_customer_contacts),
     tags: Array.isArray(values.tag_ids) && values.tag_ids.length > 0 ? values.tag_ids : parseTags(values.tags_raw),
     order_number: orderNum || null,
@@ -89,6 +91,16 @@ export function mapQuotationFormToPayload(
     quote_category,
     levels: values.select_all_levels ? [] : values.level_ids,
     select_all_levels: values.select_all_levels,
+    ...(Array.isArray(values.contacts)
+      ? {
+          contacts: values.contacts
+            .map((row) => ({
+              title: row.title.trim(),
+              contact: Number.parseInt(row.contact.trim(), 10),
+            }))
+            .filter((row) => row.title.length > 0 && Number.isFinite(row.contact) && row.contact > 0),
+        }
+      : {}),
     ...(status ? { status } : {}),
   };
 }
@@ -113,6 +125,7 @@ export function emptyQuotationFormDefaults(): QuotationFormValues {
     description: "",
     select_all_levels: false,
     level_ids: [],
+    contacts: [],
   };
 }
 
@@ -129,7 +142,11 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     customer: asIdString(getQuotationCustomerId(detail.customer)),
     sites: getQuotationSiteIds(detail).map(String),
     project: asIdString(getQuotationProjectId(detail.project)),
-    primary_customer_contact: asIdString(getQuotationContactId(detail.primary_customer_contact)),
+    primary_customer_contact: asIdString(
+      getQuotationContactId(detail.primary_customer_contact) ??
+        getQuotationContactId((detail as any).contact_person) ??
+        getQuotationContactId((detail as any).contact),
+    ),
     additional_customer_contacts: getQuotationAdditionalContactIds(detail.additional_customer_contact).map((id) => ({
       contact: String(id),
     })),
@@ -149,5 +166,25 @@ export function mapQuotationDetailToFormDefaults(detail: QuotationDetail): Quota
     description: detail.description ?? "",
     select_all_levels: !!detail.select_all_levels,
     level_ids: getQuotationLevelIds(detail.levels),
+    contacts: Array.isArray(
+      detail.contacts ??
+        (detail as any).quotation_contact_persons ??
+        (detail as any).project_contact_persons ??
+        (detail as any).contact_persons,
+    )
+      ? (
+          detail.contacts ??
+          (detail as any).quotation_contact_persons ??
+          (detail as any).project_contact_persons ??
+          (detail as any).contact_persons
+        ).map((row: any) => {
+          const contactId =
+            typeof row?.contact === "number" ? row.contact : row?.contact?.id;
+          return {
+            title: String(row?.title ?? ""),
+            contact: contactId ? String(contactId) : "",
+          };
+        })
+      : [],
   };
 }

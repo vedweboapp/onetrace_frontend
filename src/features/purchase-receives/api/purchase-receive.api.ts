@@ -80,11 +80,71 @@ export async function updatePurchaseReceive(
   return data.data;
 }
 
+import type { PurchaseReceiveFolder } from "@/features/purchase-receives/types/purchase-receive-folder.types";
+
+export async function fetchPurchaseReceiveFolders(
+  prId: number,
+): Promise<PurchaseReceiveFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<PurchaseReceiveFolder[]> | PurchaseReceiveFolder[]>(
+      PURCHASE_RECEIVE_PATHS.folders(prId),
+    );
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createPurchaseReceiveFolder(
+  prId: number,
+  name: string,
+): Promise<PurchaseReceiveFolder> {
+  const { data } = await api.post<ApiEnvelope<PurchaseReceiveFolder> | PurchaseReceiveFolder>(
+    PURCHASE_RECEIVE_PATHS.folders(prId),
+    { name },
+  );
+  if (data && typeof data === "object" && "data" in data && data.data) {
+    return data.data;
+  }
+  return data as PurchaseReceiveFolder;
+}
+
+export async function updatePurchaseReceiveFolder(
+  prId: number,
+  folderId: number,
+  name: string,
+): Promise<PurchaseReceiveFolder> {
+  const { data } = await api.patch<ApiEnvelope<PurchaseReceiveFolder> | PurchaseReceiveFolder>(
+    PURCHASE_RECEIVE_PATHS.folderDetail(prId, folderId),
+    { name },
+  );
+  if (data && typeof data === "object" && "data" in data && data.data) {
+    return data.data;
+  }
+  return data as PurchaseReceiveFolder;
+}
+
+export async function deletePurchaseReceiveFolder(
+  prId: number,
+  folderId: number,
+): Promise<void> {
+  await api.delete(PURCHASE_RECEIVE_PATHS.folderDetail(prId, folderId));
+}
+
 export async function updatePurchaseReceiveAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<PurchaseReceiveDetail> {
-  return updateEntityAttachments<PurchaseReceiveDetail>(PURCHASE_RECEIVE_PATHS.detail(id), refs);
+  return updateEntityAttachments<PurchaseReceiveDetail>(
+    PURCHASE_RECEIVE_PATHS.detail(id),
+    refs,
+    options,
+  );
 }
 
 export async function deletePurchaseReceive(id: number): Promise<void> {

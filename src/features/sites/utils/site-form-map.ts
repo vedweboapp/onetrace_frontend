@@ -12,6 +12,7 @@ export function mapSiteFormToPayload(values: SiteFormValues): SiteUpsertPayload 
   const subdivisions = State.getStatesOfCountry(values.country_iso);
   const stateTrimmed = values.state_iso.trim();
   const clientId = Number.parseInt(values.client, 10);
+  const parentSiteId = values.parent_site ? Number.parseInt(values.parent_site, 10) : NaN;
 
   let statePayload = "";
   if (subdivisions.length > 0) {
@@ -36,9 +37,13 @@ export function mapSiteFormToPayload(values: SiteFormValues): SiteUpsertPayload 
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
 
+  const parentSiteVal = Number.isFinite(parentSiteId) && parentSiteId > 0 ? parentSiteId : null;
+
   return {
     site_name: values.site_name.trim(),
     client: Number.isFinite(clientId) ? clientId : 0,
+    parent: parentSiteVal,
+    parent_site: parentSiteVal,
     address_line_1: values.address_line_1.trim(),
     address_line_2: values.address_line_2.trim(),
     city: cityPayload,
@@ -68,6 +73,7 @@ export function emptySiteFormDefaults(): SiteFormValues {
   return {
     site_name: "",
     client: "",
+    parent_site: "",
     address_line_1: "",
     address_line_2: "",
     country_iso: "",
@@ -78,6 +84,37 @@ export function emptySiteFormDefaults(): SiteFormValues {
     latitude: "",
     longitude: "",
     contacts: [],
+  };
+}
+
+export function getSiteLocationDefaults(site: Site): {
+  country_iso: string;
+  state_iso: string;
+  city: string;
+  pincode: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  what3words?: string;
+  latitude?: string;
+  longitude?: string;
+} {
+  const inferredIso =
+    Country.getAllCountries().find((c) => c.name.toLowerCase() === (site.country ?? "").trim().toLowerCase())
+      ?.isoCode ?? "";
+  const countryIso = inferredIso ? inferredIso.toUpperCase() : "";
+  const states = State.getStatesOfCountry(countryIso);
+  const stateIso = states.find((s) => s.name.toLowerCase() === (site.state ?? "").trim().toLowerCase())?.isoCode ?? "";
+
+  return {
+    country_iso: countryIso,
+    state_iso: stateIso,
+    city: site.city?.trim() ?? "",
+    pincode: site.pincode?.trim() ?? "",
+    address_line_1: site.address_line_1?.trim() ?? "",
+    address_line_2: site.address_line_2?.trim() ?? "",
+    what3words: site.what3words?.trim() ?? "",
+    latitude: site.latitude != null && Number.isFinite(site.latitude) ? String(site.latitude) : "",
+    longitude: site.longitude != null && Number.isFinite(site.longitude) ? String(site.longitude) : "",
   };
 }
 
@@ -96,9 +133,18 @@ export function siteToFormDefaults(site: Site): SiteFormValues {
         ? site.client.id
         : 0;
 
+  const rawParent = site.parent ?? site.parent_site;
+  const parentSiteId =
+    typeof rawParent === "number"
+      ? rawParent
+      : typeof rawParent?.id === "number"
+        ? rawParent.id
+        : 0;
+
   return {
     site_name: site.site_name ?? "",
     client: clientId > 0 ? String(clientId) : "",
+    parent_site: parentSiteId > 0 ? String(parentSiteId) : "",
     address_line_1: site.address_line_1?.trim() ?? "",
     address_line_2: site.address_line_2?.trim() ?? "",
     country_iso: countryIso,

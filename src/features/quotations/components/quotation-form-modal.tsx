@@ -10,7 +10,8 @@ import { clientsToSelectOptions } from "@/features/clients/utils/client-select-o
 import { fetchContactsPage } from "@/features/contacts/api/contact.api";
 import { formatContactOptionLabel } from "@/features/contacts/utils/contact-name.util";
 import { createQuotation, fetchProjectLevelRowsForQuotation } from "@/features/quotations/api/quotation.api";
-import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
+import { QuotationContactPersonsFields } from "@/features/quotations/components/quotation-contact-persons-fields";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import { QUOTE_CATEGORY } from "@/features/quotations/constants/quotation-category";
 import { useQuotationDraftState } from "@/features/quotations/hooks/use-quotation-draft-state";
@@ -100,6 +101,9 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         customer: t("validation.customer"),
         sites: t("validation.sites"),
         project: t("validation.project"),
+        contactPersonTitle: t("validation.contactPersonTitle"),
+        contactPerson: t("validation.contactPerson"),
+        contactPersonDuplicate: t("validation.contactPersonDuplicate"),
       }),
     [t],
   );
@@ -575,19 +579,6 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
           </FieldGroup>
         </FormFieldRow>
 
-        <QuotationAdditionalContactsFields
-          control={control}
-          contactOptions={contactOptions}
-          customerId={customerId}
-          disabled={saving}
-          onAddContact={contactQuickCreate.onAdd}
-          addAriaLabel={contactQuickCreate.addAriaLabel}
-          addLabel={contactQuickCreate.addLabel}
-          onRequestAddContact={(rowIndex) => {
-            pendingAdditionalContactRowRef.current = rowIndex;
-          }}
-        />
-
         <FormFieldRow cols="2">
           <FieldGroup label={t("fields.siteContact")} htmlFor="quotation-site-contact">
             <Controller
@@ -698,14 +689,27 @@ export function QuotationFormModal({ open, onClose, onSaved }: Props) {
         </FormFieldRow>
 
         <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
-          <textarea
-            id="quotation-desc"
-            rows={4}
-            className={surfaceTextareaClassName}
-            maxLength={FIELD_MAX_LENGTH.DESCRIPTION}
-            {...register("description", rhfRegisterOptions("description"))}
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <RichTextEditor
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                readOnly={saving}
+                placeholder={t("placeholders.userOptional")}
+              />
+            )}
           />
         </FieldGroup>
+
+        <QuotationContactPersonsFields
+          control={control}
+          setValue={setValue}
+          errors={errors}
+          disabled={saving}
+        />
         <DetailTabStepNav onNext={() => setFormTab("pricing")} nextLabel={t("formTabs.nextToPricing")} />
         </div>
         <div

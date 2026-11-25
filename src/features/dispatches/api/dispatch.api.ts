@@ -152,11 +152,68 @@ export async function fetchDispatch(id: number): Promise<DispatchDetail> {
   return normalizeDispatchDetail(data.data);
 }
 
+import type { DispatchFolder, ReturnRequestFolder } from "@/features/dispatches/types/dispatch-folder.types";
+
+export async function fetchDispatchFolders(id: number): Promise<DispatchFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<DispatchFolder[]> | DispatchFolder[]>(DISPATCH_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createDispatchFolder(entityId: number, name: string): Promise<DispatchFolder> {
+  const { data } = await api.post<ApiEnvelope<DispatchFolder> | DispatchFolder>(DISPATCH_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as DispatchFolder;
+}
+
+export async function updateDispatchFolder(entityId: number, folderId: number, name: string): Promise<DispatchFolder> {
+  const { data } = await api.patch<ApiEnvelope<DispatchFolder> | DispatchFolder>(DISPATCH_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as DispatchFolder;
+}
+
+export async function deleteDispatchFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(DISPATCH_PATHS.folderDetail(entityId, folderId));
+}
+
+export async function fetchReturnRequestFolders(id: number): Promise<ReturnRequestFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<ReturnRequestFolder[]> | ReturnRequestFolder[]>(DISPATCH_RETURN_REQUEST_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createReturnRequestFolder(entityId: number, name: string): Promise<ReturnRequestFolder> {
+  const { data } = await api.post<ApiEnvelope<ReturnRequestFolder> | ReturnRequestFolder>(DISPATCH_RETURN_REQUEST_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ReturnRequestFolder;
+}
+
+export async function updateReturnRequestFolder(entityId: number, folderId: number, name: string): Promise<ReturnRequestFolder> {
+  const { data } = await api.patch<ApiEnvelope<ReturnRequestFolder> | ReturnRequestFolder>(DISPATCH_RETURN_REQUEST_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ReturnRequestFolder;
+}
+
+export async function deleteReturnRequestFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(DISPATCH_RETURN_REQUEST_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateDispatchAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<DispatchDetail> {
-  const saved = await updateEntityAttachments<DispatchDetail>(DISPATCH_PATHS.detail(id), refs);
+  const saved = await updateEntityAttachments<DispatchDetail>(DISPATCH_PATHS.detail(id), refs, options);
   return normalizeDispatchDetail(saved);
 }
 
@@ -269,10 +326,12 @@ export async function completeDispatchReturnRequest(id: number): Promise<Dispatc
 export async function updateReturnRequestAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<DispatchReturnRequest> {
   const saved = await updateEntityAttachments<DispatchReturnRequest>(
     DISPATCH_RETURN_REQUEST_PATHS.detail(id),
     refs,
+    options,
   );
   return normalizeReturnRequest(saved);
 }

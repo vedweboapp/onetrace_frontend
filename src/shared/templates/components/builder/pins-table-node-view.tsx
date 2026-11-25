@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import {
   SlidersHorizontal,
@@ -39,24 +39,8 @@ const SAMPLE_PREVIEW_ROWS: SampleRowData[] = [
     description: "Standard HVAC Split Unit Kit",
     variation: "No",
     quantity: "1",
-    unit_price: "Kč 150,000",
-    total_price: "Kč 150,000",
-    status: "Completed",
-    statusType: "success",
-    form: "HVAC Installation QA",
-  },
-  {
-    pin_number: "#7",
-    pin_marker: 7,
-    snapshot: "Pin #7 Snapshot",
-    location: "#7",
-    item_name: "AC KIT",
-    sku: "AC-KIT-01",
-    description: "Standard HVAC Split Unit Kit",
-    variation: "No",
-    quantity: "1",
-    unit_price: "Kč 150,000",
-    total_price: "Kč 150,000",
+    unit_price: "£150.00",
+    total_price: "£150.00",
     status: "Completed",
     statusType: "success",
     form: "HVAC Installation QA",
@@ -69,7 +53,7 @@ function DrawingSnapshotThumbnail({
   pinMarker: number;
 }) {
   return (
-    <div className="w-36 h-20 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 relative overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+    <div className="w-28 h-14 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 relative overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
       {/* Background blueprint/plan schematic lines */}
       <div className="absolute inset-0 flex flex-col justify-evenly px-2 py-1 opacity-50 pointer-events-none">
         <div className="border-b border-slate-200 dark:border-slate-700 w-full" />
@@ -78,7 +62,7 @@ function DrawingSnapshotThumbnail({
       </div>
 
       {/* Circular green pin marker */}
-      <div className="relative z-10 size-6 rounded-full border-2 border-emerald-500 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
+      <div className="relative z-10 size-5 rounded-full border-2 border-emerald-500 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 leading-none">
           {pinMarker}
         </span>
@@ -95,6 +79,67 @@ export function PinsTableNodeView({
   editor,
 }: NodeViewProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [pageOffset, setPageOffset] = useState<number>(0);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const checkFit = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+
+      const editorDom = el.closest(".ProseMirror") as HTMLElement | null;
+      if (!editorDom) return;
+
+      const breakers = Array.from(editorDom.querySelectorAll(".rm-page-break .breaker")) as HTMLElement[];
+      if (breakers.length === 0) {
+        if (pageOffset !== 0) setPageOffset(0);
+        return;
+      }
+
+      const editorRect = editorDom.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      const naturalTop = (elRect.top - editorRect.top) - pageOffset;
+      const elHeight = el.offsetHeight;
+      const naturalBottom = naturalTop + elHeight;
+
+      let targetOffset = 0;
+      for (const breaker of breakers) {
+        const breakerRect = breaker.getBoundingClientRect();
+        const breakerTop = breakerRect.top - editorRect.top;
+        const breakerBottom = breakerTop + breaker.offsetHeight;
+
+        // If table starts above the breaker, but would overflow into/past it
+        if (naturalTop < breakerTop && naturalBottom > breakerTop - 10) {
+          targetOffset = Math.max(0, breakerBottom - naturalTop + 14);
+          break;
+        }
+      }
+
+      if (Math.abs(pageOffset - targetOffset) > 4) {
+        setPageOffset(targetOffset);
+      }
+    };
+
+    timeoutId = setTimeout(checkFit, 80);
+    window.addEventListener("resize", checkFit);
+
+    const editorDom = wrapperRef.current?.closest(".ProseMirror");
+    const observer = new MutationObserver(() => {
+      checkFit();
+    });
+    if (editorDom) {
+      observer.observe(editorDom, { childList: true, subtree: true });
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", checkFit);
+      observer.disconnect();
+    };
+  }, [pageOffset]);
 
   const title: string = node.attrs.title || "Pins List";
   const rawCols = node.attrs.columns;
@@ -172,8 +217,21 @@ export function PinsTableNodeView({
         "my-6 select-none outline-none transition-all duration-200",
         selected && "ring-2 ring-blue-500 rounded-xl",
       )}
+      style={{
+        pageBreakInside: "avoid",
+        breakInside: "avoid",
+      }}
     >
-      <div contentEditable={false} className="group relative">
+      <div
+        ref={wrapperRef}
+        contentEditable={false}
+        className="flow-root group relative"
+        style={{
+          marginTop: pageOffset > 0 ? `${pageOffset}px` : undefined,
+          pageBreakInside: "avoid",
+          breakInside: "avoid",
+        }}
+      >
         {/* ── Top Hover Toolbar / Edit Configuration Bar ── */}
         <div className="flex items-center justify-between gap-2 mb-2 px-1">
           <div className="flex items-center gap-2">
@@ -219,7 +277,7 @@ export function PinsTableNodeView({
         </div>
 
         {/* ── Main Table Card Rendered Exactly Like Screenshot ── */}
-        <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
           <div className="overflow-x-auto">
             <table
               className="pins-preview-table w-full border-collapse"
@@ -255,7 +313,7 @@ export function PinsTableNodeView({
                       return (
                         <td
                           key={col.id}
-                          className="px-4 py-4 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap"
+                          className="px-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap"
                           style={{
                             textAlign: col.align || "left",
                             width: getColWidth(col),

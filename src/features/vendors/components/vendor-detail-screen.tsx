@@ -12,7 +12,7 @@ import { VENDOR_PATHS } from "@/features/vendors/api/vendor.paths";
 import { VendorDetailBody } from "@/features/vendors/components/vendor-detail-body";
 import { VendorItemsTab } from "@/features/vendors/components/vendor-items-tab";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { VendorAttachmentsTab } from "./vendor-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
@@ -165,13 +165,7 @@ export function VendorDetailScreen({ vendorId }: Props) {
           ) : detail && activeTab === "items" ? (
             <VendorItemsTab vendorId={detail.id} />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="vendors"
-              updateAttachments={(refs) => updateVendorAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <VendorAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={VENDOR_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

@@ -8,14 +8,14 @@ import { Controller, useForm } from "react-hook-form";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useFormBackUrl } from "@/shared/hooks/use-entity-detail-back";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { createSite, fetchSite, updateSite } from "@/features/sites/api/site.api";
+import { createSite, fetchSite, fetchSitesPage, updateSite } from "@/features/sites/api/site.api";
 import { createSiteFormSchema, type SiteFormValues } from "@/features/sites/schemas/site-form-schema";
-import { emptySiteFormDefaults, mapSiteFormToPayload, siteToFormDefaults } from "@/features/sites/utils/site-form-map";
+import { emptySiteFormDefaults, getSiteLocationDefaults, mapSiteFormToPayload, siteToFormDefaults } from "@/features/sites/utils/site-form-map";
 import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
+import type { Site } from "@/features/sites/types/site.types";
 import { DetailPageHeader } from "@/shared/components/layout/detail-page-header";
 import { routes } from "@/shared/config/routes";
-import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import { SiteNamePlaceField } from "@/features/sites/components/site-name-place-field";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
@@ -49,13 +49,13 @@ export function SiteFormScreen({ mode, siteId }: Props) {
   const searchParams = useSearchParams();
   const safeBack = useFormBackUrl("sites", routes.dashboard.sites);
   const isEdit = mode === "edit";
-  const pendingContactRowRef = React.useRef<number | null>(null);
 
   const [saving, setSaving] = React.useState(false);
   const [loadingExisting, setLoadingExisting] = React.useState(isEdit);
   const [screenError, setScreenError] = React.useState<string | null>(null);
   const [clientOptions, setClientOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [contactsRefreshKey, setContactsRefreshKey] = React.useState(0);
+  const [parentSiteOptions, setParentSiteOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [parentSitesList, setParentSitesList] = React.useState<Site[]>([]);
 
   const schema = React.useMemo(
     () =>
@@ -101,12 +101,28 @@ export function SiteFormScreen({ mode, siteId }: Props) {
     }
   }, []);
 
+  const reloadParentSites = React.useCallback(async () => {
+    try {
+      const { items } = await fetchSitesPage(1, 100, { dropdown: true });
+      const filtered = siteId ? items.filter((s) => s.id !== siteId) : items;
+      setParentSitesList(filtered);
+      setParentSiteOptions([
+        { value: "", label: t("placeholders.parentSite") },
+        ...filtered.map((s) => ({ value: String(s.id), label: s.site_name })),
+      ]);
+    } catch {
+      setParentSitesList([]);
+      setParentSiteOptions([]);
+    }
+  }, [siteId, t]);
+
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
       void reloadClients();
+      void reloadParentSites();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [reloadClients]);
+  }, [reloadClients, reloadParentSites]);
 
   const draftReturnTo = React.useMemo(() => {
     const qs = searchParams.toString();
@@ -144,27 +160,7 @@ export function SiteFormScreen({ mode, siteId }: Props) {
       if (selectTarget === "client") {
         if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
-        setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
         return;
-      }
-      if (selectTarget === "contact") {
-        setContactsRefreshKey((k) => k + 1);
-        const rowIndex = pendingContactRowRef.current;
-        if (rowIndex != null) {
-          setValue(`contacts.${rowIndex}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
-        } else {
-          const current = getValues("contacts") ?? [];
-          const emptyIdx = current.findIndex((r) => !r.contact?.trim());
-          if (emptyIdx >= 0) {
-            setValue(`contacts.${emptyIdx}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
-          } else {
-            setValue("contacts", [...current, { title: "", contact: selectId }], {
-              shouldDirty: true,
-              shouldValidate: true,
-            });
-          }
-        }
-        pendingContactRowRef.current = null;
       }
     },
   });
@@ -262,48 +258,122 @@ export function SiteFormScreen({ mode, siteId }: Props) {
               disabled={saving}
               applyPlaceRef={applyPlaceRef}
               leading={
-                <FormFieldRow cols="2">
-                  <SiteNamePlaceField
-                    control={control}
-                    setValue={setValue}
-                    error={errors.site_name?.message}
-                    disabled={saving}
-                    onPlaceSelected={(place) => applyPlaceRef.current?.(place)}
-                  />
-                  <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
-                    <Controller
+                <div className="space-y-6">
+                  <FormFieldRow cols="2">
+                    <FieldGroup
+                      label={t("fields.parentSite")}
+                      htmlFor="site-parent-site"
+                    >
+                      <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                        {t("fields.parentSiteHint")}
+                      </p>
+                      <Controller
+                        control={control}
+                        name="parent_site"
+                        render={({ field }) => (
+                          <CheckmarkSelect
+                            id="site-parent-site"
+                            portaled
+                            searchable
+                            listLabel={t("fields.parentSite")}
+                            options={parentSiteOptions}
+                            value={field.value ?? ""}
+                            emptyLabel={t("placeholders.parentSite")}
+                            disabled={saving}
+                            invalid={!!errors.parent_site}
+                            onBlur={field.onBlur}
+                            onChange={(v) => {
+                              setValue("parent_site", v, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                              if (v) {
+                                const selectedParent = parentSitesList.find((s) => String(s.id) === v);
+                                if (selectedParent) {
+                                  setValue("site_name", selectedParent.site_name, {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  });
+                                  const loc = getSiteLocationDefaults(selectedParent);
+                                  if (loc.country_iso) {
+                                    setValue("country_iso", loc.country_iso, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.state_iso) {
+                                    setValue("state_iso", loc.state_iso, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.city) {
+                                    setValue("city", loc.city, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.pincode) {
+                                    setValue("pincode", loc.pincode, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.address_line_1) {
+                                    setValue("address_line_1", loc.address_line_1, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.address_line_2) {
+                                    setValue("address_line_2", loc.address_line_2, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  window.setTimeout(() => {
+                                    const el = document.getElementById("site-name") as HTMLInputElement | null;
+                                    if (el) {
+                                      el.focus();
+                                      const len = el.value.length;
+                                      el.setSelectionRange(len, len);
+                                    }
+                                  }, 50);
+                                }
+                              }
+                            }}
+                          />
+                        )}
+                      />
+                      <FieldErrorText>{errors.parent_site?.message}</FieldErrorText>
+                    </FieldGroup>
+                  </FormFieldRow>
+
+                  <FormFieldRow cols="2">
+                    <SiteNamePlaceField
                       control={control}
-                      name="client"
-                      render={({ field }) => (
-                        <CheckmarkSelect
-                          id="site-client"
-                          portaled
-                          searchable
-                          listLabel={t("fields.client")}
-                          options={clientOptions}
-                          value={field.value}
-                          emptyLabel={t("placeholders.client")}
-                          disabled={saving || noClients}
-                        locked={lockClient}
-                          invalid={!!errors.client}
-                          onBlur={field.onBlur}
-                          onChange={(v) => {
-                            setValue("client", v, {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            });
-                            setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
-                          }}
-                          onAdd={clientQuickCreate.onAdd}
-                          addAriaLabel={clientQuickCreate.addAriaLabel}
-                          addLabel={clientQuickCreate.addLabel}
-                        />
-                      )}
+                      setValue={setValue}
+                      error={errors.site_name?.message}
+                      disabled={saving}
+                      onPlaceSelected={(place) => applyPlaceRef.current?.(place)}
                     />
-                    <FieldErrorText>{errors.client?.message}</FieldErrorText>
-                  </FieldGroup>
-                </FormFieldRow>
+                    <FieldGroup label={t("fields.client")} htmlFor="site-client" required>
+                      <Controller
+                        control={control}
+                        name="client"
+                        render={({ field }) => (
+                          <CheckmarkSelect
+                            id="site-client"
+                            portaled
+                            searchable
+                            listLabel={t("fields.client")}
+                            options={clientOptions}
+                            value={field.value}
+                            emptyLabel={t("placeholders.client")}
+                            disabled={saving || noClients}
+                          locked={lockClient}
+                            invalid={!!errors.client}
+                            onBlur={field.onBlur}
+                            onChange={(v) => {
+                              setValue("client", v, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                            onAdd={clientQuickCreate.onAdd}
+                            addAriaLabel={clientQuickCreate.addAriaLabel}
+                            addLabel={clientQuickCreate.addLabel}
+                          />
+                        )}
+                      />
+                      <FieldErrorText>{errors.client?.message}</FieldErrorText>
+                    </FieldGroup>
+                  </FormFieldRow>
+                </div>
               }
               afterAddress={
                 <FormFieldRow cols="2">
@@ -318,17 +388,6 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                     />
                   </FieldGroup>
                 </FormFieldRow>
-              }
-              trailing={
-                <SiteContactPersonsFields
-                  control={control}
-                  setValue={setValue}
-                  errors={errors}
-                  disabled={saving}
-                  pendingContactRowRef={pendingContactRowRef}
-                  contactsRefreshKey={contactsRefreshKey}
-                  getFormDraft={!isEdit ? getFormDraft : undefined}
-                />
               }
             />
           </form>

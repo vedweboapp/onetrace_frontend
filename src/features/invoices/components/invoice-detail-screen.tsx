@@ -13,7 +13,7 @@ import { InvoiceDetailBody } from "@/features/invoices/components/invoice-detail
 import { InvoiceExportDropdown } from "@/features/invoices/components/invoice-export-dropdown";
 import type { InvoiceContactRef, InvoiceDetail } from "@/features/invoices/types/invoice.types";
 import { nestedId, normalizeInvoiceStatus } from "@/features/invoices/utils/invoice-nested-fields.util";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { InvoiceAttachmentsTab } from "./invoice-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailEditButton, EntityDetailScreen } from "@/shared/components/entity";
 import { entityDetailTabPanelClassName } from "@/shared/components/layout/detail-tab-layout";
@@ -202,13 +202,7 @@ export function InvoiceDetailScreen({ invoiceId }: Props) {
               aria-labelledby={`invoice-detail-tab-trigger-${activeTab}`}
               className={entityDetailTabPanelClassName}
             >
-              <EntityAttachmentsTab
-                entityId={detail.id}
-                attachments={detail.attachments}
-                emptyIconName="invoices"
-                updateAttachments={(refs) => updateInvoiceAttachments(detail.id, refs)}
-                onSaved={retry}
-              />
+              <InvoiceAttachmentsTab detail={detail} onSaved={retry} />
             </div>
           );
         }

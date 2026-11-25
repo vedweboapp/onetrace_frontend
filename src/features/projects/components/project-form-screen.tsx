@@ -30,6 +30,7 @@ import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-e
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
+  mapProjectFormToDirtyPayload,
   mapProjectFormToPayload,
   projectToFormDefaults,
 } from "@/features/projects/utils/project-form-map";
@@ -68,7 +69,8 @@ import {
 } from "@/shared/ui";
 import { fetchProjectStatusesPage } from "@/features/project-status/api/project-status.api";
 import { resolveDefaultProjectStatusId } from "@/features/project-status/utils/project-default-status.util";
-
+import ImageUploadField from "@/shared/form/components/image-upload-field";
+import { ProjectContactPersonsFields } from "@/features/projects/components/project-contact-persons-fields";
 
 type Props = {
   mode: "create" | "edit";
@@ -112,6 +114,8 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
   const initialClientsLoaded = React.useRef(false);
   const initialManagersLoaded = React.useRef(false);
   const previousProjectTypeRef = React.useRef<string | null>(null);
+  const pendingContactRowRef = React.useRef<number | null>(null);
+  const [contactsRefreshKey, setContactsRefreshKey] = React.useState(0);
   const schema = React.useMemo(
     () =>
       createProjectFormSchema({
@@ -122,6 +126,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         startDate: t("validation.startDate"),
         endDate: t("validation.endDate"),
         dateOrder: t("validation.dateOrder"),
+        contactPersonTitle: t("validation.contactPersonTitle"),
+        contactPerson: t("validation.contactPerson"),
+        contactPersonDuplicate: t("validation.contactPersonDuplicate"),
       }),
     [t],
   );
@@ -134,7 +141,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     getValues,
     setError,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyProjectFormDefaults(),
@@ -228,6 +235,9 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
       const selectId = searchParams.get(QUICK_CREATE_SELECT_PARAM);
       const selectTarget = searchParams.get(QUICK_CREATE_SELECT_TARGET_PARAM);
       const values = { ...bundle.values };
+      if (values.project_image && typeof values.project_image === "object" && !(values.project_image instanceof File)) {
+        values.project_image = null;
+      }
 
       // Merge quick-create selection into restored values so chips never land empty.
       if (selectId && /^\d+$/.test(selectId)) {
@@ -560,6 +570,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
         if (lockClient) return;
         setValue("client", selectId, { shouldDirty: true, shouldValidate: true });
         setValue("sites", [], { shouldDirty: true, shouldValidate: true });
+        setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
         return;
       }
       if (selectTarget === "site") {
@@ -589,6 +600,23 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
           if (prev.some((opt) => opt.value === selectId)) return prev;
           return [...prev, { value: selectId, label: `#${selectId}` }];
         });
+        return;
+      }
+      if (selectTarget === "contact") {
+        setContactsRefreshKey((k) => k + 1);
+        const rowIndex = pendingContactRowRef.current;
+        if (rowIndex != null) {
+          setValue(`contacts.${rowIndex}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
+        } else {
+          const current = getValues("contacts") ?? [];
+          const emptyIdx = current.findIndex((r) => !r.contact?.trim());
+          if (emptyIdx >= 0) {
+            setValue(`contacts.${emptyIdx}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
+          } else {
+            setValue("contacts", [...current, { title: "", contact: selectId }], { shouldDirty: true, shouldValidate: true });
+          }
+        }
+        pendingContactRowRef.current = null;
         return;
       }
       if (selectTarget === "user") {
@@ -772,7 +800,10 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     }
     setSaving(true);
     try {
-      const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
+      const saved =
+        isEdit && projectId
+          ? await updateProject(projectId, mapProjectFormToDirtyPayload(values, dirtyFields))
+          : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(
@@ -877,6 +908,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                         onChange={(v) => {
                           field.onChange(v);
                           setValue("sites", []);
+                          setValue("contacts", []);
                         }}
                         onAdd={clientQuickCreate.onAdd}
                         addAriaLabel={clientQuickCreate.addAriaLabel}
@@ -1053,6 +1085,31 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
                   <FieldErrorText id="project-end-err">{errors.end_date?.message}</FieldErrorText>
                 </FieldGroup>
               </FormFieldRow>
+              <FormFieldRow cols="2" from="md">
+                <FieldGroup label={t("fields.projectImage")} htmlFor="project-image">
+                  <Controller
+                    control={control}
+                    name="project_image"
+                    render={({ field }) => (
+                      <ImageUploadField
+                        image={field.value}
+                        setImage={(img) => field.onChange(img)}
+                        readOnly={saving}
+                      />
+                    )}
+                  />
+                  <FieldErrorText id="project-image-err">{errors.project_image?.message as string}</FieldErrorText>
+                </FieldGroup>
+              </FormFieldRow>
+              <ProjectContactPersonsFields
+                control={control}
+                setValue={setValue}
+                errors={errors}
+                disabled={saving}
+                pendingContactRowRef={pendingContactRowRef}
+                contactsRefreshKey={contactsRefreshKey}
+                getFormDraft={!isEdit ? getFormDraft : undefined}
+              />
             </form>
           </>
         )}

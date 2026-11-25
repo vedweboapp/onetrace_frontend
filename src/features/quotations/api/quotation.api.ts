@@ -86,6 +86,7 @@ export async function fetchAllQuotationIds(filters?: QuotationListFilters): Prom
 
 export type FetchQuotationOptions = {
   include?: string | string[];
+  params?: Record<string, string | number | boolean | null | undefined>;
 };
 
 export async function fetchQuotation(
@@ -93,6 +94,13 @@ export async function fetchQuotation(
   options?: FetchQuotationOptions,
 ): Promise<QuotationDetail> {
   const searchParams = new URLSearchParams();
+  if (options?.params) {
+    for (const [k, v] of Object.entries(options.params)) {
+      if (v != null && v !== "") {
+        searchParams.append(k, String(v));
+      }
+    }
+  }
   if (Array.isArray(options?.include)) {
     options.include.forEach((inc) => searchParams.append("include", inc));
   } else if (typeof options?.include === "string") {
@@ -185,8 +193,9 @@ export type QuotationAttachmentWriteRef = EntityAttachmentWriteRef;
 export async function updateQuotationAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<QuotationDetail> {
-  return updateEntityAttachments<QuotationDetail>(QUOTATION_PATHS.detail(id), refs);
+  return updateEntityAttachments<QuotationDetail>(QUOTATION_PATHS.detail(id), refs, options);
 }
 
 /** Loads selectable levels for a project when composing a quotation. */

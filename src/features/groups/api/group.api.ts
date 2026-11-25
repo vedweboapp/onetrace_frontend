@@ -95,12 +95,42 @@ export async function updateGroup(id: number, body: GroupUpdatePayload): Promise
   return data.data;
 }
 
+import type { GroupFolder } from "@/features/groups/types/group-folder.types";
+
+export async function fetchGroupFolders(id: number): Promise<GroupFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<GroupFolder[]> | GroupFolder[]>(GROUP_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createGroupFolder(entityId: number, name: string): Promise<GroupFolder> {
+  const { data } = await api.post<ApiEnvelope<GroupFolder> | GroupFolder>(GROUP_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as GroupFolder;
+}
+
+export async function updateGroupFolder(entityId: number, folderId: number, name: string): Promise<GroupFolder> {
+  const { data } = await api.patch<ApiEnvelope<GroupFolder> | GroupFolder>(GROUP_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as GroupFolder;
+}
+
+export async function deleteGroupFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(GROUP_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateGroupAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Group> {
   groupDetailCache.delete(`auth:${id}`);
-  return updateEntityAttachments<Group>(GROUP_PATHS.detail(id), refs);
+  return updateEntityAttachments<Group>(GROUP_PATHS.detail(id), refs, options);
 }
 
 export async function deleteGroup(id: number): Promise<void> {

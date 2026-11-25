@@ -436,7 +436,7 @@ export function SubformModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {[1, 2].map((rowIdx) => (
+                    {[1].map((rowIdx) => (
                       <tr key={rowIdx} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/30">
                         {selectedColumns.map((colKey) => (
                           <td

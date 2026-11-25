@@ -4,6 +4,8 @@ export const DISPATCH_RETURN_REQUEST_PATHS = {
   complete: (id: number) => `return-request/${id}/complete`,
   approve: (id: number) => `return-request/${id}/approve/`,
   reject: (id: number) => `return-request/${id}/reject/`,
+  folders: (id: number) => `return-request/${id}/folders/`,
+  folderDetail: (entityId: number, folderId: number) => `return-request/${entityId}/folders/${folderId}/`,
 } as const;
 
 export const DISPATCH_PATHS = {
@@ -14,4 +16,6 @@ export const DISPATCH_PATHS = {
   returnItems: (id: number) => `dispatch/${id}/return-items`,
   returnToStock: (id: number) => `dispatch/${id}/return-to-stock`,
   workerReturnMaterials: "dispatch/worker-return-materials",
+  folders: (id: number) => `dispatch/${id}/folders/`,
+  folderDetail: (entityId: number, folderId: number) => `dispatch/${entityId}/folders/${folderId}/`,
 } as const;

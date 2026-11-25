@@ -7,7 +7,7 @@ import { DISPATCH_RETURN_REQUEST_PATHS } from "@/features/dispatches/api/dispatc
 import { toastSuccess, toastError, getApiErrorDisplayMessage } from "@/shared/feedback/app-toast";
 import { ReturnToStockDetailBody } from "@/features/dispatches/components/return-to-stock-detail-body";
 import type { DispatchReturnRequest } from "@/features/dispatches/types/dispatch.types";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { ReturnRequestAttachmentsTab } from "./return-request-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import { EntityDetailScreen } from "@/shared/components/entity";
 import { routes } from "@/shared/config/routes";
@@ -79,13 +79,7 @@ export function ReturnToStockDetailScreen({ requestId }: Props) {
     >
       {({ detail, retry }) =>
         activeTab === "attachments" ? (
-          <EntityAttachmentsTab
-            entityId={detail.id}
-            attachments={detail.attachments}
-            emptyIconName="returnToStock"
-            updateAttachments={(refs) => updateReturnRequestAttachments(detail.id, refs)}
-            onSaved={retry}
-          />
+          <ReturnRequestAttachmentsTab detail={detail} onSaved={retry} />
         ) : activeTab === "notes" ? (
           <EntityNotesTab detailPath={DISPATCH_RETURN_REQUEST_PATHS.detail(detail.id)} />
         ) : (

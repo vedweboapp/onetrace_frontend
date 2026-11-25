@@ -49,11 +49,13 @@ export type SiteUpsertPayload = {
   what3words?: string;
   latitude?: number | null;
   longitude?: number | null;
+  parent?: number | null;
+  parent_site?: number | null;
   contacts?: SiteContactPersonPayload[];
 };
 
 export type SiteCreatePayload = SiteUpsertPayload;
-export type SiteUpdatePayload = SiteUpsertPayload;
+export type SiteUpdatePayload = Partial<SiteUpsertPayload>;
 
 export type Site = {
   id: number;
@@ -65,6 +67,9 @@ export type Site = {
   is_deleted: boolean;
   site_name: string;
   client: number | SiteClientRef;
+  parent?: number | { id: number; site_name?: string | null; name?: string | null } | null;
+  parent_site?: number | { id: number; site_name?: string | null; name?: string | null } | null;
+  subsites?: Array<{ id: number; site_name: string; is_active?: boolean; city?: string | null }> | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;

@@ -430,8 +430,14 @@ export function QuotationDetailScreen({ quotationId }: Props) {
 
 
   const fetchDetailWithVendors = React.useCallback(
-    (id: number) => fetchQuotation(id, { include: ["vendors"] }),
-    [],
+    (id: number) => {
+      const folderParam = searchParams.get("folder_id") ?? searchParams.get("folder");
+      return fetchQuotation(id, {
+        include: ["vendors"],
+        params: folderParam ? { folder_id: folderParam } : undefined,
+      });
+    },
+    [searchParams],
   );
 
   return (

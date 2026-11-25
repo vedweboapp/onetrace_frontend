@@ -16,7 +16,7 @@ import { JobReturnsTab } from "@/features/jobs/components/job-returns-tab";
 import { JobFormsTab } from "@/features/jobs/components/job-forms-tab";
 import { JobSchedulingTab } from "@/features/jobs/components/job-scheduling-tab";
 import { JobUpdateStatusDialog } from "@/features/jobs/components/job-update-status-dialog";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { JobAttachmentsTab } from "./job-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   parseJobCategoryParam,
@@ -292,13 +292,7 @@ function JobDetailTabPanel({
           ) : detail && activeTab === "forms" ? (
             <JobFormsTab detail={detail} />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="jobs"
-              updateAttachments={(refs) => updateJobAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <JobAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={JOB_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

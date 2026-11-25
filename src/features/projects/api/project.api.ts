@@ -18,6 +18,7 @@ import type {
   ProjectCreatePayload,
   ProjectListResponse,
   ProjectUpdatePayload,
+  ProjectUpsertPayload,
 } from "../types/project.types";
 import type { ProjectJobsHierarchyData, ProjectJobsHierarchyResponse } from "../types/project-jobs.types";
 import { normalizeProjectJobsHierarchy } from "../utils/project-jobs-list.util";
@@ -94,23 +95,87 @@ export async function fetchLocation(id: number | string): Promise<Drawing[]> {
   return data.data;
 }
 
+export function buildProjectFormData(body: ProjectUpsertPayload): FormData {
+  const fd = new FormData();
+  const jsonPayload: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(body)) {
+    if (val === undefined) continue;
+    if (key === "project_image") {
+      if (val instanceof File) {
+        fd.append("project_image", val, val.name);
+      } else if (val === null) {
+        fd.append("project_image", "null");
+      }
+      continue;
+    }
+    jsonPayload[key] = val;
+  }
+  fd.append("JSONString", JSON.stringify(jsonPayload));
+  return fd;
+}
+
 export async function createProject(body: ProjectCreatePayload): Promise<Project> {
-  const { data } = await api.post<ApiEnvelope<Project>>(PROJECT_PATHS.list, body);
+  let submitData: ProjectCreatePayload | FormData = body;
+  if (body.project_image instanceof File) {
+    submitData = buildProjectFormData(body);
+  } else {
+    const cleanBody = { ...body };
+    if (typeof cleanBody.project_image === "string") {
+      delete cleanBody.project_image;
+    }
+    submitData = cleanBody;
+  }
+  const { data } = await api.post<ApiEnvelope<Project>>(PROJECT_PATHS.list, submitData);
   assertApiSuccess(data);
   return data.data;
 }
 
 export async function updateProject(id: number, body: ProjectUpdatePayload): Promise<Project> {
-  const { data } = await api.patch<ApiEnvelope<Project>>(PROJECT_PATHS.detail(id), body);
+  const cleanBody = { ...body };
+  if (typeof cleanBody.project_image === "string") {
+    delete cleanBody.project_image;
+  }
+  const submitData = buildProjectFormData(cleanBody as ProjectUpsertPayload);
+  const { data } = await api.patch<ApiEnvelope<Project>>(PROJECT_PATHS.detail(id), submitData);
   assertApiSuccess(data);
   return data.data;
+}
+
+import type { ProjectFolder } from "@/features/projects/types/project-folder.types";
+
+export async function fetchProjectFolders(id: number): Promise<ProjectFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<ProjectFolder[]> | ProjectFolder[]>(PROJECT_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createProjectFolder(entityId: number, name: string): Promise<ProjectFolder> {
+  const { data } = await api.post<ApiEnvelope<ProjectFolder> | ProjectFolder>(PROJECT_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ProjectFolder;
+}
+
+export async function updateProjectFolder(entityId: number, folderId: number, name: string): Promise<ProjectFolder> {
+  const { data } = await api.patch<ApiEnvelope<ProjectFolder> | ProjectFolder>(PROJECT_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ProjectFolder;
+}
+
+export async function deleteProjectFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(PROJECT_PATHS.folderDetail(entityId, folderId));
 }
 
 export async function updateProjectAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Project> {
-  return updateEntityAttachments<Project>(PROJECT_PATHS.detail(id), refs);
+  return updateEntityAttachments<Project>(PROJECT_PATHS.detail(id), refs, options);
 }
 export async function createJobFromLocation(body: LocationToJobPayload): Promise<Job> {
   const { data } = await api.post<ApiEnvelope<Job>>(PROJECT_PATHS.createJobFromLocation, body);

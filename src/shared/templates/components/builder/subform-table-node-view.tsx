@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import {
   SlidersHorizontal,
@@ -25,6 +25,66 @@ export function SubformTableNodeView({
   editor,
 }: NodeViewProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [pageOffset, setPageOffset] = useState<number>(0);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const checkFit = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+
+      const editorDom = el.closest(".ProseMirror") as HTMLElement | null;
+      if (!editorDom) return;
+
+      const breakers = Array.from(editorDom.querySelectorAll(".rm-page-break .breaker")) as HTMLElement[];
+      if (breakers.length === 0) {
+        if (pageOffset !== 0) setPageOffset(0);
+        return;
+      }
+
+      const editorRect = editorDom.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      const naturalTop = (elRect.top - editorRect.top) - pageOffset;
+      const elHeight = el.offsetHeight;
+      const naturalBottom = naturalTop + elHeight;
+
+      let targetOffset = 0;
+      for (const breaker of breakers) {
+        const breakerRect = breaker.getBoundingClientRect();
+        const breakerTop = breakerRect.top - editorRect.top;
+        const breakerBottom = breakerTop + breaker.offsetHeight;
+
+        if (naturalTop < breakerTop && naturalBottom > breakerTop - 10) {
+          targetOffset = Math.max(0, breakerBottom - naturalTop + 14);
+          break;
+        }
+      }
+
+      if (Math.abs(pageOffset - targetOffset) > 4) {
+        setPageOffset(targetOffset);
+      }
+    };
+
+    timeoutId = setTimeout(checkFit, 80);
+    window.addEventListener("resize", checkFit);
+
+    const editorDom = wrapperRef.current?.closest(".ProseMirror");
+    const observer = new MutationObserver(() => {
+      checkFit();
+    });
+    if (editorDom) {
+      observer.observe(editorDom, { childList: true, subtree: true });
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", checkFit);
+      observer.disconnect();
+    };
+  }, [pageOffset]);
   const [moduleData, setModuleData] = useState<ModuleVariablesData>({
       moduleName: node.attrs.module || "sections",
       primaryKeys: [],
@@ -88,7 +148,16 @@ export function SubformTableNodeView({
       }}
       data-drag-handle
     >
-      <div contentEditable={false} className="group relative">
+      <div
+        ref={wrapperRef}
+        contentEditable={false}
+        className="flow-root group relative"
+        style={{
+          marginTop: pageOffset > 0 ? `${pageOffset}px` : undefined,
+          pageBreakInside: "avoid",
+          breakInside: "avoid",
+        }}
+      >
         {/* ── Top Floating / Hover Toolbar ── */}
         <div
           className={cn(
@@ -170,9 +239,9 @@ export function SubformTableNodeView({
                 </tr>
               </thead>
 
-              {/* Table Body with 2 Sample Preview Rows */}
+              {/* Table Body with 1 Sample Preview Row */}
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                {[1, 2].map((rowIdx) => (
+                {[1].map((rowIdx) => (
                   <tr
                     key={rowIdx}
                     className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors"
@@ -180,7 +249,7 @@ export function SubformTableNodeView({
                     {columns.map((col) => (
                       <td
                         key={col}
-                        className="px-4 py-3.5 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap border-none"
+                        className="px-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 align-middle whitespace-nowrap border-none"
                         style={{
                           width: `${(100 / Math.max(1, columns.length)).toFixed(2)}%`,
                         }}

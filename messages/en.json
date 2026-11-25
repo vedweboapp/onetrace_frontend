@@ -320,7 +320,9 @@
         "download": "Download",
         "downloadAria": "Download {name}",
         "remove": "Remove",
-        "removeAria": "Remove {name}"
+        "removeAria": "Remove {name}",
+        "movedToast": "File moved successfully",
+        "moveError": "Could not move file."
       },
       "notesTab": {
         "title": "Notes",
@@ -3158,6 +3160,7 @@
       "detailLoadError": "Could not load site details. Try again.",
       "placeholders": {
         "client": "Select client",
+        "parentSite": "Select parent site (optional)",
         "country": "Select country",
         "state": "Select state / region",
         "city": "Select or type city",
@@ -3166,6 +3169,8 @@
       "fields": {
         "siteName": "Site Name",
         "client": "Client",
+        "parentSite": "Parent Site",
+        "parentSiteHint": "Choose it if the site is the subsite",
         "addressLine1": "Address Line 1",
         "addressLine2": "Address Line 2",
         "country": "Country",
@@ -3194,7 +3199,7 @@
         "editSubtitle": "Update site details and save changes."
       },
       "contactPerson": {
-        "sectionTitle": "Contact Persons",
+        "sectionTitle": "Title & Contacts",
         "sectionHint": "Link people from the selected client to this site.",
         "add": "Create contact person",
         "addAnother": "Add Another Contact Person",
@@ -3329,6 +3334,8 @@
         "createJobModalDescription": "Select forms and checklist for the job created from “{title}”.",
         "sectionOverview": "Overview",
         "sectionPeople": "People & Roles",
+        "panelContactRoles": "Title & Contacts",
+        "contactRolesEmpty": "No title & contacts linked to this quotation yet.",
         "sectionProject": "Project & Levels",
         "sectionRecord": "Record",
         "sectionSiteLocation": "Site Location",
@@ -3388,7 +3395,30 @@
         "download": "Download",
         "downloadAria": "Download {name}",
         "remove": "Remove",
-        "removeAria": "Remove {name}"
+        "removeAria": "Remove {name}",
+        "movedToast": "File moved successfully",
+        "moveError": "Could not move file."
+      },
+      "folders": {
+        "title": "Folders",
+        "newFolder": "New Folder",
+        "createFolder": "Create Folder",
+        "folderName": "Folder name",
+        "folderNamePlaceholder": "e.g. Drawings, Contracts",
+        "renameFolder": "Rename Folder",
+        "deleteFolder": "Delete Folder",
+        "deleteConfirm": "Are you sure you want to delete this folder?",
+        "createdToast": "Folder created successfully",
+        "updatedToast": "Folder renamed successfully",
+        "deletedToast": "Folder deleted successfully",
+        "emptyFolder": "No files in this folder yet.",
+        "emptyAll": "No folders or files yet.",
+        "rootFiles": "Files",
+        "allFolders": "All Folders",
+        "backToFolders": "Back to folders",
+        "filesCount": "{count, plural, =0 {0 files} =1 {1 file} other {# files}}",
+        "uploadToFolder": "Upload to this folder",
+        "uploadFiles": "Upload files"
       },
       "selectedSiteMapTitle": "Site address & map",
       "selectedSitesMapTitle": "Site addresses & map",
@@ -3594,6 +3624,7 @@
         "what3words": "What3words",
         "project": "Project",
         "primaryContact": "Primary Contact",
+        "contactPerson": "Contact Person",
         "additionalContact": "Additional Contact",
         "additionalContacts": "Additional Contacts",
         "siteContact": "Site Contact",
@@ -3648,13 +3679,36 @@
         "prevToDetails": "Previous: Details",
         "nextToPricing": "Next: Scope & pricing"
       },
+      "contactPerson": {
+        "sectionTitle": "Title & Contacts",
+        "sectionHint": "Link people from the selected client to this quotation.",
+        "add": "Add contact person",
+        "addAnother": "Add Another Contact Person",
+        "remove": "Remove Contact Person",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Select title",
+        "contactLabel": "Contact Person",
+        "contactPlaceholder": "Select contact",
+        "selectClientFirst": "Select a client first to add contact persons.",
+        "empty": "No contact persons added yet.",
+        "loadingContacts": "Loading contacts…",
+        "noContactsForClient": "No contacts for this client",
+        "titles": {
+          "site_contact": "Site contact",
+          "finance": "Finance",
+          "emergency": "Emergency"
+        }
+      },
       "validation": {
         "quoteName": "Enter a quotation name.",
         "customer": "Select a client.",
         "site": "Select a site.",
         "sites": "Select at least one site.",
         "project": "Select a project.",
-        "requiredOnTab": "Some required fields are missing on the {tab} tab. Fill them to save."
+        "requiredOnTab": "Some required fields are missing on the {tab} tab. Fill them to save.",
+        "contactPersonTitle": "Select a title.",
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       }
     },
     "invoices": {
@@ -4789,6 +4843,8 @@
         "sectionDescription": "Description",
         "statusUnknown": "Not set",
         "notCompleted": "Not completed",
+        "panelContactRoles": "Title & Contacts",
+        "contactRolesEmpty": "No title & contacts linked to this job yet.",
         "qrCodeId": "QR code ID",
         "colCompositeItem": "Composite item",
         "colUnitPrice": "Unit price",
@@ -4999,6 +5055,26 @@
         "save": "Save",
         "saveChanges": "Save changes"
       },
+      "contactPerson": {
+        "sectionTitle": "Title & Contacts",
+        "sectionHint": "Link people from the selected client to this job.",
+        "add": "Add contact person",
+        "addAnother": "Add Another Contact Person",
+        "remove": "Remove Contact Person",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Select title",
+        "contactLabel": "Contact Person",
+        "contactPlaceholder": "Select contact",
+        "selectClientFirst": "Select a client first to add contact persons.",
+        "empty": "No contact persons added yet.",
+        "loadingContacts": "Loading contacts…",
+        "noContactsForClient": "No contacts for this client",
+        "titles": {
+          "site_contact": "Site contact",
+          "finance": "Finance",
+          "emergency": "Emergency"
+        }
+      },
       "validation": {
         "title": "Enter a job title.",
         "client": "Select a client.",
@@ -5008,7 +5084,10 @@
         "endBeforeStart": "End must be on or after the start.",
         "optionalId": "Choose a valid option.",
         "compositeQuantity": "Enter a quantity greater than zero when a composite item is selected.",
-        "requiredChecklist": "Please select at least one checklist item."
+        "requiredChecklist": "Please select at least one checklist item.",
+        "contactPersonTitle": "Select a title.",
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       }
     },
     "home": {
@@ -5162,6 +5241,8 @@
         "panelTimeline": "Timeline",
         "panelSites": "Sites",
         "sitesEmpty": "No sites linked to this project yet.",
+        "panelContactPersons": "Title & Contacts",
+        "contactPersonsEmpty": "No title & contacts linked to this project yet.",
         "panelSystemActivity": "System activity",
         "tabsAria": "Project sections",
         "tabs": {
@@ -5456,7 +5537,8 @@
         "updatedAt": "Last Updated",
         "createdBy": "Created By",
         "projectStatus": "Project Status",
-        "manager": "Managers"
+        "manager": "Managers",
+        "projectImage": "Project Image"
       },
       "hints": {
         "sitesMultiSelect": "Select one or more sites for this project."
@@ -5474,6 +5556,26 @@
         "editTitle": "Edit",
         "editSubtitle": "Update project details and save changes."
       },
+      "contactPerson": {
+        "sectionTitle": "Title & Contacts",
+        "sectionHint": "Link people from the selected client to this project.",
+        "add": "Create contact person",
+        "addAnother": "Add Another Contact Person",
+        "remove": "Remove Contact Person",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Select title",
+        "contactLabel": "Contact Person",
+        "contactPlaceholder": "Select contact",
+        "selectClientFirst": "Select a client first to add contact persons.",
+        "empty": "No contact persons added yet.",
+        "loadingContacts": "Loading contacts…",
+        "noContactsForClient": "No contacts for this client",
+        "titles": {
+          "site_contact": "Site contact",
+          "finance": "Finance",
+          "emergency": "Emergency"
+        }
+      },
       "validation": {
         "name": "Enter a project name.",
         "client": "Select a client.",
@@ -5481,7 +5583,10 @@
         "description": "Enter a description.",
         "startDate": "Choose a start date.",
         "endDate": "Choose an end date.",
-        "dateOrder": "End date must be on or after the start date."
+        "dateOrder": "End date must be on or after the start date.",
+        "contactPersonTitle": "Select a title.",
+        "contactPerson": "Select a contact person.",
+        "contactPersonDuplicate": "This title and contact person combination is already added."
       }
     },
     "groups": {

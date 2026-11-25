@@ -124,13 +124,44 @@ export async function updateMaterialRequest(
   return normalizeMaterialRequestRow(data.data);
 }
 
+import type { MaterialRequestFolder } from "@/features/material-requests/types/material-request-folder.types";
+
+export async function fetchMaterialRequestFolders(id: number): Promise<MaterialRequestFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<MaterialRequestFolder[]> | MaterialRequestFolder[]>(MATERIAL_REQUEST_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createMaterialRequestFolder(entityId: number, name: string): Promise<MaterialRequestFolder> {
+  const { data } = await api.post<ApiEnvelope<MaterialRequestFolder> | MaterialRequestFolder>(MATERIAL_REQUEST_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as MaterialRequestFolder;
+}
+
+export async function updateMaterialRequestFolder(entityId: number, folderId: number, name: string): Promise<MaterialRequestFolder> {
+  const { data } = await api.patch<ApiEnvelope<MaterialRequestFolder> | MaterialRequestFolder>(MATERIAL_REQUEST_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as MaterialRequestFolder;
+}
+
+export async function deleteMaterialRequestFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(MATERIAL_REQUEST_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateMaterialRequestAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<MaterialRequestDetail> {
   const saved = await updateEntityAttachments<MaterialRequestDetail>(
     MATERIAL_REQUEST_PATHS.detail(id),
     refs,
+    options,
   );
   return normalizeMaterialRequestRow(saved);
 }

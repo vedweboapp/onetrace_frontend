@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { FloatingPortalToolbar } from "./floating-portal-toolbar";
 import {
   Image as ImageIcon,
   Trash2,
@@ -155,11 +156,13 @@ export function ImageVariableNodeView({
       ref={containerRef}
       className={cn(
         "my-4 relative group select-none transition-all",
+        isSelected ? "z-50" : "z-10",
         containerMargin,
       )}
       style={{
         width: typeof width === "number" ? `${width}px` : width,
         maxWidth: "100%",
+        zIndex: isSelected ? 50 : 10,
       }}
     >
       <div
@@ -167,7 +170,7 @@ export function ImageVariableNodeView({
         className={cn(
           "relative rounded-xl border-2 border-dashed transition-all overflow-visible bg-slate-50/80 dark:bg-slate-900/80",
           isSelected
-            ? "border-blue-500 shadow-md ring-2 ring-blue-500/20"
+            ? "border-blue-500 shadow-md ring-2 ring-blue-500/20 z-50"
             : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600",
         )}
         style={{
@@ -176,12 +179,8 @@ export function ImageVariableNodeView({
         }}
       >
         {/* Floating Quick Actions Bar on Hover / Selection */}
-        <div
-          className={cn(
-            "absolute -top-10 left-0 right-auto flex items-center gap-1 bg-white/95 dark:bg-slate-800/95 shadow-md border border-slate-200 dark:border-slate-700 rounded-lg p-1 z-30 transition-opacity",
-            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-          )}
-        >
+        <FloatingPortalToolbar anchorRef={cardRef} open={isSelected || isResizing}>
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 rounded-lg p-1">
           {/* Drag Handle */}
           <div
             data-drag-handle
@@ -321,7 +320,8 @@ export function ImageVariableNodeView({
           >
             <Trash2 size={13} />
           </button>
-        </div>
+          </div>
+        </FloatingPortalToolbar>
 
         {/* Live Resizing Dimensions Indicator */}
         {isResizing && currentDimensions && (

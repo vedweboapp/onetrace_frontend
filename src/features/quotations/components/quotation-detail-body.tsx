@@ -16,8 +16,10 @@ import type {
   QuotationDetail,
   QuotationUserRef,
 } from "@/features/quotations/types/quotation.types";
+import type { ProjectContactPerson, ProjectContactPersonContactRef } from "@/features/projects/types/project.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
 import {
   getQuotationAdditionalContactEntries,
   getQuotationAdditionalContactIds,
@@ -96,6 +98,69 @@ function quotationContactToAudit(
 
 type AdditionalContactEntry = ReturnType<typeof getQuotationAdditionalContactEntries>[number];
 
+
+function resolveContactRoleRows(
+  contacts: ProjectContactPerson[] | null | undefined,
+): { id?: number; titleName: string; name: string; email: string; phone: string }[] {
+  if (!Array.isArray(contacts)) return [];
+  return contacts.map((entry) => {
+    const flatName = entry.contact_name ?? null;
+    const flatEmail = entry.contact_email ?? null;
+    const flatPhone = entry.contact_phone ?? null;
+    const flatTitleName = entry.title_name ?? null;
+    const ref =
+      entry.contact && typeof entry.contact === "object"
+        ? (entry.contact as ProjectContactPersonContactRef)
+        : null;
+    const name =
+      flatName ||
+      (ref ? `${ref.first_name ?? ""} ${ref.last_name ?? ""}`.trim() || ref.name?.trim() || "" : "");
+    const email = flatEmail || ref?.email || "";
+    const phone = flatPhone || ref?.phone || "";
+    const titleName = flatTitleName || (typeof entry.title === "string" ? entry.title : "") || "";
+    return { id: entry.id, titleName, name, email, phone };
+  });
+}
+
+function ContactRolesPanel({
+  rows,
+  title,
+  emptyLabel,
+}: {
+  rows: { id?: number; titleName: string; name: string; email: string; phone: string }[];
+  title: string;
+  emptyLabel: string;
+}) {
+  return (
+    <DetailPanelCard title={title}>
+      {rows.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{emptyLabel}</p>
+      ) : (
+        <div className="w-full">
+          {rows.map((row, idx) => (
+            <div key={row.id ?? idx} className="w-full flex px-10">
+              <div
+                className="grid items-baseline gap-x-6 gap-y-0 py-2 text-sm text-slate-700 dark:text-slate-300 w-full"
+                style={{ gridTemplateColumns: "auto 1fr 1fr 1fr" }}
+              >
+                <span className="w-fit rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold leading-none text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                  {row.titleName || "—"}
+                </span>
+                <span className="truncate leading-none">{row.name || "—"}</span>
+                <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                  {row.email || "—"}
+                </span>
+                <span className="truncate leading-none text-slate-500 dark:text-slate-400">
+                  {row.phone || "—"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </DetailPanelCard>
+  );
+}
 
 function QuotationDetailPeopleSection({
   detail,
@@ -511,11 +576,24 @@ export function QuotationDetailBody({
           value={desc}
           kind="text"
           multiline
-          textareaBox
           editAriaLabel={tActions("edit")}
           empty="—"
           onSave={(next) => patchField({ description: next || null })}
-        />
+          renderEditor={({ draft, setDraft, saving }) => (
+            <RichTextEditor
+              value={draft}
+              onChange={setDraft}
+              readOnly={saving}
+            />
+          )}
+        >
+          {desc && desc !== "<p></p>" ? (
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none w-full min-w-0 py-1 text-slate-700 dark:text-slate-300 [&_p]:my-1 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:my-1.5 [&_blockquote]:border-l-[3px] [&_blockquote]:border-[color:var(--dash-accent,#111111)] [&_blockquote]:pl-3 [&_a]:text-blue-500 [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: desc }}
+            />
+          ) : null}
+        </DetailEditableField>
       </DetailMetricsGrid>
     </DetailPanelCard>
   );
@@ -616,6 +694,16 @@ export function QuotationDetailBody({
             contactOptions={contactOptions}
             salespersonOptions={salespersonOptions}
             onSaveField={patchField}
+          />
+
+          <ContactRolesPanel
+            rows={resolveContactRoleRows(
+              detail.contacts ??
+                (detail as any).quotation_contact_persons ??
+                (detail as any).contact_persons,
+            )}
+            title={t("detail.panelContactRoles")}
+            emptyLabel={t("detail.contactRolesEmpty")}
           />
 
           <DetailSystemMetadataSection

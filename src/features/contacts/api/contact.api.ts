@@ -83,9 +83,39 @@ export async function updateContact(
   return data.data;
 }
 
+import type { ContactFolder } from "@/features/contacts/types/contact-folder.types";
+
+export async function fetchContactFolders(id: number): Promise<ContactFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<ContactFolder[]> | ContactFolder[]>(CONTACT_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createContactFolder(entityId: number, name: string): Promise<ContactFolder> {
+  const { data } = await api.post<ApiEnvelope<ContactFolder> | ContactFolder>(CONTACT_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ContactFolder;
+}
+
+export async function updateContactFolder(entityId: number, folderId: number, name: string): Promise<ContactFolder> {
+  const { data } = await api.patch<ApiEnvelope<ContactFolder> | ContactFolder>(CONTACT_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as ContactFolder;
+}
+
+export async function deleteContactFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(CONTACT_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updateContactAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<Contact> {
-  return updateEntityAttachments<Contact>(CONTACT_PATHS.detail(id), refs);
+  return updateEntityAttachments<Contact>(CONTACT_PATHS.detail(id), refs, options);
 }

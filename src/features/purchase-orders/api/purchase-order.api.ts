@@ -83,11 +83,41 @@ export async function updatePurchaseOrder(
   return data.data;
 }
 
+import type { PurchaseOrderFolder } from "@/features/purchase-orders/types/purchase-order-folder.types";
+
+export async function fetchPurchaseOrderFolders(id: number): Promise<PurchaseOrderFolder[]> {
+  try {
+    const { data } = await api.get<ApiEnvelope<PurchaseOrderFolder[]> | PurchaseOrderFolder[]>(PURCHASE_ORDER_PATHS.folders(id));
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object" && "data" in data && Array.isArray(data.data)) return data.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createPurchaseOrderFolder(entityId: number, name: string): Promise<PurchaseOrderFolder> {
+  const { data } = await api.post<ApiEnvelope<PurchaseOrderFolder> | PurchaseOrderFolder>(PURCHASE_ORDER_PATHS.folders(entityId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as PurchaseOrderFolder;
+}
+
+export async function updatePurchaseOrderFolder(entityId: number, folderId: number, name: string): Promise<PurchaseOrderFolder> {
+  const { data } = await api.patch<ApiEnvelope<PurchaseOrderFolder> | PurchaseOrderFolder>(PURCHASE_ORDER_PATHS.folderDetail(entityId, folderId), { name });
+  if (data && typeof data === "object" && "data" in data && data.data) return data.data;
+  return data as PurchaseOrderFolder;
+}
+
+export async function deletePurchaseOrderFolder(entityId: number, folderId: number): Promise<void> {
+  await api.delete(PURCHASE_ORDER_PATHS.folderDetail(entityId, folderId));
+}
+
 export async function updatePurchaseOrderAttachments(
   id: number,
   refs: EntityAttachmentWriteRef[],
+  options?: { folderId?: number | null },
 ): Promise<PurchaseOrderDetail> {
-  return updateEntityAttachments<PurchaseOrderDetail>(PURCHASE_ORDER_PATHS.detail(id), refs);
+  return updateEntityAttachments<PurchaseOrderDetail>(PURCHASE_ORDER_PATHS.detail(id), refs, options);
 }
 
 export async function deletePurchaseOrder(id: number): Promise<void> {

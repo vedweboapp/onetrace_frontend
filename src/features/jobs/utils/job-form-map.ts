@@ -129,6 +129,12 @@
     const client = parseOptionalIdField(values.client);
     if (client != null) payload.client = client;
 
+    const contactPerson = parseOptionalIdField(values.contact_person ?? "");
+    if (contactPerson != null) {
+      payload.contact_person = contactPerson;
+      payload.contact = contactPerson;
+    }
+
     const project = parseOptionalIdField(values.project);
     if (project != null) payload.project = project;
 
@@ -143,6 +149,15 @@
       payload.job_meta = job_meta;
     }
 
+    if (Array.isArray(values.contacts)) {
+      payload.contacts = values.contacts
+        .map((row) => ({
+          title: row.title.trim(),
+          contact: Number.parseInt(row.contact.trim(), 10),
+        }))
+        .filter((row) => row.title.length > 0 && Number.isFinite(row.contact) && row.contact > 0);
+    }
+
     return payload;
   }
 
@@ -153,12 +168,14 @@
       job_status: "",
       checklists: [],
       client: "",
+      contact_person: "",
       project: "",
       site: "",
       assigned_worker: "",
       start_date: "",
       job_category: category ?? "",
       job_meta_items: [{ group: "", group_name: "", item: "", item_name: "", quantity: "", rate: "" }],
+      contacts: [],
     };
   }
 
@@ -215,6 +232,7 @@
             : "",
       ),
       client: String(nestedId(job.client) ?? ""),
+      contact_person: String(nestedId((job as any).contact_person ?? (job as any).contact) ?? ""),
       project: String(nestedId(job.project) ?? ""),
       site: String(nestedId(job.site) ?? ""),
       checklists: jobChecklistEntries(job).map((c) => String(c.id)),
@@ -225,5 +243,25 @@
         compositeItems.length > 0
           ? compositeItems
           : [{ group: "", group_name: "", item: "", item_name: "", quantity: "", rate: "" }],
+      contacts: Array.isArray(
+        job.contacts ??
+          (job as any).job_contact_persons ??
+          (job as any).project_contact_persons ??
+          (job as any).contact_persons,
+      )
+        ? (
+            job.contacts ??
+            (job as any).job_contact_persons ??
+            (job as any).project_contact_persons ??
+            (job as any).contact_persons
+          ).map((row: any) => {
+            const contactId =
+              typeof row?.contact === "number" ? row.contact : row?.contact?.id;
+            return {
+              title: String(row?.title ?? ""),
+              contact: contactId ? String(contactId) : "",
+            };
+          })
+        : [],
     };
   }

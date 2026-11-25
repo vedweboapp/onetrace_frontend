@@ -32,7 +32,7 @@ import { ProjectQuotationsTab } from "@/features/projects/components/project-quo
 import type { Project } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { projectTypesById } from "@/features/projects/utils/project-type-id.util";
-import { EntityAttachmentsTab } from "@/shared/attachments/entity-attachments-tab";
+import { ProjectAttachmentsTab } from "./project-attachments-tab";
 import { EntityNotesTab } from "@/shared/notes/entity-notes-tab";
 import {
   EntityDetailDeleteEditActions,
@@ -503,13 +503,7 @@ export function ProjectDetailScreen({ projectId }: Props) {
           ) : detail && activeTab === "location" ? (
             <ProjectPinsListTab sites={detail.sites} />
           ) : detail && activeTab === "attachments" ? (
-            <EntityAttachmentsTab
-              entityId={detail.id}
-              attachments={detail.attachments}
-              emptyIconName="projects"
-              updateAttachments={(refs) => updateProjectAttachments(detail.id, refs)}
-              onSaved={retry}
-            />
+            <ProjectAttachmentsTab detail={detail} onSaved={retry} />
           ) : detail && activeTab === "notes" ? (
             <EntityNotesTab detailPath={PROJECT_PATHS.detail(detail.id)} />
           ) : detail && activeTab === "timeline" ? (

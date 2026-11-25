@@ -17,7 +17,8 @@ import {
   fetchQuotation,
   updateQuotation,
 } from "@/features/quotations/api/quotation.api";
-import { QuotationAdditionalContactsFields } from "@/features/quotations/components/quotation-additional-contacts-fields";
+import { QuotationContactPersonsFields } from "@/features/quotations/components/quotation-contact-persons-fields";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
   isProjectQuoteCategory,
@@ -225,6 +226,8 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
   const [siteRows, setSiteRows] = React.useState<QuotationSiteOptionRow[]>([]);
   const [projectRows, setProjectRows] = React.useState<Project[]>([]);
   const [contactOptions, setContactOptions] = React.useState<Option[]>([]);
+  const pendingContactRowRef = React.useRef<number | null>(null);
+  const [contactsRefreshKey, setContactsRefreshKey] = React.useState(0);
   const [tagOptions, setTagOptions] = React.useState<Option[]>([]);
   const [tagModalOpen, setTagModalOpen] = React.useState(false);
   const [salesOptions, setSalesOptions] = React.useState<Option[]>([]);
@@ -305,6 +308,9 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           customer: t("validation.customer"),
           sites: t("validation.sites"),
           project: t("validation.project"),
+          contactPersonTitle: t("validation.contactPersonTitle"),
+          contactPerson: t("validation.contactPerson"),
+          contactPersonDuplicate: t("validation.contactPersonDuplicate"),
         },
         // Project required only for project quotations; validated in onSubmit so edit load can flip category.
         { requireProject: false },
@@ -382,6 +388,17 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
           fieldTargetOverride?.trim() ||
           peekQuickCreateFieldTarget(draftReturnTo) ||
           "primary_customer_contact";
+        const contactsMatch = /^contacts\.(\d+)$/.exec(fieldTarget);
+        if (contactsMatch) {
+          const rowIdx = Number.parseInt(contactsMatch[1] ?? "", 10);
+          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+            const rows = [...(next.contacts ?? [])];
+            while (rows.length <= rowIdx) rows.push({ title: "", contact: "" });
+            rows[rowIdx] = { ...rows[rowIdx], contact: selectId };
+            next.contacts = rows;
+            return next;
+          }
+        }
         const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
         if (additionalMatch) {
           const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
@@ -1424,10 +1441,37 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
         return;
       }
       if (selectTarget === "contact") {
+        setContactsRefreshKey((k) => k + 1);
+        const rowIndex = pendingContactRowRef.current;
+        if (rowIndex != null) {
+          setValue(`contacts.${rowIndex}.contact`, selectId, { shouldDirty: true, shouldValidate: true });
+          pendingContactRowRef.current = null;
+          const contactId = Number.parseInt(selectId, 10);
+          if (Number.isFinite(contactId) && contactId > 0) {
+            await ensureContactInOptions(contactId);
+          }
+          return;
+        }
+
         const fieldTarget =
           fieldTargetArg?.trim() ||
           peekQuickCreateFieldTarget(draftReturnTo) ||
           "primary_customer_contact";
+        const contactsMatch = /^contacts\.(\d+)$/.exec(fieldTarget);
+        if (contactsMatch) {
+          const rowIdx = Number.parseInt(contactsMatch[1] ?? "", 10);
+          if (Number.isFinite(rowIdx) && rowIdx >= 0) {
+            setValue(`contacts.${rowIdx}.contact`, selectId, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            const contactId = Number.parseInt(selectId, 10);
+            if (Number.isFinite(contactId) && contactId > 0) {
+              await ensureContactInOptions(contactId);
+            }
+            return;
+          }
+        }
         const additionalMatch = /^additional_customer_contacts\.(\d+)$/.exec(fieldTarget);
         if (additionalMatch) {
           const rowIdx = Number.parseInt(additionalMatch[1] ?? "", 10);
@@ -1815,7 +1859,11 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                       options={contactOptions}
                       value={field.value}
                       fallbackLabel={primaryContactFallbackLabel}
-                      emptyLabel={t("placeholders.contactOptional")}
+                      emptyLabel={
+                        customerId
+                          ? t("placeholders.contactOptional")
+                          : t("additionalContacts.selectClientFirst", { defaultValue: "Select a client first" })
+                      }
                       disabled={saving || !customerId}
                       onBlur={field.onBlur}
                       onAdd={contactQuickCreate.canAdd ? addPrimaryContact : undefined}
@@ -1830,21 +1878,6 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
                 <SurfaceDateInput id="quotation-due" type="date" {...register("due_date")} />
               </FieldGroup>
             </FormFieldRow>
-            <QuotationAdditionalContactsFields
-              control={control}
-              contactOptions={contactOptions}
-              customerId={customerId}
-              disabled={saving}
-              onAddContact={contactQuickCreate.onAdd}
-              addAriaLabel={contactQuickCreate.addAriaLabel}
-              addLabel={contactQuickCreate.addLabel}
-              onRequestAddContact={(rowIndex) => {
-                storeQuickCreateFieldTarget(
-                  draftReturnTo,
-                  `additional_customer_contacts.${rowIndex}`,
-                );
-              }}
-            />
             {isEdit ? (
               <FormFieldRow cols="2" from="xl">
                 <FieldGroup label={t("fields.orderNumber")} htmlFor="quotation-order">
@@ -1956,13 +1989,30 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
-              <textarea
-                id="quotation-desc"
-                rows={4}
-                className={surfaceTextareaClassName}
-                {...register("description")}
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <RichTextEditor
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    readOnly={saving}
+                    placeholder={t("placeholders.userOptional")}
+                  />
+                )}
               />
             </FieldGroup>
+
+            <QuotationContactPersonsFields
+              control={control}
+              setValue={setValue}
+              errors={errors}
+              disabled={saving}
+              pendingContactRowRef={pendingContactRowRef}
+              contactsRefreshKey={contactsRefreshKey}
+              getFormDraft={getFormDraft}
+            />
             </div>
             </DetailPageMapLayout>
             <DetailTabStepNav
