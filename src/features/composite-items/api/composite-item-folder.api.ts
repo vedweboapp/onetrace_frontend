@@ -50,5 +50,5 @@ export async function updateCompositeItemAttachments(
   refs: EntityAttachmentWriteRef[],
   options?: { folderId?: number | null },
 ): Promise<CompositeItem> {
-  return updateEntityAttachments<CompositeItem>(COMPOSITE_ITEM_PATHS.detail(id), refs, options);
+  return updateEntityAttachments<CompositeItem>(COMPOSITE_ITEM_PATHS.attachmentDetail(id), refs, options);
 }

@@ -19,6 +19,7 @@ import type {
 import type { ProjectContactPerson, ProjectContactPersonContactRef } from "@/features/projects/types/project.types";
 import type { QuotationDraft } from "@/features/quotations/types/quotation-draft.types";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
 import {
   getQuotationAdditionalContactEntries,
   getQuotationAdditionalContactIds,
@@ -575,11 +576,24 @@ export function QuotationDetailBody({
           value={desc}
           kind="text"
           multiline
-          textareaBox
           editAriaLabel={tActions("edit")}
           empty="—"
           onSave={(next) => patchField({ description: next || null })}
-        />
+          renderEditor={({ draft, setDraft, saving }) => (
+            <RichTextEditor
+              value={draft}
+              onChange={setDraft}
+              readOnly={saving}
+            />
+          )}
+        >
+          {desc && desc !== "<p></p>" ? (
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none w-full min-w-0 py-1 text-slate-700 dark:text-slate-300 [&_p]:my-1 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:my-1.5 [&_blockquote]:border-l-[3px] [&_blockquote]:border-[color:var(--dash-accent,#111111)] [&_blockquote]:pl-3 [&_a]:text-blue-500 [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: desc }}
+            />
+          ) : null}
+        </DetailEditableField>
       </DetailMetricsGrid>
     </DetailPanelCard>
   );

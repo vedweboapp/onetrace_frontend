@@ -5,12 +5,8 @@ import { useTranslations } from "next-intl";
 import { EntityAuditTimeline } from "@/features/audit-trails/components/entity-audit-timeline";
 import { AUDIT_TRAIL_MODULES } from "@/features/audit-trails/constants/audit-trail-modules";
 import { fetchClientsPage } from "@/features/clients/api/client.api";
-import { fetchContactsPage } from "@/features/contacts/api/contact.api";
-import { formatContactName } from "@/features/contacts/utils/contact-name.util";
-import { getSiteContactPersonContactId, normalizeSiteContactPersonsFromApi } from "@/features/sites/utils/site-contact-person.util";
 import { fetchSite, updateSiteAttachments } from "@/features/sites/api/site.api";
 import { SITE_PATHS } from "@/features/sites/api/site.paths";
-import { fetchTitlesPage } from "@/features/titles/api/title.api";
 import { SiteDetailBody } from "@/features/sites/components/site-detail-body";
 import type { Site } from "@/features/sites/types/site.types";
 import { SiteAttachmentsTab } from "./site-attachments-tab";
@@ -44,102 +40,6 @@ function siteClientName(site: Site, clientNameById: Record<number, string>): str
 type Props = {
   siteId: number;
 };
-
-function SiteDetailBodyWithContacts({
-  detail,
-  clientName,
-  clientOptions,
-  dateFmt,
-  onSaved,
-}: {
-  detail: Site;
-  clientName: string;
-  clientOptions: { value: string; label: string }[];
-  dateFmt: Intl.DateTimeFormat;
-  onSaved?: () => void;
-}) {
-  const [contactNameById, setContactNameById] = React.useState<Record<number, string>>({});
-  const [titleNameById, setTitleNameById] = React.useState<Record<string, string>>({});
-  const clientId = siteClientId(detail);
-
-  React.useEffect(() => {
-    if (!clientId) {
-      const timer = window.setTimeout(() => {
-        setContactNameById({});
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-    const rows = normalizeSiteContactPersonsFromApi(detail);
-    const needsFetch = rows.some((row) => {
-      const id = getSiteContactPersonContactId(row.contact);
-      return id != null && typeof row.contact !== "object";
-    });
-    if (!needsFetch) {
-      const fromRows: Record<number, string> = {};
-      for (const row of rows) {
-        if (row.contact && typeof row.contact === "object") {
-          const label = formatContactName(row.contact);
-          if (label) fromRows[row.contact.id] = label;
-        }
-      }
-      const timer = window.setTimeout(() => {
-        setContactNameById(fromRows);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchContactsPage(1, 20, { client: clientId, is_active: true, dropdown: true });
-        if (!cancelled) {
-          const mapped: Record<number, string> = {};
-          for (const c of items) {
-            mapped[c.id] = formatContactName(c) || "—";
-          }
-          setContactNameById(mapped);
-        }
-      } catch {
-        if (!cancelled) setContactNameById({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [detail, clientId]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { items } = await fetchTitlesPage(1, 20, { dropdown: true });
-        if (!cancelled) {
-          const mapped: Record<string, string> = {};
-          for (const item of items) {
-            mapped[String(item.id)] = item.title;
-          }
-          setTitleNameById(mapped);
-        }
-      } catch {
-        if (!cancelled) setTitleNameById({});
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <SiteDetailBody
-      detail={detail}
-      clientName={clientName}
-      clientOptions={clientOptions}
-      dateFmt={dateFmt}
-      contactNameById={contactNameById}
-      titleNameById={titleNameById}
-      onSaved={onSaved}
-    />
-  );
-}
 
 export function SiteDetailScreen({ siteId }: Props) {
   const t = useTranslations("Dashboard.sites");
@@ -230,7 +130,7 @@ export function SiteDetailScreen({ siteId }: Props) {
           ) : error ? (
             <EntityDetailErrorState message={error} retryLabel={t("detail.retry")} onRetry={retry} />
           ) : detail && activeTab === "details" ? (
-            <SiteDetailBodyWithContacts
+            <SiteDetailBody
               detail={detail}
               clientName={siteClientName(detail, clientNameById)}
               clientOptions={clientOptions}

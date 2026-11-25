@@ -4,8 +4,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { fetchSitesPage, updateSite } from "@/features/sites/api/site.api";
-import { SiteDetailContactPersonsEditor } from "@/features/sites/components/site-detail-contact-persons-editor";
-import type { Site, SiteContactPersonPayload, SiteUpdatePayload } from "@/features/sites/types/site.types";
+import type { Site, SiteUpdatePayload } from "@/features/sites/types/site.types";
 import { DetailEntityLink, DetailSystemMetadataSection } from "@/shared/components/entity";
 import { DetailEditableField } from "@/shared/components/layout/detail-editable-field";
 import {
@@ -44,16 +43,12 @@ export function SiteDetailBody({
   dateFmt,
   clientName,
   clientOptions = [],
-  contactNameById = {},
-  titleNameById = {},
   onSaved,
 }: {
   detail: Site;
   dateFmt: Intl.DateTimeFormat;
   clientName: string | null;
   clientOptions?: CheckmarkSelectOption[];
-  contactNameById?: Record<number, string>;
-  titleNameById?: Record<string, string>;
   /** Refresh detail after a successful quick-edit PATCH. */
   onSaved?: () => void;
 }) {
@@ -89,10 +84,13 @@ export function SiteDetailBody({
         const { items } = await fetchSitesPage(1, 100, { dropdown: true });
         if (cancelled) return;
         const filtered = items.filter((s) => s.id !== detail.id);
-        const options: CheckmarkSelectOption[] = filtered.map((s) => ({
-          value: String(s.id),
-          label: s.site_name,
-        }));
+        const options: CheckmarkSelectOption[] = [
+          { value: "", label: t("placeholders.parentSite") },
+          ...filtered.map((s) => ({
+            value: String(s.id),
+            label: s.site_name,
+          })),
+        ];
         if (parentSiteId != null && !options.some((o) => o.value === String(parentSiteId))) {
           options.unshift({
             value: String(parentSiteId),
@@ -184,10 +182,8 @@ export function SiteDetailBody({
               onSave={async (next) => {
                 const nextId = Number.parseInt(next, 10);
                 if (!Number.isFinite(nextId) || nextId <= 0) return;
-                // Changing client clears contact persons (same as create/edit form).
                 await patchSiteField({
                   client: nextId,
-                  ...(clientId !== nextId ? { contacts: [] as SiteContactPersonPayload[] } : {}),
                 });
               }}
             >
@@ -313,14 +309,6 @@ export function SiteDetailBody({
             </DetailEditableField>
           </DetailMetricsGrid>
         </DetailPanelCard>
-
-        <SiteDetailContactPersonsEditor
-          title={t("contactPerson.sectionTitle")}
-          detail={detail}
-          contactNameById={contactNameById}
-          titleNameById={titleNameById}
-          onSaveContacts={(contacts) => patchSiteField({ contacts })}
-        />
 
         <DetailSystemMetadataSection
           createdAt={detail.created_at}

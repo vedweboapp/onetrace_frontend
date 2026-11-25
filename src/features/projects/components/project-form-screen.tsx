@@ -30,6 +30,7 @@ import { useDropdownCatalogEpoch } from "@/shared/catalog/use-dropdown-catalog-e
 import { createProjectFormSchema, type ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
 import {
   emptyProjectFormDefaults,
+  mapProjectFormToDirtyPayload,
   mapProjectFormToPayload,
   projectToFormDefaults,
 } from "@/features/projects/utils/project-form-map";
@@ -140,7 +141,7 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     getValues,
     setError,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyProjectFormDefaults(),
@@ -799,7 +800,10 @@ export function ProjectFormScreen({ mode, projectId }: Props) {
     }
     setSaving(true);
     try {
-      const saved = isEdit && projectId ? await updateProject(projectId, payload) : await createProject(payload);
+      const saved =
+        isEdit && projectId
+          ? await updateProject(projectId, mapProjectFormToDirtyPayload(values, dirtyFields))
+          : await createProject(payload);
       toastSuccess(isEdit ? t("updatedToast") : t("createdToast"));
       if (!isEdit) clearQuickCreateFormDraft(draftReturnTo);
       router.replace(

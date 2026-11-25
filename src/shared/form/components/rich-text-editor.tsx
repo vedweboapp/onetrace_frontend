@@ -13,10 +13,16 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
+  Code,
   Heading1,
   Heading2,
+  Heading3,
   List,
   ListOrdered,
+  Quote,
+  Minus,
+  Undo2,
+  Redo2,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -176,10 +182,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const isItalicActive = editor?.isActive("italic");
   const isUnderlineActive = editor?.isActive("underline");
   const isStrikeActive = editor?.isActive("strike");
+  const isCodeActive = editor?.isActive("code");
   const isHeading1Active = editor?.isActive("heading", { level: 1 });
   const isHeading2Active = editor?.isActive("heading", { level: 2 });
+  const isHeading3Active = editor?.isActive("heading", { level: 3 });
   const isBulletListActive = editor?.isActive("bulletList");
   const isOrderedListActive = editor?.isActive("orderedList");
+  const isBlockquoteActive = editor?.isActive("blockquote");
   const isAlignLeftActive = editor?.isActive({ textAlign: "left" });
   const isAlignCenterActive = editor?.isActive({ textAlign: "center" });
   const isAlignRightActive = editor?.isActive({ textAlign: "right" });
@@ -194,7 +203,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       disabled={readOnly}
       className={`p-1.5 rounded transition-colors ${
         isActive
-          ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+          ? "bg-[color:var(--dash-accent,#111111)]/10 text-[color:var(--dash-accent,#111111)] dark:bg-[color:var(--dash-accent,#111111)]/20"
           : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
@@ -227,6 +236,31 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           margin-top: 0.25rem;
           margin-bottom: 0.25rem;
         }
+        .ProseMirror blockquote {
+          border-left: 3px solid var(--dash-accent, #111111);
+          margin: 0.5rem 0;
+          padding: 0.25rem 0.75rem;
+          background: rgba(0, 0, 0, 0.03);
+          border-radius: 0 4px 4px 0;
+        }
+        .dark .ProseMirror blockquote {
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .ProseMirror hr {
+          border: none;
+          border-top: 1px solid #cbd5e1;
+          margin: 0.75rem 0;
+        }
+        .ProseMirror code {
+          background-color: rgba(0, 0, 0, 0.06);
+          padding: 0.15rem 0.35rem;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 0.85em;
+        }
+        .dark .ProseMirror code {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
       `}</style>
 
       {label && (
@@ -238,22 +272,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       <div
         className={`
           flex flex-col
-          rounded-[8px]
+          rounded-xl
           w-full
+          transition
           ${chrome === "plain"
             ? "border-none bg-transparent"
             : readOnly
-            ? "border-none bg-gray-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
-            : `bg-white dark:bg-slate-900 border ${
+            ? "border-none bg-slate-100 dark:bg-slate-800/50 cursor-not-allowed select-none"
+            : `bg-white dark:bg-slate-950 border ${
                 errors
                   ? "border-red-500"
-                  : "border-gray-300 dark:border-slate-700"
-              } focus-within:ring-2 focus-within:ring-blue-500`
+                  : "border-slate-200 dark:border-slate-700"
+              } focus-within:border-[color:var(--dash-accent,#111111)] focus-within:ring-2 focus-within:ring-[color:var(--dash-accent,#111111)]/20`
           }
         `}
       >
         {editor && !readOnly && toolbarPlacement === "top" ? (
-          <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 rounded-t-[8px]">
+          <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-700 rounded-t-xl">
             <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={isBoldActive} title="Bold">
               <Bold size={16} />
             </ToolbarButton>
@@ -266,6 +301,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={isStrikeActive} title="Strikethrough">
               <Strikethrough size={16} />
             </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} isActive={isCodeActive} title="Code">
+              <Code size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} isActive={isHighlightActive} title="Highlight / Color">
+              <Highlighter size={16} />
+            </ToolbarButton>
 
             <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
 
@@ -275,6 +316,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={isHeading2Active} title="Heading 2">
               <Heading2 size={16} />
             </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={isHeading3Active} title="Heading 3">
+              <Heading3 size={16} />
+            </ToolbarButton>
 
             <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
 
@@ -283,6 +327,21 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={isOrderedListActive} title="Ordered List">
               <ListOrdered size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={isBlockquoteActive} title="Blockquote">
+              <Quote size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal Line">
+              <Minus size={16} />
+            </ToolbarButton>
+
+            <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
+
+            <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">
+              <Undo2 size={16} />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo">
+              <Redo2 size={16} />
             </ToolbarButton>
 
             <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
@@ -302,9 +361,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
             <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1" />
 
-            <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} isActive={isHighlightActive} title="Highlight">
-              <Highlighter size={16} />
-            </ToolbarButton>
             <ToolbarButton
               onClick={setLink}
               isActive={editor?.isActive("link")}

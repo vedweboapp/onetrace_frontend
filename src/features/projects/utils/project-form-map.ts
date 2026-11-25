@@ -1,5 +1,5 @@
 import type { ProjectFormValues } from "@/features/projects/schemas/project-form-schema";
-import type { Project, ProjectUpsertPayload } from "@/features/projects/types/project.types";
+import type { Project, ProjectUpdatePayload, ProjectUpsertPayload } from "@/features/projects/types/project.types";
 import { getProjectClientId } from "@/features/projects/utils/project-client-id.util";
 import { getProjectTypeId } from "@/features/projects/utils/project-type-id.util";
 
@@ -38,6 +38,21 @@ export function mapProjectFormToPayload(values: ProjectFormValues): ProjectUpser
     project_image: values.project_image ?? null,
     contacts,
   };
+}
+
+/** Returns only the fields marked dirty in react-hook-form for partial PATCH updates. */
+export function mapProjectFormToDirtyPayload(
+  values: ProjectFormValues,
+  dirtyFields: Partial<Record<keyof ProjectFormValues, unknown>>,
+): ProjectUpdatePayload {
+  const full = mapProjectFormToPayload(values);
+  const partial: ProjectUpdatePayload = {};
+  for (const key of Object.keys(full) as Array<keyof ProjectUpsertPayload>) {
+    if ((dirtyFields as Record<string, unknown>)[key]) {
+      (partial as Record<string, unknown>)[key] = full[key];
+    }
+  }
+  return partial;
 }
 
 export function emptyProjectFormDefaults(): ProjectFormValues {

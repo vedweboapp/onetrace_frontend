@@ -106,12 +106,15 @@ export function SiteFormScreen({ mode, siteId }: Props) {
       const { items } = await fetchSitesPage(1, 100, { dropdown: true });
       const filtered = siteId ? items.filter((s) => s.id !== siteId) : items;
       setParentSitesList(filtered);
-      setParentSiteOptions(filtered.map((s) => ({ value: String(s.id), label: s.site_name })));
+      setParentSiteOptions([
+        { value: "", label: t("placeholders.parentSite") },
+        ...filtered.map((s) => ({ value: String(s.id), label: s.site_name })),
+      ]);
     } catch {
       setParentSitesList([]);
       setParentSiteOptions([]);
     }
-  }, [siteId]);
+  }, [siteId, t]);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -288,6 +291,10 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                               if (v) {
                                 const selectedParent = parentSitesList.find((s) => String(s.id) === v);
                                 if (selectedParent) {
+                                  setValue("site_name", selectedParent.site_name, {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  });
                                   const loc = getSiteLocationDefaults(selectedParent);
                                   if (loc.country_iso) {
                                     setValue("country_iso", loc.country_iso, { shouldDirty: true, shouldValidate: true });
@@ -301,6 +308,20 @@ export function SiteFormScreen({ mode, siteId }: Props) {
                                   if (loc.pincode) {
                                     setValue("pincode", loc.pincode, { shouldDirty: true, shouldValidate: true });
                                   }
+                                  if (loc.address_line_1) {
+                                    setValue("address_line_1", loc.address_line_1, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  if (loc.address_line_2) {
+                                    setValue("address_line_2", loc.address_line_2, { shouldDirty: true, shouldValidate: true });
+                                  }
+                                  window.setTimeout(() => {
+                                    const el = document.getElementById("site-name") as HTMLInputElement | null;
+                                    if (el) {
+                                      el.focus();
+                                      const len = el.value.length;
+                                      el.setSelectionRange(len, len);
+                                    }
+                                  }, 50);
                                 }
                               }
                             }}

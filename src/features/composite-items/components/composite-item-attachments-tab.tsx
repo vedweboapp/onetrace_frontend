@@ -400,7 +400,7 @@ export function CompositeItemAttachmentsTab({ detail, onSaved }: CompositeItemAt
       setMovingAttachmentId(attachmentId);
       try {
         await moveEntityAttachment(
-          COMPOSITE_ITEM_PATHS.detail(detail.id),
+          COMPOSITE_ITEM_PATHS.attachmentDetail(detail.id),
           attachmentId,
           targetFolderId,
         );

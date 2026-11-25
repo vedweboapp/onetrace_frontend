@@ -97,39 +97,20 @@ export async function fetchLocation(id: number | string): Promise<Drawing[]> {
 
 export function buildProjectFormData(body: ProjectUpsertPayload): FormData {
   const fd = new FormData();
+  const jsonPayload: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(body)) {
     if (val === undefined) continue;
     if (key === "project_image") {
       if (val instanceof File) {
         fd.append("project_image", val, val.name);
       } else if (val === null) {
-        fd.append("project_image", "");
+        fd.append("project_image", "null");
       }
       continue;
     }
-    if (key === "contacts") {
-      if (Array.isArray(val)) {
-        (val as Array<{ title: string; contact: number }>).forEach((row, i) => {
-          fd.append(`contacts[${i}][title]`, String(row.title ?? ""));
-          fd.append(`contacts[${i}][contact]`, String(row.contact));
-        });
-      }
-      continue;
-    }
-    if (Array.isArray(val)) {
-      val.forEach((item) => {
-        if (item !== undefined && item !== null) {
-          fd.append(key, String(item));
-        }
-      });
-      continue;
-    }
-    if (val === null) {
-      fd.append(key, "");
-    } else {
-      fd.append(key, String(val));
-    }
+    jsonPayload[key] = val;
   }
+  fd.append("JSONString", JSON.stringify(jsonPayload));
   return fd;
 }
 
@@ -150,16 +131,11 @@ export async function createProject(body: ProjectCreatePayload): Promise<Project
 }
 
 export async function updateProject(id: number, body: ProjectUpdatePayload): Promise<Project> {
-  let submitData: ProjectUpdatePayload | FormData = body;
-  if (body.project_image instanceof File) {
-    submitData = buildProjectFormData(body as ProjectUpsertPayload);
-  } else {
-    const cleanBody = { ...body };
-    if (typeof cleanBody.project_image === "string") {
-      delete cleanBody.project_image;
-    }
-    submitData = cleanBody;
+  const cleanBody = { ...body };
+  if (typeof cleanBody.project_image === "string") {
+    delete cleanBody.project_image;
   }
+  const submitData = buildProjectFormData(cleanBody as ProjectUpsertPayload);
   const { data } = await api.patch<ApiEnvelope<Project>>(PROJECT_PATHS.detail(id), submitData);
   assertApiSuccess(data);
   return data.data;

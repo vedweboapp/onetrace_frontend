@@ -18,7 +18,6 @@ import { toastError, toastSuccess } from "@/shared/feedback/app-toast";
 import { reportFormSubmitApiError } from "@/shared/form/report-form-api-error.util";
 import { routes } from "@/shared/config/routes";
 import { buildEntityDetailHrefAfterSave } from "@/shared/utils/detail-from-list.util";
-import { SiteContactPersonsFields } from "@/features/sites/components/site-contact-persons-fields";
 import { SiteLocationFields } from "@/features/sites/components/site-location-fields";
 import { SiteNamePlaceField } from "@/features/sites/components/site-name-place-field";
 import type { PlaceSuggestion } from "@/shared/types/place-suggestion.types";
@@ -110,7 +109,10 @@ export function SiteFormModal({
         const currentSiteId = mode === "edit" && site ? site.id : undefined;
         const filtered = currentSiteId ? items.filter((s) => s.id !== currentSiteId) : items;
         setParentSitesList(filtered);
-        setParentSiteOptions(filtered.map((s) => ({ value: String(s.id), label: s.site_name })));
+        setParentSiteOptions([
+          { value: "", label: t("placeholders.parentSite") },
+          ...filtered.map((s) => ({ value: String(s.id), label: s.site_name })),
+        ]);
       } catch {
         if (!cancelled) {
           setParentSitesList([]);
@@ -167,7 +169,6 @@ export function SiteFormModal({
   const noClients = !lockClient && localClientOptions.length === 0;
 
   const clientQuickCreate = useQuickCreate({ kind: "client", addDisabled: lockClient });
-  const pendingContactRowRef = React.useRef<number | null>(null);
 
   return (
     <AppModal
@@ -237,6 +238,10 @@ export function SiteFormModal({
                           if (v) {
                             const selectedParent = parentSitesList.find((s) => String(s.id) === v);
                             if (selectedParent) {
+                              setValue("site_name", selectedParent.site_name, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
                               const loc = getSiteLocationDefaults(selectedParent);
                               if (loc.country_iso) {
                                 setValue("country_iso", loc.country_iso, { shouldDirty: true, shouldValidate: true });
@@ -250,6 +255,20 @@ export function SiteFormModal({
                               if (loc.pincode) {
                                 setValue("pincode", loc.pincode, { shouldDirty: true, shouldValidate: true });
                               }
+                              if (loc.address_line_1) {
+                                setValue("address_line_1", loc.address_line_1, { shouldDirty: true, shouldValidate: true });
+                              }
+                              if (loc.address_line_2) {
+                                setValue("address_line_2", loc.address_line_2, { shouldDirty: true, shouldValidate: true });
+                              }
+                              window.setTimeout(() => {
+                                const el = document.getElementById("site-name") as HTMLInputElement | null;
+                                if (el) {
+                                  el.focus();
+                                  const len = el.value.length;
+                                  el.setSelectionRange(len, len);
+                                }
+                              }, 50);
                             }
                           }
                         }}
@@ -300,7 +319,6 @@ export function SiteFormModal({
                           onBlur={field.onBlur}
                           onChange={(v) => {
                             field.onChange(v);
-                            setValue("contacts", [], { shouldDirty: true, shouldValidate: true });
                           }}
                           onAdd={clientQuickCreate.onAdd}
                           addAriaLabel={clientQuickCreate.addAriaLabel}
@@ -327,15 +345,6 @@ export function SiteFormModal({
                 />
               </FieldGroup>
             </FormFieldRow>
-          }
-          trailing={
-            <SiteContactPersonsFields
-              control={control}
-              setValue={setValue}
-              errors={errors}
-              disabled={saving}
-              pendingContactRowRef={pendingContactRowRef}
-            />
           }
         />
       </form>

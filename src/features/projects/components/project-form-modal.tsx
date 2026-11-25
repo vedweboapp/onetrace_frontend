@@ -16,6 +16,7 @@ import { createProjectFormSchema, type ProjectFormValues } from "@/features/proj
 import type { Project } from "@/features/projects/types/project.types";
 import {
   emptyProjectFormDefaults,
+  mapProjectFormToDirtyPayload,
   mapProjectFormToPayload,
   projectToFormDefaults,
 } from "@/features/projects/utils/project-form-map";
@@ -114,7 +115,7 @@ export function ProjectFormModal({
     getValues,
     setError,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(schema),
     defaultValues: emptyProjectFormDefaults(),
@@ -287,7 +288,8 @@ export function ProjectFormModal({
     setSaving(true);
     try {
       if (mode === "edit" && project) {
-        await updateProject(project.id, payload);
+        const dirtyPayload = mapProjectFormToDirtyPayload(values, dirtyFields);
+        await updateProject(project.id, dirtyPayload);
         toastSuccess(t("updatedToast"));
         onSaved();
         onClose();

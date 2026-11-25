@@ -18,6 +18,7 @@ import {
   updateQuotation,
 } from "@/features/quotations/api/quotation.api";
 import { QuotationContactPersonsFields } from "@/features/quotations/components/quotation-contact-persons-fields";
+import RichTextEditor from "@/shared/form/components/rich-text-editor";
 import { QuotationDraftComposer } from "@/features/quotations/components/quotation-draft-composer";
 import {
   isProjectQuoteCategory,
@@ -1988,11 +1989,18 @@ export function QuotationFormScreen({ mode, quotationId }: Props) {
               </FieldGroup>
             </FormFieldRow>
             <FieldGroup label={t("fields.description")} htmlFor="quotation-desc">
-              <textarea
-                id="quotation-desc"
-                rows={4}
-                className={surfaceTextareaClassName}
-                {...register("description")}
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <RichTextEditor
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    readOnly={saving}
+                    placeholder={t("placeholders.userOptional")}
+                  />
+                )}
               />
             </FieldGroup>
 
