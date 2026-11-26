@@ -147,6 +147,7 @@ export function DashboardHeader() {
   const titleHref = routes.dashboard.settingsTitle;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const templatesHref = routes.dashboard.settingsTemplates;
+  const rulesHref = routes.dashboard.settingsRules;
   const usersHref = routes.dashboard.settingsUsers;
   const userGroupsHref = routes.dashboard.settingsUserGroups;
   const rolesHref = routes.dashboard.settingsRoles;
@@ -245,6 +246,8 @@ export function DashboardHeader() {
     pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const templatesActive =
     pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
+  const rulesActive =
+    pathname === rulesHref || pathname.startsWith(`${rulesHref}/`);
   const customizationHubActive =
     pathname === customizationHref || pathname.startsWith(`${customizationHref}/`);
   const customizationActive = isCustomizationSettingsPath(pathname);
@@ -364,6 +367,8 @@ export function DashboardHeader() {
                                                                                         ? tSettingsNav("projectForms")
                                                                                         : templatesActive
                                                                                           ? tSettingsNav("templates")
+                                                                                          : rulesActive
+                                                                                            ? "Rules"
                                                                                           : tNav("home");
 
   const sidebarToggle = !isHydrogen ? (
@@ -467,6 +472,7 @@ export function DashboardHeader() {
             <TopNavLink href={kiosksHref} label={tSettingsNav("kiosks")} icon={Store} active={kiosksActive} resolved={resolved} />
             <TopNavLink href={projectFormsHref} label={tSettingsNav("projectForms")} icon={FileText} active={projectFormsActive} resolved={resolved} />
             <TopNavLink href={templatesHref} label={tSettingsNav("templates")} icon={LayoutTemplate} active={templatesActive} resolved={resolved} />
+            <TopNavLink href={rulesHref} label="Rules" icon={LayoutTemplate} active={rulesActive} resolved={resolved} />
             <TopNavLink href={customizationHref} label={tSettingsNav("customization.label")} icon={Palette} active={customizationActive} resolved={resolved} />
             <TopNavLink href={usersHref} label={tSettingsNav("users")} icon={UserRound} active={usersActive} resolved={resolved} />
             <TopNavLink href={rolesHref} label={tSettingsNav("roles")} icon={ShieldCheck} active={rolesActive} resolved={resolved} />

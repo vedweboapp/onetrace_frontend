@@ -744,6 +744,7 @@ function DashboardSettingsSidebar({
   const kiosksHref = routes.dashboard.settingsKiosks;
   const projectFormsHref = routes.dashboard.settingsProjectForms;
   const templatesHref = routes.dashboard.settingsTemplates;
+  const rulesHref = routes.dashboard.settingsRules;
   const integrationsHref = routes.dashboard.settingsIntegrations;
   const dataAdministrationHref = routes.dashboard.settingsDataAdministration;
   const auditLogsHref = routes.dashboard.settingsAuditLogs;
@@ -769,6 +770,7 @@ function DashboardSettingsSidebar({
   const kiosksActive = pathname === kiosksHref || pathname.startsWith(`${kiosksHref}/`);
   const projectFormsActive = pathname === projectFormsHref || pathname.startsWith(`${projectFormsHref}/`);
   const templatesActive = pathname === templatesHref || pathname.startsWith(`${templatesHref}/`);
+  const rulesActive = pathname === rulesHref || pathname.startsWith(`${rulesHref}/`);
   const integrationsActive =
     pathname === integrationsHref || pathname.startsWith(`${integrationsHref}/`);
   const dataAdministrationActive =
@@ -846,6 +848,14 @@ function DashboardSettingsSidebar({
           href={templatesHref}
           active={templatesActive}
           label={t("templates")}
+          icon={LayoutTemplate}
+          expanded={expanded}
+          resolved={resolved}
+        />
+        <SidebarNavLink
+          href={rulesHref}
+          active={rulesActive}
+          label="Rules"
           icon={LayoutTemplate}
           expanded={expanded}
           resolved={resolved}

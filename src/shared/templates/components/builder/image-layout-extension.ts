@@ -107,6 +107,26 @@ export const ImageLayoutExtension = Node.create({
         parseHTML: (element) => element.getAttribute("data-fit") || "contain",
         renderHTML: (attributes) => ({ "data-fit": attributes.fit || "contain" }),
       },
+      width: {
+        default: "100%",
+        parseHTML: (element) => element.getAttribute("data-width") || "100%",
+        renderHTML: (attributes) => ({ "data-width": attributes.width || "100%" }),
+      },
+      alignment: {
+        default: "center",
+        parseHTML: (element) => element.getAttribute("data-alignment") || "center",
+        renderHTML: (attributes) => ({ "data-alignment": attributes.alignment || "center" }),
+      },
+      rotate: {
+        default: 0,
+        parseHTML: (element) => Number(element.getAttribute("data-rotate") || 0),
+        renderHTML: (attributes) => ({ "data-rotate": String(attributes.rotate || 0) }),
+      },
+      flipH: {
+        default: false,
+        parseHTML: (element) => element.getAttribute("data-flip-h") === "true",
+        renderHTML: (attributes) => ({ "data-flip-h": String(Boolean(attributes.flipH)) }),
+      },
     };
   },
 

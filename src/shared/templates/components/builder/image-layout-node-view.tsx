@@ -13,6 +13,12 @@ import {
   Eye,
   X,
   Maximize2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  WrapText,
+  RotateCw,
+  FlipHorizontal,
 } from "lucide-react";
 import type { ImageLayoutType } from "./image-layout-extension";
 
@@ -161,6 +167,11 @@ export function ImageLayoutNodeView({
   const gap: string = node.attrs.gap || "12px";
   const height: string = node.attrs.height || "200px";
   const fit: "contain" | "cover" = node.attrs.fit || "contain";
+  const width: string = node.attrs.width || "100%";
+  const alignment: "left" | "center" | "right" | "float-left" | "float-right" =
+    node.attrs.alignment || "center";
+  const rotate: number = Number(node.attrs.rotate || 0);
+  const flipH: boolean = Boolean(node.attrs.flipH);
 
   const count = layout === "single" ? 1 : layout === "two" ? 2 : 3;
 
@@ -222,61 +233,203 @@ export function ImageLayoutNodeView({
   const gapNum = parseInt(gap) || 12;
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  const alignmentStyle: React.CSSProperties =
+    alignment === "float-left"
+      ? { float: "left", marginRight: "16px", marginBottom: "8px" }
+      : alignment === "float-right"
+      ? { float: "right", marginLeft: "16px", marginBottom: "8px" }
+      : alignment === "left"
+      ? { marginRight: "auto" }
+      : alignment === "right"
+      ? { marginLeft: "auto" }
+      : { marginLeft: "auto", marginRight: "auto" };
+
+  const transformParts: string[] = [];
+  if (rotate) transformParts.push(`rotate(${rotate}deg)`);
+  if (flipH) transformParts.push("scaleX(-1)");
+  const transformValue = transformParts.length > 0 ? transformParts.join(" ") : undefined;
+
   return (
-    <div ref={wrapperRef} className="image-layout-node-view-root">
     <NodeViewWrapper
+      ref={wrapperRef}
       className={`image-layout-node-view my-3 group/layout relative rounded-xl border-2 transition-colors ${
         selected
           ? "border-blue-500 shadow-lg shadow-blue-500/20 z-50"
           : "border-transparent hover:border-slate-300 dark:hover:border-slate-700 z-10"
       }`}
-      style={{ zIndex: selected ? 50 : 10 }}
+      style={{
+        zIndex: selected ? 50 : 10,
+        width: width === "auto" ? "100%" : width,
+        maxWidth: "100%",
+        ...alignmentStyle,
+        transform: transformValue,
+      }}
       data-drag-handle
     >
       {/* ── Toolbar ── */}
       <FloatingPortalToolbar anchorRef={wrapperRef} open={selected}>
-        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl px-1.5 py-1">
-        <span className="flex items-center gap-1 bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
-          <ImageIcon className="size-3" />
-          {layoutLabel}
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowSettings((s) => !s)}
-          className={`p-1 rounded transition cursor-pointer ${
-            showSettings
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600"
-          }`}
-          title="Layout settings"
-        >
-          <Settings2 className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={deleteNode}
-          className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 transition cursor-pointer"
-          title="Delete layout"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-        <div
-          contentEditable={false}
-          className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-grab active:cursor-grabbing"
-          data-drag-handle
-          title="Drag block"
-        >
-          <GripVertical className="size-3.5" />
-        </div>
-        </div>
-      </FloatingPortalToolbar>
+        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex items-center gap-0.5 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl px-1.5 py-1 backdrop-blur-xs">
+          <span className="flex items-center gap-1 bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow mr-1">
+            <ImageIcon className="size-3" />
+            {layoutLabel}
+          </span>
 
-      {/* ── Settings popup panel ── */}
-      {showSettings && (
-        <div
-          contentEditable={false}
-          className="absolute -top-10 left-36 z-30 flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl px-3 py-2 text-xs"
-        >
+          {/* Alignments */}
+          <button
+            type="button"
+            onClick={() => updateAttributes({ alignment: "left" })}
+            title="Align Left"
+            className={`p-1 rounded transition cursor-pointer ${
+              alignment === "left"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <AlignLeft size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => updateAttributes({ alignment: "center" })}
+            title="Align Center"
+            className={`p-1 rounded transition cursor-pointer ${
+              alignment === "center"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <AlignCenter size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => updateAttributes({ alignment: "right" })}
+            title="Align Right"
+            className={`p-1 rounded transition cursor-pointer ${
+              alignment === "right"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <AlignRight size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              updateAttributes({ alignment: alignment === "float-left" ? "left" : "float-left" })
+            }
+            title="Float Left (Text wraps around)"
+            className={`p-1 rounded transition cursor-pointer ${
+              alignment === "float-left"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <WrapText size={14} className="scale-x-[-1]" />
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              updateAttributes({ alignment: alignment === "float-right" ? "right" : "float-right" })
+            }
+            title="Float Right (Text wraps around)"
+            className={`p-1 rounded transition cursor-pointer ${
+              alignment === "float-right"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <WrapText size={14} />
+          </button>
+
+          <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          {/* Rotate & Flip */}
+          <button
+            type="button"
+            onClick={() => updateAttributes({ rotate: (rotate + 90) % 360 })}
+            title={`Rotate 90° (Current: ${rotate}°)`}
+            className="p-1 rounded text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            <RotateCw size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => updateAttributes({ flipH: !flipH })}
+            title="Flip Horizontal"
+            className={`p-1 rounded transition cursor-pointer ${
+              flipH
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <FlipHorizontal size={14} />
+          </button>
+
+          <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          {/* Quick Size Presets */}
+          {(["25%", "50%", "100%"] as const).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => updateAttributes({ width: preset })}
+              title={`${preset} width`}
+              className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition cursor-pointer ${
+                width === preset
+                  ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => updateAttributes({ width: "100%", rotate: 0, flipH: false, alignment: "center" })}
+            title="Reset transform"
+            className="p-1 rounded text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            <Maximize2 size={13} />
+          </button>
+
+          <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          <button
+            type="button"
+            onClick={() => setShowSettings((s) => !s)}
+            className={`p-1 rounded transition cursor-pointer ${
+              showSettings
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+            title="Layout settings"
+          >
+            <Settings2 className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={deleteNode}
+            className="p-1 rounded text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 transition cursor-pointer"
+            title="Delete layout"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+          <div
+            contentEditable={false}
+            className="p-1 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-grab active:cursor-grabbing"
+            data-drag-handle
+            title="Drag block"
+          >
+            <GripVertical className="size-3.5" />
+          </div>
+        </div>
+
+        {/* ── Settings popup panel ── */}
+        {showSettings && (
+          <div
+            contentEditable={false}
+            className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl px-3 py-2 text-xs"
+          >
           {/* Fit Toggle (Contain vs Cover) */}
           <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
             <span>Fit:</span>
@@ -342,7 +495,9 @@ export function ImageLayoutNodeView({
             <span className="text-[10px] text-slate-400 w-6">{gapNum}px</span>
           </label>
         </div>
-      )}
+        )}
+        </div>
+      </FloatingPortalToolbar>
 
       {/* ── Image slots ── */}
       <div className="flex w-full" style={{ gap }}>
@@ -402,6 +557,5 @@ export function ImageLayoutNodeView({
           document.body,
         )}
     </NodeViewWrapper>
-    </div>
   );
 }

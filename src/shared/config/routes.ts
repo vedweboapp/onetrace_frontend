@@ -95,5 +95,9 @@ export const routes = {
     settingsKiosk: "/settings/kiosks",
     settingsKioskMachines: "/settings/kiosk-machine",
     settingsTemplates: "/settings/templates",
+    settingsRules: "/settings/rules",
+    settingsRulesDetail: (projectFormId: number | string) => `/settings/rules/${projectFormId}`,
+    settingsRulesCreate: (projectFormId?: number | string) =>
+      projectFormId ? `/settings/rules/create?project_form=${projectFormId}` : "/settings/rules/create",
   },
 } as const;
