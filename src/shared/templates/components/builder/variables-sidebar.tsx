@@ -24,6 +24,9 @@ import {
   Image as ImageIcon,
   Columns2,
   Columns3,
+  SquareCheck,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/core/utils/http.util";
 import { AppButton } from "@/shared/ui";
@@ -36,6 +39,7 @@ import {
 } from "../../api/template-variables.api";
 import { PinsListModal } from "./pins-list-modal";
 import { SubformModal } from "./subform-modal";
+import { setWithLabelVariableKeys } from "./template-variable-pill-extension";
 
 
 type SidebarTab = "variables" | "components";
@@ -50,6 +54,8 @@ interface TemplateVariablesSidebarProps {
   onOpenHeaderModal?: () => void;
   /** Called whenever the variable list for the active module is loaded/reloaded */
   onVariablesLoaded?: (variables: VariableItem[]) => void;
+  /** Called whenever form_template section "With Label" checkboxes change */
+  onSectionWithLabelChange?: (withLabelKeys: Set<string>) => void;
 }
 
 export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSidebar({
@@ -61,6 +67,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   onOpenPinsListModal,
   onOpenHeaderModal,
   onVariablesLoaded,
+  onSectionWithLabelChange,
 }: TemplateVariablesSidebarProps) {
   const searchParams = useSearchParams();
   const urlModuleName = searchParams?.get("module_name") || searchParams?.get("module");
@@ -90,6 +97,39 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
   const [pinsModalOpen, setPinsModalOpen] = useState(false);
   const [subformModalOpen, setSubformModalOpen] = useState(false);
   const [expandedFields, setExpandedFields] = useState<Record<string, boolean>>({});
+  const [sectionWithLabel, setSectionWithLabel] = useState<Record<string, boolean>>({});
+  const [insertedWithLabelKeys, setInsertedWithLabelKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setWithLabelVariableKeys(insertedWithLabelKeys);
+    onSectionWithLabelChange?.(insertedWithLabelKeys);
+  }, [insertedWithLabelKeys, onSectionWithLabelChange]);
+
+  // ── Checkbox Fields State ──
+  type CheckboxItem = { id: number; label: string; checked: boolean };
+  const [checkboxItems, setCheckboxItems] = useState<CheckboxItem[]>([]);
+  const [checkboxDraft, setCheckboxDraft] = useState("");
+  const checkboxNextId = React.useRef(1);
+
+  const addCheckboxItem = () => {
+    const label = checkboxDraft.trim();
+    if (!label) return;
+    setCheckboxItems((prev) => [
+      ...prev,
+      { id: checkboxNextId.current++, label, checked: false },
+    ]);
+    setCheckboxDraft("");
+  };
+
+  const toggleCheckboxItem = (id: number) => {
+    setCheckboxItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
+    );
+  };
+
+  const removeCheckboxItem = (id: number) => {
+    setCheckboxItems((prev) => prev.filter((item) => item.id !== id));
+  };
 
   const loadVariables = useCallback(
     async (targetModule: string, targetFormId?: string | number | null) => {
@@ -206,7 +246,7 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
     return groupedSections.reduce((acc, sec) => acc + sec.items.length, 0);
   }, [groupedSections]);
 
-  const insertVariable = (tag: string) => {
+  const insertVariable = (tag: string, key?: string, withLabel?: boolean) => {
     if (!editor) return;
     editor
       .chain()
@@ -216,6 +256,16 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
         text: `${tag} `,
       })
       .run();
+
+    if (withLabel && key) {
+      const lowerKey = key.toLowerCase();
+      setInsertedWithLabelKeys((prev) => {
+        if (prev.has(lowerKey)) return prev;
+        const next = new Set(prev);
+        next.add(lowerKey);
+        return next;
+      });
+    }
 
     setLastInsertedTag(tag);
     setTimeout(() => {
@@ -535,15 +585,38 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                                       <ChevronDown size={12} className={cn("text-blue-400 transition-transform shrink-0", isExpanded && "rotate-180")} />
                                     </div>
                                   </button>
+                                  {section.key === "form_template" && (
+                                    <label className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={Boolean(sectionWithLabel[item.key])}
+                                        onChange={(e) =>
+                                          setSectionWithLabel((prev) => ({
+                                            ...prev,
+                                            [item.key]: e.target.checked,
+                                          }))
+                                        }
+                                        className="size-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+                                      />
+                                      <span>With Label</span>
+                                    </label>
+                                  )}
                                   {isExpanded && (
                                     <div className="ml-3 space-y-0.5 border-l-2 border-blue-200 dark:border-blue-800 pl-2">
                                       {item.children.map((child) => {
                                         const childInserted = lastInsertedTag === child.tag;
+                                        const hasWithLabel = insertedWithLabelKeys.has(child.key.toLowerCase());
                                         return (
                                           <button
                                             key={child.key}
                                             type="button"
-                                            onClick={() => insertVariable(child.tag)}
+                                            onClick={() =>
+                                              insertVariable(
+                                                child.tag,
+                                                child.key,
+                                                section.key === "form_template" && Boolean(sectionWithLabel[item.key]),
+                                              )
+                                            }
                                             title={`Click to insert ${child.tag}`}
                                             className={cn(
                                               "w-full flex items-center justify-between gap-2 px-2 py-1 rounded-md border text-left transition-all duration-150 cursor-pointer group text-[11px]",
@@ -898,6 +971,107 @@ export const TemplateVariablesSidebar = React.memo(function TemplateVariablesSid
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-100 dark:border-slate-800" />
+
+            {/* ─── Checkbox Fields Section ─── */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-0.5">
+                Checkbox Fields
+              </p>
+              <div className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Add labelled checkbox fields to track checked / unchecked state.
+              </div>
+
+              {/* Add new checkbox row */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={checkboxDraft}
+                  onChange={(e) => setCheckboxDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCheckboxItem();
+                    }
+                  }}
+                  placeholder="Label…"
+                  className="flex-1 min-w-0 text-xs py-1.5 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={addCheckboxItem}
+                  disabled={!checkboxDraft.trim()}
+                  title="Add checkbox field"
+                  className="shrink-0 flex items-center justify-center size-7 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 text-white disabled:text-slate-400 transition cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+
+              {/* Checkbox items list */}
+              {checkboxItems.length > 0 && (
+                <div className="space-y-1.5">
+                  {checkboxItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-850 shadow-2xs group"
+                    >
+                      {/* Checkbox toggle */}
+                      <button
+                        type="button"
+                        onClick={() => toggleCheckboxItem(item.id)}
+                        title={item.checked ? "Uncheck" : "Check"}
+                        className="shrink-0 flex items-center justify-center size-4 rounded border-2 transition-colors cursor-pointer"
+                        style={{
+                          borderColor: item.checked ? "#2563eb" : "#cbd5e1",
+                          backgroundColor: item.checked ? "#2563eb" : "transparent",
+                        }}
+                      >
+                        {item.checked && <Check className="size-2.5 text-white" />}
+                      </button>
+
+                      {/* Label */}
+                      <span
+                        className={cn(
+                          "flex-1 min-w-0 text-xs truncate",
+                          item.checked
+                            ? "line-through text-slate-400 dark:text-slate-500"
+                            : "text-slate-800 dark:text-slate-100",
+                        )}
+                      >
+                        {item.label}
+                      </span>
+
+                      {/* Checked badge */}
+                      {item.checked && (
+                        <span className="shrink-0 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                          Checked
+                        </span>
+                      )}
+
+                      {/* Remove */}
+                      <button
+                        type="button"
+                        onClick={() => removeCheckboxItem(item.id)}
+                        title="Remove"
+                        className="shrink-0 opacity-0 group-hover:opacity-100 flex items-center justify-center size-5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {checkboxItems.length === 0 && (
+                <div className="flex flex-col items-center gap-1.5 py-4 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500">
+                  <SquareCheck className="size-5 opacity-40" />
+                  <span className="text-[10.5px]">No checkbox fields yet</span>
                 </div>
               )}
             </div>

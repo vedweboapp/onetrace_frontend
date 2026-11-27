@@ -175,6 +175,8 @@ export default function TemplatesEditor({
     if (tName) setName(tName);
   }, [template?.content, template?.name, template?.template_name, template?.attachments, template?.keys, template?.Keys]);
 
+  const withLabelKeysRef = useRef<Set<string>>(new Set());
+
   const handleContentChange = useCallback((html: string, newFiles?: File[]) => {
     contentRef.current = html;
     if (newFiles && newFiles.length > 0) {
@@ -204,6 +206,7 @@ export default function TemplatesEditor({
       moduleName: resolvedModuleName,
       files: filesRef.current,
       is_global_header: isGlobalHeader,
+      withLabelKeys: withLabelKeysRef.current,
       ...(template?.category ? { category: template.category } : {}),
       ...(template?.description ? { description: template.description } : {}),
       ...(template?.id ? { id: template.id } : {}),
@@ -306,6 +309,9 @@ export default function TemplatesEditor({
           autoFocus={isNew}
           moduleName={resolvedModuleName}
           formId={effectiveFormId}
+          onSectionWithLabelChange={(keys) => {
+            withLabelKeysRef.current = keys;
+          }}
         />
       </div>
     </div>

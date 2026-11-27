@@ -21,6 +21,13 @@ const HTML_ELEMENTS = new Set([
 // Track set of expanded variable tags in the current editor session
 const expandedTags = new Set<string>();
 
+// Track set of variable keys (e.g. "form_template.email_address") that have with_label: true
+let withLabelTagKeys = new Set<string>();
+
+export function setWithLabelVariableKeys(keys: Set<string>) {
+  withLabelTagKeys = new Set(keys);
+}
+
 export const TemplateVariablePillExtension = Extension.create({
   name: "templateVariablePill",
 
@@ -46,10 +53,11 @@ export const TemplateVariablePillExtension = Extension.create({
                 const from = pos + match.index;
                 const to = from + fullTag.length;
                 const isExpanded = expandedTags.has(fullTag);
+                const hasWithLabel = withLabelTagKeys.has(tagContent.toLowerCase());
 
                 decorations.push(
                   Decoration.inline(from, to, {
-                    class: `template-var-pill ${isExpanded ? "is-expanded" : ""}`.trim(),
+                    class: `template-var-pill ${isExpanded ? "is-expanded" : ""} ${hasWithLabel ? "has-with-label" : ""}`.trim(),
                     "data-tag": fullTag,
                     title: isExpanded
                       ? `${fullTag} (Click to collapse)`

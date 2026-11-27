@@ -361,6 +361,7 @@ export interface TemplateKeyItem {
   Columns?: string[];
   tax_id?: number | string | null;
   tax?: number | string | null;
+  with_label?: boolean;
   [key: string]: unknown;
 }
 
@@ -397,6 +398,7 @@ const HTML_ELEMENTS = new Set([
 export function extractTemplateKeys(
   htmlContent: string,
   primaryModule = "quotations",
+  withLabelKeys?: Set<string>,
 ): TemplateKeyItem[] {
   if (!htmlContent) return [];
 
@@ -599,7 +601,11 @@ export function extractTemplateKeys(
       const dotIdx = lower.indexOf(".");
       const mod = lower.slice(0, dotIdx);
       const field = lower.slice(dotIdx + 1);
-      keys.push({ Key: field, Type: "text", Module: mod });
+      const item: TemplateKeyItem = { Key: field, Type: "text", Module: mod };
+      if (withLabelKeys?.has(lower)) {
+        item.with_label = true;
+      }
+      keys.push(item);
     } else {
       // Primary field: <field>
       keys.push({ Key: lower, Type: "text", Module: primaryModule });
@@ -896,10 +902,11 @@ export function buildTemplateSaveObject(params: {
   moduleName?: string;
   category?: string;
   description?: string;
+  withLabelKeys?: Set<string>;
   [key: string]: unknown;
 }) {
-  const { name, content, moduleName = "quotations", ...rest } = params;
-  const keys = extractTemplateKeys(content, moduleName);
+  const { name, content, moduleName = "quotations", withLabelKeys, ...rest } = params;
+  const keys = extractTemplateKeys(content, moduleName, withLabelKeys);
 
   // Send clean signature comment <!-- items_table --> instead of the preview div
   const payloadContent = serializeContentWithTableComments(content);
@@ -1001,10 +1008,11 @@ export function buildTemplateFormData(params: {
     file: explicitFile,
     images: explicitImages,
     attachments: explicitAttachments,
+    withLabelKeys,
     ...rest
   } = params;
 
-  const keys = extractTemplateKeys(content, moduleName);
+  const keys = extractTemplateKeys(content, moduleName, withLabelKeys as Set<string> | undefined);
 
   // 1. Extract any embedded base64 data-URL images from the HTML and convert them to binary Files
   const { files: extractedFiles, cleanHtml } = extractBinaryFilesFromHtml(content);

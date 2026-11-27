@@ -1352,6 +1352,31 @@ const TemplateDocStyles = React.memo(function TemplateDocStyles() {
         border-color: #93c5fd;
         color: #1d4ed8;
       }
+      .template-doc-editor .ProseMirror .template-var-pill.has-with-label {
+        background-color: #ecfdf5;
+        border-color: #6ee7b7;
+        color: #047857;
+      }
+      .template-doc-editor .ProseMirror .template-var-pill.has-with-label:hover {
+        background-color: #d1fae5;
+        border-color: #34d399;
+      }
+      .template-doc-editor .ProseMirror .template-var-pill.has-with-label::after {
+        content: "L";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 4px;
+        border-radius: 9999px;
+        background-color: #059669;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1;
+        vertical-align: middle;
+      }
       .dark .template-doc-editor .ProseMirror .template-var-pill {
         background-color: #1e293b;
         color: #60a5fa;
@@ -2137,6 +2162,7 @@ interface TemplateEditorProps {
   autoFocus?: boolean;
   moduleName?: string;
   formId?: string | number | null;
+  onSectionWithLabelChange?: (withLabelKeys: Set<string>) => void;
 }
 
 export function preserveSpacesInHtml(html: string): string {
@@ -2388,6 +2414,7 @@ export default function TemplateDocEditor({
   autoFocus = false,
   moduleName = "quotations",
   formId,
+  onSectionWithLabelChange,
 }: TemplateEditorProps) {
   const uploadedFilesRef = useRef<Map<string, File>>(new Map());
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -2740,6 +2767,7 @@ export default function TemplateDocEditor({
             moduleName={moduleName}
             formId={formId}
             onVariablesLoaded={handleVariablesLoaded}
+            onSectionWithLabelChange={onSectionWithLabelChange}
           />
         )}
 
